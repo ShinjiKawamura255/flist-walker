@@ -7,8 +7,9 @@ fn tab_toggles_pin_without_moving_current_row_when_query_not_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -47,8 +48,9 @@ fn tab_toggles_pin_without_moving_current_row_when_query_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -89,8 +91,9 @@ fn tab_can_toggle_pin_and_move_to_next_row_when_configured() {
     fs::write(&selected, "x").expect("write file");
     fs::write(&next, "y").expect("write next file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0), (next.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(selected.clone(), 0.0), (next.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.tab_pin_moves_to_next_row = true;
 
     run_shortcuts_frame(
@@ -117,8 +120,8 @@ fn regression_tab_shortcut_clears_focus_traversal_target() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let ctx = egui::Context::default();
     let dummy_focus = egui::Id::new("dummy-focus");
     ctx.memory_mut(|m| m.request_focus(dummy_focus));
@@ -151,8 +154,8 @@ fn regression_tab_keeps_query_focus_when_query_is_active() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let ctx = egui::Context::default();
     ctx.memory_mut(|m| m.request_focus(app.shell.ui.query_input_id));
 
@@ -216,8 +219,9 @@ fn regression_ctrl_i_toggles_pin_regardless_of_query_focus() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(selected.clone(), 0.0), (root.join("next.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,

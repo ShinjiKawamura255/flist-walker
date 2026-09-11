@@ -1457,8 +1457,8 @@ impl FlistWalkerApp {
             finalized_filelist_paths = finalization.filelist_paths.take();
         }
         self.shell.indexing.build.index.source = pending_finish.source;
-        self.shell.runtime.all_entries =
-            Arc::new(std::mem::take(&mut self.shell.indexing.build.index.entries));
+        let all_entries = Arc::new(std::mem::take(&mut self.shell.indexing.build.index.entries));
+        self.shell.runtime.replace_all_entries(all_entries);
         self.shell
             .indexing
             .apply_resource_transition(TabResourceTransition::Success);
@@ -1479,9 +1479,10 @@ impl FlistWalkerApp {
         self.shell.indexing.settle_active_terminal_state();
         if needs_filtering {
             if has_incremental_filter_snapshot {
-                self.shell.runtime.entries = Arc::new(std::mem::take(
+                let entries = Arc::new(std::mem::take(
                     &mut self.shell.indexing.build.incremental_filtered_entries,
                 ));
+                self.shell.runtime.replace_visible_entries(entries);
                 self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
                 self.shell.indexing.search_rerun_pending = false;
                 if self.shell.runtime.query_state.query.trim().is_empty() {
@@ -1489,7 +1490,9 @@ impl FlistWalkerApp {
                     // The incremental snapshot replaces the previous result set at
                     // index completion, so its denominator must replace any count
                     // left by the search that was active before the refresh.
-                    self.shell.runtime.total_match_count = self.shell.runtime.entries.len();
+                    self.shell
+                        .runtime
+                        .set_total_match_count(self.shell.runtime.entries.len());
                     let results = self
                         .shell
                         .runtime
@@ -1507,7 +1510,11 @@ impl FlistWalkerApp {
                 self.apply_entry_filters(true);
             }
         } else {
-            self.shell.runtime.entries = Arc::clone(&self.shell.runtime.all_entries);
+            let all_entries = Arc::clone(&self.shell.runtime.all_entries);
+            let entries = Arc::clone(&all_entries);
+            self.shell
+                .runtime
+                .install_entry_snapshots(all_entries, entries);
             self.shell
                 .indexing
                 .build
@@ -1519,7 +1526,9 @@ impl FlistWalkerApp {
                 self.shell.search.clear_active_request_state();
                 // The index refresh supersedes the previous result snapshot;
                 // keep the Results denominator aligned with the final index.
-                self.shell.runtime.total_match_count = self.shell.runtime.entries.len();
+                self.shell
+                    .runtime
+                    .set_total_match_count(self.shell.runtime.entries.len());
                 let results = self
                     .shell
                     .runtime

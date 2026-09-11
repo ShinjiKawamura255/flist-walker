@@ -273,7 +273,7 @@ pub(super) struct AppRuntimeState {
     pub(super) ignore_list_terms: Arc<Vec<String>>,
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
-    pub(super) committed: TabCommittedPayload,
+    committed: TabCommittedPayload,
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) result_sort_scope: ResultSortScope,
     pub(super) pinned_paths: HashSet<PathBuf>,
@@ -285,17 +285,127 @@ pub(super) struct AppRuntimeState {
     pub(super) status_line: String,
 }
 
+impl AppRuntimeState {
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn new(
+        root: PathBuf,
+        limit: usize,
+        max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
+        query_state: QueryState,
+        ignore_list_terms: Arc<Vec<String>>,
+        pinned_paths: HashSet<PathBuf>,
+        emacs_keybindings_enabled: bool,
+        ctrl_w_deletes_word_in_query: bool,
+        tab_pin_moves_to_next_row: bool,
+    ) -> Self {
+        Self {
+            root,
+            limit,
+            max_depth,
+            follow_links,
+            query_state,
+            use_filelist: true,
+            use_regex: false,
+            ignore_case: true,
+            ignore_list_terms,
+            include_files: true,
+            include_dirs: true,
+            committed: TabCommittedPayload::default(),
+            result_sort_mode: ResultSortMode::Score,
+            result_sort_scope: ResultSortScope::ShownResults,
+            pinned_paths,
+            evicted_selected_path: None,
+            emacs_keybindings_enabled,
+            ctrl_w_deletes_word_in_query,
+            tab_pin_moves_to_next_row,
+            notice: String::new(),
+            status_line: "Initializing...".to_string(),
+        }
+    }
+
+    pub(super) fn install_entry_snapshots(
+        &mut self,
+        all_entries: Arc<Vec<Entry>>,
+        visible_entries: Arc<Vec<Entry>>,
+    ) {
+        self.committed.all_entries = all_entries;
+        self.committed.entries = visible_entries;
+    }
+
+    pub(super) fn replace_all_entries(&mut self, all_entries: Arc<Vec<Entry>>) {
+        self.committed.all_entries = all_entries;
+    }
+
+    pub(super) fn replace_visible_entries(&mut self, entries: Arc<Vec<Entry>>) {
+        self.committed.entries = entries;
+    }
+
+    pub(super) fn sync_visible_entries(&mut self, source: &[Entry]) {
+        if let Some(entries) = Arc::get_mut(&mut self.committed.entries) {
+            entries.clear();
+            entries.extend(source.iter().cloned());
+        } else {
+            self.committed.entries = Arc::new(source.to_vec());
+        }
+    }
+
+    pub(super) fn replace_base_results(
+        &mut self,
+        results: Vec<(PathBuf, f64)>,
+        are_score_ranked: bool,
+    ) {
+        self.committed.base_results = results;
+        self.committed.base_results_are_score_ranked = are_score_ranked;
+    }
+
+    pub(super) fn replace_results(&mut self, results: Vec<(PathBuf, f64)>) {
+        self.committed.results = results;
+    }
+
+    pub(super) fn set_total_match_count(&mut self, count: usize) {
+        self.committed.total_match_count = count;
+    }
+
+    pub(super) fn set_current_row(&mut self, row: Option<usize>) {
+        self.committed.current_row = row;
+    }
+
+    pub(super) fn set_preview(&mut self, preview: String) {
+        self.committed.preview = preview;
+    }
+
+    pub(super) fn clear_preview(&mut self) {
+        self.committed.preview.clear();
+    }
+
+    pub(super) fn preview_text_mut(&mut self) -> &mut String {
+        &mut self.committed.preview
+    }
+
+    pub(super) fn swap_committed_payload(&mut self, payload: &mut TabCommittedPayload) {
+        std::mem::swap(&mut self.committed, payload);
+    }
+
+    pub(super) fn take_committed_payload(&mut self) -> TabCommittedPayload {
+        std::mem::take(&mut self.committed)
+    }
+
+    pub(super) fn restore_committed_payload(&mut self, payload: TabCommittedPayload) {
+        self.committed = payload;
+    }
+
+    #[cfg(test)]
+    pub(super) fn committed_for_test_mut(&mut self) -> &mut TabCommittedPayload {
+        &mut self.committed
+    }
+}
+
 impl std::ops::Deref for AppRuntimeState {
     type Target = TabCommittedPayload;
 
     fn deref(&self) -> &Self::Target {
         &self.committed
-    }
-}
-
-impl std::ops::DerefMut for AppRuntimeState {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.committed
     }
 }
 

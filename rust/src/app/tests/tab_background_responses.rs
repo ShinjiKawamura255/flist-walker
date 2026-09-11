@@ -209,9 +209,10 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "picked".to_string());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&selected, EntryKind::file());
 
     let (search_tx_req, _search_rx_req) = mpsc::channel::<SearchRequest>();
@@ -288,13 +289,13 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
     let mut app = FlistWalkerApp::new(root.clone(), 50, "new".to_string());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         file_entry(old_path.clone()),
         file_entry(new_path.clone()),
     ]);
-    app.shell.runtime.results = vec![(old_path.clone(), 1.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old_path.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&old_path, EntryKind::file());
     app.set_entry_kind(&new_path, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
@@ -367,10 +368,11 @@ fn tab_activation_without_background_selection_change_does_not_request_preview_r
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&selected, EntryKind::file());
     // Keep this fixture non-compacting so it isolates activation from the
     // separate result-restoration path, which intentionally refreshes preview.
@@ -418,12 +420,13 @@ fn sizedesc_inactive_completed_preview_roundtrips_via_explicit_reload_regression
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
-    app.shell.runtime.preview = "completed preview".to_string();
+    app.shell.runtime.committed_for_test_mut().preview = "completed preview".to_string();
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
@@ -462,10 +465,15 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
     let mut app = FlistWalkerApp::new(root.clone(), 50, "selected".to_string());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.results.clear();
-    app.shell.runtime.base_results.clear();
-    app.shell.runtime.current_row = None;
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().results.clear();
+    app.shell
+        .runtime
+        .committed_for_test_mut()
+        .base_results
+        .clear();
+    app.shell.runtime.committed_for_test_mut().current_row = None;
     let background_tab_id = app.current_tab_id().expect("background tab id");
     app.shell.worker_bus.preview.pending_request_id = Some(711);
     app.shell.worker_bus.preview.in_progress = true;
@@ -533,10 +541,11 @@ fn background_sort_reorder_invalidates_old_preview_request_regression() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "item".to_string());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.base_results = vec![(old_path.clone(), 2.0), (new_path.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "old preview".to_string();
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(old_path.clone(), 2.0), (new_path.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "old preview".to_string();
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
     app.shell.worker_bus.sort.pending_request_id = Some(93);
     app.shell.worker_bus.sort.in_progress = true;
@@ -646,14 +655,18 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     app.create_new_tab();
     assert_eq!(app.shell.tabs.active_tab, 1);
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(active_file.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(active_file.clone())]);
     app.sync_active_tab_state();
 
     index_res_tx
@@ -704,12 +717,12 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
     app.request_index_refresh();
     let index_req = index_req_rx.try_recv().expect("index request");
 
-    app.shell.runtime.entries = Arc::new(vec![file_entry(stale.clone())]);
-    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
-    app.shell.runtime.base_results = vec![(stale.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.total_match_count = 1;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![file_entry(stale.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(stale.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().total_match_count = 1;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let (sort_req_tx, sort_req_rx) = mpsc::channel::<SortMetadataRequest>();
     let (sort_res_tx, sort_res_rx) = mpsc::channel::<SortMetadataResponse>();
     app.shell.worker_bus.sort.tx = sort_req_tx;
@@ -1001,11 +1014,13 @@ fn background_empty_query_index_finish_updates_total_match_count() {
     let mut app = FlistWalkerApp::new(root.clone(), 1, String::new());
     let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = index_res_rx;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.total_match_count = 99;
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(active_file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().total_match_count = 99;
     app.sync_active_tab_state();
 
     app.create_new_tab();
@@ -1181,11 +1196,13 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
     app.shell.search.tx = search_tx_req;
     app.shell.search.rx = search_rx_res;
 
-    app.shell.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(active_file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1196,11 +1213,13 @@ fn background_tab_search_and_index_responses_do_not_override_active_results() {
 
     app.create_new_tab();
     assert_eq!(app.shell.tabs.active_tab, 1);
-    app.shell.runtime.entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(active_file.clone())]);
-    app.shell.runtime.results = vec![(active_file.clone(), 0.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(active_file.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(active_file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -3242,10 +3261,10 @@ fn canceled_background_preview_settles_and_reloads_on_activation() {
     let path = root.join("sample.txt");
     fs::write(&path, "sample").unwrap();
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.entries = Arc::new(vec![file_entry(path.clone())]);
-    app.shell.runtime.results = vec![(path.clone(), 1.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![file_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&path, EntryKind::file());
     let (tx, rx) = mpsc::channel();
     app.shell.worker_bus.preview.tx = tx;

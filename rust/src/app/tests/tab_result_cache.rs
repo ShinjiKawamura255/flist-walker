@@ -211,14 +211,15 @@ fn inactive_tab_results_are_retained_for_immediate_activation() {
     app.shell.ui.show_preview = false;
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
     ]);
-    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(1);
-    app.shell.runtime.preview = "preview".to_string();
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(1);
+    app.shell.runtime.committed_for_test_mut().preview = "preview".to_string();
 
     app.create_new_tab();
 
@@ -293,11 +294,13 @@ fn explicitly_compacted_empty_query_restore_rebuilds_results_from_current_entrie
     app.shell.ui.show_preview = false;
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(current.clone())]);
-    app.shell.runtime.base_results = vec![(current.clone(), 10.0), (stale, 5.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.total_match_count = 1;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(current.clone())]);
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(current.clone(), 10.0), (stale, 5.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().total_match_count = 1;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.create_new_tab();
     {
@@ -325,14 +328,16 @@ fn non_score_sorted_inactive_tab_keeps_results_for_fast_activation() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
     ]);
-    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
-    app.shell.runtime.results = vec![(second.clone(), 5.0), (first.clone(), 10.0)];
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(second.clone(), 5.0), (first.clone(), 10.0)];
     app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.create_new_tab();
 
@@ -365,14 +370,16 @@ fn metadata_sorted_inactive_tab_does_not_request_metadata_on_activation() {
     app.shell.worker_bus.sort.tx = sort_tx;
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
     ]);
-    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
-    app.shell.runtime.results = vec![(second.clone(), 5.0), (first.clone(), 10.0)];
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(second.clone(), 5.0), (first.clone(), 10.0)];
     app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.create_new_tab();
     app.switch_to_tab_index(0);
@@ -402,13 +409,14 @@ fn tab_activation_restores_visible_cursor_when_selection_is_missing() {
     app.shell.ui.show_preview = false;
     app.shell.indexing.in_progress = false;
     app.shell.indexing.pending_request_id = None;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
     ]);
-    app.shell.runtime.base_results = vec![(first.clone(), 10.0), (second.clone(), 5.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = None;
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(first.clone(), 10.0), (second.clone(), 5.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = None;
     app.sync_active_tab_state();
 
     app.create_new_tab();

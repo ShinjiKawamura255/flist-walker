@@ -119,7 +119,7 @@ impl FlistWalkerApp {
 
     pub(super) fn request_preview_for_current(&mut self) {
         if !self.shell.ui.show_preview {
-            self.shell.runtime.preview.clear();
+            self.shell.runtime.clear_preview();
             self.shell.worker_bus.preview.clear_request();
             return;
         }
@@ -127,14 +127,16 @@ impl FlistWalkerApp {
         if let Some(row) = self.shell.runtime.current_row {
             if let Some((path, _)) = self.shell.runtime.results.get(row) {
                 if let Some(cached) = self.shell.cache.preview.get(path) {
-                    self.shell.runtime.preview = cached.to_string();
+                    self.shell.runtime.set_preview(cached.to_string());
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 }
                 let path = path.clone();
 
                 let Some(kind) = self.current_result_kind() else {
-                    self.shell.runtime.preview = "Resolving entry type...".to_string();
+                    self.shell
+                        .runtime
+                        .set_preview("Resolving entry type...".to_string());
                     self.queue_kind_resolution(path);
                     self.pump_kind_resolution_requests();
                     self.shell.worker_bus.preview.clear_request();
@@ -142,16 +144,22 @@ impl FlistWalkerApp {
                 };
                 let Some(is_dir) = kind.is_dir else {
                     if kind.needs_resolution() {
-                        self.shell.runtime.preview = "Resolving entry type...".to_string();
+                        self.shell
+                            .runtime
+                            .set_preview("Resolving entry type...".to_string());
                         self.queue_kind_resolution(path);
                         self.pump_kind_resolution_requests();
                     } else {
-                        self.shell.runtime.preview = "<preview unavailable>".to_string();
+                        self.shell
+                            .runtime
+                            .set_preview("<preview unavailable>".to_string());
                     }
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 };
-                self.shell.runtime.preview = "Loading preview...".to_string();
+                self.shell
+                    .runtime
+                    .set_preview("Loading preview...".to_string());
                 let request_id = self.shell.worker_bus.preview.begin_request();
                 self.bind_preview_request_to_current_tab(request_id);
                 let req = PreviewRequest {
@@ -161,12 +169,14 @@ impl FlistWalkerApp {
                 };
                 if self.shell.worker_bus.preview.tx.send(req).is_err() {
                     self.shell.worker_bus.preview.clear_request();
-                    self.shell.runtime.preview = "<preview unavailable>".to_string();
+                    self.shell
+                        .runtime
+                        .set_preview("<preview unavailable>".to_string());
                 }
                 return;
             }
         }
-        self.shell.runtime.preview.clear();
+        self.shell.runtime.clear_preview();
         self.shell.worker_bus.preview.clear_request();
     }
 }

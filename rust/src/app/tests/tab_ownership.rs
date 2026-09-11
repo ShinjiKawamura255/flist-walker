@@ -16,11 +16,31 @@ fn heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values() {
     let worker_runtime = include_str!("../worker/runtime.rs");
     assert!(tab_state.contains("pub(super) build: TabBuildPayload"));
     assert!(tab_state.contains("pub(super) committed: TabCommittedPayload"));
-    assert!(state.contains("pub(super) committed: TabCommittedPayload"));
+    assert!(state.contains("\n    committed: TabCommittedPayload,"));
+    assert!(!state.contains("pub(super) committed: TabCommittedPayload"));
+    assert!(!state.contains("impl std::ops::DerefMut for AppRuntimeState"));
+    assert!(!state.contains("AsMut<TabCommittedPayload>"));
+    assert!(!state.contains("fn committed_mut"));
+    for owner_api in [
+        "fn install_entry_snapshots(",
+        "fn sync_visible_entries(",
+        "fn replace_base_results(",
+        "fn replace_results(",
+        "fn set_total_match_count(",
+        "fn set_current_row(",
+        "fn set_preview(",
+        "fn clear_preview(",
+        "fn preview_text_mut(",
+        "fn swap_committed_payload(",
+        "fn take_committed_payload(",
+        "fn restore_committed_payload(",
+    ] {
+        assert!(state.contains(owner_api), "missing owner API {owner_api}");
+    }
     assert!(index_coordinator.contains("pub(super) build: TabBuildPayload"));
     assert!(!tab_resources.contains("struct IndexBuildResourcePayload"));
     assert!(!tab_resources.contains("struct CommittedResourcePayload"));
-    assert!(!state.contains("all_entries: Arc<Vec<Entry>>"));
+    assert!(!state.contains("pub(super) all_entries: Arc<Vec<Entry>>"));
     assert!(!index_coordinator.contains("pending_entries: VecDeque<IndexEntry>"));
     assert!(worker_runtime.contains("let active_build = self.take_active_index_build_resources()"));
     assert!(!worker_runtime.contains("take(&mut self.shell.indexing.build.pending_kind_paths"));
@@ -33,7 +53,7 @@ fn heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values() {
         compact.contains("mem::swap(&mutself.index_state.build,&mutshell.shell.indexing.build)")
     );
     assert!(compact
-        .contains("mem::swap(&mutself.result_state.committed,&mutshell.shell.runtime.committed,)"));
+        .contains("shell.shell.runtime.swap_committed_payload(&mutself.result_state.committed)"));
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,8 +186,10 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
         .set_committed_snapshot_present_for_test(true);
     app.shell.indexing.build.index.entries = entries(prefix);
     app.shell.indexing.build.index.source = IndexSource::Walker;
-    app.shell.runtime.all_entries = Arc::new(entries(&format!("{prefix}-all")));
-    app.shell.runtime.entries = Arc::new(entries(&format!("{prefix}-filtered")));
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(entries(&format!("{prefix}-all")));
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(entries(&format!("{prefix}-filtered")));
     app.shell.indexing.build.pending_entries = pending_entries(prefix);
     app.shell.indexing.pending_entries_request_id = Some(request_id + 10);
     app.shell.indexing.build.pending_kind_paths = kind_paths(prefix);
@@ -190,14 +212,15 @@ fn seed_live_payload(app: &mut FlistWalkerApp, prefix: &str, request_id: u64) {
     app.shell.indexing.last_search_snapshot_len = PAYLOAD_LEN - 1;
     app.shell.indexing.search_resume_pending = true;
     app.shell.indexing.search_rerun_pending = true;
-    app.shell.runtime.base_results = results(&format!("{prefix}-base"));
-    app.shell.runtime.results = results(prefix);
+    app.shell.runtime.committed_for_test_mut().base_results = results(&format!("{prefix}-base"));
+    app.shell.runtime.committed_for_test_mut().results = results(prefix);
     app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
     app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
-    app.shell.runtime.total_match_count = PAYLOAD_LEN + 7;
-    app.shell.runtime.current_row = Some(7);
+    app.shell.runtime.committed_for_test_mut().total_match_count = PAYLOAD_LEN + 7;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(7);
     app.shell.runtime.evicted_selected_path = Some(PathBuf::from(format!("{prefix}-result-7.txt")));
-    app.shell.runtime.preview = format!("{prefix}-preview-").repeat(PAYLOAD_LEN);
+    app.shell.runtime.committed_for_test_mut().preview =
+        format!("{prefix}-preview-").repeat(PAYLOAD_LEN);
     app.shell.runtime.notice = format!("{prefix} notice");
     app.shell.indexing.build.entry_kind_cache.clear();
     for index in 0..PAYLOAD_LEN {
@@ -546,6 +569,121 @@ fn tc_154_raw_payload_swap_preserves_the_complete_transfer_inventory() {
 }
 
 #[test]
+fn runtime_committed_take_restore_preserves_all_fields_and_allocations() {
+    let root = test_root("runtime-committed-take-restore");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), PAYLOAD_LEN, String::new());
+    seed_live_payload(&mut app, "runtime-transfer", 15_415);
+    app.shell
+        .runtime
+        .committed_for_test_mut()
+        .base_results_are_score_ranked = false;
+
+    let before = live_allocations(&app);
+    let payload = app.shell.runtime.take_committed_payload();
+    assert!(app.shell.runtime.all_entries.is_empty());
+    assert!(app.shell.runtime.entries.is_empty());
+    assert!(app.shell.runtime.base_results.is_empty());
+    assert!(app.shell.runtime.base_results_are_score_ranked);
+    assert!(app.shell.runtime.results.is_empty());
+    assert!(app.shell.runtime.preview.is_empty());
+    assert_eq!(app.shell.runtime.total_match_count, 0);
+    assert_eq!(app.shell.runtime.current_row, None);
+    assert_eq!(Arc::as_ptr(&payload.all_entries), before.all_entries.0);
+    assert_eq!(payload.all_entries.capacity(), before.all_entries.1);
+    assert_eq!(Arc::as_ptr(&payload.entries), before.filtered_entries.0);
+    assert_eq!(payload.entries.capacity(), before.filtered_entries.1);
+    assert_eq!(payload.base_results.as_ptr(), before.base_results.0);
+    assert_eq!(payload.base_results.capacity(), before.base_results.1);
+    assert!(!payload.base_results_are_score_ranked);
+    assert_eq!(payload.results.as_ptr(), before.results.0);
+    assert_eq!(payload.results.capacity(), before.results.1);
+    assert_eq!(payload.preview.as_ptr(), before.preview.0);
+    assert_eq!(payload.preview.capacity(), before.preview.1);
+    assert_eq!(payload.total_match_count, PAYLOAD_LEN + 7);
+    assert_eq!(payload.current_row, Some(7));
+
+    app.shell.runtime.restore_committed_payload(payload);
+    let after = live_allocations(&app);
+    assert_eq!(after.all_entries, before.all_entries);
+    assert_eq!(after.filtered_entries, before.filtered_entries);
+    assert_eq!(after.base_results, before.base_results);
+    assert_eq!(after.results, before.results);
+    assert_eq!(after.preview, before.preview);
+    assert!(!app.shell.runtime.base_results_are_score_ranked);
+    assert_eq!(app.shell.runtime.total_match_count, PAYLOAD_LEN + 7);
+    assert_eq!(app.shell.runtime.current_row, Some(7));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn runtime_result_owner_keeps_base_ranking_selection_and_preview_isolated() {
+    let root = test_root("runtime-result-owner-isolation");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), PAYLOAD_LEN, String::new());
+    let visible = Arc::new(entries("visible"));
+    let all = Arc::new(entries("all"));
+    app.shell
+        .runtime
+        .install_entry_snapshots(Arc::clone(&all), Arc::clone(&visible));
+    let shown = results("shown");
+    app.shell.runtime.replace_base_results(shown.clone(), false);
+    app.shell.runtime.replace_results(shown.clone());
+    app.shell.runtime.set_total_match_count(PAYLOAD_LEN + 9);
+    app.shell.runtime.set_current_row(Some(5));
+    app.shell.runtime.set_preview("preview body".to_string());
+
+    assert!(Arc::ptr_eq(&app.shell.runtime.all_entries, &all));
+    assert!(Arc::ptr_eq(&app.shell.runtime.entries, &visible));
+    assert_eq!(app.shell.runtime.base_results, shown);
+    assert!(!app.shell.runtime.base_results_are_score_ranked);
+    assert_eq!(app.shell.runtime.results, app.shell.runtime.base_results);
+    assert_eq!(app.shell.runtime.total_match_count, PAYLOAD_LEN + 9);
+    assert_eq!(app.shell.runtime.current_row, Some(5));
+    assert_eq!(app.shell.runtime.preview, "preview body");
+
+    app.shell.runtime.set_current_row(None);
+    app.shell.runtime.clear_preview();
+    assert_eq!(app.shell.runtime.results, shown);
+    assert!(!app.shell.runtime.base_results_are_score_ranked);
+    assert_eq!(app.shell.runtime.total_match_count, PAYLOAD_LEN + 9);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn runtime_visible_snapshot_sync_reuses_unique_arc_and_copies_shared_arc_once() {
+    let root = test_root("runtime-visible-sync");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), PAYLOAD_LEN, String::new());
+
+    let mut unique_entries = Vec::with_capacity(PAYLOAD_LEN * 2);
+    unique_entries.extend(entries("unique-old"));
+    app.shell
+        .runtime
+        .replace_visible_entries(Arc::new(unique_entries));
+    let unique_arc = Arc::as_ptr(&app.shell.runtime.entries);
+    let unique_buffer = app.shell.runtime.entries.as_ptr();
+    let unique_capacity = app.shell.runtime.entries.capacity();
+    let unique_update = entries("unique-new");
+    app.shell.runtime.sync_visible_entries(&unique_update);
+    assert_eq!(Arc::as_ptr(&app.shell.runtime.entries), unique_arc);
+    assert_eq!(app.shell.runtime.entries.as_ptr(), unique_buffer);
+    assert_eq!(app.shell.runtime.entries.capacity(), unique_capacity);
+    assert_eq!(app.shell.runtime.entries.as_ref(), unique_update.as_slice());
+
+    let shared = Arc::new(entries("shared-old"));
+    app.shell
+        .runtime
+        .replace_visible_entries(Arc::clone(&shared));
+    let shared_update = entries("shared-new");
+    app.shell.runtime.sync_visible_entries(&shared_update);
+    assert!(!Arc::ptr_eq(&app.shell.runtime.entries, &shared));
+    assert_eq!(app.shell.runtime.entries.as_ref(), shared_update.as_slice());
+    assert_eq!(shared.as_ref(), entries("shared-old").as_slice());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_154_tab_heavy_take_restore_preserves_the_complete_inventory() {
     let root = test_root("tc-154-tab-heavy-take-restore-inventory");
     fs::create_dir_all(&root).expect("create dir");
@@ -783,8 +921,9 @@ fn perf_tc_154_tab_transition_coordinator_p95_stays_below_hard_ceiling() {
     app.shell.indexing.build.index.entries = (0..ENTRY_COUNT)
         .map(|index| file_entry(PathBuf::from(format!("live-{index}.txt"))))
         .collect();
-    app.shell.runtime.all_entries = Arc::new(app.shell.indexing.build.index.entries.clone());
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(app.shell.indexing.build.index.entries.clone());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     {
         let inactive = app.shell.tabs.get_mut(0).expect("inactive tab");
         inactive.index_state.build.index.entries = (0..ENTRY_COUNT)

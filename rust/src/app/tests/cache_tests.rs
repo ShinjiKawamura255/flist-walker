@@ -35,7 +35,7 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
     let base = vec![(beta.clone(), 10.0), (alpha.clone(), 9.0)];
 
     app.replace_results_snapshot(base.clone(), false);
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_result_sort_mode(ResultSortMode::NameAsc);
 
     assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
@@ -65,7 +65,7 @@ fn all_matches_sort_scope_reissues_search_request_for_non_score_sort() {
     let mut app = FlistWalkerApp::new(root.clone(), 2, "module".to_string());
     let (search_tx, search_rx) = mpsc::channel::<SearchRequest>();
     app.shell.search.tx = search_tx;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         file_entry(root.join("zeta").join("module.rs")),
         file_entry(root.join("alpha").join("module.rs")),
         file_entry(root.join("beta").join("module.rs")),
@@ -98,8 +98,8 @@ fn search_result_refresh_clamps_cursor_row_instead_of_following_path_regression(
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     app.shell.ui.show_preview = false;
-    app.shell.runtime.current_row = Some(100);
-    app.shell.runtime.preview = "stale".to_string();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(100);
+    app.shell.runtime.committed_for_test_mut().preview = "stale".to_string();
 
     let results = vec![
         (root.join("first.txt"), 1.0),
@@ -120,8 +120,8 @@ fn search_result_refresh_selects_first_row_when_previous_selection_is_missing_re
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     app.shell.ui.show_preview = false;
-    app.shell.runtime.current_row = None;
-    app.shell.runtime.preview = "stale".to_string();
+    app.shell.runtime.committed_for_test_mut().current_row = None;
+    app.shell.runtime.committed_for_test_mut().preview = "stale".to_string();
 
     let results = vec![
         (root.join("first.txt"), 1.0),
@@ -142,14 +142,14 @@ fn clear_query_and_selection_restores_first_row_regression() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     app.shell.ui.show_preview = false;
     app.shell.runtime.query_state.query = "abc".to_string();
-    app.shell.runtime.current_row = Some(2);
-    app.shell.runtime.preview = "stale".to_string();
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().current_row = Some(2);
+    app.shell.runtime.committed_for_test_mut().preview = "stale".to_string();
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(root.join("first.txt")),
         unknown_entry(root.join("second.txt")),
         unknown_entry(root.join("third.txt")),
     ]);
-    app.shell.runtime.results = vec![
+    app.shell.runtime.committed_for_test_mut().results = vec![
         (root.join("first.txt"), 1.0),
         (root.join("second.txt"), 1.0),
         (root.join("third.txt"), 1.0),
@@ -448,10 +448,10 @@ fn request_preview_is_skipped_when_preview_is_hidden() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
     app.shell.ui.show_preview = false;
-    app.shell.runtime.results = vec![(file.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&file, EntryKind::file());
-    app.shell.runtime.preview = "stale preview".to_string();
+    app.shell.runtime.committed_for_test_mut().preview = "stale preview".to_string();
     app.shell.worker_bus.preview.pending_request_id = Some(99);
     app.shell.worker_bus.preview.in_progress = true;
 
@@ -472,8 +472,8 @@ fn request_preview_when_hidden_keeps_post_index_kind_resolution_queue() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
     app.shell.ui.show_preview = false;
-    app.shell.runtime.results = vec![(file.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell
         .indexing
         .build
@@ -555,7 +555,7 @@ fn regression_gui_sort_all_matches_score_restores_full_candidate_ranking() {
         let root = test_root("sort-full-score-restore");
         let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
         app.shell.ui.show_preview = false;
-        app.shell.runtime.entries = Arc::new(vec![
+        app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
             file_entry(root.join("z.txt")),
             file_entry(root.join("zzz.txt")),
             file_entry(root.join("a-long-z.txt")),
@@ -601,7 +601,8 @@ fn regression_gui_sort_transition_rejects_pending_all_matches_response() {
         let root = test_root("sort-pending-transition");
         let mut app = FlistWalkerApp::new(root.clone(), 2, "z".into());
         app.shell.ui.show_preview = false;
-        app.shell.runtime.entries = Arc::new(vec![file_entry(root.join("z.txt"))]);
+        app.shell.runtime.committed_for_test_mut().entries =
+            Arc::new(vec![file_entry(root.join("z.txt"))]);
         app.replace_results_snapshot(vec![(root.join("z.txt"), 1.0)], false);
         let (tx, rx) = mpsc::channel();
         app.shell.search.tx = tx;
@@ -646,7 +647,7 @@ fn regression_gui_sort_pending_query_reissued_with_latest_shown_sort() {
     let root = test_root("sort-pending-query");
     let mut app = FlistWalkerApp::new(root.clone(), 2, "new".into());
     app.shell.ui.show_preview = false;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         file_entry(root.join("new.txt")),
         file_entry(root.join("a-new.txt")),
         file_entry(root.join("old.txt")),
@@ -689,7 +690,7 @@ fn regression_gui_sort_background_metadata_completion_and_stale_response_are_tab
     let root = test_root("sort-background-response");
     let mut app = FlistWalkerApp::new(root.clone(), 2, "new".into());
     app.shell.ui.show_preview = false;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         file_entry(root.join("new.txt")),
         file_entry(root.join("a-new.txt")),
     ]);
@@ -782,12 +783,16 @@ fn regression_gui_sort_snapshot_provenance_survives_inactive_and_closed_restore(
             TabResourceLifecycle::Ready,
             true,
         ));
-    app.shell.runtime.entries = Arc::new(vec![file_entry(root.join("z.txt"))]);
-    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(root.join("z.txt"))]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
     app.replace_results_snapshot(vec![(root.join("z.txt"), 1.0)], false);
     app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
     app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
-    app.shell.runtime.base_results_are_score_ranked = false;
+    app.shell
+        .runtime
+        .committed_for_test_mut()
+        .base_results_are_score_ranked = false;
     app.create_new_tab();
     assert!(
         !app.shell
@@ -841,7 +846,7 @@ fn regression_gui_sort_pending_empty_all_matches_to_shown_keeps_selected_sort() 
     let root = test_root("sort-pending-empty-shown");
     let mut app = FlistWalkerApp::new(root.clone(), 2, String::new());
     app.shell.ui.show_preview = false;
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         file_entry(root.join("z.txt")),
         file_entry(root.join("a.txt")),
     ]);

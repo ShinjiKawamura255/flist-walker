@@ -486,12 +486,14 @@ impl FlistWalkerApp {
             .map(|(path, _)| path.clone())
             .or_else(|| self.shell.runtime.evicted_selected_path.clone());
         RetiredActiveResources {
-            committed: std::mem::take(&mut self.shell.runtime.committed),
+            committed: self.shell.runtime.take_committed_payload(),
         }
     }
 
     pub(super) fn restore_active_committed_resources(&mut self, resources: RetiredActiveResources) {
-        self.shell.runtime.committed = resources.committed;
+        self.shell
+            .runtime
+            .restore_committed_payload(resources.committed);
     }
 }
 

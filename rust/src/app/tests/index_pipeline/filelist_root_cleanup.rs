@@ -14,10 +14,10 @@ fn root_change_clears_stale_selection_state() {
     app.shell.indexing.tx = tx;
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.pinned_paths.insert(old_path);
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "stale preview".to_string();
-    app.shell.runtime.results = vec![(root_old.join("result.txt"), 0.0)];
-    app.shell.runtime.total_match_count = 500_000;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "stale preview".to_string();
+    app.shell.runtime.committed_for_test_mut().results = vec![(root_old.join("result.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().total_match_count = 500_000;
 
     app.apply_root_change(root_new.clone());
 
@@ -168,8 +168,9 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(root.join("main.rs"))]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
 
     app.create_filelist();
 
@@ -211,8 +212,9 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
     app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(root.join("main.rs"))]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
 
@@ -246,8 +248,9 @@ fn create_filelist_skips_ancestor_confirmation_when_child_reference_is_already_p
     app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(root.join("main.rs"))]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(root.join("main.rs"))]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
 

@@ -94,7 +94,7 @@ impl FlistWalkerApp {
         self.shell.runtime.pinned_paths.clear();
         // Keep the list visible after Esc/Ctrl+G by restoring the default row selection.
         self.set_current_row(Some(0));
-        self.shell.runtime.preview.clear();
+        self.shell.runtime.clear_preview();
         if query_changed {
             self.invalidate_result_sort(true);
             self.update_results();

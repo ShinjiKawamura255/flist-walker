@@ -184,11 +184,11 @@ fn results_renderer_processes_only_visible_rows_regression() {
     let root = test_root("visible-result-rows");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
-    app.shell.runtime.results = (0..10_000)
+    app.shell.runtime.committed_for_test_mut().results = (0..10_000)
         .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
         .collect();
-    app.shell.runtime.total_match_count = app.shell.runtime.results.len();
-    app.shell.runtime.current_row = Some(9_999);
+    app.shell.runtime.committed_for_test_mut().total_match_count = app.shell.runtime.results.len();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(9_999);
     app.request_scroll_to_current();
     let ctx = egui::Context::default();
     let input = || egui::RawInput {
@@ -247,11 +247,11 @@ fn regression_single_step_selection_does_not_pin_current_row_to_viewport_top() {
     let root = test_root("regression-selection-keeps-viewport");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
-    app.shell.runtime.results = (0..10_000)
+    app.shell.runtime.committed_for_test_mut().results = (0..10_000)
         .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
         .collect();
-    app.shell.runtime.total_match_count = app.shell.runtime.results.len();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().total_match_count = app.shell.runtime.results.len();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let ctx = egui::Context::default();
     let input = || egui::RawInput {
         screen_rect: Some(egui::Rect::from_min_size(
@@ -300,11 +300,12 @@ impl ResultsNavigationHarness {
         let root = test_root("regression-results-cursor");
         fs::create_dir_all(&root).expect("create dir");
         let mut app = FlistWalkerApp::new(root.clone(), 20_000, String::new());
-        app.shell.runtime.results = (0..10_000)
+        app.shell.runtime.committed_for_test_mut().results = (0..10_000)
             .map(|index| (root.join(format!("item-{index:05}.txt")), 0.0))
             .collect();
-        app.shell.runtime.total_match_count = app.shell.runtime.results.len();
-        app.shell.runtime.current_row = Some(0);
+        app.shell.runtime.committed_for_test_mut().total_match_count =
+            app.shell.runtime.results.len();
+        app.shell.runtime.committed_for_test_mut().current_row = Some(0);
         app.shell.runtime.emacs_keybindings_enabled = true;
         app.shell.ui.set_show_preview(false);
         app.clear_focus_query_request();
@@ -791,8 +792,8 @@ fn regression_update_check_failure_enter_closes_without_executing_selection() {
     let selected = root.join("selected.txt");
     fs::write(&selected, "fixture").expect("write fixture");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
         error: "network timeout".to_string(),
         suppress_future_errors: false,
@@ -822,8 +823,8 @@ fn tc189_previous_update_failure_enter_closes_without_executing_selection() {
     let selected = root.join("selected.txt");
     fs::write(&selected, "fixture").expect("write fixture");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_previous_update_failure("helper restart failed".to_string());
 
     let ctx = egui::Context::default();
@@ -902,8 +903,9 @@ fn regression_update_check_failure_blocks_background_selection_shortcuts() {
     let root = test_root("update-failure-selection-owns-input");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.features.update.state.check_failure = Some(UpdateCheckFailureState {
         error: "network timeout".to_string(),
         suppress_future_errors: false,
@@ -928,8 +930,8 @@ fn regression_update_install_failure_owns_shortcuts_and_closes_without_backgroun
     let selected = root.join("selected.txt");
     fs::write(&selected, "fixture").expect("write fixture");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let original_tab_count = app.shell.tabs.len();
     app.shell.features.update.state.install_failure = Some(UpdateInstallFailureState {
         candidate: Some(test_render_update_candidate()),
@@ -1621,9 +1623,10 @@ fn gui_surface_snapshot_covers_query_results_filters_and_tabs() {
     app.shell.runtime.include_dirs = false;
     app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
     app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
-    app.shell.runtime.results = vec![(selected.clone(), 9.0), (other, 3.0)];
-    app.shell.runtime.total_match_count = 12;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(selected.clone(), 9.0), (other, 3.0)];
+    app.shell.runtime.committed_for_test_mut().total_match_count = 12;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.pinned_paths.insert(selected.clone());
 
     let snapshot = serde_json::to_value(app.gui_surface_snapshot()).expect("serialize snapshot");
@@ -1776,9 +1779,9 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
     app.shell.runtime.query_state.history_search_query = "history".to_string();
     app.shell.runtime.query_state.history_search_results = vec!["history".to_string()];
     app.shell.runtime.status_line = "headless status".to_string();
-    app.shell.runtime.results = vec![(root.join("entry.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "preview".to_string();
+    app.shell.runtime.committed_for_test_mut().results = vec![(root.join("entry.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "preview".to_string();
     app.shell.ui.set_show_preview(true);
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
@@ -1893,9 +1896,9 @@ fn run_ui_frame_executes_render_facade_in_headless_frame() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.query_state.query = "entry".to_string();
     app.shell.runtime.status_line = "facade status".to_string();
-    app.shell.runtime.results = vec![(root.join("entry.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "preview".to_string();
+    app.shell.runtime.committed_for_test_mut().results = vec![(root.join("entry.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "preview".to_string();
     app.shell.ui.set_show_preview(true);
 
     let ctx = egui::Context::default();

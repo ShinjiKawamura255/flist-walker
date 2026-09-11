@@ -249,7 +249,8 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = false;
     app.shell.runtime.use_filelist = false;
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(path.clone())]);
     app.set_entry_kind(&path, EntryKind::file());
     app.shell.indexing.build.index.source = IndexSource::Walker;
 

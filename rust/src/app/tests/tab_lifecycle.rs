@@ -207,8 +207,8 @@ fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
 
     let active_id = app.current_tab_id().expect("active tab");
     let retained = Arc::new(Vec::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1));
-    app.shell.runtime.all_entries = Arc::clone(&retained);
-    app.shell.runtime.entries = retained;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&retained);
+    app.shell.runtime.committed_for_test_mut().entries = retained;
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -265,8 +265,8 @@ fn tc_209_incidental_tab_does_not_replace_recent_inactive() {
     let first_id = app.current_tab_id().expect("first tab");
     let incidental_id = app.shell.tabs.get(1).expect("second tab").id;
     let first_entry = file_entry(root.join("first.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![first_entry.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![first_entry]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![first_entry.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![first_entry]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -295,8 +295,8 @@ fn tc_209_recent_inactive_classification_is_orthogonal_to_warm_role() {
     app.switch_to_tab_index(0);
     let active_id = app.current_tab_id().expect("active tab");
     let entry = file_entry(root.join("partial.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![entry.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![entry]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![entry.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![entry]);
     app.shell.indexing.pending_request_id = Some(7_001);
     app.shell.indexing.in_progress = true;
     app.shell
@@ -336,8 +336,8 @@ fn tc_210_active_duration_alone_qualifies_recent_inactive() {
     app.shell.indexing.warm_tab_id = None;
     let active_id = app.current_tab_id().expect("active tab");
     let entry = file_entry(root.join("retained.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![entry.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![entry]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![entry.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![entry]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -365,8 +365,8 @@ fn tc_210_reordering_active_tab_does_not_reset_its_tenure() {
     app.shell.indexing.warm_tab_id = None;
     let active_id = app.current_tab_id().expect("active tab");
     let entry = file_entry(root.join("retained.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![entry.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![entry]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![entry.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![entry]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -404,8 +404,8 @@ fn tc_210_closing_engaged_active_tab_does_not_replace_existing_recent_inactive()
     }
     let first_id = app.current_tab_id().expect("first tab");
     let entry = file_entry(root.join("first.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![entry.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![entry]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![entry.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![entry]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -456,8 +456,8 @@ fn tc_210_reclaimer_full_rolls_back_recent_and_active_engagement() {
     let second_id = app.shell.tabs.get(1).expect("second tab").id;
     let ordinary_id = app.shell.tabs.get(3).expect("ordinary tab").id;
     let entries = Arc::new(Vec::with_capacity(large_capacity));
-    app.shell.runtime.all_entries = Arc::clone(&entries);
-    app.shell.runtime.entries = entries;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&entries);
+    app.shell.runtime.committed_for_test_mut().entries = entries;
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -521,8 +521,8 @@ fn tc_210_reclaimer_full_rolls_back_recent_and_active_engagement() {
     );
 
     let small_entries = Arc::new(vec![file_entry(root.join("second-small.txt"))]);
-    app.shell.runtime.all_entries = Arc::clone(&small_entries);
-    app.shell.runtime.entries = small_entries;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&small_entries);
+    app.shell.runtime.committed_for_test_mut().entries = small_entries;
     app.shell.tabs.resume_resource_reclaimer();
     app.switch_to_tab_index_at(2, activated_at + Duration::from_millis(30));
 
@@ -569,8 +569,8 @@ fn recent_rollback_fixture(
     let first_id = app.current_tab_id().expect("first tab");
     let second_id = app.shell.tabs.get(1).expect("second tab").id;
     let entries = Arc::new(Vec::with_capacity(large_capacity));
-    app.shell.runtime.all_entries = Arc::clone(&entries);
-    app.shell.runtime.entries = entries;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&entries);
+    app.shell.runtime.committed_for_test_mut().entries = entries;
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -596,8 +596,8 @@ fn assert_rollback_restored_engagement(
     assert_eq!(app.current_tab_id(), Some(second_id));
     assert_eq!(app.shell.tabs.recent_inactive_tab_id(), Some(first_id));
     let entries = Arc::new(vec![file_entry(root.join("second-small.txt"))]);
-    app.shell.runtime.all_entries = Arc::clone(&entries);
-    app.shell.runtime.entries = entries;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&entries);
+    app.shell.runtime.committed_for_test_mut().entries = entries;
     app.switch_to_tab_index_at(2, activated_at + Duration::from_millis(30));
     assert_eq!(app.shell.tabs.recent_inactive_tab_id(), Some(second_id));
 }
@@ -693,8 +693,8 @@ fn tc_211_expired_recent_inactive_becomes_soft_budget_eligible() {
     app.shell.indexing.warm_tab_id = None;
     let active_id = app.current_tab_id().expect("active tab");
     let retained = Arc::new(Vec::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1));
-    app.shell.runtime.all_entries = Arc::clone(&retained);
-    app.shell.runtime.entries = retained;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&retained);
+    app.shell.runtime.committed_for_test_mut().entries = retained;
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -739,7 +739,8 @@ fn tc_211_hard_pressure_can_evict_recent_inactive_during_grace() {
     app.shell.indexing.in_progress = false;
     app.shell.indexing.warm_tab_id = None;
     let active_id = app.current_tab_id().expect("active tab");
-    app.shell.runtime.preview = String::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1);
+    app.shell.runtime.committed_for_test_mut().preview =
+        String::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -802,8 +803,8 @@ fn tc_211_hard_count_pressure_can_evict_recent_inactive_during_grace() {
     }
     let recent_id = app.current_tab_id().expect("recent tab");
     let entry = file_entry(root.join("recent.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![entry]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![entry]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1022,9 +1023,10 @@ fn tc_207_reclaimer_full_repeated_close_keeps_history_and_heavy_cache_bounded() 
 
     for index in 0..12 {
         app.create_new_tab();
-        app.shell.runtime.all_entries =
+        app.shell.runtime.committed_for_test_mut().all_entries =
             Arc::new(vec![file_entry(root.join(format!("closed-{index}.txt")))]);
-        app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+        app.shell.runtime.committed_for_test_mut().entries =
+            Arc::clone(&app.shell.runtime.all_entries);
         app.shell
             .indexing
             .set_committed_snapshot_present_for_test(true);
@@ -1200,9 +1202,9 @@ fn tc_207_deferred_root_is_a_barrier_for_refresh_close_and_restore() {
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old.path.clone(), 0.0)];
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1413,8 +1415,8 @@ fn tc_207_switch_to_light_tab_rolls_back_before_cache_overflow() {
     app.shell.indexing.warm_tab_id = None;
     let active_id = app.current_tab_id();
     let active = file_entry(root.join("active.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![active.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![active]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![active.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![active]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1469,8 +1471,8 @@ fn tc_207_restore_light_closed_tab_rolls_back_before_cache_overflow() {
     }
     let active_id = app.current_tab_id();
     let active = file_entry(root.join("active.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![active.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![active]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![active.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![active]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1521,9 +1523,9 @@ fn tc_207_reindexed_results_restore_the_evicted_selected_path() {
     let first = root.join("first.txt");
     let selected = root.join("selected.txt");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.base_results = app.shell.runtime.results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().base_results = app.shell.runtime.results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     let retired = app.take_active_committed_resources();
     drop(retired);
@@ -1559,8 +1561,8 @@ fn tc_207_new_tab_is_refused_before_it_can_exceed_the_heavy_cache_bound() {
         app.shell.tabs.touch_heavy_resource(tab_id);
     }
     let active = file_entry(root.join("active.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![active.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![active]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![active.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![active]);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1670,9 +1672,9 @@ fn tc_207_root_change_moves_heavy_snapshot_to_reclaimer_before_mutation() {
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.results = vec![(old.path, 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old.path, 0.0)];
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -1805,8 +1807,9 @@ fn create_new_tab_resets_total_match_count_to_current_entries() {
     fs::write(&second, "b").expect("write second");
 
     let mut app = FlistWalkerApp::new(root.clone(), 1, "previous".to_string());
-    app.shell.runtime.entries = Arc::new(vec![file_entry(first), file_entry(second)]);
-    app.shell.runtime.total_match_count = 99;
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(first), file_entry(second)]);
+    app.shell.runtime.committed_for_test_mut().total_match_count = 99;
 
     app.create_new_tab();
 
@@ -1824,7 +1827,7 @@ fn regression_new_tab_initializes_preview_and_all_shown_kinds_without_input() {
     let second = root.join("second.txt");
     let mut app = FlistWalkerApp::new(root, 2, String::new());
     reset_index_request_state_for_test(&mut app);
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(first.clone()),
         unknown_entry(second.clone()),
         unknown_entry(PathBuf::from("not-shown")),
@@ -1895,7 +1898,8 @@ fn regression_new_tab_empty_or_preview_disabled_does_not_request_preview() {
         let mut app = FlistWalkerApp::new(test_root("new-tab-preview-idle"), 50, String::new());
         reset_index_request_state_for_test(&mut app);
         if populated {
-            app.shell.runtime.entries = Arc::new(vec![file_entry(PathBuf::from("file.txt"))]);
+            app.shell.runtime.committed_for_test_mut().entries =
+                Arc::new(vec![file_entry(PathBuf::from("file.txt"))]);
         }
         app.shell.ui.show_preview = !populated;
         let (tx, rx) = mpsc::channel();
@@ -2054,14 +2058,15 @@ fn closing_active_tab_retains_restorable_results_for_fast_restore() {
     let path_b = root.join("b.txt");
 
     app.create_new_tab();
-    app.shell.runtime.entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![
         unknown_entry(path_a.clone()),
         unknown_entry(path_b.clone()),
     ]);
-    app.shell.runtime.base_results = vec![(path_a.clone(), 2.0), (path_b.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.total_match_count = 2;
-    app.shell.runtime.preview = "preview body".to_string();
+    app.shell.runtime.committed_for_test_mut().base_results =
+        vec![(path_a.clone(), 2.0), (path_b.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().total_match_count = 2;
+    app.shell.runtime.committed_for_test_mut().preview = "preview body".to_string();
     app.sync_active_tab_state();
 
     app.close_active_tab();
@@ -2295,9 +2300,9 @@ fn restoring_closed_tab_reissues_interrupted_sort_without_reindex() {
     reset_index_request_state_for_test(&mut app);
     let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
     app.shell.worker_bus.sort.tx = sort_tx;
-    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
     app.shell
         .indexing
@@ -2394,14 +2399,15 @@ fn restoring_closed_tab_reissues_shown_metadata_sort_after_index_restart() {
     reset_index_request_state_for_test(&mut app);
     let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
     app.shell.worker_bus.sort.tx = sort_tx;
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
-    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
     app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
     let closed_id = app.current_tab_id().expect("closed tab id");
@@ -2466,14 +2472,15 @@ fn restoring_closed_tab_reloads_preview_after_request_ownership_is_cleared() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     reset_index_request_state_for_test(&mut app);
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
-    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
@@ -2504,8 +2511,9 @@ fn tc_207_heavy_closed_restore_excludes_target_from_cache_budget_under_full_recl
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(root.join("closed-heavy.txt"))]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(root.join("closed-heavy.txt"))]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     app.close_active_tab();
     let cached_id = app.current_tab_id().expect("cached tab");
     app.shell
@@ -2514,8 +2522,9 @@ fn tc_207_heavy_closed_restore_excludes_target_from_cache_budget_under_full_recl
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.all_entries = Arc::new(vec![file_entry(root.join("cached-heavy.txt"))]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(root.join("cached-heavy.txt"))]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     app.sync_active_tab_state();
     app.create_new_tab();
     app.shell.tabs.pause_resource_reclaimer();
@@ -2558,15 +2567,16 @@ fn restoring_closed_tab_reloads_trimmed_completed_preview() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     reset_index_request_state_for_test(&mut app);
-    app.shell.runtime.entries = Arc::new(vec![file_entry(selected.clone())]);
-    app.shell.runtime.all_entries = Arc::clone(&app.shell.runtime.entries);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
-    app.shell.runtime.base_results = vec![(selected.clone(), 1.0)];
-    app.shell.runtime.results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "completed preview".to_string();
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
+    app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "completed preview".to_string();
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
@@ -2812,16 +2822,18 @@ fn switching_tabs_restores_entries_and_filters_per_tab() {
     fs::write(&b, "b").expect("write b");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
-    app.shell.runtime.all_entries =
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
         Arc::new(vec![unknown_entry(a.clone()), unknown_entry(b.clone())]);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.sync_active_tab_state();
 
     app.create_new_tab();
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(a.clone())]);
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(a.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![unknown_entry(a.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(a.clone())]);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = false;
     app.sync_active_tab_state();

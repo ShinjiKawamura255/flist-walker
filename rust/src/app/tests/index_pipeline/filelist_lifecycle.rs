@@ -16,8 +16,8 @@ fn tc_204_empty_committed_snapshot_refreshes_and_cancels_back_to_ready() {
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
-    app.shell.runtime.all_entries = Arc::new(Vec::new());
-    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
 
     app.request_index_refresh();
     let request_id = app
@@ -259,9 +259,9 @@ fn tc_204_refresh_failure_keeps_last_good_snapshot_and_sets_explicit_lifecycle()
     let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.tx = request_tx;
     app.shell.indexing.rx = response_rx;
-    app.shell.runtime.all_entries = Arc::new(vec![kept.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![kept.clone()]);
-    app.shell.runtime.results = vec![(kept.path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![kept.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![kept.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(kept.path.clone(), 0.0)];
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -310,9 +310,9 @@ fn tc_207_terminal_commit_waits_when_reclaimer_is_full() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = response_rx;
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old.path.clone(), 0.0)];
     app.shell.indexing.build.index.entries = vec![new.clone()];
     app.shell.indexing.pending_request_id = Some(207);
     app.shell.indexing.in_progress = true;
@@ -370,8 +370,8 @@ fn tc_207_terminal_reclaimer_debt_coalesces_repeated_refresh_to_one_generation()
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old]);
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
@@ -446,8 +446,8 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old]);
     app.shell
         .indexing
         .set_committed_snapshot_present_for_test(true);
@@ -531,8 +531,8 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old]);
     app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
@@ -621,9 +621,9 @@ fn tc_207_terminal_root_close_is_atomic_and_restore_starts_one_target_request() 
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old.path.clone(), 0.0)];
     app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
@@ -693,9 +693,9 @@ fn tc_207_terminal_root_close_rolls_back_when_history_preflight_consumes_last_sl
     app.create_new_tab();
     let old = file_entry(root_a.join("old.txt"));
     let new = file_entry(root_a.join("new.txt"));
-    app.shell.runtime.all_entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.entries = Arc::new(vec![old.clone()]);
-    app.shell.runtime.results = vec![(old.path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(old.path.clone(), 0.0)];
     app.shell.indexing.build.index.entries = vec![new];
     app.shell
         .indexing
@@ -977,8 +977,8 @@ fn non_empty_query_incremental_refresh_skips_small_delta_during_indexing() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    app.shell.runtime.entries = Arc::new(Vec::new());
-    app.shell.runtime.all_entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(Vec::new());
     app.shell.indexing.build.index.entries.clear();
     app.shell
         .indexing
@@ -1052,8 +1052,8 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, "main".to_string());
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
-    app.shell.runtime.entries = Arc::new(Vec::new());
-    app.shell.runtime.all_entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(Vec::new());
     app.shell.indexing.build.index.entries.clear();
     app.shell
         .indexing
@@ -1159,7 +1159,7 @@ fn empty_query_keeps_results_after_batch_and_finished_in_same_poll() {
     let root = test_root("empty-query-finished-priority");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.total_match_count = 99;
+    app.shell.runtime.committed_for_test_mut().total_match_count = 99;
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
     app.shell.indexing.pending_request_id = Some(31);
@@ -1294,7 +1294,7 @@ fn status_line_prefers_current_index_count_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.all_entries = Arc::new(
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
         (0..10)
             .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
@@ -1315,7 +1315,7 @@ fn status_line_counts_pending_index_entries_while_indexing() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.indexing.in_progress = true;
-    app.shell.runtime.all_entries = Arc::new(
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
         (0..10)
             .map(|i| unknown_entry(root.join(format!("old-{i}.txt"))))
             .collect::<Vec<_>>(),
@@ -1347,10 +1347,11 @@ fn request_index_refresh_keeps_existing_entries_visible_until_new_results_arrive
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.indexing.tx = tx;
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(path.clone())]);
-    app.shell.runtime.results = vec![(path.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "keep".to_string();
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "keep".to_string();
 
     app.request_index_refresh();
 
@@ -1371,7 +1372,7 @@ fn incremental_empty_query_update_preserves_scroll_position_flag() {
     app.shell.indexing.pending_request_id = Some(41);
     app.shell.indexing.in_progress = true;
     app.shell.ui.scroll_to_current = false;
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     let path = root.join("main.rs");
     tx.send(IndexResponse::Batch {
@@ -1469,7 +1470,7 @@ fn active_indexing_empty_query_without_filters_does_not_clone_full_entries_snaps
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = false;
-    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
     app.shell.indexing.build.index.entries = (0..5)
         .map(|idx| file_entry(root.join(format!("file-{idx}.txt"))))
         .collect();
@@ -1700,7 +1701,7 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = false;
-    app.shell.runtime.total_match_count = 99;
+    app.shell.runtime.committed_for_test_mut().total_match_count = 99;
 
     let kept = dir_entry(root.join("kept"));
     let other = dir_entry(root.join("other"));

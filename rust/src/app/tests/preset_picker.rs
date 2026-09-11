@@ -578,9 +578,9 @@ fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = false;
-    app.shell.runtime.all_entries =
+    app.shell.runtime.committed_for_test_mut().all_entries =
         Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     app.shell.runtime.ignore_list_terms = Arc::new(vec!["preset-ignore-sentinel".to_string()]);
     app.shell.ui.ignore_list_enabled = false;
     app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
@@ -763,9 +763,9 @@ fn regression_same_root_preset_disabling_ignore_restores_all_search_entries() {
     app.shell.runtime.use_filelist = false;
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = false;
-    app.shell.runtime.all_entries =
+    app.shell.runtime.committed_for_test_mut().all_entries =
         Arc::new(vec![file_entry(ignored.clone()), file_entry(kept.clone())]);
-    app.shell.runtime.entries = Arc::new(vec![file_entry(kept)]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![file_entry(kept)]);
     app.shell.runtime.ignore_list_terms = Arc::new(vec!["preset-ignore-sentinel".to_string()]);
     app.shell.ui.ignore_list_enabled = true;
 

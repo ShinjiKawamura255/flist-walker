@@ -200,8 +200,9 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
     let root = test_root("dialog-arrow-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(1);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(1);
     app.shell
         .features
         .filelist
@@ -292,8 +293,8 @@ fn dialog_enter_confirms_without_triggering_main_window_action() {
     let root = test_root("dialog-enter-confirm");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(root.join("a.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(root.join("a.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell
         .features
         .filelist
