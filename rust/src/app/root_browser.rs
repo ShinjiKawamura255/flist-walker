@@ -574,6 +574,9 @@ impl FlistWalkerApp {
                 self.set_notice(format!("Couldn't save default root. {error}"));
             }
         }
+        if self.shell.ui.ui_state_dirty {
+            self.persist_ui_state_now();
+        }
     }
 
     fn close_manage_root_list(&mut self) {
