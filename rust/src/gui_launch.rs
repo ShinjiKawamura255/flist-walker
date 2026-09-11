@@ -2,7 +2,9 @@ use anyhow::{Context, Result};
 use std::path::Path;
 use std::time::Instant;
 
-use flist_walker::app::{configure_egui_fonts, request_process_shutdown, FlistWalkerApp};
+use flist_walker::app::{
+    configure_egui_fonts, request_process_shutdown, FlistWalkerApp, StartupWindowPlacement,
+};
 use flist_walker::updater::{
     recover_interrupted_update_on_startup, take_previous_update_failure_on_startup,
 };
@@ -15,6 +17,45 @@ const APP_TITLE: &str = "FlistWalker";
 const APP_ID: &str = "flistwalker";
 const DEFAULT_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(1400.0, 900.0);
 const MIN_WINDOW_SIZE: eframe::egui::Vec2 = eframe::egui::vec2(640.0, 400.0);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct StartupNativeWindowGeometry {
+    physical_position: Option<[i32; 2]>,
+    inner_size: [u32; 2],
+    minimum_inner_size: [u32; 2],
+}
+
+fn startup_native_window_geometry(
+    placement: StartupWindowPlacement,
+    current_native_scale: f32,
+    has_outer_position: bool,
+) -> StartupNativeWindowGeometry {
+    let physical_position = if has_outer_position {
+        placement
+            .physical_position
+            .map(|position| [position.x.round() as i32, position.y.round() as i32])
+    } else {
+        None
+    };
+    let native_scale = if physical_position.is_some() {
+        placement.scale_factor
+    } else {
+        current_native_scale
+    };
+    let inner_size = [
+        (placement.logical_size.x * native_scale).round().max(1.0) as u32,
+        (placement.logical_size.y * native_scale).round().max(1.0) as u32,
+    ];
+    let minimum_inner_size = [
+        inner_size[0].min((MIN_WINDOW_SIZE.x * native_scale) as u32),
+        inner_size[1].min((MIN_WINDOW_SIZE.y * native_scale) as u32),
+    ];
+    StartupNativeWindowGeometry {
+        physical_position,
+        inner_size,
+        minimum_inner_size,
+    }
+}
 
 #[cfg(target_os = "macos")]
 mod macos_menu;
@@ -142,26 +183,24 @@ pub(crate) fn run(
                     current,
                     outer_position.is_some(),
                 ) {
+                    let geometry = startup_native_window_geometry(
+                        placement,
+                        window.scale_factor() as f32,
+                        outer_position.is_some(),
+                    );
                     if let (Some(mut position), Some(restored)) =
-                        (outer_position, placement.physical_position)
+                        (outer_position, geometry.physical_position)
                     {
-                        position.x = restored.x.round() as i32;
-                        position.y = restored.y.round() as i32;
+                        position.x = restored[0];
+                        position.y = restored[1];
                         window.set_outer_position(position);
                     }
-                    let native_scale = if placement.physical_position.is_some() {
-                        placement.scale_factor
-                    } else {
-                        window.scale_factor() as f32
-                    };
                     let mut size = window.inner_size();
-                    size.width = (placement.logical_size.x * native_scale).round().max(1.0) as u32;
-                    size.height = (placement.logical_size.y * native_scale).round().max(1.0) as u32;
+                    size.width = geometry.inner_size[0];
+                    size.height = geometry.inner_size[1];
                     let mut minimum = size;
-                    minimum.width = minimum.width.min((MIN_WINDOW_SIZE.x * native_scale) as u32);
-                    minimum.height = minimum
-                        .height
-                        .min((MIN_WINDOW_SIZE.y * native_scale) as u32);
+                    minimum.width = geometry.minimum_inner_size[0];
+                    minimum.height = geometry.minimum_inner_size[1];
                     window.set_min_inner_size(Some(minimum));
                     let _ = window.request_inner_size(size);
                     FlistWalkerApp::trace_window_event(
@@ -270,9 +309,11 @@ fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    use flist_walker::app::StartupWindowPlacement;
+
     use super::{
-        build_root_viewport, merge_update_diagnostic, APP_ID, APP_TITLE, DEFAULT_WINDOW_SIZE,
-        MIN_WINDOW_SIZE,
+        build_root_viewport, merge_update_diagnostic, startup_native_window_geometry, APP_ID,
+        APP_TITLE, DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE,
     };
 
     #[test]
@@ -363,5 +404,39 @@ mod tests {
         assert_eq!(viewport.inner_size, Some(size));
         assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
         assert!(viewport.icon.is_some());
+    }
+
+    #[test]
+    fn startup_native_window_geometry_uses_restored_monitor_scale() {
+        let geometry = startup_native_window_geometry(
+            StartupWindowPlacement {
+                physical_position: Some(eframe::egui::pos2(-1279.6, 200.5)),
+                logical_size: eframe::egui::vec2(900.4, 700.4),
+                scale_factor: 1.5,
+            },
+            2.0,
+            true,
+        );
+
+        assert_eq!(geometry.physical_position, Some([-1280, 201]));
+        assert_eq!(geometry.inner_size, [1351, 1051]);
+        assert_eq!(geometry.minimum_inner_size, [960, 600]);
+    }
+
+    #[test]
+    fn startup_native_window_geometry_uses_current_scale_without_position() {
+        let geometry = startup_native_window_geometry(
+            StartupWindowPlacement {
+                physical_position: Some(eframe::egui::pos2(300.0, 200.0)),
+                logical_size: eframe::egui::vec2(320.0, 200.0),
+                scale_factor: 1.5,
+            },
+            2.0,
+            false,
+        );
+
+        assert_eq!(geometry.physical_position, None);
+        assert_eq!(geometry.inner_size, [640, 400]);
+        assert_eq!(geometry.minimum_inner_size, geometry.inner_size);
     }
 }
