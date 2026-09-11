@@ -135,7 +135,7 @@
 | TC-117 | unit | `!` 除外と ignore list は fuzzy fallback を使わず、literal / anchor 一致だけで除外し、`Ignore Case` の有効/無効に従う | SP-015 |
 | TC-118 | unit | Windows の一般 `.ps1` は Execute ではなく Open 分岐を選ぶ | SP-004 |
 | TC-119 | unit | `SHA256SUMS.sig` は改ざんされた manifest を検証失敗にする | SP-014 |
-| TC-120 | unit+manual | diagnostics trace smoke: `RUST_LOG` と `FLISTWALKER_WINDOW_TRACE` の責務分離を維持し、対象 flow が canonical event family と相関 field を出す。window trace writer が停止しても GUI enqueue は待機せず、bounded queue の満杯時は超過 event を破棄する | SP-010, SP-014 |
+| TC-120 | unit+manual | diagnostics trace smoke: `RUST_LOG` と `FLISTWALKER_WINDOW_TRACE` の責務分離を維持し、対象 flow が canonical event family と相関 field を出す。window trace writer が停止しても GUI enqueue は待機せず、bounded queue の満杯時は超過 event を破棄する。graceful shutdown は受理済み event を FIFO で排出し、worker を bounded join する | SP-010, SP-014 |
 | TC-121 | unit | Windows regression: `copy_selected_paths` の notice 正規化は `app.shell.runtime.notice` を更新し、旧 shell 直参照の残骸を検出する | SP-010 |
 | TC-122 | unit | 回帰: Walker 完了後の kind 解決は表示中結果に限定し、巨大な on-demand root で全件 metadata 解決を継続しない | SP-007 |
 | TC-124 | unit+perf | adaptive walker は GUI/TUI 共通 backend として標準 read_dir 走査と候補件数を一致させる。file-only / folder-only producer filtering、both-mode fast path、Windows junction/reparse/shortcut、single-worker契約を維持する。幅の広い親では child directory を親完了前に batch 公開し、parent-before-child、cancel/terminal settlement を維持する。shallow-wide fixture は共有 frontier soft limit（最大 worker 数 × 64）以下、deep-wide fixture は open frame budget 以下かつ soft-limit bypass を記録して件数、停止、join、最大深度を維持する | SP-002, SP-007, SP-016 |

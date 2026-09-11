@@ -107,6 +107,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         }
 
         egui::CentralPanel::default().show(ui, |ui| {
+            if app.settings_commit_in_progress() {
+                ui.disable();
+            }
             let mut add_response = None;
             ui.horizontal(|ui| {
                 let row_height = ui.spacing().interact_size.y;

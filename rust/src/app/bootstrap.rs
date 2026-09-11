@@ -424,9 +424,7 @@ impl FlistWalkerApp {
             "launch_query_initialized",
             &Self::query_trace_summary(&app.shell.runtime.query_state.query),
         );
-        if let Some(path) = Self::window_trace_path() {
-            Self::append_window_trace("app_initialized", &format!("path={}", path.display()));
-        }
+        Self::append_window_trace("app_initialized", "");
         if let Some((tabs, active_tab)) = restore_session {
             app.initialize_tabs_from_saved(tabs, active_tab);
         } else {

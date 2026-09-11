@@ -75,6 +75,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn add_manage_root_list_input(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         let input = self
             .shell
             .features
@@ -103,6 +106,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn select_manage_root_list_item(&mut self, index: usize) -> bool {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return false;
+        }
         self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.remove_mode || index >= manage.draft_roots.len() {
@@ -133,6 +139,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn start_editing_manage_root_list_item(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         let Some(index) = manage.selected_index else {
@@ -153,6 +162,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cancel_manage_root_list_edit(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.editing_index = None;
@@ -164,6 +176,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn save_manage_root_list_edit(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         let (index, input) = {
             let manage = &self.shell.features.root_browser.manage_list;
             let Some(index) = manage.editing_index else {
@@ -218,6 +233,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn enter_manage_root_list_remove_mode(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.draft_roots.is_empty() {
@@ -236,6 +254,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn cancel_manage_root_list_remove_mode(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.remove_mode = false;
         manage.selected_indices.clear();
@@ -243,6 +264,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn browse_for_manage_root_list(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         let input = self
             .shell
             .features
@@ -269,6 +293,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn remove_selected_manage_root_list_items(&mut self) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         self.cancel_manage_root_validation();
         let manage = &mut self.shell.features.root_browser.manage_list;
         if manage.selected_indices.is_empty() {
@@ -372,6 +399,15 @@ impl FlistWalkerApp {
         }
         self.close_manage_root_list();
         self.set_notice("Canceled saved roots list changes");
+    }
+
+    fn reject_manage_root_list_mutation_while_saving(&mut self) -> bool {
+        if !self.settings_commit_in_progress() {
+            return false;
+        }
+        self.shell.features.root_browser.manage_list.notice =
+            "Wait for settings save to finish".to_string();
+        true
     }
 
     fn allocate_settings_request_id(&mut self) -> u64 {
@@ -640,6 +676,9 @@ impl FlistWalkerApp {
         intent: super::RootValidationIntent,
         input: String,
     ) {
+        if self.reject_manage_root_list_mutation_while_saving() {
+            return;
+        }
         let (dialog_generation, draft_roots) = {
             let manage = &self.shell.features.root_browser.manage_list;
             (manage.dialog_generation, manage.draft_roots.clone())

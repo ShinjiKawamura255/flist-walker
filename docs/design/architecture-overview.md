@@ -158,7 +158,7 @@
 - 実装: `rust/src/app/worker/tasks.rs`, `rust/src/app/index_worker.rs`, `rust/src/app/mod.rs`, `rust/src/app/session.rs`, `rust/src/app/input/mod.rs`, `rust/src/main.rs`
 - 役割補足: worker-side async flow は `flow` / `event` / `request_id` を中心に記録し、request-scoped でない flow は `epoch` や `source_kind` など最小の補助 field だけを追加する。
 - 役割補足: search / preview / filelist / action / sort metadata / update は started/finished/failed/receiver_closed 系の event family に寄せ、index は `flow=index` と `source_kind` で filelist/walker/none を切り分ける。
-- 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。`append_window_trace` は bounded queue へ non-blocking enqueue し、ファイル path 解決・作成・追記は専用 writer thread が行う。queue Full または writer 切断時は event を best-effort で破棄する。
+- 役割補足: GUI/session/input/update の opt-in trace は `FLISTWALKER_WINDOW_TRACE=1` のみで有効化し、window geometry、IME composition、query text change、startup/update dialog などの GUI diagnostics を `append_window_trace` へ集約する。`append_window_trace` は bounded queue へ non-blocking enqueue し、ファイル path 解決・移行・作成・追記は専用 writer thread が行う。queue Full または writer 切断時は event を best-effort で破棄する。graceful shutdown は受理済み event の後ろへ FIFO shutdown control を送り、frame rendering 外で worker を bounded join する。
 - 役割補足: diagnostics 強化で request routing や response acceptance を変えない。hot UI path へ重い同期 I/O や新しい汎用 logging framework を導入しない。
 
 - DES-016 Ignore List Filter

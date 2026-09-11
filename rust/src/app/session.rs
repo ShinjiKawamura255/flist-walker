@@ -821,6 +821,7 @@ impl FlistWalkerApp {
             flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
         }
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
+        Self::shutdown_window_trace(Self::WORKER_JOIN_TIMEOUT);
     }
 
     pub(super) fn ui_state_file_path() -> Option<PathBuf> {
