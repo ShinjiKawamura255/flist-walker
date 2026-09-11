@@ -25,6 +25,7 @@ use eframe::egui;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime};
 
@@ -429,12 +430,29 @@ pub(super) struct RootBrowserState {
     pub(super) saved_roots: Vec<PathBuf>,
     pub(super) default_root: Option<PathBuf>,
     pub(super) manage_list: RootListManagerState,
+    pub(super) next_settings_request_id: u64,
+    pub(super) pending_settings_commit: Option<PendingSettingsCommit>,
 }
 
 impl RootBrowserState {
     pub(super) fn saved_roots(&self) -> &[PathBuf] {
         &self.saved_roots
     }
+}
+
+pub(super) enum PendingSettingsOperation {
+    RootList {
+        roots: Vec<PathBuf>,
+        default_root: Option<PathBuf>,
+        close_on_success: bool,
+    },
+    DefaultRoot,
+}
+
+pub(super) struct PendingSettingsCommit {
+    pub(super) request_id: u64,
+    pub(super) response: Receiver<super::session::SettingsCommitResponse>,
+    pub(super) operation: PendingSettingsOperation,
 }
 
 #[derive(Default)]

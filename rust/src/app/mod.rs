@@ -79,8 +79,9 @@ use state::{
     FeatureStateBundle, FileListDialogKind, FileListManager, HighlightCacheKey,
     PendingActiveIndexFinish, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation, PendingIndexRefreshMode,
-    PresetManagerState, ResultSortMode, ResultSortScope, RootBrowserState, SortMetadata,
-    TabAccentPalette, TabDragState, TabSessionState,
+    PendingSettingsCommit, PendingSettingsOperation, PresetManagerState, ResultSortMode,
+    ResultSortScope, RootBrowserState, SortMetadata, TabAccentPalette, TabDragState,
+    TabSessionState,
 };
 use tab_state::{AppTabState, TabResourceLifecycle};
 use ui_state::RuntimeUiState;

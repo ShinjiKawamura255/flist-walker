@@ -4,6 +4,18 @@ fn canonical_or_self(path: &Path) -> PathBuf {
     path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
 }
 
+fn settle_settings_commit(app: &mut FlistWalkerApp) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    while app.settings_commit_in_progress() {
+        app.poll_settings_commit_response();
+        assert!(
+            std::time::Instant::now() < deadline,
+            "settings persistence worker did not settle"
+        );
+        std::thread::yield_now();
+    }
+}
+
 #[test]
 fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
     let root = test_root("saved-tabs-sanitize");
@@ -179,6 +191,7 @@ fn set_as_default_is_enabled_when_restore_tabs_config_is_disabled() {
 
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
+    settle_settings_commit(&mut app);
 
     let saved = app
         .shell

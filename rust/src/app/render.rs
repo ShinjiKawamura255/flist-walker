@@ -415,6 +415,7 @@ impl FlistWalkerApp {
             || self.shell.features.update.state.in_progress
             || self.shell.worker_bus.catalog.in_progress
             || self.shell.worker_bus.config_open.in_progress()
+            || self.settings_commit_in_progress()
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));
