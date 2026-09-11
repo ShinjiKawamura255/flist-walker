@@ -110,7 +110,7 @@ fn tc_168_ui_state_autosave_waits_for_observed_settings_commit() {
     let root = test_root("settings-autosave-order");
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    let (_response_tx, response_rx) = mpsc::channel();
+    let (response_tx, response_rx) = mpsc::channel();
     app.shell.features.root_browser.pending_settings_commit = Some(PendingSettingsCommit {
         request_id: 42,
         response: response_rx,
@@ -124,6 +124,15 @@ fn tc_168_ui_state_autosave_waits_for_observed_settings_commit() {
     app.shell.ui.ui_state_dirty = false;
     app.persist_ui_state_now();
     assert!(app.shell.ui.ui_state_dirty);
+
+    response_tx
+        .send(crate::app::session::SettingsCommitResponse {
+            request_id: 42,
+            result: Err("write failed".to_string()),
+        })
+        .expect("send completion");
+    app.poll_settings_commit_response();
+    assert!(!app.shell.ui.ui_state_dirty);
     let _ = fs::remove_dir_all(root);
 }
 
