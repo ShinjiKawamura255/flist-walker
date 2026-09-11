@@ -1034,6 +1034,44 @@ fn dispatch_render_commands_consumes_root_list_cancel_queue() {
 }
 
 #[test]
+fn root_list_native_viewport_close_cancels_without_committing_draft() {
+    let root = test_root("render-root-list-native-close");
+    fs::create_dir_all(&root).expect("create dir");
+    let original = root.join("original");
+    let unsaved = root.join("unsaved");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.root_browser.saved_roots = vec![original.clone()];
+    app.open_manage_root_list();
+    app.shell
+        .features
+        .root_browser
+        .manage_list
+        .draft_roots
+        .push(unsaved);
+
+    let ctx = egui::Context::default();
+    let mut input = egui::RawInput::default();
+    input
+        .viewports
+        .get_mut(&egui::ViewportId::ROOT)
+        .expect("root viewport input")
+        .events
+        .push(egui::ViewportEvent::Close);
+    let _ = ctx.run_ui(input, |ui| app.run_ui_frame(ui));
+
+    assert!(!app.shell.features.root_browser.manage_list.open);
+    assert_eq!(app.shell.features.root_browser.saved_roots, vec![original]);
+    assert!(app
+        .shell
+        .features
+        .root_browser
+        .manage_list
+        .draft_roots
+        .is_empty());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn root_list_render_actions_map_every_ui_intent_to_one_command() {
     use crate::app::render_dialogs::root_list::{root_list_commands, RootListRenderActions};
 
@@ -1088,6 +1126,32 @@ fn root_list_render_actions_map_every_ui_intent_to_one_command() {
     });
     assert_eq!(commands.len(), 1);
     assert!(matches!(commands[0], RenderRootListDialogCommand::Cancel));
+}
+
+#[test]
+fn root_list_control_state_gates_mode_actions_and_pending_commit() {
+    use crate::app::render_dialogs::root_list::root_list_control_state;
+
+    let normal = root_list_control_state(false, false, true, true, false, false);
+    assert_eq!(normal.heading, "Saved roots");
+    assert!(!normal.show_remove_mode_actions);
+    assert!(normal.enter_remove_enabled);
+    assert!(normal.edit_enabled);
+    assert!(normal.commit_enabled);
+
+    let editing = root_list_control_state(false, true, true, true, false, false);
+    assert!(!editing.enter_remove_enabled);
+    assert!(!editing.edit_enabled);
+
+    let remove_mode = root_list_control_state(true, false, true, true, true, false);
+    assert_eq!(remove_mode.heading, "Select roots to remove");
+    assert!(remove_mode.show_remove_mode_actions);
+    assert!(remove_mode.remove_selected_enabled);
+    assert!(!remove_mode.enter_remove_enabled);
+    assert!(!remove_mode.edit_enabled);
+
+    let pending = root_list_control_state(false, false, true, true, false, true);
+    assert!(!pending.commit_enabled);
 }
 
 #[test]

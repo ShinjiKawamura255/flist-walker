@@ -20,6 +20,38 @@ pub(in crate::app) struct RootListRenderActions {
     pub(in crate::app) cancel: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::app) struct RootListControlState {
+    pub(in crate::app) heading: &'static str,
+    pub(in crate::app) show_remove_mode_actions: bool,
+    pub(in crate::app) remove_selected_enabled: bool,
+    pub(in crate::app) enter_remove_enabled: bool,
+    pub(in crate::app) edit_enabled: bool,
+    pub(in crate::app) commit_enabled: bool,
+}
+
+pub(in crate::app) fn root_list_control_state(
+    remove_mode: bool,
+    editing: bool,
+    has_draft_roots: bool,
+    has_selected_root: bool,
+    has_remove_selection: bool,
+    validation_pending: bool,
+) -> RootListControlState {
+    RootListControlState {
+        heading: if remove_mode {
+            "Select roots to remove"
+        } else {
+            "Saved roots"
+        },
+        show_remove_mode_actions: remove_mode,
+        remove_selected_enabled: remove_mode && has_remove_selection,
+        enter_remove_enabled: !remove_mode && !editing && has_draft_roots,
+        edit_enabled: !remove_mode && !editing && has_selected_root,
+        commit_enabled: !validation_pending,
+    }
+}
+
 pub(in crate::app) fn root_list_commands(
     actions: RootListRenderActions,
 ) -> Vec<RenderRootListDialogCommand> {
@@ -152,21 +184,27 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             }
 
             ui.separator();
-            ui.horizontal(|ui| {
+            let control_state = {
                 let manage = &app.shell.features.root_browser.manage_list;
-                ui.heading(if manage.remove_mode {
-                    "Select roots to remove"
-                } else {
-                    "Saved roots"
-                });
+                root_list_control_state(
+                    manage.remove_mode,
+                    manage.editing_index.is_some(),
+                    !manage.draft_roots.is_empty(),
+                    manage.selected_index.is_some(),
+                    !manage.selected_indices.is_empty(),
+                    app.shell.worker_bus.root_validation.in_progress,
+                )
+            };
+            ui.horizontal(|ui| {
+                ui.heading(control_state.heading);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if manage.remove_mode {
+                    if control_state.show_remove_mode_actions {
                         if ui.button("Cancel").clicked() {
                             actions.cancel_remove_mode = true;
                         }
                         if ui
                             .add_enabled(
-                                !manage.selected_indices.is_empty(),
+                                control_state.remove_selected_enabled,
                                 egui::Button::new("Remove selected"),
                             )
                             .clicked()
@@ -176,7 +214,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     } else {
                         if ui
                             .add_enabled(
-                                manage.editing_index.is_none() && !manage.draft_roots.is_empty(),
+                                control_state.enter_remove_enabled,
                                 egui::Button::new("Remove..."),
                             )
                             .clicked()
@@ -184,10 +222,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             actions.enter_remove_mode = true;
                         }
                         if ui
-                            .add_enabled(
-                                manage.selected_index.is_some() && manage.editing_index.is_none(),
-                                egui::Button::new("Edit"),
-                            )
+                            .add_enabled(control_state.edit_enabled, egui::Button::new("Edit"))
                             .clicked()
                         {
                             actions.start_edit = true;
@@ -343,8 +378,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 style.visuals.widgets.active.expansion = 0.0;
                 style.visuals.widgets.open.expansion = 0.0;
                 ui.set_style(style);
-                let validation_pending = app.shell.worker_bus.root_validation.in_progress;
-                ui.add_enabled_ui(!validation_pending, |ui| {
+                ui.add_enabled_ui(control_state.commit_enabled, |ui| {
                     if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
                         actions.apply = true;
                     }
