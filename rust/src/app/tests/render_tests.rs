@@ -1141,6 +1141,12 @@ fn root_list_control_state_gates_mode_actions_and_pending_commit() {
     assert!(normal.edit_enabled);
     assert!(normal.commit_enabled);
 
+    let no_draft = root_list_control_state(false, false, false, true, false, false);
+    assert!(!no_draft.enter_remove_enabled);
+
+    let no_selected_root = root_list_control_state(false, false, true, false, false, false);
+    assert!(!no_selected_root.edit_enabled);
+
     let editing = root_list_control_state(false, true, true, true, false, false);
     assert!(!editing.enter_remove_enabled);
     assert!(!editing.edit_enabled);
@@ -1151,6 +1157,10 @@ fn root_list_control_state_gates_mode_actions_and_pending_commit() {
     assert!(remove_mode.remove_selected_enabled);
     assert!(!remove_mode.enter_remove_enabled);
     assert!(!remove_mode.edit_enabled);
+
+    let remove_mode_without_selection =
+        root_list_control_state(true, false, true, true, false, false);
+    assert!(!remove_mode_without_selection.remove_selected_enabled);
 
     let pending = root_list_control_state(false, false, true, true, false, true);
     assert!(!pending.commit_enabled);
