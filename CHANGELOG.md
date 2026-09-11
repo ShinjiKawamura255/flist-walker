@@ -10,7 +10,7 @@
 - なし。
 
 ### Fixed
-- なし。
+- regex 検索後の plain 検索で候補が欠落する問題、64 KiB 境界の UTF-8 preview が文字化けする問題、および大規模な増分検索 snapshot／nested FileList 置換で全件コピー・再走査が重なる問題を修正した。
 
 ### Breaking
 - なし。
