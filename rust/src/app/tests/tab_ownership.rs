@@ -7,6 +7,86 @@ use crate::app::{
 
 const PAYLOAD_LEN: usize = 128;
 
+fn whole_payload_mut_accessors(source: &str) -> Vec<(String, bool)> {
+    let lines = source.lines().collect::<Vec<_>>();
+    let mut accessors = Vec::new();
+    let mut line_index = 0;
+    while line_index < lines.len() {
+        let line = lines[line_index].trim();
+        let Some((_, after_fn)) = line.split_once("fn ") else {
+            line_index += 1;
+            continue;
+        };
+        if line.starts_with("//") {
+            line_index += 1;
+            continue;
+        }
+
+        let function_name = after_fn
+            .split(['(', '<'])
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .to_string();
+        let function_line_index = line_index;
+        let mut signature = String::new();
+        loop {
+            let signature_line = lines[line_index].split("//").next().unwrap_or_default();
+            signature.push_str(signature_line);
+            if signature_line.contains('{')
+                || signature_line.contains(';')
+                || line_index + 1 == lines.len()
+            {
+                break;
+            }
+            line_index += 1;
+        }
+        let compact = signature
+            .chars()
+            .filter(|character| !character.is_whitespace())
+            .collect::<String>();
+        let returns_whole_payload_mutably = compact.split_once("->").is_some_and(|(_, tail)| {
+            let return_type = tail.split(['{', ';']).next().unwrap_or_default();
+            return_type.contains('&') && return_type.contains("mutTabCommittedPayload")
+        });
+        if returns_whole_payload_mutably {
+            let immediately_cfg_test = lines[..function_line_index]
+                .iter()
+                .rev()
+                .map(|line| line.trim())
+                .find(|line| !line.is_empty() && !line.starts_with("//"))
+                == Some("#[cfg(test)]");
+            accessors.push((function_name, immediately_cfg_test));
+        }
+        line_index += 1;
+    }
+    accessors
+}
+
+fn validate_committed_payload_mutability_boundary(source: &str) -> Result<(), String> {
+    let accessors = whole_payload_mut_accessors(source);
+    let production_accessors = accessors
+        .iter()
+        .filter(|(_, immediately_cfg_test)| !immediately_cfg_test)
+        .map(|(name, _)| name.as_str())
+        .collect::<Vec<_>>();
+    if !production_accessors.is_empty() {
+        return Err(format!(
+            "production whole-payload mutable accessors: {production_accessors:?}"
+        ));
+    }
+    let test_accessors = accessors
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .collect::<Vec<_>>();
+    if test_accessors != ["committed_for_test_mut"] {
+        return Err(format!(
+            "expected only the cfg(test) fixture accessor, found: {test_accessors:?}"
+        ));
+    }
+    Ok(())
+}
+
 #[test]
 fn heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values() {
     let tab_state = include_str!("../tab_state.rs");
@@ -20,7 +100,20 @@ fn heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values() {
     assert!(!state.contains("pub(super) committed: TabCommittedPayload"));
     assert!(!state.contains("impl std::ops::DerefMut for AppRuntimeState"));
     assert!(!state.contains("AsMut<TabCommittedPayload>"));
-    assert!(!state.contains("fn committed_mut"));
+    assert_eq!(
+        validate_committed_payload_mutability_boundary(state),
+        Ok(()),
+        "state.rs must expose no production whole-payload mutable reference and must keep the fixture accessor immediately behind cfg(test)"
+    );
+    for invalid_source in [
+        "impl AppRuntimeState {\n    fn committed_for_test_mut(&mut self) -> &mut TabCommittedPayload { todo!() }\n}",
+        "impl AppRuntimeState {\n    #[cfg(test)]\n    fn unrelated_fixture() {}\n    fn committed_for_test_mut(&mut self) -> &mut TabCommittedPayload { todo!() }\n}",
+    ] {
+        assert!(
+            validate_committed_payload_mutability_boundary(invalid_source).is_err(),
+            "deleting or moving cfg(test) must expose the fixture accessor as a production boundary violation"
+        );
+    }
     for owner_api in [
         "fn install_entry_snapshots(",
         "fn sync_visible_entries(",
