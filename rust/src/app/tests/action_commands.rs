@@ -22,8 +22,8 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(missing.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(missing.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -51,8 +51,8 @@ fn execute_selected_for_activation_uses_open_folder_mode_when_requested() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected_for_activation(true);
 
@@ -81,8 +81,8 @@ fn execute_selected_notice_normalizes_extended_prefix() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(extended, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(extended, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -107,8 +107,8 @@ fn execute_selected_defers_absolute_outside_path_to_worker() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(outside.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(outside.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -132,8 +132,8 @@ fn execute_selected_allows_unc_like_path_when_under_current_root() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(child.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(child.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -326,8 +326,8 @@ fn tc_150_action_full_preserves_prior_accepted_request_state() {
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(prior_request_id, tab_id);
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -358,8 +358,8 @@ fn tc_150_action_disconnect_settles_action_state() {
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(prior_request_id, tab_id);
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -449,8 +449,8 @@ fn tc_051_link_root_with_resolved_result_reaches_worker_authorization() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.execute_selected();
 
@@ -1017,8 +1017,9 @@ fn regression_copy_selected_paths_notice_normalizes_extended_prefix() {
     let root = test_root("copy-path-notice-normalize");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(PathBuf::from(r"\\?\C:\Users\tester\file.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let ctx = egui::Context::default();
 
     app.copy_selected_paths(&ctx);

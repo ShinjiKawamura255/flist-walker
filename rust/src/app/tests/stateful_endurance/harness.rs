@@ -577,7 +577,7 @@ impl StatefulHarness {
 
     fn prepare_current_result(&mut self) -> Option<PathBuf> {
         let path = self.app.shell.runtime.results.first()?.0.clone();
-        self.app.shell.runtime.current_row = Some(0);
+        self.app.shell.runtime.committed_for_test_mut().current_row = Some(0);
         self.app.set_entry_kind(&path, EntryKind::file());
         Some(path)
     }

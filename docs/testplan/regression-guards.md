@@ -64,6 +64,13 @@ Back to the [Validation Matrix](validation-matrix.md).
 - Non-goals: Persisting full snapshots across restarts or imposing a hard byte cap on one active FileList snapshot.
 - Future-change rule: Changes to index dispatch/response, tab transition, close/restore, snapshot compaction, Recent Inactive classification/budget, or worker shutdown MUST run TC-203 through TC-211 as selected by the affected owner and MUST update SP-010/DES-009 when a bound or transition changes.
 
+### Regression Guard: active committed payload mutation stays owner-oriented
+
+- Scenario: `AppRuntimeState` が committed payload への暗黙の mutable dereference や whole-payload mutable accessor を公開し、任意の coordinator が snapshot、selection、preview、tab transfer を同時に変更できる。
+- Expected Behavior: committed aggregate は private、read-only access は既存 projection、production mutation は snapshot/result/selection/preview の目的別 API と aggregate swap/take/restore に限定する。aggregate transfer は8フィールドと allocation identity を維持し、entry sync は unique `Arc` の allocation を再利用し shared `Arc` を1回だけcopyする。
+- Related Tests: `heavy_payload_membership_is_stored_once_and_swapped_as_aggregate_values`, `runtime_committed_take_restore_preserves_all_fields_and_allocations`, `runtime_result_owner_keeps_base_ranking_selection_and_preview_isolated`, `runtime_visible_snapshot_sync_reuses_unique_arc_and_copies_shared_arc_once`, `tc_154_raw_payload_swap_preserves_the_complete_transfer_inventory`.
+- Future-change rule: `DerefMut`、`AsMut<TabCommittedPayload>`、production向け `&mut TabCommittedPayload`、unrestricted mutation closureを追加しない。payload field追加時はaggregate transfer inventoryとsource/API guardを同時更新する。
+
 ### Regression Guard: application-wide Emacs command mapping
 
 - Scenario: picker/modal が通常キーを feature 内で直接処理し、共有 mapping を通さないため、その画面だけ Emacs 風 navigation/accept/cancel が無効になる。
@@ -206,10 +213,10 @@ Back to the [Validation Matrix](validation-matrix.md).
 ### Regression Guard: incremental search snapshot performs one owned copy
 
 - Scenario: each incremental search refresh clones the full entry vector into a temporary and then clones it again into the `Arc`, blocking the GUI thread for hundreds of milliseconds on a million-entry catalog.
-- Expected Behavior: snapshot synchronization passes the incremental slice directly to the existing `Arc` overwrite owner, which performs at most the one required owned copy and can reuse unique allocation.
+- Expected Behavior: snapshot synchronization passes the incremental slice directly to the runtime snapshot owner, which performs at most the one required owned copy and can reuse unique allocation.
 - Non-goals: changing incremental refresh cadence, search worker request ownership, or adopting a chunked catalog representation.
 - Related Tests: `regression_incremental_snapshot_sync_has_no_redundant_full_vec_clone`.
-- Notes for Future Changes: do not create a full temporary `Vec<Entry>` before `overwrite_entries_arc`; large snapshot destruction remains subject to the existing reclaimer contracts.
+- Notes for Future Changes: do not create a full temporary `Vec<Entry>` before `AppRuntimeState::sync_visible_entries`; large snapshot destruction remains subject to the existing reclaimer contracts.
 
 ### Regression Guard: nested FileList subtree replacement avoids catalog rescans
 

@@ -280,7 +280,8 @@ fn unknown_kind_entries_remain_visible_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(path.clone())]);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
@@ -297,7 +298,8 @@ fn unknown_kind_entries_do_not_queue_resolution_when_both_filters_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(path.clone())]);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.show_preview = false;
@@ -523,7 +525,7 @@ fn unknown_kind_entries_are_hidden_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path)]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![unknown_entry(path)]);
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
@@ -540,7 +542,8 @@ fn unknown_kind_entries_queue_resolution_when_single_filter_enabled() {
     fs::write(&path, "x").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(path.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(path.clone())]);
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
@@ -603,7 +606,8 @@ fn kind_response_updates_filters_when_single_filter_is_enabled() {
     let dir = root.join("dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(dir.clone())]);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(dir.clone())]);
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
     app.apply_entry_filters(true);
@@ -640,7 +644,7 @@ fn kind_response_batch_updates_multiple_entries_in_one_poll() {
     fs::create_dir_all(&right).expect("create right dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
         unknown_entry(left.clone()),
         unknown_entry(right.clone()),
     ]);
@@ -789,8 +793,8 @@ fn request_preview_queues_on_demand_kind_resolution_when_kind_unknown() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<KindResolveRequest>(256);
     app.shell.worker_bus.kind.tx = tx;
-    app.shell.runtime.results = vec![(path.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
 
@@ -814,8 +818,8 @@ fn request_preview_does_not_requeue_terminal_other_kind() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (tx, rx) = bounded_request_channel::<KindResolveRequest>(256);
     app.shell.worker_bus.kind.tx = tx;
-    app.shell.runtime.results = vec![(path.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.set_entry_kind(&path, EntryKind::other());
 
     app.request_preview_for_current();
@@ -833,8 +837,9 @@ fn poll_kind_response_does_not_clone_arc_shared_entries_regression() {
     fs::create_dir_all(&left).expect("create left dir");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.all_entries = Arc::new(vec![unknown_entry(left.clone())]);
-    app.shell.runtime.entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![unknown_entry(left.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
 
     // Simulate search worker holding a clone of the Arc, making strong_count > 1
     let worker_entries = Arc::clone(&app.shell.runtime.all_entries);

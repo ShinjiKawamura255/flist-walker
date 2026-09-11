@@ -1013,7 +1013,7 @@ impl FlistWalkerApp {
                 .map(|entry| (entry.path, 0.0))
                 .collect();
             self.replace_results_snapshot(results, true);
-            self.shell.runtime.total_match_count = total_match_count;
+            self.shell.runtime.set_total_match_count(total_match_count);
             return;
         }
 

@@ -219,7 +219,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn set_current_row(&mut self, row: Option<usize>) {
-        self.shell.runtime.current_row = row;
+        self.shell.runtime.set_current_row(row);
     }
 
     pub(super) fn request_scroll_to_current(&mut self) {
@@ -231,7 +231,7 @@ impl FlistWalkerApp {
             return;
         }
         if self.shell.runtime.current_row.is_none() {
-            self.shell.runtime.current_row = Some(0);
+            self.shell.runtime.set_current_row(Some(0));
         }
         if self.shell.runtime.current_row.is_some() {
             self.request_scroll_to_current();

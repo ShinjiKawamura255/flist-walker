@@ -8,8 +8,8 @@ fn ctrl_shift_c_is_deferred_and_copies_selected_path_even_when_query_is_focused(
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -38,8 +38,8 @@ fn regression_ctrl_shift_c_copy_event_copies_selected_path_even_when_query_is_fo
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame_with_modifiers(
         &mut app,
@@ -63,8 +63,8 @@ fn copy_event_without_shift_does_not_trigger_path_copy_shortcut() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame_with_modifiers(
         &mut app,
@@ -220,8 +220,8 @@ fn regression_ctrl_j_and_ctrl_m_execute_even_when_query_focused() {
         fs::set_permissions(&selected, perms).expect("set permissions");
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -274,8 +274,8 @@ fn ctrl_j_and_ctrl_m_do_not_execute_when_emacs_keybindings_are_disabled() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -322,8 +322,8 @@ fn regression_enter_executes_regardless_of_query_focus() {
         fs::set_permissions(&selected, perms).expect("set permissions");
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.results = vec![(selected, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -366,8 +366,8 @@ fn regression_shift_enter_opens_containing_folder_regardless_of_query_focus() {
     let (_action_tx_res, action_rx_res) = mpsc::channel::<ActionResponse>();
     app.shell.worker_bus.action.tx = action_tx_req;
     app.shell.worker_bus.action.rx = action_rx_res;
-    app.shell.runtime.results = vec![(selected_file.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected_file.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -418,8 +418,8 @@ fn deferred_copy_shortcut_copies_selected_path_even_with_query_text() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query text".to_string());
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.ui.pending_copy_shortcut = true;
     let ctx = egui::Context::default();
 

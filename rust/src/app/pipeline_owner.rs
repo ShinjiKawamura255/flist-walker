@@ -12,15 +12,6 @@ pub(super) struct PipelineOwner<'a> {
 }
 
 impl<'a> PipelineOwner<'a> {
-    fn overwrite_entries_arc(target: &mut Arc<Vec<Entry>>, source: &[Entry]) {
-        if let Some(entries) = Arc::get_mut(target) {
-            entries.clear();
-            entries.extend(source.iter().cloned());
-        } else {
-            *target = Arc::new(source.to_vec());
-        }
-    }
-
     fn overwrite_entries_vec(target: &mut Vec<Entry>, source: &[Entry]) {
         target.clear();
         target.extend(source.iter().cloned());
@@ -86,7 +77,8 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
-            self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
+            let count = self.app.shell.runtime.entries.len();
+            self.app.shell.runtime.set_total_match_count(count);
             self.app.replace_results_snapshot(results, false);
             return;
         }
@@ -139,7 +131,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
-            self.app.shell.runtime.total_match_count = base.len();
+            self.app.shell.runtime.set_total_match_count(base.len());
             self.app
                 .replace_results_snapshot(results, keep_scroll_position);
             return;
@@ -148,15 +140,18 @@ impl<'a> PipelineOwner<'a> {
         // Ignore List must stay in the filtered path even when files/folders are both enabled,
         // otherwise the default all-entries snapshot leaks ignored paths back into the UI.
         if needs_filtering {
-            self.app.shell.runtime.entries = Arc::new(Self::filtered_entries(
+            let entries = Arc::new(Self::filtered_entries(
                 self.app,
                 base,
                 compiled_ignore_terms.as_deref(),
             ));
+            self.app.shell.runtime.replace_visible_entries(entries);
         } else if source_is_all_entries {
-            self.app.shell.runtime.entries = Arc::clone(&self.app.shell.runtime.all_entries);
+            let entries = Arc::clone(&self.app.shell.runtime.all_entries);
+            self.app.shell.runtime.replace_visible_entries(entries);
         } else {
-            self.app.shell.runtime.entries = Arc::new(base.clone());
+            let entries = Arc::new(base.clone());
+            self.app.shell.runtime.replace_visible_entries(entries);
         }
         if self.app.shell.indexing.in_progress {
             let entries = Arc::clone(&self.app.shell.runtime.entries);
@@ -191,7 +186,8 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
-            self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
+            let count = self.app.shell.runtime.entries.len();
+            self.app.shell.runtime.set_total_match_count(count);
             self.app
                 .replace_results_snapshot(results, keep_scroll_position);
         } else {
@@ -212,7 +208,7 @@ impl<'a> PipelineOwner<'a> {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect();
-            self.app.shell.runtime.total_match_count = source.len();
+            self.app.shell.runtime.set_total_match_count(source.len());
             self.app.shell.indexing.last_search_snapshot_len = source.len();
             self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
             self.app.replace_results_snapshot(results, true);
@@ -230,7 +226,8 @@ impl<'a> PipelineOwner<'a> {
             .cloned()
             .map(|entry| (entry.path, 0.0))
             .collect();
-        self.app.shell.runtime.total_match_count = self.app.shell.runtime.entries.len();
+        let count = self.app.shell.runtime.entries.len();
+        self.app.shell.runtime.set_total_match_count(count);
         self.app.replace_results_snapshot(results, true);
     }
 
@@ -338,9 +335,12 @@ impl<'a> PipelineOwner<'a> {
 
     fn sync_entries_from_incremental(&mut self) {
         let incremental_entries = &self.app.shell.indexing.build.incremental_filtered_entries;
-        // Regression guard: overwrite_entries_arc already owns the one required
-        // snapshot copy. Do not clone the full incremental Vec before this call.
-        Self::overwrite_entries_arc(&mut self.app.shell.runtime.entries, incremental_entries);
+        // Regression guard: the runtime owner performs the one required snapshot copy and
+        // reuses the allocation when the current Arc is unique.
+        self.app
+            .shell
+            .runtime
+            .sync_visible_entries(incremental_entries);
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {

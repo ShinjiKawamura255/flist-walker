@@ -553,7 +553,7 @@ impl TabResultState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
-            committed: shell.shell.runtime.committed.clone(),
+            committed: (*shell.shell.runtime).clone(),
             result_sort_mode: shell.shell.runtime.result_sort_mode,
             result_sort_scope: shell.shell.runtime.result_sort_scope,
             pending_sort_request_id: shell.shell.worker_bus.sort.pending_request_id,
@@ -566,7 +566,10 @@ impl TabResultState {
 
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.shell.runtime.committed = self.committed.clone();
+        shell
+            .shell
+            .runtime
+            .restore_committed_payload(self.committed.clone());
         shell.shell.runtime.result_sort_mode = self.result_sort_mode;
         shell.shell.runtime.result_sort_scope = self.result_sort_scope;
         shell.shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
@@ -851,10 +854,10 @@ impl AppTabState {
 
     pub(super) fn swap_payload_with_shell(&mut self, shell: &mut FlistWalkerApp) {
         mem::swap(&mut self.index_state.build, &mut shell.shell.indexing.build);
-        mem::swap(
-            &mut self.result_state.committed,
-            &mut shell.shell.runtime.committed,
-        );
+        shell
+            .shell
+            .runtime
+            .swap_committed_payload(&mut self.result_state.committed);
         self.index_state.swap_shell(shell);
         self.query_state.swap_shell(shell);
         self.result_state.swap_shell(shell);

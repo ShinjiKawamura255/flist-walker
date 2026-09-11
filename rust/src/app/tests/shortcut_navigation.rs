@@ -66,10 +66,10 @@ fn move_page_moves_by_fixed_rows_and_clamps() {
     let root = test_root("move-page");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     app.move_page(1);
     assert_eq!(app.shell.runtime.current_row, Some(10));
@@ -84,12 +84,12 @@ fn ctrl_n_and_ctrl_p_move_selection_even_when_query_is_focused() {
     let root = test_root("shortcut-ctrl-np-query-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![
+    app.shell.runtime.committed_for_test_mut().results = vec![
         (root.join("a.txt"), 0.0),
         (root.join("b.txt"), 0.0),
         (root.join("c.txt"), 0.0),
     ];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,
@@ -125,12 +125,12 @@ fn ctrl_n_and_ctrl_p_do_not_move_selection_when_emacs_keybindings_are_disabled()
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.emacs_keybindings_enabled = false;
-    app.shell.runtime.results = vec![
+    app.shell.runtime.committed_for_test_mut().results = vec![
         (root.join("a.txt"), 0.0),
         (root.join("b.txt"), 0.0),
         (root.join("c.txt"), 0.0),
     ];
-    app.shell.runtime.current_row = Some(1);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(1);
 
     run_shortcuts_frame(
         &mut app,
@@ -167,9 +167,10 @@ fn ctrl_g_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(selected.clone())]);
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.pinned_paths.insert(selected);
 
     run_shortcuts_frame(
@@ -197,9 +198,10 @@ fn escape_clears_query_and_resets_selection_even_when_query_is_focused() {
     let selected = root.join("picked.txt");
     fs::write(&selected, "x").expect("write file");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(selected.clone())]);
-    app.shell.runtime.results = vec![(selected.clone(), 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(selected.clone())]);
+    app.shell.runtime.committed_for_test_mut().results = vec![(selected.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.runtime.pinned_paths.insert(selected);
 
     run_shortcuts_frame(
@@ -225,10 +227,10 @@ fn home_and_end_move_selection_when_query_not_focused() {
     let root = test_root("shortcut-home-end-no-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = (0..5)
+    app.shell.runtime.committed_for_test_mut().results = (0..5)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(2);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(2);
 
     run_shortcuts_frame(
         &mut app,
@@ -263,10 +265,10 @@ fn page_up_down_move_selection_when_query_not_focused() {
     let root = test_root("shortcut-page-no-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(15);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(15);
 
     run_shortcuts_frame(
         &mut app,
@@ -301,10 +303,10 @@ fn ctrl_v_and_alt_v_page_move_when_query_not_focused() {
     let root = test_root("shortcut-emacs-page-no-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(15);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(15);
 
     run_shortcuts_frame(
         &mut app,
@@ -346,10 +348,10 @@ fn ctrl_v_and_alt_v_do_not_page_move_when_emacs_keybindings_are_disabled() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.emacs_keybindings_enabled = false;
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(15);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(15);
 
     run_shortcuts_frame(
         &mut app,
@@ -390,10 +392,10 @@ fn ctrl_v_paste_event_pages_down_only_when_query_not_focused() {
     let root = test_root("shortcut-ctrl-v-paste-event");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(15);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(15);
     let ctrl_mods = egui::Modifiers {
         ctrl: true,
         ..Default::default()
@@ -423,10 +425,10 @@ fn ctrl_v_paste_event_does_not_page_move_when_emacs_keybindings_are_disabled() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.runtime.emacs_keybindings_enabled = false;
-    app.shell.runtime.results = (0..30)
+    app.shell.runtime.committed_for_test_mut().results = (0..30)
         .map(|i| (root.join(format!("f{i}.txt")), 0.0))
         .collect();
-    app.shell.runtime.current_row = Some(15);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(15);
     let ctrl_mods = egui::Modifiers {
         ctrl: true,
         ..Default::default()
@@ -447,12 +449,12 @@ fn regression_arrow_keys_move_selection_even_when_query_focused() {
     let root = test_root("regression-arrow-query-focus");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.runtime.results = vec![
+    app.shell.runtime.committed_for_test_mut().results = vec![
         (root.join("a.txt"), 0.0),
         (root.join("b.txt"), 0.0),
         (root.join("c.txt"), 0.0),
     ];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
 
     run_shortcuts_frame(
         &mut app,

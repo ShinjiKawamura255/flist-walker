@@ -511,7 +511,8 @@ fn regression_incremental_snapshot_sync_has_no_redundant_full_vec_clone() {
         .next()
         .expect("snapshot sync body");
 
-    assert!(body.contains("overwrite_entries_arc"));
+    assert!(body.contains("sync_visible_entries"));
+    assert!(!source.contains("fn overwrite_entries_arc"));
     assert!(
         !body.contains("incremental_filtered_entries\r\n            .clone()")
             && !body.contains("incremental_filtered_entries\n            .clone()"),
@@ -528,14 +529,14 @@ fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
     let ignored_old = root.join("old-cache.txt");
     let ignored_tilde = root.join("backup~.txt");
 
-    app.shell.runtime.all_entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
         file_entry(ignored_old.clone()),
         file_entry(ignored_tilde.clone()),
         file_entry(kept.clone()),
     ]);
     app.shell.indexing.build.index.entries.clear();
     app.shell.indexing.build.index.source = IndexSource::Walker;
-    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = true;
@@ -559,13 +560,13 @@ fn regression_ignore_list_toggle_off_keeps_all_entries_visible() {
     let kept = root.join("keep.txt");
     let ignored_old = root.join("old-cache.txt");
 
-    app.shell.runtime.all_entries = Arc::new(vec![
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
         file_entry(ignored_old.clone()),
         file_entry(kept.clone()),
     ]);
     app.shell.indexing.build.index.entries.clear();
     app.shell.indexing.build.index.source = IndexSource::Walker;
-    app.shell.runtime.entries = Arc::new(Vec::new());
+    app.shell.runtime.committed_for_test_mut().entries = Arc::new(Vec::new());
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
     app.shell.ui.ignore_list_enabled = false;

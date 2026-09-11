@@ -97,7 +97,7 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     let mut app = FlistWalkerApp::new(root_a.clone(), 50, "alpha".to_string());
 
     app.shell.runtime.include_dirs = false;
-    app.shell.runtime.preview = "preview-a".to_string();
+    app.shell.runtime.committed_for_test_mut().preview = "preview-a".to_string();
     app.shell.ui.focus_query_requested = true;
     app.shell.ui.unfocus_query_requested = false;
     app.sync_active_tab_state();
@@ -107,7 +107,7 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     app.shell.runtime.query_state.query = "beta".to_string();
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.preview = "preview-b".to_string();
+    app.shell.runtime.committed_for_test_mut().preview = "preview-b".to_string();
     app.shell.ui.focus_query_requested = false;
     app.shell.ui.unfocus_query_requested = true;
     app.sync_active_tab_state();
@@ -117,7 +117,7 @@ fn move_tab_preserves_per_tab_state_carryover_after_reorder() {
     app.shell.runtime.query_state.query = "gamma".to_string();
     app.shell.runtime.include_files = true;
     app.shell.runtime.include_dirs = true;
-    app.shell.runtime.preview = "preview-c".to_string();
+    app.shell.runtime.committed_for_test_mut().preview = "preview-c".to_string();
     app.shell.ui.focus_query_requested = true;
     app.shell.ui.unfocus_query_requested = false;
     app.sync_active_tab_state();

@@ -37,8 +37,9 @@ fn search_response_requeues_unknown_walker_result_kind() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "tail".to_string());
     app.shell.indexing.build.index.source = IndexSource::Walker;
-    app.shell.runtime.entries = Arc::new(vec![unknown_entry(link.clone())]);
-    app.shell.runtime.results.clear();
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![unknown_entry(link.clone())]);
+    app.shell.runtime.committed_for_test_mut().results.clear();
     app.shell.indexing.build.entry_kind_cache.clear();
     app.shell.search.set_pending_request_id(Some(71));
     app.shell.search.set_in_progress(true);
@@ -170,7 +171,7 @@ fn stale_search_response_is_ignored_after_index_refresh() {
     app.shell.indexing.tx = index_tx;
     app.shell.search.set_pending_request_id(Some(5));
     app.shell.search.set_in_progress(true);
-    app.shell.runtime.results = vec![(root.join("before.txt"), 0.0)];
+    app.shell.runtime.committed_for_test_mut().results = vec![(root.join("before.txt"), 0.0)];
 
     app.request_index_refresh();
 

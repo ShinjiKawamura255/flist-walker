@@ -6,14 +6,12 @@ use super::{
     FileListManager, FileListWorkerBus, FlistWalkerApp, HashSet, HighlightCacheState,
     IgnoreMatcherCacheState, IndexCoordinator, IndexRequest, IndexResponse, KindWorkerBus,
     LaunchSettings, PresetManagerState, PreviewCacheState, PreviewWorkerBus, QueryState, Receiver,
-    ResultSortMode, ResultSortScope, RootBrowserState, RootValidationWorkerBus, RuntimeUiState,
-    SavedTabState, SearchCoordinator, SearchRequest, SearchResponse, Sender,
-    SortMetadataCacheState, SortWorkerBus, TabSessionState, UpdateWorkerBus, WorkerBus,
-    WorkerRuntime,
+    RootBrowserState, RootValidationWorkerBus, RuntimeUiState, SavedTabState, SearchCoordinator,
+    SearchRequest, SearchResponse, Sender, SortMetadataCacheState, SortWorkerBus, TabSessionState,
+    UpdateWorkerBus, WorkerBus, WorkerRuntime,
 };
 use crate::app::state::{UpdateManager, UpdateState};
 use crate::app::tab_resources::TabResourceReclaimer;
-use crate::app::tab_state::TabCommittedPayload;
 use crate::app::worker::channel::BoundedSender;
 use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
@@ -374,29 +372,18 @@ impl FlistWalkerApp {
         let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
         let mut app = Self {
             shell: AppShellState {
-                runtime: AppRuntimeState {
+                runtime: AppRuntimeState::new(
                     root,
                     limit,
                     max_depth,
                     follow_links,
-                    query_state: QueryState::new(query, query_history),
-                    use_filelist: true,
-                    use_regex: false,
-                    ignore_case: true,
+                    QueryState::new(query, query_history),
                     ignore_list_terms,
-                    include_files: true,
-                    include_dirs: true,
-                    committed: TabCommittedPayload::default(),
-                    result_sort_mode: ResultSortMode::Score,
-                    result_sort_scope: ResultSortScope::ShownResults,
-                    pinned_paths: HashSet::new(),
-                    evicted_selected_path: None,
+                    HashSet::new(),
                     emacs_keybindings_enabled,
                     ctrl_w_deletes_word_in_query,
                     tab_pin_moves_to_next_row,
-                    notice: String::new(),
-                    status_line: "Initializing...".to_string(),
-                },
+                ),
                 search: SearchCoordinator::new(search_tx, search_rx),
                 worker_bus,
                 indexing: IndexCoordinator::new(

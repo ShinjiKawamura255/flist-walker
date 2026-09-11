@@ -10,8 +10,8 @@ fn clear_query_and_selection_clears_state() {
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "abc".to_string());
     app.shell.runtime.pinned_paths.insert(file.clone());
-    app.shell.runtime.current_row = Some(0);
-    app.shell.runtime.preview = "preview".to_string();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().preview = "preview".to_string();
 
     app.clear_query_and_selection();
 
@@ -50,8 +50,8 @@ fn tc_209_empty_clear_query_attempt_is_not_meaningful_interaction_regression() {
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.shell.tabs.set_active_tab_index_at(0, Instant::now());
-    app.shell.runtime.results.clear();
-    app.shell.runtime.current_row = None;
+    app.shell.runtime.committed_for_test_mut().results.clear();
+    app.shell.runtime.committed_for_test_mut().current_row = None;
     assert!(app.shell.runtime.query_state.query.is_empty());
     assert!(app.shell.runtime.pinned_paths.is_empty());
 
@@ -218,8 +218,8 @@ fn move_row_sets_scroll_tracking() {
     fs::write(&file2, "x").expect("write file2");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, "".to_string());
-    app.shell.runtime.results = vec![(file1, 0.0), (file2, 0.0)];
-    app.shell.runtime.current_row = Some(0);
+    app.shell.runtime.committed_for_test_mut().results = vec![(file1, 0.0), (file2, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     app.shell.ui.scroll_to_current = false;
 
     app.move_row(1);

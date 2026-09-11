@@ -221,7 +221,7 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                             .show(ui, |ui| {
                                 ui.add_sized(
                                     egui::vec2(preview_width, preview_height),
-                                    egui::TextEdit::multiline(&mut app.shell.runtime.preview)
+                                    egui::TextEdit::multiline(app.shell.runtime.preview_text_mut())
                                         .interactive(false)
                                         .font(preview_text_style())
                                         .desired_width(f32::INFINITY)

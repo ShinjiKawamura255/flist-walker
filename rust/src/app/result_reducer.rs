@@ -81,10 +81,10 @@ pub(super) fn apply_results_with_selection_policy(
             .flatten()
     });
     let previous_row = app.shell.runtime.current_row;
-    app.shell.runtime.results = results;
+    app.shell.runtime.replace_results(results);
     if app.shell.runtime.results.is_empty() {
         app.set_current_row(None);
-        app.shell.runtime.preview.clear();
+        app.shell.runtime.clear_preview();
         app.shell.worker_bus.preview.clear_request();
     } else {
         let previous_row = normalized_result_row(previous_row, app.shell.runtime.results.len());
@@ -209,13 +209,20 @@ pub(super) fn apply_active_search_response(
     } else {
         app.clear_notice();
     }
-    app.shell.runtime.total_match_count = response.total_match_count;
+    app.shell
+        .runtime
+        .set_total_match_count(response.total_match_count);
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
-    app.replace_results_snapshot(response.results, false);
-    app.shell.runtime.base_results_are_score_ranked = !response
+    let base_results_are_score_ranked = !response
         .sort_scope
         .sorts_all_matches_before_limit(response.sort_mode);
+    replace_results_snapshot_with_ranking(
+        app,
+        response.results,
+        false,
+        base_results_are_score_ranked,
+    );
     if response.sort_scope == super::ResultSortScope::ShownResults
         && response.sort_mode != ResultSortMode::Score
     {
@@ -237,13 +244,14 @@ pub(super) fn apply_active_search_response(
     {
         app.shell.indexing.search_rerun_pending = false;
         app.shell.indexing.search_resume_pending = false;
-        app.shell.runtime.entries = Arc::new(
+        let entries = Arc::new(
             app.shell
                 .indexing
                 .build
                 .incremental_filtered_entries
                 .clone(),
         );
+        app.shell.runtime.replace_visible_entries(entries);
         app.shell.indexing.last_search_snapshot_len = app.shell.runtime.entries.len();
         app.shell.indexing.last_incremental_results_refresh = Instant::now();
         app.enqueue_search_request();
@@ -256,9 +264,19 @@ pub(super) fn replace_results_snapshot(
     results: Vec<(PathBuf, f64)>,
     keep_scroll_position: bool,
 ) {
+    replace_results_snapshot_with_ranking(app, results, keep_scroll_position, true);
+}
+
+fn replace_results_snapshot_with_ranking(
+    app: &mut FlistWalkerApp,
+    results: Vec<(PathBuf, f64)>,
+    keep_scroll_position: bool,
+    base_results_are_score_ranked: bool,
+) {
     app.shell.worker_bus.sort.clear_request();
-    app.shell.runtime.base_results = results.clone();
-    app.shell.runtime.base_results_are_score_ranked = true;
+    app.shell
+        .runtime
+        .replace_base_results(results.clone(), base_results_are_score_ranked);
     // Regression guard: search refreshes must keep the cursor on the same row number.
     // Following the previous path here makes the highlight jump when the query changes.
     apply_results_with_selection_policy(app, results, keep_scroll_position, false);
@@ -492,7 +510,7 @@ pub(super) fn apply_active_preview_response(
     app.take_preview_request_tab(response.request_id);
     app.shell.worker_bus.preview.clear_request();
     if response.canceled {
-        app.shell.runtime.preview.clear();
+        app.shell.runtime.clear_preview();
         app.request_preview_for_current();
         return true;
     }
@@ -500,7 +518,7 @@ pub(super) fn apply_active_preview_response(
     if let Some(row) = app.shell.runtime.current_row {
         if let Some((current_path, _)) = app.shell.runtime.results.get(row) {
             if *current_path == response.path {
-                app.shell.runtime.preview = response.preview.clone();
+                app.shell.runtime.set_preview(response.preview.clone());
             }
         }
     }
