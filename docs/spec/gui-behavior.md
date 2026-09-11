@@ -103,6 +103,7 @@
 - MUST: `Manage list` は `Remove...` により明示的な削除モードへ移行し、削除モード中だけ複数選択用チェックボックスと `Remove selected` / `Cancel` を表示しなければならない。
 - MUST: 削除モードの `Cancel` は選択状態だけを破棄して通常状態へ戻り、draft list を変更してはならない。
 - MUST: `Manage list` の draft 変更は `Apply` または `OK` を押したタイミングでのみ保存済み root list へ反映し、`Cancel` またはウィンドウ close では反映してはならない。
+- MUST: `Apply` / `OK` と `Set as default` は filesystem write と path canonicalize を persistence worker へ委譲し、UI frame は完了を待ってはならない。保存成功を受信してから live saved-root/default-root state と成功 notice を更新し、保存失敗または request identity 不一致では live state を維持して理由を表示する。`Manage list` の draft と管理ウィンドウは失敗後も再試行できる状態で保持する。
 - SHOULD: タブ復元時は active tab のみ起動直後に Loading とし、background tab は Dormant のまま初回 activate 時に遅延 load する。
 - MUST: 起動時復元された background tab は初回 activate まで index/search 候補を構築しない。初回 activate した generation は Active mailbox として Warm より先に処理し、Warm の Full data lane や stale terminal によって開始・応答適用を待たせてはならない。
 - MUST: 現在のプロセス中に閉じた GUI タブは in-memory の直近順スタックとして保持し、`Ctrl+Shift+T`（macOS では `Cmd+Shift+T`）で最後に閉じたタブから active tab として復元できなければならない。
