@@ -106,6 +106,77 @@ fn tc_167_saved_root_failure_keeps_live_and_draft_state_for_retry() {
 }
 
 #[test]
+fn tc_167_pending_root_commit_rejects_draft_mutation_until_apply_or_ok_settles() {
+    for close_on_success in [false, true] {
+        let root = test_root(if close_on_success {
+            "pending-root-commit-ok"
+        } else {
+            "pending-root-commit-apply"
+        });
+        let saved = root.join("saved");
+        let attempted = root.join("attempted");
+        fs::create_dir_all(&saved).expect("create saved root");
+        fs::create_dir_all(&attempted).expect("create attempted root");
+        let mut app = FlistWalkerApp::new(saved.clone(), 50, String::new());
+        app.shell.features.root_browser.saved_roots = vec![saved.clone()];
+        app.open_manage_root_list();
+
+        let committed_snapshot = vec![saved.clone()];
+        let (response_tx, response_rx) = mpsc::channel();
+        app.shell.features.root_browser.pending_settings_commit = Some(PendingSettingsCommit {
+            request_id: 43,
+            response: response_rx,
+            operation: PendingSettingsOperation::RootList {
+                roots: committed_snapshot.clone(),
+                default_root: None,
+                close_on_success,
+            },
+        });
+
+        app.shell.features.root_browser.manage_list.input_path =
+            attempted.to_string_lossy().to_string();
+        app.add_manage_root_list_input();
+        assert!(!app.select_manage_root_list_item(0));
+        app.enter_manage_root_list_remove_mode();
+        assert_eq!(
+            app.shell.features.root_browser.manage_list.draft_roots,
+            committed_snapshot
+        );
+        assert!(!app.shell.worker_bus.root_validation.in_progress);
+        assert_eq!(
+            app.shell.features.root_browser.manage_list.notice,
+            "Wait for settings save to finish"
+        );
+
+        response_tx
+            .send(crate::app::session::SettingsCommitResponse {
+                request_id: 43,
+                result: Ok(crate::app::session::SettingsCommitReceipt {
+                    canonical_default_root: None,
+                }),
+            })
+            .expect("send success response");
+        app.poll_settings_commit_response();
+
+        assert_eq!(
+            app.shell.features.root_browser.saved_roots,
+            committed_snapshot
+        );
+        assert_eq!(
+            app.shell.features.root_browser.manage_list.open,
+            !close_on_success
+        );
+        if !close_on_success {
+            assert_eq!(
+                app.shell.features.root_browser.manage_list.draft_roots,
+                committed_snapshot
+            );
+        }
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
+#[test]
 fn tc_168_ui_state_autosave_waits_for_observed_settings_commit() {
     let root = test_root("settings-autosave-order");
     fs::create_dir_all(&root).expect("create root");

@@ -16,7 +16,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, SyncSender, TrySendError};
 use std::sync::{Mutex, OnceLock};
-#[cfg(test)]
 use std::time::Duration;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
@@ -24,36 +23,36 @@ static PROCESS_SHUTDOWN_REQUESTED: AtomicBool = AtomicBool::new(false);
 static WINDOW_TRACE_SINK: OnceLock<WindowTraceSink> = OnceLock::new();
 
 enum WindowTraceCommand {
-    Append {
-        event: String,
-        details: String,
-    },
-    #[cfg(test)]
-    Flush(mpsc::Sender<()>),
+    Append { event: String, details: String },
+    Shutdown(mpsc::Sender<()>),
 }
 
 struct WindowTraceSink {
     tx: SyncSender<WindowTraceCommand>,
+    handle: Mutex<Option<std::thread::JoinHandle<()>>>,
 }
 
 impl WindowTraceSink {
     fn spawn_with_capacity(capacity: usize, writer: impl Fn(&str, &str) + Send + 'static) -> Self {
         let (tx, rx) = mpsc::sync_channel(capacity.max(1));
-        std::thread::Builder::new()
+        let handle = std::thread::Builder::new()
             .name("flistwalker-window-trace".to_string())
             .spawn(move || {
                 while let Ok(command) = rx.recv() {
                     match command {
                         WindowTraceCommand::Append { event, details } => writer(&event, &details),
-                        #[cfg(test)]
-                        WindowTraceCommand::Flush(reply) => {
+                        WindowTraceCommand::Shutdown(reply) => {
                             let _ = reply.send(());
+                            break;
                         }
                     }
                 }
             })
             .expect("spawn window trace worker");
-        Self { tx }
+        Self {
+            tx,
+            handle: Mutex::new(Some(handle)),
+        }
     }
 
     fn try_append(&self, event: &str, details: &str) {
@@ -65,14 +64,51 @@ impl WindowTraceSink {
         }
     }
 
-    #[cfg(test)]
-    fn flush(&self, timeout: Duration) -> Result<(), String> {
+    fn send_control(
+        &self,
+        mut command: WindowTraceCommand,
+        deadline: Instant,
+    ) -> Result<(), String> {
+        loop {
+            match self.tx.try_send(command) {
+                Ok(()) => return Ok(()),
+                Err(TrySendError::Full(returned)) if Instant::now() < deadline => {
+                    command = returned;
+                    std::thread::sleep(Duration::from_millis(1));
+                }
+                Err(TrySendError::Full(_)) => {
+                    return Err("window trace control enqueue timed out".to_string())
+                }
+                Err(TrySendError::Disconnected(_)) => {
+                    return Err("window trace worker is unavailable".to_string())
+                }
+            }
+        }
+    }
+
+    fn shutdown(&self, timeout: Duration) -> Result<(), String> {
+        let deadline = Instant::now() + timeout;
         let (tx, rx) = mpsc::channel();
-        self.tx
-            .send(WindowTraceCommand::Flush(tx))
-            .map_err(|_| "window trace worker is unavailable".to_string())?;
-        rx.recv_timeout(timeout)
-            .map_err(|_| "window trace flush timed out".to_string())
+        self.send_control(WindowTraceCommand::Shutdown(tx), deadline)?;
+        rx.recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .map_err(|_| "window trace shutdown timed out".to_string())?;
+        let Some(handle) = self
+            .handle
+            .lock()
+            .map_err(|_| "window trace worker handle is unavailable".to_string())?
+            .take()
+        else {
+            return Ok(());
+        };
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        let (joined_tx, joined_rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let _ = joined_tx.send(handle.join());
+        });
+        joined_rx
+            .recv_timeout(remaining)
+            .map_err(|_| "window trace worker join timed out".to_string())?
+            .map_err(|_| "window trace worker panicked during shutdown".to_string())
     }
 }
 
@@ -336,9 +372,20 @@ impl FlistWalkerApp {
         window_trace_sink().try_append(event, details);
     }
 
+    pub(super) fn shutdown_window_trace(timeout: Duration) {
+        if let Some(sink) = WINDOW_TRACE_SINK.get() {
+            let _ = sink.shutdown(timeout);
+        }
+    }
+
     fn write_window_trace_event(event: &str, details: &str) {
         let Some(path) = Self::window_trace_path() else {
             return;
+        };
+        let details = if event == "app_initialized" && details.is_empty() {
+            format!("path={}", path.display())
+        } else {
+            details.to_string()
         };
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
@@ -595,8 +642,8 @@ mod tests {
         assert!(started.elapsed() < Duration::from_millis(50));
 
         release_tx.send(()).expect("release writer");
-        sink.flush(Duration::from_secs(1))
-            .expect("flush trace sink");
+        sink.shutdown(Duration::from_secs(1))
+            .expect("shutdown trace sink");
         assert_eq!(writes.load(Ordering::SeqCst), 2);
         assert_eq!(
             *observed.lock().expect("observed trace lock"),
