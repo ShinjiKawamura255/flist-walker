@@ -50,7 +50,7 @@
 - MUST: direct action の effective target は選択対象、open-containing-folder の effective target は通常ファイルまたは file link の字句的な親、ディレクトリまたは directory link/junction 自身とする。字句上 trusted root 配下に置かれた file/directory link と junction は、解決先が物理的な root 外でも許可する。trusted root 自体が link/junction の場合は、その字句的配下と解決済み配下のどちらの path 表現も許可する。
 - MUST: 複数選択では、すべての effective target の解決と認可が成功するまで OS backend を一度も呼び出してはならない。1 件でも解決不能、または字句的 root と解決済み root のどちらにも属さない場合は要求全体を拒否する。
 - MUST: worker は各 backend 呼び出しの直前にも対応する raw effective target を再解決し、root 配下判定を繰り返す。リンク先を含む execution path が事前認可時から変化した場合、または再検証が途中で失敗した場合は残りを実行せず、すでに開始した件数を含む partial completion として通知し、完了済み外部アクションを rollback したと主張してはならない。
-- MUST: shared action request は trusted root、current-row selection snapshot、request identity、cancellation token を保持する。whole-request の事前認可成功後、単一 backend 呼び出しの直前に freshness/cancel 確認と再認可を行う。root switch または exit cancellation の観測後、新しい backend 呼び出しを開始してはならない。開始済み OS action は不可逆として扱う。
+- MUST: shared action request は trusted root、current-row selection snapshot、request identity、cancellation token を保持する。whole-request の事前認可成功後、単一 backend 呼び出しの直前に freshness/cancel 確認と再認可を行う。root switch または exit cancellation の観測後、新しい backend 呼び出しを開始してはならない。現在 tab の字句 precheck rejection はその tab の action state だけを失効し、別 tab の有効な background action を失効してはならない。worker disconnect は全 request を失効する。開始済み OS action は不可逆として扱う。
 - MUST: OS backend へ渡す path は最後に認可した解決済み execution path とする。成功/失敗通知は利用者が選択した display path または effective display path を使い、拒否した root 外の解決先を表示してはならない。
 - MUST: 字句的 root と解決済み root のどちらにも属さないパスは一覧表示されていても実行/オープンを拒否し、利用者へ通知する。
 - MUST: UNC root を検索 root とする場合も、字句的または解決済みの同一 root 配下は許可し、どちらにも属さない別 share または root 外は拒否する。

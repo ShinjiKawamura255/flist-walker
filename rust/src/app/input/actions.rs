@@ -45,7 +45,7 @@ impl FlistWalkerApp {
             return;
         }
         if let Some(blocked) = self.first_action_path_outside_root(&paths) {
-            self.clear_all_action_request_state();
+            self.clear_current_tab_action_request_state();
             self.set_notice(format!(
                 "Action blocked: path is outside current root: {}",
                 normalize_path_for_display(&blocked)
