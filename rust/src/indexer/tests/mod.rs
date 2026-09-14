@@ -229,6 +229,27 @@ fn find_filelist_accepts_lowercase_name() {
 }
 
 #[test]
+fn find_filelist_uses_lexical_precedence_for_noncanonical_variants_when_supported() {
+    let root = test_root("find-noncanonical-precedence");
+    fs::create_dir_all(&root).expect("create dir");
+    let lexical_first = root.join("FILELIST.TXT");
+    let lexical_later = root.join("FiLeLiSt.TxT");
+    fs::write(&lexical_later, "later.txt\n").expect("write later variant");
+    fs::write(&lexical_first, "first.txt\n").expect("write first variant");
+
+    if fs::canonicalize(&lexical_first).expect("canonicalize first")
+        == fs::canonicalize(&lexical_later).expect("canonicalize later")
+    {
+        let _ = fs::remove_dir_all(&root);
+        return;
+    }
+
+    let found = find_filelist(&root).expect("find case variant");
+    assert_eq!(found, lexical_first);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn parse_filelist_resolves_relative_and_absolute_paths() {
     let root = test_root("parse");
     fs::create_dir_all(&root).expect("create dir");
