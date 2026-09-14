@@ -214,6 +214,8 @@ impl TuiState {
                 SearchSortMode::Score => PresetSortMode::Score,
                 SearchSortMode::NameAsc => PresetSortMode::NameAsc,
                 SearchSortMode::NameDesc => PresetSortMode::NameDesc,
+                SearchSortMode::PathAsc => PresetSortMode::PathAsc,
+                SearchSortMode::PathDesc => PresetSortMode::PathDesc,
                 SearchSortMode::ModifiedAsc => PresetSortMode::ModifiedAsc,
                 SearchSortMode::ModifiedDesc => PresetSortMode::ModifiedDesc,
                 SearchSortMode::CreatedAsc => PresetSortMode::CreatedAsc,

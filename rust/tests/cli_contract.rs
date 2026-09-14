@@ -568,6 +568,8 @@ fn tc_163_batch_sort_uses_shared_full_match_sort_before_limit() {
         "score",
         "name-asc",
         "name-desc",
+        "path-asc",
+        "path-desc",
         "modified-desc",
         "modified-asc",
         "created-desc",
@@ -592,6 +594,43 @@ fn tc_163_batch_sort_uses_shared_full_match_sort_before_limit() {
             .expect("run accepted sort mode");
         assert!(output.status.success(), "sort mode {sort} was not accepted");
     }
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn batch_path_sort_orders_complete_relative_paths_before_limit() {
+    let root = test_root("path-sort-before-limit");
+    fs::create_dir_all(root.join("z")).expect("create z directory");
+    fs::create_dir_all(root.join("a")).expect("create a directory");
+    fs::write(root.join("z").join("alpha.txt"), "alpha").expect("write alpha");
+    fs::write(root.join("a").join("zeta.txt"), "zeta").expect("write zeta");
+
+    let output = cli_command("sort-path")
+        .args([
+            "--cli",
+            "txt",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--type",
+            "files",
+            "--sort",
+            "path-asc",
+            "--limit",
+            "1",
+        ])
+        .output()
+        .expect("run path-sort CLI");
+
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .replace('\\', "/"),
+        "a/zeta.txt"
+    );
 
     let _ = fs::remove_dir_all(&root);
 }
@@ -1192,6 +1231,9 @@ fn tc_006_help_describes_cli_usability_options() {
         );
     }
     assert!(stdout.contains("Print paths without opening the GUI"));
+    assert!(stdout.contains("path-asc"), "{stdout}");
+    assert!(stdout.contains("files/f"), "{stdout}");
+    assert!(stdout.contains("limit warnings"), "{stdout}");
 }
 
 #[test]
@@ -1692,6 +1734,37 @@ fn tc_006_progress_is_written_to_stderr_only() {
     assert!(stderr.contains("Indexing"));
     assert!(stderr.contains("Indexed 1 candidate"), "{stderr}");
     assert!(stderr.contains("Matched 1 path"), "{stderr}");
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn progress_warns_when_limit_truncates_matches() {
+    let root = test_root("progress-limit-warning");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(root.join("alpha.txt"), "alpha").expect("write alpha");
+    fs::write(root.join("beta.txt"), "beta").expect("write beta");
+
+    let output = cli_command("progress-limit-warning")
+        .args([
+            "--cli",
+            "--root",
+            root.to_string_lossy().as_ref(),
+            "--source",
+            "walker",
+            "--limit",
+            "1",
+            "--progress",
+        ])
+        .output()
+        .expect("run limited CLI with progress");
+
+    assert!(output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("warning: --limit returned 1 of 2 matched path(s)"),
+        "{stderr}"
+    );
 
     let _ = fs::remove_dir_all(&root);
 }

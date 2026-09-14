@@ -54,6 +54,8 @@ pub enum SearchSortMode {
     Score,
     NameAsc,
     NameDesc,
+    PathAsc,
+    PathDesc,
     ModifiedDesc,
     ModifiedAsc,
     CreatedDesc,
@@ -68,6 +70,8 @@ impl SearchSortMode {
             Self::Score => "Score",
             Self::NameAsc => "Name (A-Z)",
             Self::NameDesc => "Name (Z-A)",
+            Self::PathAsc => "Path (A-Z)",
+            Self::PathDesc => "Path (Z-A)",
             Self::ModifiedDesc => "Modified (New)",
             Self::ModifiedAsc => "Modified (Old)",
             Self::CreatedDesc => "Created (New)",
@@ -306,6 +310,11 @@ fn rank_search_results_cancellable_with_cache(
         {
             top_name_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
         }
+        SearchSortMode::PathAsc | SearchSortMode::PathDesc
+            if sort_scope.sorts_all_matches_before_limit(sort_mode) =>
+        {
+            top_path_sorted_scores(entries, scored_matches.scored, limit, sort_mode)
+        }
         _ if sort_scope.sorts_all_matches_before_limit(sort_mode) => {
             let Some(ranked) = top_metadata_sorted_scores(
                 entries,
@@ -376,6 +385,38 @@ fn top_name_sorted_scores(
         .into_iter()
         .take(limit)
         .map(|(item, _, _)| IndexedScore {
+            index: item.index,
+            score: item.score,
+        })
+        .collect()
+}
+
+fn top_path_sorted_scores(
+    entries: &[Entry],
+    scored: Vec<SearchCandidateScore>,
+    limit: usize,
+    mode: SearchSortMode,
+) -> Vec<IndexedScore> {
+    let desc = mode == SearchSortMode::PathDesc;
+    let mut items = scored
+        .into_iter()
+        .filter_map(|item| {
+            let entry = entries.get(item.index)?;
+            Some((item, entry_path_key(entry)))
+        })
+        .collect::<Vec<_>>();
+    items.sort_unstable_by(|a, b| {
+        let cmp = a.1.cmp(&b.1).then_with(|| a.0.ordinal.cmp(&b.0.ordinal));
+        if desc {
+            cmp.reverse()
+        } else {
+            cmp
+        }
+    });
+    items
+        .into_iter()
+        .take(limit)
+        .map(|(item, _)| IndexedScore {
             index: item.index,
             score: item.score,
         })

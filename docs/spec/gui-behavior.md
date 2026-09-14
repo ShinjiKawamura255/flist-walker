@@ -24,7 +24,7 @@
 - MUST: `emacs_keybindings_enabled=true` のとき、GUI application command の `次へ` / `前へ` / `確定` / `キャンセル` は共有 semantic mapping でそれぞれ `Ctrl+N` / `Ctrl+P` / `Ctrl+J` または `Ctrl+M` / `Ctrl+G` を受理しなければならない。この mapping はメイン結果一覧、履歴、root dropdown、preset picker、Named Root manager、および通常の `Enter` / `Esc` を持つ確認・通知 modal に適用し、新しい modal/overlay が feature ごとの Emacs 判定を追加しなければ利用できない構成にしてはならない。対話面が対応する通常 command を提供しない場合は、新しい command を Emacs chord だけに追加してはならない。
 - MUST: `emacs_keybindings_enabled=true` のとき、GUI が所有する全単一行入力は共有 text-editing adapter を使用し、`Ctrl+A` / `Ctrl+E` の先頭・末尾移動、`Ctrl+B` / `Ctrl+F` の1文字移動、`Ctrl+H` / `Ctrl+D` の前方・後方1文字削除、`Ctrl+K` / `Ctrl+U` の末尾・先頭までのkill、`Ctrl+Y` のyankを Unicode character index で処理しなければならない。対象には通常検索、履歴フィルター、preset filter、preset editor の name/root/query、Named Root editor の name/path、保存 root 管理の追加・編集欄を含む。`Ctrl+H` が backend で Backspace に変換済みの場合は二重削除してはならず、IME composition 中は独自 reducer を適用してはならない。`Ctrl+W` は `ctrl_w_deletes_word_in_query` の既存契約に従う。
 - MUST: runtime config の `emacs_keybindings_enabled` が `false` のとき、Emacs 風の `Ctrl+N` / `Ctrl+P` / `Ctrl+V` / `Alt+V` / `Ctrl+G` / `Ctrl+R` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` および検索欄編集用 `Ctrl+A` / `Ctrl+E` / `Ctrl+B` / `Ctrl+F` / `Ctrl+H` / `Ctrl+D` / `Ctrl+W` / `Ctrl+K` / `Ctrl+Y` / `Ctrl+U` はアプリ固有 command / reducer を起動してはならず、GUI backend が同 chord を既定編集として持つ場合も application-owned input を変化させてはならない。
-- MUST: runtime config の `ctrl_w_deletes_word_in_query` は既定 `false` とする。GUI は `emacs_keybindings_enabled=true` かつ同設定が `true` で、通常検索欄または履歴検索フィルターへフォーカス中の場合、IME 合成中を除いて `Ctrl+W` を Unicode character index に基づく直前単語の削除として描画前に一度だけ処理し、タブ終了へ流してはならない。IME 合成中の `Ctrl+W` は単語削除にも Windows/Linux のタブ終了にも流してはならない。検索欄外、Emacs 無効時、または同設定が `false` の場合は Windows/Linux の `Ctrl+W` と macOS の `Cmd+W` による従来のタブ終了を維持する。macOS では設定有効時も `Cmd+W` をタブ終了として維持する。TUI の `Ctrl+W` 単語削除はタブ競合がないため同設定へ依存させてはならない。
+- MUST: runtime config の `ctrl_w_deletes_word_in_query` は既定 `false` とする。GUI は `emacs_keybindings_enabled=true` かつ同設定が `true` で、通常検索欄または履歴検索フィルターへフォーカス中の場合、IME 合成中を除いて `Ctrl+W` を Unicode character index に基づく直前単語の削除として描画前に一度だけ処理し、タブ終了へ流してはならない。直前が `:`、`\\`、`/` などの非空白・非単語文字の場合も少なくともその1文字を削除し、繰り返し操作が同じ位置で停止してはならない。IME 合成中の `Ctrl+W` は単語削除にも Windows/Linux のタブ終了にも流してはならない。検索欄外、Emacs 無効時、または同設定が `false` の場合は Windows/Linux の `Ctrl+W` と macOS の `Cmd+W` による従来のタブ終了を維持する。macOS では設定有効時も `Cmd+W` をタブ終了として維持する。TUI の `Ctrl+W` 単語削除はタブ競合がないため同設定へ依存させてはならない。
 - MUST: GUI は top action の `Help` と `F1` の両方から、キーボードショートカットと query syntax を示すモーダルヘルプを開き、`F1` / `Esc` / `Close`、および Emacs 設定有効時の `Ctrl+G` で閉じられなければならない。
 - MUST: GUI ヘルプは macOS では primary modifier を `Cmd`、その他の OS では `Ctrl` と表示し、runtime config の `emacs_keybindings_enabled` に応じて Emacs 風ショートカット一覧または無効状態を表示しなければならない。query syntax は非field term、`name:`、`path:`、`dir:`、`ext:` の対象と、fieldへ適用できる `'`、`!`、`^`、`$`、`|` および複合例を表示しなければならない。
 - MUST: GUI ヘルプ表示中は背後の検索入力、選択、PIN、コピー、実行などを起動するキーイベントを消費し、現在の検索状態を変更してはならない。
@@ -119,7 +119,7 @@
 - MUST: タブバーはドラッグアンドドロップで並び替え可能でなければならず、ドロップ先は既存タブ領域内に限定する。
 - MUST: タブ並び替え時は active tab を index ではなく同一タブ実体として維持し、root/query/filter/進行中状態を他タブへ取り違えてはならない。
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
-- MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択できる。
+- MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Path (A-Z)` / `Path (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択できる。
 - MUST: 結果ペインは表示件数と limit 前の全マッチ件数を区別できる表示を持ち、limit により一部だけを表示している場合は `shown of total` 相当の情報を示す。
 - MUST: 結果ペインは sort scope として `Shown results` / `All matches` を選択でき、既定は `Shown results` とする。
 
@@ -159,11 +159,12 @@
 - MUST: 既定の `Shown results` scope では、ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
 - MUST: 検索応答は表示上限適用前の全マッチ件数を返し、GUI は表示中件数と全マッチ件数を区別して扱わなければならない。
 - MUST: `All matches` scope では、現在の query / File・Folder filter / Ignore List / regex / case-sensitivity 条件を満たす全マッチ集合から選択 sort key の上位 `limit` 件を作り直さなければならない。
-- MUST: batch CLI と TUI も同じ sort mode vocabulary を使用し、non-score sort は full match set への sort を limit より先に適用しなければならない。score sort は既存 ranking/tie behavior を維持する。
+- MUST: GUI、batch CLI、TUI は `Path` を含む同じ sort mode vocabulary を使用し、non-score sort は full match set への sort を limit より先に適用しなければならない。score sort は既存 ranking/tie behavior を維持する。
 - MUST: GUI の候補収集深度 control、tab-local ownership、preset 表示と適用後の持続性は SP-021 に従う。
 - MUST: `All matches` scope であっても、GUI は全マッチを一覧へ全件描画せず、表示対象は `limit` 件以内に抑えなければならない。
 - MUST: `Score` は検索エンジンが返した元の順位へ戻せる。All matchesの非Score結果から戻す場合も、全候補中のScore上位集合を復元する。mode/scope切替中の旧応答は破棄し、保留queryは最新設定で完了させる。
 - MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
+- MUST: `Path` ソートは separator と platform の case semantics を正規化した完全な path を主キーとして即時に並び替える。
 - MUST: `Modified` / `Created` / `Size` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
 - MUST: `All matches` scope の非 `Score` ソートは UI thread ではなく worker で実行し、検索応答の request_id / tab routing により古い応答を破棄できなければならない。
 - MUST: `Modified` / `Created` / `Size` の取得中も UI 入力と一覧操作を維持する。

@@ -93,7 +93,7 @@
 - MUST: `--root` と `--limit` を受理し、既存の `--cli [QUERY] --root ... --limit ...` invocation を維持する。本仕様では subcommand を追加しない。
 - MUST: クエリ未指定時は候補一覧を `limit` 件以内で表示する。
 - MUST: CLI の `--limit` は実効値を追加で 1000 件へ丸めてはならない。
-- MUST: batch CLI は `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` を受理し、既定を `score` とする。全 match set を sort してから `limit` を適用し、`limit=0` は target 0 件とする。
+- MUST: batch CLI は `--sort score|name-asc|name-desc|path-asc|path-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` を受理し、既定を `score` とする。`name-*` は最終 filename、`path-*` は separator と platform の case semantics を正規化した完全な path をキーとする。全 match set を sort してから `limit` を適用し、`limit=0` は target 0 件とする。
 - MUST: batch CLI は `--action print|open|reveal` を受理し、既定を `print` とする。`--action-all` は `open` / `reveal` のみで有効とし、non-print action の post-sort/post-limit target が複数で `--action-all` が無い場合は backend 呼び出し前に拒否する。既定 target は 1 件、`--action-all` は全 target である。
 - MUST: batch CLI と interactive CLI は `-x` / `--exec COMMAND... {} ...` を受理し、固定 command より後の独立した `{}` 引数を正確に1個要求する。埋め込み `{}`、placeholder 不在、複数 placeholder は runtime config bootstrap と index/action dispatch より前に usage error とする。`-x` は残りの command template を受理するため、FlistWalker option はその前に置く。
 - MUST: exec mode は post-sort/post-limit の全結果、または terminal 復旧後に確定した全選択を、各 path が独立した正規化済み絶対 argv となるよう `{}` の位置へ展開する。shell を暗黙起動せず、結果0件では command を1回も起動しない。
@@ -108,8 +108,8 @@
 - MUST: `--create-filelist` は query search/action/listing と排他的であり、non-default search/filter/sort option を拒否する。`--overwrite-filelist` と `--propagate-ancestors` は `--create-filelist` を必要とし、root selector は有効である。
 - MUST: batch CLI の既定出力は root 相対 path の改行区切りとし、スコアや ANSI 装飾を付加してはならない。既定の一致なしは stdout 空・exit 0 とする。
 - Compatibility: query 指定時に `[score] absolute-path` を出力していた旧形式は、script-safe な単一path形式へ意図的に置き換える。旧 invocation は維持するが旧出力 framing は維持せず、絶対pathが必要なconsumerは `--absolute` へ移行する。score出力はCLI契約に含めない。
-- MUST: batch CLI は `--absolute`、`--print0`、`--fail-no-match`、`--type all|file|folder`、`--regex`、`--case-sensitive`、`--source auto|filelist|walker`、`--ignore-file PATH`、`--no-ignore`、`--progress` を受理する。`--absolute` は path 形式だけ、`--print0` は delimiter だけを変更し、`--fail-no-match` は一致なしを exit 1 にする。
-- MUST: batch CLI の `--progress` は indexing 開始、候補件数と所要時間、全一致件数・返却件数と検索所要時間を stderr へ出力し、stdout framing を変更してはならない。path 出力は全出力を別 buffer に複製せず、上限付き writer で逐次書き込む。
+- MUST: batch CLI は `--absolute`、`--print0`、`--fail-no-match`、`--type all|file|files|f|folder|folders|directory|directories|dir|d`、`--regex`、`--case-sensitive`、`--source auto|filelist|walker`、`--ignore-file PATH`、`--no-ignore`、`--progress` を受理する。`files|f` は `file`、`folders|directory|directories|dir|d` は `folder` と同じ候補集合を選ぶ。`--absolute` は path 形式だけ、`--print0` は delimiter だけを変更し、`--fail-no-match` は一致なしを exit 1 にする。
+- MUST: batch CLI の `--progress` は indexing 開始、候補件数と所要時間、全一致件数・返却件数と検索所要時間を stderr へ出力し、stdout framing を変更してはならない。返却件数が全一致件数より少ない場合は `--limit` による切り詰めを明示する warning とし、既定の `--progress` なし実行はこの warning を出さない。path 出力は全出力を別 buffer に複製せず、上限付き writer で逐次書き込む。
 - MUST: `--ignore-file` と `--no-ignore` は同時指定を拒否する。`--source filelist` は root 直下に FileList がなければ非ゼロ終了し、`auto` は FileList 優先、`walker` は FileList を使用しない。
 - MUST: CLI 専用 option は `--cli` を必要とし、`--interactive` 単独指定は GUI を起動せず引数エラーとする。
 - MAY: `--cli --interactive` でインタラクティブ CLI を起動する。

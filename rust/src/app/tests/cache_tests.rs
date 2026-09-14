@@ -59,6 +59,38 @@ fn result_sort_name_can_be_applied_and_score_can_be_restored() {
 }
 
 #[test]
+fn result_sort_path_orders_the_complete_path_in_both_directions() {
+    let root = test_root("result-sort-path");
+    let path_first = root.join("a").join("zeta.txt");
+    let path_last = root.join("z").join("alpha.txt");
+    let base = vec![(path_last.clone(), 10.0), (path_first.clone(), 9.0)];
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+
+    app.replace_results_snapshot(base, false);
+    app.set_result_sort_mode(ResultSortMode::PathAsc);
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![path_first.clone(), path_last.clone()]
+    );
+
+    app.set_result_sort_mode(ResultSortMode::PathDesc);
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![path_last, path_first]
+    );
+}
+
+#[test]
 fn all_matches_sort_scope_reissues_search_request_for_non_score_sort() {
     let root = test_root("result-sort-all-matches-research");
     fs::create_dir_all(&root).expect("create dir");

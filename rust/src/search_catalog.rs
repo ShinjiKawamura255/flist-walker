@@ -49,6 +49,8 @@ pub enum PresetSortMode {
     Score,
     NameAsc,
     NameDesc,
+    PathAsc,
+    PathDesc,
     ModifiedDesc,
     ModifiedAsc,
     CreatedDesc,
@@ -459,6 +461,16 @@ mod tests {
         let json = serde_json::to_string(&enabled).expect("serialize");
         let restored: SearchPreset = serde_json::from_str(&json).expect("restore");
         assert!(restored.follow_links);
+    }
+
+    #[test]
+    fn path_sort_modes_round_trip_in_presets() {
+        for sort in [PresetSortMode::PathAsc, PresetSortMode::PathDesc] {
+            let encoded = serde_json::to_string(&sort).expect("serialize path sort mode");
+            let restored: PresetSortMode =
+                serde_json::from_str(&encoded).expect("deserialize path sort mode");
+            assert_eq!(restored, sort);
+        }
     }
 
     #[test]

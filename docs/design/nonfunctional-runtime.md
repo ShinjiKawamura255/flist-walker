@@ -59,7 +59,7 @@
 - プレビューキャッシュは固定上限（FIFO）で運用し、長時間セッションでのメモリ増加を抑制する。
 - preview/highlight/sort metadata cache は app coordinator 直下の flat field ではなく専用 state struct へ束ね、root 変更や index refresh 開始時にまとめて破棄できるようにする。
 - 結果ソートは `base_results` に検索エンジンの元順位を保持し、表示用 `results` だけを並び替えることで `Score` 復帰を O(n) で実現する。
-- `Name` ソートは UI スレッド上で `base_results` の clone を即時ソートし、追加 I/O を行わない。
+- `Name` / `Path` ソートは UI スレッド上で `base_results` の clone を即時ソートし、追加 I/O を行わない。`Name` は最終componentを主キー、正規化済みfull pathを副キーとし、`Path` は正規化済みfull pathを主キーとする。
 - `Modified` / `Created` / `Size` は結果スナップショット中の未キャッシュ path だけを sort worker へ送り、属性解決後に表示リストを更新する。`Size` は通常ファイルの `metadata.len()` だけを使い、フォルダは再帰計算せず `None` として末尾へ送る。
 - 検索 worker は `results` とは別に limit 前の `total_match_count` を返し、GUI は `results.len()` と全マッチ件数を区別して status / result header に表示する。
 - 結果ソートは `Shown results` / `All matches` の scope を持つ。`Shown results` は既存の `base_results` だけを並び替える既定動作とし、`All matches` の非 `Score` ソートは検索 worker で現在条件を満たす全マッチ集合を再評価して、選択 sort key の上位 `limit` 件だけを materialize する。
@@ -112,13 +112,13 @@
 - プレビューデコーダは拡張子を見ず、先頭 64KiB を対象に UTF-8、BOM 付き UTF-16、その後に主要レガシー文字コードを順に試す。候補ごとに decode error と制御文字比率を評価し、妥当なテキストだけを preview に採用する。
 - query 履歴はアプリ共通 state として保持し、全タブから同じ履歴集合を参照できるようにする。同一 query の再登録は exact duplicate を除去して最新位置へ移動し、GUI/TUI は同じ pure policy を使う。
 - query 履歴保存は入力経路から独立して管理し、TextEdit / IME フォールバック / Emacs 風編集のどの入力経路でも「一定時間の無入力」または `Results` 移動開始時に最終 query だけを記録する。
-- Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。GUI の `ctrl_w_deletes_word_in_query` は既定 `false` とし、両設定が有効な検索欄・履歴検索フィルターだけで `Ctrl+W` をタブ終了より先に共有 text editing reducer へ渡す。描画前 owner が key event の消費、TextEdit cursor 更新、query/history 再評価までを一度で完了し、後段 TextEdit との二重削除を防ぐ。IME 合成中の `Ctrl+W` は削除にも Windows/Linux のタブ終了にも流さない。macOS は `Ctrl+W` の編集と primary `Cmd+W` のタブ終了を分離する。TUI は競合がないため新設定に依存しない。
+- Emacs 風 keybindings は runtime config の `emacs_keybindings_enabled` で制御する。既定は `true` で既存操作を維持し、`false` のときは `consume_emacs_shortcut` と検索欄編集の Emacs 風処理を入口で無効化する。GUI の `ctrl_w_deletes_word_in_query` は既定 `false` とし、両設定が有効な検索欄・履歴検索フィルターだけで `Ctrl+W` をタブ終了より先に共有 text editing reducer へ渡す。reducer は空白と単語componentを後退し、直前が非空白・非単語separatorなら1 Unicode scalarを削除して停止を防ぐ。描画前 owner が key event の消費、TextEdit cursor 更新、query/history 再評価までを一度で完了し、後段 TextEdit との二重削除を防ぐ。IME 合成中の `Ctrl+W` は削除にも Windows/Linux のタブ終了にも流さない。macOS は `Ctrl+W` の編集と primary `Cmd+W` のタブ終了を分離する。TUI は競合がないため新設定に依存しない。
 - IME 合成中は履歴確定を抑止し、`CompositionEnd` 後に反映された確定文字列のみが履歴候補になるようにする。
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
 - runtime config の `history_persist_disabled` が有効なときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
 - 結果ソート状態と sort scope はタブ単位で保持するが、query 変更や結果スナップショット更新時には `Score` / `Shown results` へ戻し、保留中の sort request_id を無効化する。
-- 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択可能にする。併せて `Scope` ドロップダウンを配置し、`Shown results` / `All matches` を選択可能にする。
+- 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Path (A-Z)` / `Path (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択可能にする。併せて `Scope` ドロップダウンを配置し、`Shown results` / `All matches` を選択可能にする。
 - `Created` 属性は取得失敗を正常系として扱い、notice ではなく並び順の末尾送りだけで吸収する。
 - `Size` 属性は通常ファイルだけを値ありとして扱い、フォルダや取得不可項目は notice ではなく並び順の末尾送りだけで吸収する。
 - タブ復元は runtime config の `restore_tabs_enabled` が有効で、root/query/depth の明示起動値がないときだけ有効化する。永続化対象は `root/query/use_filelist/use_regex/ignore_case/include_files/include_dirs/max_depth/tab_accent/active_tab` の intent に限定し、entry/result snapshot と closed-tab history は保存しない。

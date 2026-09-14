@@ -1601,6 +1601,8 @@ fn preset_picker_option_labels_cover_every_persisted_variant() {
         (PresetSortMode::Score, "Score"),
         (PresetSortMode::NameAsc, "Name ascending"),
         (PresetSortMode::NameDesc, "Name descending"),
+        (PresetSortMode::PathAsc, "Path ascending"),
+        (PresetSortMode::PathDesc, "Path descending"),
         (PresetSortMode::ModifiedDesc, "Modified newest"),
         (PresetSortMode::ModifiedAsc, "Modified oldest"),
         (PresetSortMode::CreatedDesc, "Created newest"),

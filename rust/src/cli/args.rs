@@ -11,7 +11,9 @@ use crate::search::SearchSortMode as RuntimeSortMode;
 pub(super) enum CliEntryType {
     #[default]
     All,
+    #[value(aliases = ["files", "f"])]
     File,
+    #[value(aliases = ["folders", "directory", "directories", "dir", "d"])]
     Folder,
 }
 
@@ -57,6 +59,8 @@ pub(super) enum CliSortMode {
     Score,
     NameAsc,
     NameDesc,
+    PathAsc,
+    PathDesc,
     ModifiedDesc,
     ModifiedAsc,
     CreatedDesc,
@@ -89,6 +93,8 @@ impl From<CliSortMode> for RuntimeSortMode {
             CliSortMode::Score => Self::Score,
             CliSortMode::NameAsc => Self::NameAsc,
             CliSortMode::NameDesc => Self::NameDesc,
+            CliSortMode::PathAsc => Self::PathAsc,
+            CliSortMode::PathDesc => Self::PathDesc,
             CliSortMode::ModifiedDesc => Self::ModifiedDesc,
             CliSortMode::ModifiedAsc => Self::ModifiedAsc,
             CliSortMode::CreatedDesc => Self::CreatedDesc,
@@ -211,7 +217,7 @@ pub struct Args {
     )]
     pub(super) fail_no_match: bool,
 
-    /// Select files, folders, or both.
+    /// Select files, folders, or both (aliases: files/f, folders/directory/directories/dir/d).
     #[arg(
         long = "type",
         value_enum,
@@ -245,7 +251,7 @@ pub struct Args {
     #[arg(long, default_value_t = false, requires = "cli")]
     pub(super) no_ignore: bool,
 
-    /// Write indexing progress to standard error (batch CLI only).
+    /// Write indexing/search progress and limit warnings to standard error (batch CLI only).
     #[arg(
         long,
         default_value_t = false,
@@ -593,7 +599,9 @@ mod tests {
     use clap::Parser;
     use std::ffi::OsString;
 
-    use super::{normalize_update_args, Args, CliColorMode, CliEntryType, CliIndexSource};
+    use super::{
+        normalize_update_args, Args, CliColorMode, CliEntryType, CliIndexSource, CliSortMode,
+    };
 
     #[test]
     fn tc_169_cli_alias_flag_is_inert_for_update_commands() {
@@ -620,6 +628,31 @@ mod tests {
         assert!(matches!(args.source, CliIndexSource::Auto));
         assert!(args.max_depth().is_unlimited());
         assert!(!args.follow_links());
+    }
+
+    #[test]
+    fn cli_type_accepts_file_and_directory_aliases() {
+        for value in ["file", "files", "f"] {
+            let args = Args::try_parse_from(["flistwalker", "--cli", "--type", value])
+                .expect("parse file type alias");
+            assert!(matches!(args.entry_type, CliEntryType::File));
+        }
+        for value in ["folder", "folders", "directory", "directories", "dir", "d"] {
+            let args = Args::try_parse_from(["flistwalker", "--cli", "--type", value])
+                .expect("parse directory type alias");
+            assert!(matches!(args.entry_type, CliEntryType::Folder));
+        }
+    }
+
+    #[test]
+    fn cli_sort_accepts_full_path_modes() {
+        let asc = Args::try_parse_from(["flistwalker", "--cli", "--sort", "path-asc"])
+            .expect("parse ascending path sort");
+        let desc = Args::try_parse_from(["flistwalker", "--cli", "--sort", "path-desc"])
+            .expect("parse descending path sort");
+
+        assert!(matches!(asc.sort, CliSortMode::PathAsc));
+        assert!(matches!(desc.sort, CliSortMode::PathDesc));
     }
 
     #[test]
