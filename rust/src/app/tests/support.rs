@@ -1,4 +1,5 @@
 use super::{egui, FlistWalkerApp, PathBuf};
+use std::fs;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) fn test_root(name: &str) -> PathBuf {
@@ -7,6 +8,36 @@ pub(crate) fn test_root(name: &str) -> PathBuf {
         .expect("clock")
         .as_nanos();
     std::env::temp_dir().join(format!("fff-rs-app-{name}-{nonce}"))
+}
+
+pub(crate) struct TestSettingsScope {
+    base: PathBuf,
+}
+
+impl TestSettingsScope {
+    pub(crate) fn new(name: &str) -> Self {
+        let base = test_root(name);
+        fs::create_dir_all(&base).expect("create test settings dir");
+        Self { base }
+    }
+
+    pub(crate) fn app(&self, root: PathBuf, limit: usize, query: String) -> FlistWalkerApp {
+        FlistWalkerApp::build_new_with_test_settings(root, limit, query, &self.base)
+    }
+
+    pub(crate) fn saved_roots_path(&self) -> PathBuf {
+        FlistWalkerApp::saved_roots_file_path_in(&self.base)
+    }
+}
+
+impl Drop for TestSettingsScope {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.base);
+    }
+}
+
+pub(crate) fn test_settings_scope(name: &str) -> TestSettingsScope {
+    TestSettingsScope::new(name)
 }
 
 pub(crate) fn entries_count_from_status(status_line: &str) -> usize {

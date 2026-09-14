@@ -2,7 +2,9 @@ use super::FlistWalkerApp;
 use crate::fs_atomic::acquire_sidecar_lock;
 use crate::fs_atomic::{write_bytes_atomic, write_text_atomic};
 use crate::path_utils::{normalize_windows_path_buf, path_key};
-use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed, settings_base_dir};
+#[cfg(not(test))]
+use crate::runtime_config::settings_base_dir;
+use crate::runtime_config::{legacy_settings_base_dirs, migrate_file_if_needed};
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,8 +16,6 @@ use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
-#[cfg(test)]
-static SAVED_ROOTS_FILE_PATH_OVERRIDE: OnceLock<Mutex<Option<PathBuf>>> = OnceLock::new();
 static UI_STATE_PERSISTENCE: OnceLock<Mutex<UiStatePersistenceRegistry>> = OnceLock::new();
 
 const UI_STATE_PERSISTENCE_RETRY_DELAY: Duration = Duration::from_millis(50);
@@ -278,6 +278,24 @@ fn flush_ui_state_persistence(path: &Path, timeout: Duration) {
     };
     let (tx, rx) = mpsc::channel();
     if sender.send(UiStatePersistenceCommand::Flush(tx)).is_ok() {
+        let _ = rx.recv_timeout(timeout);
+    }
+}
+
+#[cfg(test)]
+fn shutdown_ui_state_persistence_for_test(path: &Path, timeout: Duration) {
+    let sender = ui_state_persistence_registry()
+        .lock()
+        .ok()
+        .and_then(|mut registry| {
+            registry.history_snapshots.remove(path);
+            registry.senders.remove(path)
+        });
+    let Some(sender) = sender else {
+        return;
+    };
+    let (tx, rx) = mpsc::channel();
+    if sender.send(UiStatePersistenceCommand::Shutdown(tx)).is_ok() {
         let _ = rx.recv_timeout(timeout);
     }
 }
@@ -703,6 +721,8 @@ pub(super) struct LaunchSettings {
     pub(super) restore_active_tab: Option<usize>,
     pub(super) skipped_update_target_version: Option<String>,
     pub(super) suppress_update_check_failure_dialog: bool,
+    #[cfg(test)]
+    pub(super) test_settings_paths: Option<super::TestSettingsPaths>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -811,24 +831,48 @@ impl FlistWalkerApp {
         self.apply_stable_window_geometry(true);
         self.shell.ui.ui_state_dirty = true;
         if self.settings_commit_in_progress() {
-            if let Some(path) = Self::ui_state_file_path() {
+            if let Some(path) = self.persistence_ui_state_file_path() {
                 flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
             }
             self.poll_settings_commit_response();
         }
         self.maybe_save_ui_state(true);
-        if let Some(path) = Self::ui_state_file_path() {
+        if let Some(path) = self.persistence_ui_state_file_path() {
             flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
         }
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
         Self::shutdown_window_trace(Self::WORKER_JOIN_TIMEOUT);
+        #[cfg(test)]
+        if let Some(path) = self.persistence_ui_state_file_path() {
+            shutdown_ui_state_persistence_for_test(&path, Self::WORKER_JOIN_TIMEOUT);
+        }
     }
 
     pub(super) fn ui_state_file_path() -> Option<PathBuf> {
-        settings_base_dir().map(|base| Self::ui_state_file_path_in(&base))
+        #[cfg(test)]
+        {
+            None
+        }
+        #[cfg(not(test))]
+        {
+            settings_base_dir().map(|base| Self::ui_state_file_path_in(&base))
+        }
     }
 
-    fn ui_state_file_path_in(base: &Path) -> PathBuf {
+    pub(super) fn persistence_ui_state_file_path(&self) -> Option<PathBuf> {
+        #[cfg(test)]
+        {
+            self.test_settings_paths
+                .as_ref()
+                .map(|paths| paths.ui_state.clone())
+        }
+        #[cfg(not(test))]
+        {
+            Self::ui_state_file_path()
+        }
+    }
+
+    pub(super) fn ui_state_file_path_in(base: &Path) -> PathBuf {
         base.join(".flistwalker_ui_state.json")
     }
 
@@ -918,6 +962,8 @@ impl FlistWalkerApp {
             restore_active_tab: ui_state.active_tab,
             skipped_update_target_version: ui_state.skipped_update_target_version,
             suppress_update_check_failure_dialog: ui_state.suppress_update_check_failure_dialog,
+            #[cfg(test)]
+            test_settings_paths: None,
         }
     }
 
@@ -983,28 +1029,30 @@ impl FlistWalkerApp {
 
     pub(super) fn saved_roots_file_path() -> Option<PathBuf> {
         #[cfg(test)]
-        if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE
-            .get_or_init(|| Mutex::new(None))
-            .lock()
-            .expect("saved roots path override lock")
-            .clone()
         {
-            return Some(path);
+            None
         }
-
-        settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base))
+        #[cfg(not(test))]
+        {
+            settings_base_dir().map(|base| Self::saved_roots_file_path_in(&base))
+        }
     }
 
     pub(super) fn saved_roots_file_path_in(base: &Path) -> PathBuf {
         base.join(".flistwalker_roots.txt")
     }
 
-    #[cfg(test)]
-    pub(super) fn set_saved_roots_file_path_override_for_test(path: Option<PathBuf>) {
-        *SAVED_ROOTS_FILE_PATH_OVERRIDE
-            .get_or_init(|| Mutex::new(None))
-            .lock()
-            .expect("saved roots path override lock") = path;
+    pub(super) fn persistence_saved_roots_file_path(&self) -> Option<PathBuf> {
+        #[cfg(test)]
+        {
+            self.test_settings_paths
+                .as_ref()
+                .map(|paths| paths.saved_roots.clone())
+        }
+        #[cfg(not(test))]
+        {
+            Self::saved_roots_file_path()
+        }
     }
 
     pub(super) fn load_saved_roots() -> Vec<PathBuf> {
@@ -1013,6 +1061,11 @@ impl FlistWalkerApp {
         };
         let file = Self::migrate_or_legacy_saved_roots_path(&file);
         read_saved_roots_from_path(&file)
+    }
+
+    #[cfg(test)]
+    pub(super) fn load_saved_roots_from_path(file: &Path) -> Vec<PathBuf> {
+        read_saved_roots_from_path(file)
     }
 }
 
@@ -1100,7 +1153,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn save_ui_state(&self) {
-        let Some(path) = Self::ui_state_file_path() else {
+        let Some(path) = self.persistence_ui_state_file_path() else {
             return;
         };
         let history_persist_disabled = Self::history_persist_disabled();

@@ -448,11 +448,11 @@ impl FlistWalkerApp {
         default_root: Option<PathBuf>,
         close_on_success: bool,
     ) {
-        let Some(ui_state_path) = Self::ui_state_file_path() else {
+        let Some(ui_state_path) = self.persistence_ui_state_file_path() else {
             self.apply_settings_commit_start_error("Settings path is unavailable");
             return;
         };
-        let Some(saved_roots_path) = Self::saved_roots_file_path() else {
+        let Some(saved_roots_path) = self.persistence_saved_roots_file_path() else {
             self.apply_settings_commit_start_error("Saved-roots path is unavailable");
             return;
         };
@@ -501,7 +501,7 @@ impl FlistWalkerApp {
             self.set_notice("Wait for settings save to finish");
             return;
         }
-        let Some(ui_state_path) = Self::ui_state_file_path() else {
+        let Some(ui_state_path) = self.persistence_ui_state_file_path() else {
             self.apply_settings_commit_start_error("Settings path is unavailable");
             return;
         };

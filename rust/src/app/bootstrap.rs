@@ -17,6 +17,8 @@ use crate::ignore_list::load_ignore_terms_from_current_exe;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::current_runtime_config;
 use std::collections::{HashMap, VecDeque};
+#[cfg(test)]
+use std::path::Path;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
@@ -117,6 +119,34 @@ impl FlistWalkerApp {
             show_preview: true,
             ignore_list_enabled: true,
             preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
+            ..LaunchSettings::default()
+        };
+        Self::new_with_launch(
+            root,
+            limit,
+            query,
+            launch,
+            None,
+            crate::indexer::MaxDepth::unlimited(),
+            false,
+        )
+    }
+
+    #[cfg(test)]
+    pub(super) fn build_new_with_test_settings(
+        root: PathBuf,
+        limit: usize,
+        query: String,
+        settings_base: &Path,
+    ) -> Self {
+        let launch = LaunchSettings {
+            show_preview: true,
+            ignore_list_enabled: true,
+            preview_panel_width: Self::DEFAULT_PREVIEW_PANEL_WIDTH,
+            test_settings_paths: Some(super::TestSettingsPaths {
+                ui_state: Self::ui_state_file_path_in(settings_base),
+                saved_roots: Self::saved_roots_file_path_in(settings_base),
+            }),
             ..LaunchSettings::default()
         };
         Self::new_with_launch(
@@ -311,13 +341,20 @@ impl FlistWalkerApp {
         limit: usize,
         query: String,
         launch: &LaunchSettings,
+        #[cfg(test)] test_saved_roots_path: Option<&Path>,
     ) -> AppLaunchSeed {
+        #[cfg(test)]
+        let saved_roots = test_saved_roots_path
+            .map(Self::load_saved_roots_from_path)
+            .unwrap_or_default();
+        #[cfg(not(test))]
+        let saved_roots = Self::load_saved_roots();
         AppLaunchSeed {
             root: normalize_windows_path_buf(root),
             limit: limit.clamp(1, 1000),
             query,
             query_history: launch.query_history.iter().cloned().collect(),
-            saved_roots: Self::load_saved_roots(),
+            saved_roots,
             default_root: launch.default_root.clone(),
             show_preview: launch.show_preview,
             ignore_list_enabled: launch.ignore_list_enabled,
@@ -366,7 +403,18 @@ impl FlistWalkerApp {
             preview_panel_width,
             ignore_list_terms,
             update_state,
-        ) = Self::launch_seed(root, limit, query, &launch).into_parts();
+        ) = Self::launch_seed(
+            root,
+            limit,
+            query,
+            &launch,
+            #[cfg(test)]
+            launch
+                .test_settings_paths
+                .as_ref()
+                .map(|paths| paths.saved_roots.as_path()),
+        )
+        .into_parts();
         let runtime_config = current_runtime_config();
         let emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
         let ctrl_w_deletes_word_in_query = runtime_config.ctrl_w_deletes_word_in_query;
@@ -420,6 +468,8 @@ impl FlistWalkerApp {
                 },
                 worker_runtime: Some(worker_runtime),
             },
+            #[cfg(test)]
+            test_settings_paths: launch.test_settings_paths.clone(),
         };
         Self::append_window_trace(
             "launch_query_initialized",

@@ -184,10 +184,11 @@ fn explicit_query_or_depth_suppresses_session_and_restores_default_root_preceden
 
 #[test]
 fn set_as_default_is_enabled_when_restore_tabs_config_is_disabled() {
+    let settings = test_settings_scope("set-default-enabled-settings");
     let root = test_root("set-default-enabled-without-restore-tabs");
     fs::create_dir_all(&root).expect("create root");
 
-    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let mut app = settings.app(root.clone(), 50, String::new());
 
     assert!(FlistWalkerApp::can_set_current_root_as_default_with(false));
     app.set_current_root_as_default_with(false);
@@ -202,6 +203,47 @@ fn set_as_default_is_enabled_when_restore_tabs_config_is_disabled() {
         .expect("default root");
     assert_eq!(canonical_or_self(saved), canonical_or_self(&root));
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn test_settings_paths_are_isolated_before_parallel_app_construction() {
+    let settings = test_settings_scope("parallel-settings-path-isolation");
+    let owner_root = test_root("parallel-settings-owner");
+    let seeded_root = owner_root.join("seeded");
+    let unconfigured_root = test_root("parallel-settings-unconfigured");
+    fs::create_dir_all(&seeded_root).expect("create seeded root");
+    fs::create_dir_all(&unconfigured_root).expect("create unconfigured root");
+    fs::write(
+        settings.saved_roots_path(),
+        format!("{}\n", seeded_root.display()),
+    )
+    .expect("seed isolated saved roots");
+
+    let owner_app = settings.app(owner_root.clone(), 50, String::new());
+    assert!(owner_app
+        .shell
+        .features
+        .root_browser
+        .saved_roots
+        .iter()
+        .any(|path| path_key(path) == path_key(&seeded_root)));
+
+    let unconfigured_saved_roots = std::thread::spawn(move || {
+        let app = FlistWalkerApp::new(unconfigured_root.clone(), 50, String::new());
+        assert!(app.test_settings_paths.is_none());
+        let saved_roots = app.shell.features.root_browser.saved_roots.clone();
+        drop(app);
+        let _ = fs::remove_dir_all(unconfigured_root);
+        saved_roots
+    })
+    .join()
+    .expect("unconfigured app thread");
+
+    assert!(unconfigured_saved_roots.is_empty());
+    assert!(FlistWalkerApp::ui_state_file_path().is_none());
+    assert!(FlistWalkerApp::saved_roots_file_path().is_none());
+    drop(owner_app);
+    let _ = fs::remove_dir_all(owner_root);
 }
 
 #[test]

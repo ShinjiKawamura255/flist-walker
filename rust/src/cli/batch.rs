@@ -834,10 +834,7 @@ fn run_cli_filelist(root: &Path, args: &Args, cancelled: &AtomicBool) -> CliFile
     let report = match plan_filelist_write_cancellable(
         root,
         &entries,
-        FileListWriteOptions {
-            allow_root_overwrite: args.overwrite_filelist,
-            propagate_to_ancestors: args.propagate_ancestors,
-        },
+        filelist_write_options(args),
         &should_cancel,
     ) {
         Ok(plan) => execute_filelist_write_plan(&plan, &should_cancel),
@@ -845,6 +842,13 @@ fn run_cli_filelist(root: &Path, args: &Args, cancelled: &AtomicBool) -> CliFile
     };
     write_cli_filelist_report(&report);
     CliFileListOutcome::Report(report)
+}
+
+fn filelist_write_options(args: &Args) -> FileListWriteOptions {
+    FileListWriteOptions {
+        allow_root_overwrite: args.overwrite_filelist,
+        propagate_to_ancestors: args.propagate_ancestors,
+    }
 }
 
 fn write_cli_filelist_report(report: &FileListWriteReport) {
@@ -963,8 +967,9 @@ mod tests {
 
     use super::{
         batch_exit_code, cli_filelist_exit_code, cli_output_color_enabled, cli_tui_options,
-        dispatch_cli_action, format_cli_action_report, load_cli_tui_ignore_terms, run_cli,
-        write_cli_path_record, BatchOutcome, CliFileListOutcome,
+        dispatch_cli_action, filelist_write_options, format_cli_action_report,
+        load_cli_tui_ignore_terms, run_cli, write_cli_path_record, BatchOutcome,
+        CliFileListOutcome,
     };
     use crate::cli::args::{Args, CliColorMode};
 
@@ -1337,5 +1342,56 @@ mod tests {
             cli_filelist_exit_code(CliFileListOutcome::FailedBeforePlan),
             ExitCode::from(1)
         );
+    }
+
+    #[test]
+    fn tc_165_cli_propagate_flag_uses_production_options_and_bounded_planner() {
+        let outer = action_test_root("filelist-options");
+        let fixture = outer.join("fixture");
+        let parent = fixture.join("parent");
+        let root = parent.join("child");
+        fs::create_dir_all(&root).expect("create bounded FileList root");
+        let parent_filelist = parent.join("FileList.txt");
+        fs::write(&parent_filelist, "keep.txt\n").expect("write parent FileList");
+        let entry = root.join("entry.txt");
+        fs::write(&entry, "entry").expect("write entry");
+
+        let args = Args::try_parse_from([
+            "flistwalker",
+            "--cli",
+            "--root",
+            root.to_str().expect("UTF-8 test root"),
+            "--create-filelist",
+            "--propagate-ancestors",
+        ])
+        .expect("parse FileList propagation args");
+        let options = filelist_write_options(&args);
+        assert!(!options.allow_root_overwrite);
+        assert!(options.propagate_to_ancestors);
+
+        let plan = crate::indexer::plan_filelist_write_cancellable_with_ancestor_boundary(
+            &root,
+            std::slice::from_ref(&entry),
+            options,
+            &outer,
+            &|| false,
+        )
+        .expect("plan bounded propagation through production options");
+        let report = crate::indexer::execute_filelist_write_plan(&plan, &|| false);
+
+        assert_eq!(
+            report.status,
+            crate::indexer::FileListWriteStatus::Completed
+        );
+        assert!(root.join("FileList.txt").is_file());
+        assert!(fs::read_to_string(&parent_filelist)
+            .expect("read propagated parent FileList")
+            .contains("child"));
+        assert!(report
+            .committed
+            .iter()
+            .all(|path| path.starts_with(&fixture)));
+
+        let _ = fs::remove_dir_all(&outer);
     }
 }

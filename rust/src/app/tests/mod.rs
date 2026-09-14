@@ -52,7 +52,7 @@ pub(super) use support::{
     commit_query_history_for_test, emacs_shortcut_modifiers, entries_count_from_status,
     gui_shortcut_modifiers, is_action_notice, reset_index_request_state_for_test,
     run_shortcuts_frame, run_shortcuts_frame_with_modifiers, tab_switch_shortcut_modifiers,
-    test_root,
+    test_root, test_settings_scope,
 };
 
 pub(super) fn unknown_entry(path: PathBuf) -> Entry {

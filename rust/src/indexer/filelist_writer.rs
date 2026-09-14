@@ -1,4 +1,5 @@
 use crate::fs_atomic::write_bytes_atomic;
+use crate::path_utils::path_key;
 use anyhow::{Context, Result};
 use std::any::Any;
 use std::collections::HashSet;
@@ -274,6 +275,73 @@ fn find_all_filelists_in_directory(dir: &Path) -> std::io::Result<Vec<PathBuf>> 
     Ok(matches)
 }
 
+#[derive(Debug)]
+pub(crate) struct AncestorFileListDiscovery {
+    pub(crate) candidates: Vec<PathBuf>,
+    scan_complete: bool,
+}
+
+impl AncestorFileListDiscovery {
+    pub(crate) fn next_ancestor<'a>(&self, directory: &'a Path) -> Option<&'a Path> {
+        self.scan_complete.then(|| directory.parent()).flatten()
+    }
+}
+
+fn sort_and_deduplicate_filelist_candidates(candidates: &mut Vec<PathBuf>) {
+    candidates.sort_by(|left, right| compare_filelist_path_precedence(left, right));
+    let mut seen = HashSet::new();
+    candidates.retain(|candidate| seen.insert(path_key(candidate)));
+}
+
+pub(crate) fn finalize_ancestor_filelist_discovery(
+    mut directly_proven: Vec<PathBuf>,
+    scan: std::result::Result<Vec<PathBuf>, (Vec<PathBuf>, std::io::Error)>,
+) -> AncestorFileListDiscovery {
+    let scan_complete = scan.is_ok();
+    if let Ok(scanned) = scan {
+        directly_proven.extend(scanned);
+    }
+    // Partial scan results are untrusted after any iterator error. Only
+    // canonical paths proven independently may remain eligible.
+    sort_and_deduplicate_filelist_candidates(&mut directly_proven);
+    AncestorFileListDiscovery {
+        candidates: directly_proven,
+        scan_complete,
+    }
+}
+
+fn discover_ancestor_filelists_in_directory(dir: &Path) -> AncestorFileListDiscovery {
+    let directly_proven = ["FileList.txt", "filelist.txt"]
+        .into_iter()
+        .map(|name| dir.join(name))
+        .filter(|path| path.is_file())
+        .collect::<Vec<_>>();
+
+    let mut scanned = Vec::new();
+    let entries = match fs::read_dir(dir) {
+        Ok(entries) => entries,
+        Err(error) => {
+            return finalize_ancestor_filelist_discovery(directly_proven, Err((scanned, error)))
+        }
+    };
+    for entry in entries {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
+                return finalize_ancestor_filelist_discovery(directly_proven, Err((scanned, error)))
+            }
+        };
+        let path = entry.path();
+        let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+            continue;
+        };
+        if name.eq_ignore_ascii_case("filelist.txt") {
+            scanned.push(path);
+        }
+    }
+    finalize_ancestor_filelist_discovery(directly_proven, Ok(scanned))
+}
+
 pub(crate) fn normalize_filelist_entry_for_text_compare(line: &str) -> Option<String> {
     let trimmed = line.trim();
     if trimmed.is_empty() || trimmed.starts_with('#') {
@@ -351,16 +419,12 @@ fn parent_filelist_content_contains_child_reference(
 pub fn has_ancestor_filelists(root: &Path) -> bool {
     let mut found = false;
     visit_ancestor_directories(root, |ancestor_dir| {
-        match find_all_filelists_in_directory(ancestor_dir) {
-            Ok(parent_filelists) => {
-                if parent_filelists.is_empty() {
-                    true
-                } else {
-                    found = true;
-                    false
-                }
-            }
-            Err(_) => false,
+        let discovery = discover_ancestor_filelists_in_directory(ancestor_dir);
+        if discovery.candidates.is_empty() {
+            discovery.scan_complete
+        } else {
+            found = true;
+            false
         }
     });
     found
@@ -370,11 +434,8 @@ pub fn ancestor_filelist_propagation_needed(root: &Path) -> bool {
     let child_filelist = root.join("FileList.txt");
     let mut needs_confirmation = false;
     visit_ancestor_directories(root, |ancestor_dir| {
-        let parent_filelists = match find_all_filelists_in_directory(ancestor_dir) {
-            Ok(parent_filelists) => parent_filelists,
-            Err(_) => return false,
-        };
-        for parent_filelist in parent_filelists {
+        let discovery = discover_ancestor_filelists_in_directory(ancestor_dir);
+        for parent_filelist in discovery.candidates {
             match parent_filelist_contains_child_reference(&parent_filelist, &child_filelist) {
                 Ok(true) => {}
                 Ok(false) => {
@@ -384,7 +445,7 @@ pub fn ancestor_filelist_propagation_needed(root: &Path) -> bool {
                 Err(_) => return false,
             }
         }
-        true
+        discovery.scan_complete
     });
     needs_confirmation
 }
@@ -506,7 +567,7 @@ where
 
     if options.propagate_to_ancestors {
         let mut ancestor = root.parent();
-        while let Some(directory) = ancestor {
+        'ancestors: while let Some(directory) = ancestor {
             // Regression guard: tests inject an exclusive fixture boundary so
             // ancestor discovery cannot observe or mutate a developer's real
             // FileList. Production callers pass no boundary and keep full traversal.
@@ -516,36 +577,33 @@ where
             if should_cancel() {
                 return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
             }
-            let parent_filelists = find_all_filelists_in_directory(directory).map_err(|error| {
-                Box::new(FileListWriteReport::preflight_failed(
-                    root_target.clone(),
-                    directory.to_path_buf(),
-                    error,
-                ))
-            })?;
-            for parent_filelist in parent_filelists {
+            let discovery = discover_ancestor_filelists_in_directory(directory);
+            for parent_filelist in &discovery.candidates {
                 if should_cancel() {
                     return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
                 }
-                inspect_filelist_target(&parent_filelist).map_err(|error| {
-                    Box::new(FileListWriteReport::preflight_failed(
-                        root_target.clone(),
-                        parent_filelist.clone(),
-                        error,
-                    ))
-                })?;
-                let mut content = read_filelist_text_strict(&parent_filelist).map_err(|error| {
-                    Box::new(FileListWriteReport::preflight_failed(
-                        root_target.clone(),
-                        parent_filelist.clone(),
-                        error,
-                    ))
-                })?;
+                if inspect_filelist_target(parent_filelist).is_err() {
+                    if should_cancel() {
+                        return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
+                    }
+                    break 'ancestors;
+                }
+                let mut content = match read_filelist_text_strict(parent_filelist) {
+                    Ok(content) => content,
+                    Err(_) => {
+                        if should_cancel() {
+                            return Err(Box::new(FileListWriteReport::canceled(
+                                root_target.clone(),
+                            )));
+                        }
+                        break 'ancestors;
+                    }
+                };
                 if should_cancel() {
                     return Err(Box::new(FileListWriteReport::canceled(root_target.clone())));
                 }
                 if !parent_filelist_content_contains_child_reference(
-                    &parent_filelist,
+                    parent_filelist,
                     &root_target,
                     &content,
                 ) {
@@ -554,24 +612,25 @@ where
                     }
                     content.push_str(&filelist_line_for_entry(&root_target, directory, None));
                     content.push('\n');
-                    targets.push(
-                        prepare_filelist_target(
-                            parent_filelist.clone(),
-                            FileListWriteTargetKind::Ancestor,
-                            content.into_bytes(),
-                            true,
-                        )
-                        .map_err(|error| {
-                            Box::new(FileListWriteReport::preflight_failed(
-                                root_target.clone(),
-                                parent_filelist.clone(),
-                                error,
-                            ))
-                        })?,
-                    );
+                    match prepare_filelist_target(
+                        parent_filelist.clone(),
+                        FileListWriteTargetKind::Ancestor,
+                        content.into_bytes(),
+                        true,
+                    ) {
+                        Ok(target) => targets.push(target),
+                        Err(_) => {
+                            if should_cancel() {
+                                return Err(Box::new(FileListWriteReport::canceled(
+                                    root_target.clone(),
+                                )));
+                            }
+                            break 'ancestors;
+                        }
+                    }
                 }
             }
-            ancestor = directory.parent();
+            ancestor = discovery.next_ancestor(directory);
         }
     }
 
