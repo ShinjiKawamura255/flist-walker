@@ -211,7 +211,7 @@
 - MUST: `path:` / `dir:` の候補とliteral query valueのseparatorは照合時だけ `/` へ正規化し、regex escapeは維持し、表示pathと既存の非field query契約は変更しない。
 - MUST: `name:` など既知fieldの空値はcompile errorとし、未知の `prefix:` はfield指定ではない通常termとして扱う。
 - MUST: regex判定はfield markerを除いたvalueへ適用し、scoreにfield markerを含めない。highlightはfield内の一致位置をvisible path上の文字位置へ写像する。
-- SHOULD: shellでoperatorや空白が解釈されることを避けるため、CLI利用例はQUERY全体を引用符で囲む。
+- SHOULD: shellでoperatorや空白が解釈されることを避けるため、CLI利用例はQUERY全体を引用符で囲む。対話型Bash/Zsh向けの例で `!` を含む場合は、FlistWalker起動前の履歴展開を防ぐためシングルクォートを使用し、ダブルクォートを回避する。
 
 ### Preconditions / Postconditions
 - Preconditions: queryはGUI、batch CLI、TUIの共有compiled queryへ渡される。

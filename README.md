@@ -167,7 +167,7 @@ In CLI mode:
 - In batch mode, `--progress` writes indexing start, indexed candidate count/time, and match/return count/time only to stderr. When `--limit` truncates matches, this progress output explicitly warns with the returned and total counts; without `--progress`, batch output remains quiet. Batch-only `--fail-no-match` changes an empty result from exit 0 to exit 1; interactive mode rejects both options. Cancellation exits 130.
 - `--sort score|name-asc|name-desc|path-asc|path-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` sorts before `--limit`. Name modes sort by the final filename; path modes sort by the complete normalized path. `--type` accepts `file|files|f` and `folder|folders|directory|directories|dir|d` in addition to `all`. `--use-default-root`, `--saved-root INDEX`, and `--list-saved-roots` provide explicit access to persisted roots; listing supports `--print0`.
 - Named roots and pure-search presets can be managed in CLI/TUI and from the GUI picker's contextual controls. See [Named Roots and Search Presets](#named-roots-and-search-presets) for the complete workflow.
-- Scope individual terms with `name:`, `path:`, `dir:`, or `ext:`. Existing unscoped terms still search the full visible path. Fields compose with `!`, `'`, `^`, `$`, token-local `|`, and regex mode; quote the complete QUERY even when it is a single token so shell parsing stays predictable.
+- Scope individual terms with `name:`, `path:`, `dir:`, or `ext:`. Existing unscoped terms still search the full visible path. Fields compose with `!`, `'`, `^`, `$`, token-local `|`, and regex mode; quote the complete QUERY even when it is a single token so shell parsing stays predictable. In interactive Bash/Zsh, wrap a query containing `!` in single quotes (for example, `fw '!.git'`) because history expansion happens before FlistWalker starts; Bash double quotes do not suppress it.
 - `--action print|open|reveal` defaults to `print`. Open/reveal write diagnostics only to stderr and require `--action-all` before targeting more than one result; they reject `--absolute` and `--print0`.
 - `-x` / `--exec` consumes the remaining command template and replaces exactly one standalone `{}` argument with every post-limit result as separate absolute argv values. Results are packed greedily up to the current platform command-line limit and run sequentially; `--exec-max-args N` adds a per-batch path cap and `--dry-run` reports counts without starting the command. Zero results start no command. Exec mode rejects output framing and built-in non-print action options and never invokes a shell implicitly; put all FlistWalker options before `-x`.
 - The child inherits FlistWalker's user privileges, environment, and standard streams. On Windows, direct `.bat` / `.cmd` programs are rejected to prevent an implicit shell launch. Shell interpreters and batch scripts have their own parsing rules; using `sh -c`, `cmd.exe /C script.cmd`, or PowerShell command strings explicitly opts into those rules.
@@ -182,7 +182,7 @@ Named roots assign a stable name to a search root. Presets save a named root or 
 fw --add-named-root "work=./my-project"
 
 # Save the current pure-search options and exit without running the search.
-fw "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+fw 'dir:src ext:rs !dir:target' --named-root work --type file --source walker --sort name-asc --save-preset rust-src
 
 # Inspect the saved names.
 fw --list-named-roots
@@ -197,7 +197,7 @@ fw --remove-preset rust-src
 fw --remove-named-root work
 ```
 
-Quote the complete query argument even when it contains only one term. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, sort, `--max-depth`, or `--follow-links` selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
+Quote the complete query argument even when it contains only one term. When passing a query containing `!` directly from Bash/Zsh, use single quotes rather than double quotes. `--preset` cannot be combined with an explicit query or with root, entry-type, source, regex, case, ignore, sort, `--max-depth`, or `--follow-links` selectors because those values come from the preset. Invocation-specific options such as `--limit`, output framing, and explicit actions remain available when applying it.
 
 Examples:
 
@@ -210,7 +210,7 @@ fw --root . --create-filelist --overwrite-filelist
 fw "report" --root . --limit 10 --action open --action-all
 
 # Match Rust files under a src directory while excluding generated directories.
-fw "dir:src ext:rs !dir:generated" --root .
+fw 'dir:src ext:rs !dir:generated' --root .
 
 # Pass every post-limit match to an external command in platform-sized batches.
 fw "report" --root . --exec-max-args 100 -x archive-tool -- {}

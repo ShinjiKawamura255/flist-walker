@@ -191,7 +191,7 @@ CLI では:
 - batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。`--limit` が一致結果を切り詰めた場合は返却件数と全一致件数をwarningとして明示し、`--progress` なしの既定実行は静かなままです。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
 - `--sort score|name-asc|name-desc|path-asc|path-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。nameは末尾のfile/folder名、pathは正規化済みの完全pathをキーにします。`--type` は `all` に加えて `file|files|f` と `folder|folders|directory|directories|dir|d` を受理します。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
 - 名前付き root と純粋な検索 preset は CLI/TUI と GUI picker 内で管理・適用できます。作成から適用までの手順は[名前付き root と検索 preset](#名前付き-root-と検索-preset)を参照してください。
-- termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用符で囲む運用を推奨します。
+- termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用してください。対話型Bash/Zshで `!` を含む場合は、履歴展開がFlistWalker起動前に行われるため、QUERY全体をシングルクォートで囲みます（例: `fw '!.git'`）。ダブルクォートではBashの履歴展開を抑止できません。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
 - `-x` / `--exec` は以後の引数を command template として受け取り、独立した `{}` 引数1個を post-limit の全結果へ展開します。各パスは正規化済み絶対パスの独立 argv とし、実行環境の command-line 上限まで貪欲にまとめて直列実行します。`--exec-max-args N` で1 batch のパス数をさらに制限でき、`--dry-run` は command を起動せず件数だけを表示します。結果0件では command を起動しません。shell は暗黙起動せず、FlistWalker 側の option はすべて `-x` より前に指定します。
 - child process は FlistWalker のユーザ権限、環境変数、標準 stream を継承します。Windows では暗黙の shell 起動を防ぐため `.bat` / `.cmd` の直接指定を拒否します。shell interpreter と batch script は独自の引数解釈を持つため、`sh -c`、`cmd.exe /C script.cmd`、PowerShell command string の指定はその解釈への明示的な opt-in です。
@@ -206,7 +206,7 @@ CLI では:
 fw --add-named-root "work=./my-project"
 
 # 現在の純粋な検索条件を保存し、検索は実行せず終了する。
-fw "dir:src ext:rs !dir:target" --named-root work --type file --source walker --sort name-asc --save-preset rust-src
+fw 'dir:src ext:rs !dir:target' --named-root work --type file --source walker --sort name-asc --save-preset rust-src
 
 # 保存済みの名前を確認する。
 fw --list-named-roots
@@ -221,7 +221,7 @@ fw --remove-preset rust-src
 fw --remove-named-root work
 ```
 
-query が1 termだけの場合も、query 引数全体を引用してください。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort、`--max-depth`、`--follow-links` の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
+query が1 termだけの場合も、query 引数全体を引用してください。Bash/Zshで `!` を含むqueryを直接渡す場合は、ダブルクォートではなくシングルクォートを使用します。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort、`--max-depth`、`--follow-links` の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
 
 例:
 
@@ -234,7 +234,7 @@ fw --root . --create-filelist --overwrite-filelist
 fw "report" --root . --limit 10 --action open --action-all
 
 # src配下のRustファイルを検索し、generated directoryを除外する。
-fw "dir:src ext:rs !dir:generated" --root .
+fw 'dir:src ext:rs !dir:generated' --root .
 
 # post-limit の全一致を実行環境の上限までまとめて外部 command へ渡す。
 fw "report" --root . --exec-max-args 100 -x archive-tool -- {}
