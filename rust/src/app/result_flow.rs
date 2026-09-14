@@ -115,6 +115,20 @@ impl FlistWalkerApp {
                     }
                 });
             }
+            ResultSortMode::PathAsc | ResultSortMode::PathDesc => {
+                let desc = matches!(mode, ResultSortMode::PathDesc);
+                items.sort_by(|a, b| {
+                    let cmp = a
+                        .path_key
+                        .cmp(&b.path_key)
+                        .then_with(|| a.original_index.cmp(&b.original_index));
+                    if desc {
+                        cmp.reverse()
+                    } else {
+                        cmp
+                    }
+                });
+            }
             ResultSortMode::ModifiedDesc
             | ResultSortMode::ModifiedAsc
             | ResultSortMode::CreatedDesc

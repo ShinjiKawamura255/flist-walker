@@ -6,13 +6,13 @@
 - FR-003: ツールは fzf 互換クエリ（`'`、`!`、`^`、`$`、token 内 `|`）に基づく検索を提供し、関連度順の結果と同じ解釈によるハイライトを返さなければならない。
 - FR-004: ツールは選択対象がファイルの場合、実行可能なら実行し、非実行ファイルは既定アプリでオープンしなければならない。
 - FR-005: ツールは選択対象がフォルダの場合、OS 既定の方法でオープンしなければならない。
-- FR-006: ツールは CLI モード（`--cli`）で GUI を起動せず、batch 検索結果を機械処理可能な形式で出力し、明示的な root・sort・action・FileList 操作、および全結果を argv として渡す外部 command 実行を安全に受理しなければならない。外部 command は実行環境の引数上限まで結果をまとめ、結果0件では起動してはならない。`--color[=auto|always|never]` は、未指定時の機械処理可能な出力を維持し、明示した場合だけ一致文字列の ANSI ハイライトを制御できなければならない。`--interactive` では検索・複数 pin・選択結果出力または端末復旧後の外部 command 実行を提供し、描画を結果用 stdout と分離しなければならない。
+- FR-006: ツールは CLI モード（`--cli`）で GUI を起動せず、batch 検索結果を機械処理可能な形式で出力し、明示的な root・type・sort・action・FileList 操作、および全結果を argv として渡す外部 command 実行を安全に受理しなければならない。type は file/folder の一般的な同義語と短縮形を受理し、sort は名前だけでなく完全な path の昇順・降順を選択できなければならない。外部 command は実行環境の引数上限まで結果をまとめ、結果0件では起動してはならない。`--color[=auto|always|never]` は、未指定時の機械処理可能な出力を維持し、明示した場合だけ一致文字列の ANSI ハイライトを制御できなければならない。`--progress` は limit により一致結果を切り詰めた場合に全一致件数と返却件数を警告として示さなければならない。`--interactive` では検索・複数 pin・選択結果出力または端末復旧後の外部 command 実行を提供し、描画を結果用 stdout と分離しなければならない。
 - FR-007: ツールは GUI モードで検索入力、結果リスト、プレビュー、複数選択、一括実行/オープン、および保存済み root list の追加・編集・削除を提供しなければならない。GUI は `Ctrl+Q` / `Cmd+Q` による意図しないアプリ終了を防ぎ、ウィンドウの閉じる操作と macOS の明示的な終了メニュー操作を維持しなければならない。
 - FR-008: ツールは FileList 由来の候補を表示する際に追加の root 配下判定を要求してはならず、インデクシング速度を維持しなければならない。
 - FR-009: ツールは実行/オープン直前に、選択パスが字句上の現在 root 配下、またはその解決先が現在 root の解決先配下であることを検証し、どちらにも属さないパスのアクションを拒否しなければならない。現在 root 自体またはその配下に symlink、Windows junction、その他の filesystem link が含まれる場合は、そのリンク先が物理的な root 外にあっても、root 配下として選択されたリンク経由のアクションを許可しなければならない。UNC root を使用する場合も同じ規則を適用する。
 - FR-010: ツールは Create File List 実行時、既存 root FileList の置換および祖先ディレクトリ直下の既存 FileList への追記が発生しうる場合、その前に利用者確認を要求し、部分失敗または取消時に完了済み変更の復旧を試みなければならない。
 - FR-011: ツールは query history 永続化を既定で有効にしつつ、明示設定で無効化でき、同時 writer によって異なる履歴追加を失ってはならない。
-- FR-012: ツールは検索結果に対して `Score` / `Name` / `Modified` / `Created` / `Size` のソートを提供しなければならない。
+- FR-012: ツールは検索結果に対して `Score` / `Name` / `Path` / `Modified` / `Created` / `Size` のソートを提供しなければならない。
 - FR-013: ツールはソート対象を現在の検索結果スナップショットのみに限定し、インデクシング経路へ追加の属性取得を導入してはならない。
 - FR-014: ツールは query が 1 文字でも変化した場合、適用済みの結果ソートを破棄して `Score` 順へ戻さなければならない。
 - FR-015: ツールは日付ソートで利用する属性キャッシュを上限付きで保持し、長時間セッションでもメモリを無制限に増やしてはならない。
@@ -41,7 +41,7 @@
 - FR-038: ツールは従来の path 全体を対象とする query を変更せず、各 query term を filename、root 相対 path、親 directory、最終 extension のいずれかへ限定できなければならない。
 - FR-039: ツールは検索 root からの候補収集深度に上限を指定でき、Walker、FileList、batch CLI、interactive CLI、GUI のいずれでも同じ候補範囲を使用しなければならない。GUI の上限はタブ単位で保持し、preset から適用しても他タブへ波及してはならない。
 - FR-040: ツールは Linux/macOS の GUI/CLI 両対応 `flistwalker` を維持しつつ、同じ CLI/TUI 契約を `--cli` なしで利用できる CLI 専用 executable `fw` を提供しなければならない。Windows は terminal flash を生じない GUI-subsystem `FlistWalker.exe` と、shell-synchronous な CLI/TUI/update/help/version 用 console-subsystem `fw.exe` へ役割を分けなければならない。自己更新は起動した executable variant と同じ release asset だけを選択しなければならない。
-- FR-041: ツールは runtime config の `emacs_keybindings_enabled` が有効な場合、GUI/TUI のメイン一覧、検索履歴、root/preset/Named Root の選択画面、overlay、modal、および application-owned text field を含む全対話面で、通常キーに対応する Emacs 風 application command と text-editing chord を一貫して提供しなければならない。新しい対話面と単一行入力は feature ごとの個別 opt-in ではなく共有 command mapping / text-editing adapter を継承し、同設定が無効な場合は Emacs 風 chord をアプリ操作として処理してはならない。
+- FR-041: ツールは runtime config の `emacs_keybindings_enabled` が有効な場合、GUI/TUI のメイン一覧、検索履歴、root/preset/Named Root の選択画面、overlay、modal、および application-owned text field を含む全対話面で、通常キーに対応する Emacs 風 application command と text-editing chord を一貫して提供しなければならない。新しい対話面と単一行入力は feature ごとの個別 opt-in ではなく共有 command mapping / text-editing adapter を継承し、単語削除は query field prefix や path separator 上で停止してはならず、同設定が無効な場合は Emacs 風 chord をアプリ操作として処理してはならない。
 
 - FR-042: ツールは利用者が有効にした場合、Root 配下の directory symlink と Windows junction のリンク先を検索対象へ含めなければならない。物理 Root 外のリンク先と同じ実体への複数の別名を扱い、循環で走査が終わらなくなってはならない。
 - FR-043: Root 自体が symlink または Windows junction の場合も、相対表示ではその Root 配下の Results を通常の Root と同様の相対パスで表示しなければならない。

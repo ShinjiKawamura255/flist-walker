@@ -36,8 +36,8 @@
 - 役割: `clap` 引数を typed CLI options へ変換し、GUI、batch CLI、interactive CLI を明示 dispatch する。Linux/macOS universal の legacy `--cli` と全 platform の `fw` 契約を維持し、CLI-only option の依存/競合と mode-specific initialization/exit status を所有する。
 - 役割補足: Windows は compile-time に GUI subsystem を指定する universal `FlistWalker.exe` と、console subsystem の `fw.exe` へ分離する。universal は console の attach/detach を行わず GUI と internal updater restart を所有し、`fw` が shell-synchronous な CLI/TUI/update/help/version と標準 handle を所有する。Windows universal の旧 CLI dispatch 実装は direct process caller 向け best-effort として残す。
 - 役割補足: TUIが所有するuser-facing path文字列化は `tui_path_label` を唯一の境界とし、options summary、status、picker、errorがWindows extended prefixを直接表示しない。TUI本番sourceの直接 `Path::display` / `to_string_lossy` はTC-177の静的guardで拒否する。
-- 役割補足: batch adapter は cancellable index/search、source/type/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
-- 役割補足: batch adapter は shared full-match sort の後に limit を適用し、print/open/reveal/exec、root selector、saved-root listing、FileList operation の引数整合性と exit status を所有する。`command_exec` は standalone placeholder、canonical root authorization、OS argv budget、optional path cap、stable greedy batch、direct spawn、stop-on-failure/cancel を所有し、adapter は report を exit/status へ変換する。
+- 役割補足: batch adapter は cancellable index/search、source/type alias/ignore/search option、relative/absolute path、newline/NUL framing を構成し、結果だけを stdout、進捗/診断を stderr へ送る。
+- 役割補足: batch adapter は shared full-match name/path/metadata sort の後に limit を適用し、`--progress` 有効時の切り詰めwarning、print/open/reveal/exec、root selector、saved-root listing、FileList operation の引数整合性と exit status を所有する。`command_exec` は standalone placeholder、canonical root authorization、OS argv budget、optional path cap、stable greedy batch、direct spawn、stop-on-failure/cancel を所有し、adapter は report を exit/status へ変換する。
 - 役割補足: interactive adapter は request identity を持つ index/search worker、cursor-aware editor、ordered pin、dynamic viewport、stderr renderer を分離する。renderer は complete frame をメモリ上へ構築して terminal synchronized update で一括送信し、全画面 clear と再描画の中間状態を表示させない。terminal session guard は raw/alternate/cursor/bracketed-paste の成立状態を所有して逆順復旧し、guard 解放後だけ selected path/root を main adapter へ返して stdout writer または external executor を呼ぶ。
 - 役割補足: TUI FileList active は pending intent state machine を所有し、`CancelExit > SwitchRoot > SelectOutput` を settlement 後にだけ解決する。FileList worker は generic shutdown detach の対象外で、panic/disconnect を failed settlement として合成する。
 - 実装: `rust/src/main.rs`, `rust/src/cli.rs`, `rust/src/cli/args.rs`, `rust/src/cli/batch.rs`, `rust/src/cli_tui.rs`, `rust/src/cli_tui/`, `rust/src/gui_launch.rs`, `rust/src/launch_path.rs`, `rust/src/command_exec.rs`, `rust/src/actions.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/walker.rs`, `rust/src/walker_runtime/`
@@ -130,7 +130,7 @@
 - 役割補足: Guardian は default branch のworkflow一式、Dependabot設定、toolchain定義、audit exception設定、checker/testをtrusted policy setとし、PR headからAPI取得したallowlist policy blobだけを一時領域で検査する。通常変更はrunner/action/tool version pinに限定し、PR codeは実行しない。
 
 - DES-013 Result Sort Controller
-- 役割: Shownの結果snapshot内sortと、All matchesの全候補worker sort、日付属性の遅延取得、上限付き属性cacheを管理。
+- 役割: Shownの結果snapshot内のname/path sortと、All matchesの全候補worker sort、日付属性の遅延取得、上限付き属性cacheを管理。
 - committed payloadは元のScore順位かどうかを保持し、All matches由来のsnapshotからScoreへ戻す場合は全候補から再検索する。mode/scope変更は旧requestを失効させ、保留queryを新requestで再要求する。履歴適用やEscを含むquery変更はScoreへ戻し、presetの明示sortは維持する。
 - 実装: `rust/src/app/mod.rs`, `rust/src/app/render.rs`, `rust/src/app/cache.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`
 

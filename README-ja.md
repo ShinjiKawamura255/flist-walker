@@ -188,8 +188,8 @@ CLI では:
 - `--source auto|filelist|walker` でインデックス元を指定できます。`filelist` は root FileList がなければ失敗し、`auto` は FileList 優先で walker へフォールバックします。
 - `--ignore-file PATH` は実行ファイル横の ignore list を置き換え、`--no-ignore` は ignore を無効化します。両者は同時指定できません。
 - ignore fileはUTF-8で、先頭UTF-8 BOMとCRLFを許容します。rule内の `/` と `\\` は同じpath separatorとして扱います。既定sidecarが無ければruleなしで継続し、存在するfileが読めない／UTF-8不正ならCLI/TUIは明示errorにします。
-- batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
-- `--sort score|name-asc|name-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
+- batch モードの `--progress` は indexing 開始、候補件数と時間、一致/返却件数と時間だけを標準エラー出力へ表示します。`--limit` が一致結果を切り詰めた場合は返却件数と全一致件数をwarningとして明示し、`--progress` なしの既定実行は静かなままです。batch 専用の `--fail-no-match` は一致なしを exit 0 から exit 1 に変更し、interactive モードでは両 option を拒否します。キャンセルは exit 130 です。
+- `--sort score|name-asc|name-desc|path-asc|path-desc|modified-desc|modified-asc|created-desc|created-asc|size-desc|size-asc` は `--limit` より先にソートします。nameは末尾のfile/folder名、pathは正規化済みの完全pathをキーにします。`--type` は `all` に加えて `file|files|f` と `folder|folders|directory|directories|dir|d` を受理します。保存済み root は `--use-default-root`、`--saved-root INDEX`、`--list-saved-roots` で明示的に利用でき、一覧は `--print0` に対応します。
 - 名前付き root と純粋な検索 preset は CLI/TUI と GUI picker 内で管理・適用できます。作成から適用までの手順は[名前付き root と検索 preset](#名前付き-root-と検索-preset)を参照してください。
 - termごとに `name:`、`path:`、`dir:`、`ext:` で対象fieldを限定できます。fieldなしtermは従来どおりvisible path全体を検索します。fieldは `!`、`'`、`^`、`$`、token内 `|`、regex modeと併用できます。shell解釈を安定させるため、1 tokenだけでもQUERY全体を引用符で囲む運用を推奨します。
 - `--action print|open|reveal` の既定は `print` です。open/reveal は診断だけを標準エラーへ出し、複数対象には `--action-all` が必要です。これらの action で `--absolute` と `--print0` は使えません。
@@ -260,6 +260,8 @@ fw --interactive --root ..
 `--max-depth` は起動時または preset の深さとして TUI session 中固定され、F2 options overlay からは変更しません。
 
 軽量な TUI が起動します。`--root`、`--use-default-root`、`--saved-root` で起動 root を選択でき、`--sort` は初期並び順、`--no-ignore` は Ignore が無効と表示される初期状態へ反映されます。`--color auto|always|never` で CLI の色を制御できます。batch の既定 `auto` は stdout が TTY のときだけ色を出し、空でない `NO_COLOR` 環境変数を尊重するため、pipe/redirect のパス出力はそのままです。`←` / `→` / `Home` / `End` / `Backspace` / `Delete` と貼り付けで query を編集し、`↑` / `↓` / `PageUp` / `PageDown` で移動します。`Tab` は選択項目を出力順に pin し、`Enter` は選択結果を確定します。`F2` は Files、Folders、Regex、Ignore Case、起動時に読み込んだ Ignore terms、Source（`Auto` / `FileList` / `Walker`）を確定/取消できる options overlay を開きます。Source と Files/Folders の変更は再インデックスし、検索だけに関わる変更は現在の snapshot を再利用します。`F3` は Score、名前、更新日時、作成日時、サイズの並び順（該当する昇順/降順）を選択し、Score 以外は limit 適用前に全 match を並べ替えます。`F4` は保存済みrootを開いて強調行へ切り替え、`F5` は現在rootを更新します。`F6` は root のみ／ancestor までの作成範囲を選んで FileList を作成し、root に既存 FileList がある場合は別途上書き確認を要求します。作成はバックグラウンドで行われ、選択・終了・root 切替の要求は commit/cancel/rollback の完了後にだけ反映されます。root切替では旧選択とpinを消去しますが、query・履歴・optionsは維持し、更新時はpinを維持します。`Ctrl+O` は現在行だけを開く/実行し、`Shift+Enter` は現在行の格納フォルダだけを開きます。pin された行がこれらの副作用操作に含まれることはありません。`Ctrl+G` は query と pin をクリアし、`Alt+P` は幅に応じて表示される preview を切り替え、履歴永続化が有効なときの `Ctrl+R` は query 履歴検索を開き、`F1` は文脈に応じた help を開きます。履歴、help、options、sort、root、FileList の overlay 中は、`Enter` / `Esc` / `Ctrl+G` はその overlay だけを確定または閉じ、`Ctrl-C` は常に TUI 全体をキャンセルします。通常状態の `Esc` / `Ctrl-C` は端末を復旧して何も出力せず exit 130 で終了します。標準入力と標準エラー出力には TTY が必要ですが、標準出力はリダイレクトできるため、`fw --interactive > selection.txt` を利用できます。画面・status は標準エラー出力だけを使い、端末復旧後に選択パスを標準出力へ書くか、明示した `-x` command へ渡します。
+
+`F3` の並び順には、上記に加えて正規化済みの完全pathによる昇順・降順も含まれます。
 
 ## 挙動
 

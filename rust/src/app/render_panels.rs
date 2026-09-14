@@ -298,6 +298,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                             ResultSortMode::Score,
                             ResultSortMode::NameAsc,
                             ResultSortMode::NameDesc,
+                            ResultSortMode::PathAsc,
+                            ResultSortMode::PathDesc,
                             ResultSortMode::ModifiedDesc,
                             ResultSortMode::ModifiedAsc,
                             ResultSortMode::CreatedDesc,

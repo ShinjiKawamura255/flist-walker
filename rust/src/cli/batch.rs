@@ -251,6 +251,8 @@ fn preset_sort(value: CliSortMode) -> PresetSortMode {
         CliSortMode::Score => PresetSortMode::Score,
         CliSortMode::NameAsc => PresetSortMode::NameAsc,
         CliSortMode::NameDesc => PresetSortMode::NameDesc,
+        CliSortMode::PathAsc => PresetSortMode::PathAsc,
+        CliSortMode::PathDesc => PresetSortMode::PathDesc,
         CliSortMode::ModifiedDesc => PresetSortMode::ModifiedDesc,
         CliSortMode::ModifiedAsc => PresetSortMode::ModifiedAsc,
         CliSortMode::CreatedDesc => PresetSortMode::CreatedDesc,
@@ -265,6 +267,8 @@ fn cli_sort(value: PresetSortMode) -> CliSortMode {
         PresetSortMode::Score => CliSortMode::Score,
         PresetSortMode::NameAsc => CliSortMode::NameAsc,
         PresetSortMode::NameDesc => CliSortMode::NameDesc,
+        PresetSortMode::PathAsc => CliSortMode::PathAsc,
+        PresetSortMode::PathDesc => CliSortMode::PathDesc,
         PresetSortMode::ModifiedDesc => CliSortMode::ModifiedDesc,
         PresetSortMode::ModifiedAsc => CliSortMode::ModifiedAsc,
         PresetSortMode::CreatedDesc => CliSortMode::CreatedDesc,
@@ -473,12 +477,16 @@ fn run_cli_with_backend(
         return Ok(BatchOutcome::Cancelled);
     }
     if args.progress {
-        eprintln!(
-            "Matched {} path(s); returning {} in {} ms",
-            search_results.total_match_count,
-            search_results.results.len(),
-            search_started.elapsed().as_millis()
-        );
+        let total = search_results.total_match_count;
+        let returned = search_results.results.len();
+        let elapsed_ms = search_started.elapsed().as_millis();
+        if returned < total {
+            eprintln!(
+                "warning: --limit returned {returned} of {total} matched path(s) in {elapsed_ms} ms"
+            );
+        } else {
+            eprintln!("Matched {total} path(s); returning {returned} in {elapsed_ms} ms");
+        }
     }
     let paths = search_results
         .results

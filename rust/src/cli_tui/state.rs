@@ -166,10 +166,12 @@ pub(super) enum PendingFileListIntent {
     CancelExit,
 }
 
-pub(super) const SORT_MODES: [SearchSortMode; 9] = [
+pub(super) const SORT_MODES: [SearchSortMode; 11] = [
     SearchSortMode::Score,
     SearchSortMode::NameAsc,
     SearchSortMode::NameDesc,
+    SearchSortMode::PathAsc,
+    SearchSortMode::PathDesc,
     SearchSortMode::ModifiedDesc,
     SearchSortMode::ModifiedAsc,
     SearchSortMode::CreatedDesc,

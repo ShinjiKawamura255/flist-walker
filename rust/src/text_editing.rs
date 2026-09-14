@@ -83,6 +83,9 @@ pub(crate) fn apply_emacs_edit(
                 while start > 0 && is_word_char(chars[start - 1]) {
                     start -= 1;
                 }
+                if start == cursor.primary && start > 0 {
+                    start -= 1;
+                }
                 (start < cursor.primary).then_some((start, cursor.primary))
             });
             if let Some((start, end)) = range {
@@ -205,6 +208,25 @@ mod tests {
         assert_eq!(text, "alpha/");
         assert_eq!(kill_buffer, "beta");
         assert_eq!(cursor, CursorRange::collapsed(6));
+    }
+
+    #[test]
+    fn backward_word_does_not_stall_on_query_or_path_separators() {
+        let mut text = r"name:C:\beta".to_string();
+        let mut cursor = CursorRange::collapsed(text.chars().count());
+        let mut kill_buffer = String::new();
+
+        for expected in [r"name:C:\", "name:C:", "name:C", "name:", "name", ""] {
+            let outcome = apply_emacs_edit(
+                &mut text,
+                &mut cursor,
+                &mut kill_buffer,
+                EmacsEdit::KillBackwardWord,
+            );
+
+            assert!(outcome.text_changed, "Ctrl+W stalled at {text:?}");
+            assert_eq!(text, expected);
+        }
     }
 
     #[test]

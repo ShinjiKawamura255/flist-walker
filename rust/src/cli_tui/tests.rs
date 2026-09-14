@@ -1501,10 +1501,10 @@ fn tc_162_f2_options_and_f3_sort_overlays_have_precedence_without_side_effects()
 }
 
 #[test]
-fn tc_162_tui_sort_picker_has_all_nine_shared_modes_and_query_resets_score() {
-    assert_eq!(SORT_MODES.len(), 9);
+fn tc_162_tui_sort_picker_has_all_shared_modes_and_query_resets_score() {
+    assert_eq!(SORT_MODES.len(), 11);
     assert_eq!(SORT_MODES[0], SearchSortMode::Score);
-    assert_eq!(SORT_MODES[8], SearchSortMode::SizeAsc);
+    assert_eq!(SORT_MODES[10], SearchSortMode::SizeAsc);
     let mut state = TuiState::new("draft");
     state.sort_mode = SearchSortMode::SizeDesc;
 
@@ -2179,7 +2179,8 @@ fn tc_162_small_overlays_keep_source_and_size_selection_visible() {
     render_options_overlay(&mut output, &options, true, 80, 4).expect("render options");
     assert!(String::from_utf8_lossy(&output).contains("> Source:"));
     let mut output = Vec::new();
-    render_sort_picker(&mut output, &SortPicker { selected: 8 }, true, 80, 4).expect("render sort");
+    render_sort_picker(&mut output, &SortPicker { selected: 10 }, true, 80, 4)
+        .expect("render sort");
     assert!(String::from_utf8_lossy(&output).contains("> Size (Small)"));
 }
 

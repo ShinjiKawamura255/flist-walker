@@ -525,6 +525,57 @@ fn tc_057b_tc_163_shared_all_match_sort_keeps_score_and_uses_stable_name_path_ti
 }
 
 #[test]
+fn shared_all_match_path_sort_uses_the_complete_normalized_path() {
+    let entries = Arc::new(vec![
+        Entry::new(PathBuf::from("/tmp/z/alpha.rs"), None),
+        Entry::new(PathBuf::from("/tmp/a/zeta.rs"), None),
+    ]);
+    let mut cache = SearchPrefixCache::default();
+
+    let (ascending, ascending_error) = rank_search_results(
+        &entries,
+        "",
+        Path::new("/tmp"),
+        2,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::PathAsc,
+        SearchSortScope::AllMatches,
+    );
+    let (descending, descending_error) = rank_search_results(
+        &entries,
+        "",
+        Path::new("/tmp"),
+        2,
+        false,
+        true,
+        false,
+        &mut cache,
+        SearchSortMode::PathDesc,
+        SearchSortScope::AllMatches,
+    );
+
+    assert!(ascending_error.is_none());
+    assert!(descending_error.is_none());
+    assert_eq!(
+        ascending.results,
+        vec![
+            (PathBuf::from("/tmp/a/zeta.rs"), 0.0),
+            (PathBuf::from("/tmp/z/alpha.rs"), 0.0),
+        ]
+    );
+    assert_eq!(
+        descending.results,
+        vec![
+            (PathBuf::from("/tmp/z/alpha.rs"), 0.0),
+            (PathBuf::from("/tmp/a/zeta.rs"), 0.0),
+        ]
+    );
+}
+
+#[test]
 fn tc_057b_tc_163_shared_all_match_sort_returns_no_results_at_zero_limit() {
     let entries = Arc::new(vec![Entry::new(PathBuf::from("/tmp/module.rs"), None)]);
     let mut cache = SearchPrefixCache::default();
