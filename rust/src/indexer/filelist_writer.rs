@@ -9,7 +9,8 @@ use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
 
 use super::filelist_reader::{
-    looks_like_windows_absolute_path, read_filelist_text_strict, strip_wrapping_quotes,
+    compare_filelist_path_precedence, looks_like_windows_absolute_path, read_filelist_text_strict,
+    strip_wrapping_quotes,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -269,25 +270,8 @@ fn find_all_filelists_in_directory(dir: &Path) -> std::io::Result<Vec<PathBuf>> 
             matches.push(path);
         }
     }
-    matches.sort_by(|left, right| {
-        filelist_name_precedence(left)
-            .cmp(&filelist_name_precedence(right))
-            .then_with(|| left.to_string_lossy().cmp(&right.to_string_lossy()))
-    });
+    matches.sort_by(|left, right| compare_filelist_path_precedence(left, right));
     Ok(matches)
-}
-
-fn filelist_name_precedence(path: &Path) -> (u8, String) {
-    let name = path
-        .file_name()
-        .and_then(|value| value.to_str())
-        .unwrap_or_default();
-    let rank = match name {
-        "FileList.txt" => 0,
-        "filelist.txt" => 1,
-        _ => 2,
-    };
-    (rank, name.to_ascii_lowercase())
 }
 
 pub(crate) fn normalize_filelist_entry_for_text_compare(line: &str) -> Option<String> {

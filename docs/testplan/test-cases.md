@@ -3,7 +3,7 @@
 ## Test cases
 | TC ID | Level | Purpose | Related SP |
 | --- | --- | --- | --- |
-| TC-001 | unit | `FileList.txt` / `filelist.txt` の優先検出 | SP-001 |
+| TC-001 | unit+integration | 純粋な候補selectionへ順序を変えた入力を与え、`FileList.txt`、`filelist.txt`、case-sensitiveな非canonical辞書順の決定的な優先検出を全platformで固定する。distinct case variantを作成できるfilesystemでは、作成順や`read_dir`列挙順に依存しないroot discoveryもtemporary directoryで検証する | SP-001 |
 | TC-002 | unit | リスト未存在時に walker 走査で候補生成し、batch collect/stream と GUI/TUI のファイル・ディレクトリ・リンク・特殊ファイル分類を一致させる | SP-002 |
 | TC-003 | unit | ファジー検索が関連度順・件数制限を満たす | SP-003 |
 | TC-003A | unit | 通常語の各 token は subsequence-only よりリテラル一致を高順位にする | SP-003 |

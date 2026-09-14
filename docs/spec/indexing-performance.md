@@ -5,6 +5,7 @@
 - MUST: FileList 優先モード有効時のみ、検索ルート直下で `FileList.txt` と `filelist.txt` を検出する。
 - MUST: 両方ある場合は `FileList.txt` を優先する。
 - MUST: 上記2名が無い場合、`filelist.txt` と大文字小文字のみ異なるファイル名（例: `FILELIST.TXT`）をルート直下から検出対象に含める。
+- MUST: 上記の非canonical名が複数存在できるfilesystemでは、case-sensitiveなファイル名の辞書順で最初の候補を選ぶ。`read_dir` の列挙順へ依存してはならず、読み込みとFileList作成の既存target選択は同じ `FileList.txt`、`filelist.txt`、非canonical辞書順の優先規則を使う。
 - MUST: FileList 検出中に同一 tab の新しい request_id が発行された場合、root 直下の discovery は次の候補確認前に中断し、旧 request は `Canceled` として終端しなければならない。
 - MUST: 空行と `#` コメント行を無視する。
 - MUST: root と階層の FileList は UTF-8 として読み込む。byte offset 0 の UTF-8 BOM (`EF BB BF`) は 1 個だけ任意とし、候補文字列には含めない。UTF-8 BOM の有無、LF/CRLF、ASCII/非 ASCII path の違いで候補解釈を変えてはならない。

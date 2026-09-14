@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fs;
 use std::fs::File;
@@ -17,6 +18,33 @@ const UTF8_BOM: &[u8; 3] = b"\xEF\xBB\xBF";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileListDiscoveryCanceled;
+
+pub(crate) fn compare_filelist_path_precedence(left: &Path, right: &Path) -> Ordering {
+    fn key(path: &Path) -> (u8, String) {
+        let name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or_default();
+        let rank = match name {
+            "FileList.txt" => 0,
+            "filelist.txt" => 1,
+            _ => 2,
+        };
+        (rank, name.to_string())
+    }
+
+    key(left)
+        .cmp(&key(right))
+        .then_with(|| left.to_string_lossy().cmp(&right.to_string_lossy()))
+}
+
+fn select_preferred_filelist_path(
+    candidates: impl IntoIterator<Item = PathBuf>,
+) -> Option<PathBuf> {
+    candidates
+        .into_iter()
+        .min_by(|left, right| compare_filelist_path_precedence(left, right))
+}
 
 fn is_filelist_case_variant_file(path: &Path, mut is_file: impl FnMut(&Path) -> bool) -> bool {
     // Regression guard: a large root without FileList must not issue metadata I/O
@@ -58,6 +86,34 @@ mod discovery_regression_tests {
         assert!(matched);
         assert_eq!(probes.load(Ordering::SeqCst), 1);
     }
+
+    #[test]
+    fn tc_001_filelist_precedence_is_independent_of_candidate_order() {
+        let upper = PathBuf::from("FileList.txt");
+        let lower = PathBuf::from("filelist.txt");
+        let lexical_variant = PathBuf::from("FILELIST.TXT");
+        let later_variant = PathBuf::from("FiLeLiSt.TxT");
+
+        for candidates in [
+            vec![later_variant.clone(), lower.clone(), upper.clone()],
+            vec![upper.clone(), later_variant.clone(), lower.clone()],
+        ] {
+            assert_eq!(
+                select_preferred_filelist_path(candidates),
+                Some(upper.clone())
+            );
+        }
+
+        for candidates in [
+            vec![later_variant.clone(), lexical_variant.clone()],
+            vec![lexical_variant.clone(), later_variant.clone()],
+        ] {
+            assert_eq!(
+                select_preferred_filelist_path(candidates),
+                Some(lexical_variant.clone())
+            );
+        }
+    }
 }
 
 pub fn find_filelist(root: &Path) -> Option<PathBuf> {
@@ -94,6 +150,7 @@ where
     // Restored-tab prioritization can supersede this scan while it is reading a
     // large root; check freshness per entry so obsolete discovery never holds
     // an index worker until the entire directory has been inspected.
+    let mut matches = Vec::new();
     for entry in entries {
         if should_cancel() {
             return Err(FileListDiscoveryCanceled);
@@ -103,13 +160,13 @@ where
         };
         let path = entry.path();
         if is_filelist_case_variant_file(&path, Path::is_file) {
-            return Ok(Some(path));
+            matches.push(path);
         }
     }
     if should_cancel() {
         return Err(FileListDiscoveryCanceled);
     }
-    Ok(None)
+    Ok(select_preferred_filelist_path(matches))
 }
 
 pub fn find_filelist_in_first_level(root: &Path) -> Option<PathBuf> {
