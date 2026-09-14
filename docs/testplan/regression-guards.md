@@ -122,10 +122,10 @@ Back to the [Validation Matrix](validation-matrix.md).
 ### Regression Guard: FileList test ancestor isolation
 
 - Scenario: FileList propagation testのrootをsystem tempへ置くと、production同様のancestor探索がfixtureを越え、developer profileのpermissionや実在FileListにtest結果が依存する。
-- Expected Behavior: unit testは明示的なexclusive ancestor boundaryでfixture内の複数FileListへの伝播を維持し、全plan targetをfixture内へ限定する。実binaryを使うCLI contract fixtureはworkspace内へ置き、developer profileを探索しない。
+- Expected Behavior: unit testはproductionのCLI options builderと明示的なexclusive ancestor boundaryを組み合わせ、fixture内の複数FileListへの伝播を維持しながら全plan targetをfixture内へ限定する。実binaryを使うCLI contractはroot/saved-root作成とflag validationだけを扱い、`--propagate-ancestors`によるfixture外探索を開始しない。
 - Non-goals: productionのancestor探索範囲、CLIの`--propagate-ancestors`契約、FileList更新順序の変更。
-- Related Tests: `regression_bounded_ancestor_plan_stays_inside_fixture_and_preserves_propagation`, `tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots`, TC-165, TC-166.
-- Notes for Future Changes: propagation testでsystem tempのrootをproduction APIへ直接渡さず、paired boundary helperとVM-006を維持する。
+- Related Tests: `regression_bounded_ancestor_plan_stays_inside_fixture_and_preserves_propagation`, `tc_165_cli_propagate_flag_uses_production_options_and_bounded_planner`, `tc_165_batch_create_filelist_wires_root_saved_roots_and_flag_validation`, TC-165, TC-166.
+- Notes for Future Changes: propagation testでsystem tempやworkspace rootをunbounded production API/subprocessへ直接渡さず、production options builderとpaired boundary helperを共有する。実binaryのpropagation coverageを追加する場合はhost ancestorへ到達しないproduction-visible boundaryを先に設計する。
 
 ### Regression Guard: Windows release archive-local names
 
