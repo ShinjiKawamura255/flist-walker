@@ -8,7 +8,7 @@ use super::filelist_reader::{
 use super::filelist_writer::{
     annotate_write_target_error, execute_filelist_write_plan_with, filelist_modified_time,
     finalize_ancestor_filelist_discovery, normalize_filelist_entry_for_text_compare,
-    visit_ancestor_directories,
+    sort_and_deduplicate_filelist_candidates_by, visit_ancestor_directories,
 };
 use super::*;
 use anyhow::Context;
@@ -691,6 +691,19 @@ fn tc048_complete_ancestor_scan_keeps_deterministic_variants_and_continues() {
         discovery.next_ancestor(directory),
         Some(Path::new("/fixture"))
     );
+}
+
+#[test]
+fn tc165_case_insensitive_aliases_are_deduplicated_by_resolved_identity() {
+    let upper = PathBuf::from("/fixture/parent/FileList.txt");
+    let lower = PathBuf::from("/fixture/parent/filelist.txt");
+    let variant = PathBuf::from("/fixture/parent/FILELIST.TXT");
+    let resolved = PathBuf::from("/resolved/parent/FileList.txt");
+    let mut candidates = vec![lower, variant, upper.clone()];
+
+    sort_and_deduplicate_filelist_candidates_by(&mut candidates, |_| resolved.clone());
+
+    assert_eq!(candidates, vec![upper]);
 }
 
 #[test]

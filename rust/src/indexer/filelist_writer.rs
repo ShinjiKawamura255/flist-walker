@@ -287,10 +287,30 @@ impl AncestorFileListDiscovery {
     }
 }
 
-fn sort_and_deduplicate_filelist_candidates(candidates: &mut Vec<PathBuf>) {
+pub(crate) fn sort_and_deduplicate_filelist_candidates_by<F>(
+    candidates: &mut Vec<PathBuf>,
+    mut resolve_identity: F,
+) where
+    F: FnMut(&Path) -> PathBuf,
+{
     candidates.sort_by(|left, right| compare_filelist_path_precedence(left, right));
     let mut seen = HashSet::new();
-    candidates.retain(|candidate| seen.insert(path_key(candidate)));
+    candidates.retain(|candidate| seen.insert(path_key(&resolve_identity(candidate))));
+}
+
+fn filelist_candidate_identity(path: &Path) -> PathBuf {
+    // A case-insensitive macOS volume can report both canonical spellings as
+    // files even though they address one directory entry. Resolve regular-file
+    // aliases before deduplication, but keep symlinks lexical so the later
+    // target-safety check can reject them instead of hiding them behind a peer.
+    if fs::symlink_metadata(path).is_ok_and(|metadata| metadata.file_type().is_symlink()) {
+        return path.to_path_buf();
+    }
+    path.canonicalize().unwrap_or_else(|_| path.to_path_buf())
+}
+
+fn sort_and_deduplicate_filelist_candidates(candidates: &mut Vec<PathBuf>) {
+    sort_and_deduplicate_filelist_candidates_by(candidates, filelist_candidate_identity);
 }
 
 pub(crate) fn finalize_ancestor_filelist_discovery(
