@@ -189,6 +189,15 @@ impl TabAccentColor {
 /// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
     shell: AppShellState,
+    #[cfg(test)]
+    test_settings_paths: Option<TestSettingsPaths>,
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug)]
+struct TestSettingsPaths {
+    ui_state: PathBuf,
+    saved_roots: PathBuf,
 }
 
 impl FlistWalkerApp {

@@ -937,16 +937,14 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
 }
 
 #[test]
-fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
-    // Regression guard: the real CLI intentionally walks to the filesystem root.
-    // Keep this subprocess fixture under the workspace so coverage/sandbox runs
-    // never enumerate a developer's profile directory.
+fn tc_165_batch_create_filelist_wires_root_saved_roots_and_flag_validation() {
+    // Ancestor propagation is covered by a bounded unit test that uses the
+    // production options builder and planner. Subprocess coverage must not walk
+    // beyond its fixture because a real CLI has no test-only ancestor boundary.
     let parent = workspace_test_root("create-filelist-ancestor");
     let root = parent.join("child");
     fs::create_dir_all(&root).expect("create root");
     fs::write(root.join("alpha.txt"), "alpha").expect("write file");
-    let parent_filelist = parent.join("FileList.txt");
-    fs::write(&parent_filelist, "before\n").expect("write ancestor FileList");
 
     let initial = cli_command("create-filelist-initial")
         .args([
@@ -957,20 +955,6 @@ fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
         ])
         .output()
         .expect("create root FileList");
-    let without_propagation =
-        fs::read_to_string(&parent_filelist).expect("read unchanged ancestor");
-    let overwrite = cli_command("create-filelist-overwrite")
-        .args([
-            "--cli",
-            "--root",
-            root.to_string_lossy().as_ref(),
-            "--create-filelist",
-            "--overwrite-filelist",
-            "--propagate-ancestors",
-        ])
-        .output()
-        .expect("overwrite and propagate FileList");
-    let propagated = fs::read_to_string(&parent_filelist).expect("read propagated ancestor");
 
     let saved_root = test_root("create-filelist-saved");
     fs::create_dir_all(&saved_root).expect("create saved root");
@@ -995,11 +979,6 @@ fn tc_165_batch_create_filelist_wires_overwrite_ancestors_and_saved_roots() {
         .expect("propagate requires create");
 
     assert!(initial.status.success());
-    assert_eq!(without_propagation, "before\n");
-    assert!(overwrite.status.success());
-    assert!(
-        propagated.contains("child/FileList.txt") || propagated.contains("child\\FileList.txt")
-    );
     assert!(saved.status.success());
     assert!(saved_root.join("FileList.txt").exists());
     assert_eq!(overwrite_only.status.code(), Some(2));

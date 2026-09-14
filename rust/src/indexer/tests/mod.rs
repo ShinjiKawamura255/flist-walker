@@ -7,7 +7,8 @@ use super::filelist_reader::{
 };
 use super::filelist_writer::{
     annotate_write_target_error, execute_filelist_write_plan_with, filelist_modified_time,
-    normalize_filelist_entry_for_text_compare, visit_ancestor_directories,
+    finalize_ancestor_filelist_discovery, normalize_filelist_entry_for_text_compare,
+    visit_ancestor_directories,
 };
 use super::*;
 use anyhow::Context;
@@ -636,6 +637,63 @@ fn visit_ancestor_directories_stops_when_callback_requests_break() {
 }
 
 #[test]
+fn tc048_incomplete_ancestor_scan_discards_partial_candidates_and_stops_before_parent() {
+    let direct_upper = PathBuf::from("/fixture/parent/FileList.txt");
+    let direct_lower = PathBuf::from("/fixture/parent/filelist.txt");
+    let partial_variant = PathBuf::from("/fixture/parent/FiLeLiSt.TxT");
+    let directory = Path::new("/fixture/parent");
+
+    for kind in [
+        std::io::ErrorKind::PermissionDenied,
+        std::io::ErrorKind::Other,
+    ] {
+        let discovery = finalize_ancestor_filelist_discovery(
+            vec![direct_lower.clone(), direct_upper.clone()],
+            Err((
+                vec![partial_variant.clone()],
+                std::io::Error::new(kind, "injected scan failure"),
+            )),
+        );
+
+        let expected = if cfg!(windows) {
+            vec![direct_upper.clone()]
+        } else {
+            vec![direct_upper.clone(), direct_lower.clone()]
+        };
+        assert_eq!(discovery.candidates, expected);
+        assert_eq!(discovery.next_ancestor(directory), None);
+    }
+}
+
+#[test]
+fn tc048_complete_ancestor_scan_keeps_deterministic_variants_and_continues() {
+    let direct = PathBuf::from("/fixture/parent/FileList.txt");
+    let lexical_first = PathBuf::from("/fixture/parent/FILELIST.TXT");
+    let lexical_second = PathBuf::from("/fixture/parent/FiLeLiSt.TxT");
+    let directory = Path::new("/fixture/parent");
+
+    let discovery = finalize_ancestor_filelist_discovery(
+        vec![direct.clone()],
+        Ok(vec![
+            lexical_second.clone(),
+            direct.clone(),
+            lexical_first.clone(),
+        ]),
+    );
+
+    let expected = if cfg!(windows) {
+        vec![direct]
+    } else {
+        vec![direct, lexical_first, lexical_second]
+    };
+    assert_eq!(discovery.candidates, expected);
+    assert_eq!(
+        discovery.next_ancestor(directory),
+        Some(Path::new("/fixture"))
+    );
+}
+
+#[test]
 fn annotate_write_target_error_adds_permission_hint() {
     let path = PathBuf::from(r"C:\FileList.txt");
     let err = std::io::Error::new(std::io::ErrorKind::PermissionDenied, "os error 5");
@@ -863,14 +921,18 @@ fn tc165_plan_materializes_all_ancestor_targets_before_execution() {
 }
 
 #[test]
-fn tc165_invalid_or_readonly_target_plan_fails_before_any_write() {
-    let top = test_root("tc165-invalid-readonly");
-    let root = top.join("child");
+fn tc165_invalid_upper_ancestor_preserves_lower_planned_target() {
+    let top = test_root("tc165-invalid-upper-ancestor");
+    let parent = top.join("parent");
+    let root = parent.join("child");
     fs::create_dir_all(&root).expect("create root");
-    let invalid_ancestor = top.join("FileList.txt");
-    fs::write(&invalid_ancestor, b"keep\0bad\n").expect("write invalid ancestor");
+    let invalid_upper = top.join("FileList.txt");
+    let lower_filelist = parent.join("FileList.txt");
+    let invalid_upper_bytes = b"keep\0invalid\n";
+    fs::write(&invalid_upper, invalid_upper_bytes).expect("write invalid upper FileList");
+    fs::write(&lower_filelist, "keep.txt\n").expect("write lower FileList");
 
-    let invalid_report = plan_filelist_write(
+    let plan = plan_filelist_write(
         &root,
         &[root.join("entry.txt")],
         FileListWriteOptions {
@@ -878,11 +940,56 @@ fn tc165_invalid_or_readonly_target_plan_fails_before_any_write() {
             propagate_to_ancestors: true,
         },
     )
-    .expect_err("invalid ancestor must reject plan");
-    assert_eq!(invalid_report.exit_code(), 1);
-    assert_eq!(invalid_report.root_target, root.join("FileList.txt"));
-    assert_eq!(invalid_report.failed[0].path, invalid_ancestor);
-    assert!(!root.join("FileList.txt").exists());
+    .expect("invalid upper ancestor stops after retaining lower plan");
+    assert_eq!(plan.targets().len(), 2);
+    assert!(plan
+        .targets()
+        .iter()
+        .any(|target| target.path == lower_filelist));
+    assert!(!plan
+        .targets()
+        .iter()
+        .any(|target| target.path == invalid_upper));
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+    assert_eq!(report.exit_code(), 0);
+    assert!(root.join("FileList.txt").is_file());
+    assert!(fs::read_to_string(&lower_filelist)
+        .expect("read lower FileList")
+        .contains("child"));
+    assert_eq!(
+        fs::read(&invalid_upper).expect("read unchanged upper FileList"),
+        invalid_upper_bytes
+    );
+    let _ = fs::remove_dir_all(&top);
+}
+
+#[test]
+fn tc165_invalid_ancestor_stops_propagation_but_root_target_remains_strict() {
+    let top = test_root("tc165-invalid-readonly");
+    let root = top.join("child");
+    fs::create_dir_all(&root).expect("create root");
+    let invalid_ancestor = top.join("FileList.txt");
+    fs::write(&invalid_ancestor, b"keep\0bad\n").expect("write invalid ancestor");
+
+    let invalid_before = fs::read(&invalid_ancestor).expect("read invalid ancestor");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: false,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("invalid ancestor stops optional propagation only");
+    assert_eq!(plan.targets().len(), 1);
+    let report = execute_filelist_write_plan(&plan, &|| false);
+    assert_eq!(report.exit_code(), 0);
+    assert!(root.join("FileList.txt").exists());
+    assert_eq!(
+        fs::read(&invalid_ancestor).expect("read unchanged invalid ancestor"),
+        invalid_before
+    );
 
     let readonly_target = root.join("FileList.txt");
     fs::write(&readonly_target, "old\n").expect("write readonly target");
@@ -1455,7 +1562,7 @@ fn tc161_bom_ancestor_dedupes_existing_child_reference() {
 }
 
 #[test]
-fn tc161_nul_ancestor_is_not_rewritten() {
+fn tc161_nul_ancestor_is_not_rewritten_and_root_still_commits() {
     let top = test_root("tc161-nul-ancestor");
     let parent = top.join("parent");
     let root = parent.join("child");
@@ -1464,11 +1571,10 @@ fn tc161_nul_ancestor_is_not_rewritten() {
     let invalid_parent = b"keep.txt\0hidden.txt\n";
     fs::write(&parent_filelist, invalid_parent).expect("write NUL parent");
 
-    let error = write_filelist(&root, &[], "FileList.txt", true)
-        .expect_err("invalid ancestor must abort the transaction");
+    let root_filelist = write_filelist(&root, &[], "FileList.txt", true)
+        .expect("invalid ancestor stops optional propagation only");
 
-    assert!(error.to_string().contains("NUL bytes"));
-    assert!(!root.join("FileList.txt").exists());
+    assert!(root_filelist.exists());
     assert_eq!(
         fs::read(&parent_filelist).expect("read parent"),
         invalid_parent

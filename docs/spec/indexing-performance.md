@@ -21,7 +21,7 @@
 - MUST: Create File List のキャンセル要求後、root 直下の最終置換と祖先 FileList 追記は開始前なら実行してはならない。
 - MUST: 上記の祖先 FileList 追記後は、親 FileList の mtime を更新前の値へ戻す。
 - MUST: 祖先 FileList の参照重複判定と追記も同じ UTF-8/optional-BOM/NUL/行上限契約を使わなければならない。先頭 BOM は最初の参照文字列に含めず、拒否対象の親 FileList は書き換えず、既存どおりその時点で祖先追記だけを終了する。
-- MUST: 祖先探索や親 FileList 更新で権限不足・読込失敗が発生した場合はエラーを返さず、その時点で追記処理のみを終了する。
+- MUST: 祖先探索や親 FileList 更新で列挙失敗、権限不足、読込失敗、または更新準備失敗が発生した場合は root FileList 作成を失敗させず、その時点で追記処理のみを終了する。不完全な列挙で得た候補は破棄し、列挙とは独立に直接確認できた canonical `FileList.txt` / `filelist.txt` だけを処理した後、それより上位の祖先へ進んではならない。停止前に検証・計画済みの下位祖先 target は維持する。
 - MUST: Source が FileList のタブで Create File List を実行する場合、新規タブを開かずに同一タブの裏で Walker indexing を実行し、その結果で FileList を作成しなければならない。作成完了後は同じタブを新しい FileList で再インデックスしなければならない。
 - MUST: 上記の FileList 作成完了後再インデックスは、元タブが非アクティブに変わっていても元タブに対して継続しなければならない。一方、完了前にその元タブの root が変更されていた場合は、旧 root 向けの再インデックスや `use_filelist` 復帰を行ってはならない。
 - MUST: Create File List worker 応答は request_id と requested root の組で相関し、requested root と一致しない stale completion / failure / cancel では pending / in_progress cleanup 以外の follow-up（`use_filelist` 復帰、再インデックス、notice 更新）を行ってはならない。

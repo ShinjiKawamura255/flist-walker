@@ -18,6 +18,8 @@ pub use filelist_reader::{
     parse_filelist, parse_filelist_stream, parse_filelist_stream_with_max_depth,
     parse_filelist_with_max_depth, FileListDiscoveryCanceled,
 };
+#[cfg(test)]
+pub(crate) use filelist_writer::plan_filelist_write_cancellable_with_ancestor_boundary;
 pub use filelist_writer::{
     ancestor_filelist_propagation_needed, build_filelist_text, build_filelist_text_cancellable,
     execute_filelist_write_plan, has_ancestor_filelists, plan_filelist_write,
