@@ -22,7 +22,7 @@ This file is the entry point for FlistWalker design. Detailed DES content is spl
 - Full excerpt: [Operations, Trade-offs, and Traceability](design/operations-traceability.md)
 - DES-001 -> TC-001, TC-161 (SP-001)
 - DES-003 -> TC-003, TC-155 (SP-003)
-- DES-004, DES-007 -> TC-050, TC-051 (SP-004)
+- DES-004, DES-007 -> TC-050, TC-051, TC-164 (SP-004)
 - DES-009 -> TC-010 (SP-010)
 - DES-006, DES-007, DES-009 -> TC-150, TC-151, TC-152, TC-153 (SP-010)
 - DES-009 -> TC-154, TC-203, TC-204, TC-205, TC-208, TC-209, TC-210 (SP-010)

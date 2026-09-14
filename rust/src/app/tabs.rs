@@ -282,6 +282,10 @@ impl FlistWalkerApp {
             return false;
         }
 
+        if let Some(request_id) = slot.pending_action_request_id {
+            self.shell.worker_bus.action.invalidate_request(request_id);
+        }
+
         slot.root = new_root;
         slot.index_state.build.index.source = IndexSource::None;
         slot.index_state
@@ -334,6 +338,14 @@ impl FlistWalkerApp {
             tab.restore_heavy_resources(*resources);
             tab.notice = "Waiting for background tab resource reclamation".to_string();
             return false;
+        }
+        if let Some(request_id) = self
+            .shell
+            .tabs
+            .get(tab_index)
+            .and_then(|tab| tab.pending_action_request_id)
+        {
+            self.shell.worker_bus.action.invalidate_request(request_id);
         }
         let tab = self
             .shell
@@ -618,6 +630,14 @@ impl FlistWalkerApp {
                     .background_finalizations
                     .insert(request_id, finalization);
                 return effect;
+            }
+            let pending_action_request_id = self
+                .shell
+                .tabs
+                .get(tab_index)
+                .and_then(|tab| tab.pending_action_request_id);
+            if let Some(request_id) = pending_action_request_id {
+                self.shell.worker_bus.action.invalidate_request(request_id);
             }
             let tab_id = {
                 let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");

@@ -5,7 +5,50 @@ use super::protocol::{
     RootValidationRequest, RootValidationResponse, SortMetadataRequest, SortMetadataResponse,
     UpdateRequest, UpdateResponse,
 };
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{Arc, RwLock};
+
+#[derive(Default)]
+pub(in crate::app) struct ActionFreshnessRegistry {
+    active: RwLock<HashMap<u64, PathBuf>>,
+}
+
+impl ActionFreshnessRegistry {
+    pub(in crate::app) fn activate(&self, request_id: u64, trusted_root: &Path) -> bool {
+        let Ok(mut active) = self.active.write() else {
+            return false;
+        };
+        active.insert(request_id, trusted_root.to_path_buf());
+        true
+    }
+
+    pub(in crate::app) fn is_current(&self, request_id: u64, trusted_root: &Path) -> bool {
+        self.active.read().ok().is_some_and(|active| {
+            active
+                .get(&request_id)
+                .is_some_and(|root| root == trusted_root)
+        })
+    }
+
+    pub(in crate::app) fn invalidate(&self, request_id: u64) {
+        if let Ok(mut active) = self.active.write() {
+            active.remove(&request_id);
+        }
+    }
+
+    pub(in crate::app) fn invalidate_all(&self) {
+        if let Ok(mut active) = self.active.write() {
+            active.clear();
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::app) fn active_count(&self) -> usize {
+        self.active.read().map_or(0, |active| active.len())
+    }
+}
 
 fn allocate_request_id(next_request_id: &mut u64) -> u64 {
     let request_id = *next_request_id;
@@ -57,6 +100,7 @@ pub(in crate::app) struct ActionWorkerBus {
     pub(in crate::app) next_request_id: u64,
     pub(in crate::app) pending_request_id: Option<u64>,
     pub(in crate::app) in_progress: bool,
+    pub(in crate::app) freshness: Arc<ActionFreshnessRegistry>,
 }
 
 impl ActionWorkerBus {
@@ -64,13 +108,38 @@ impl ActionWorkerBus {
         allocate_request_id(&mut self.next_request_id)
     }
 
+    pub(in crate::app) fn prepare_request(&self, request_id: u64, trusted_root: &Path) -> bool {
+        self.freshness.activate(request_id, trusted_root)
+    }
+
     pub(in crate::app) fn accept_request(&mut self, request_id: u64) {
+        if let Some(previous) = self
+            .pending_request_id
+            .filter(|previous| *previous != request_id)
+        {
+            self.freshness.invalidate(previous);
+        }
         self.pending_request_id = Some(request_id);
         self.in_progress = true;
     }
 
+    pub(in crate::app) fn invalidate_request(&self, request_id: u64) {
+        self.freshness.invalidate(request_id);
+    }
+
+    pub(in crate::app) fn finish_request(&self, request_id: u64) {
+        self.freshness.invalidate(request_id);
+    }
+
     pub(in crate::app) fn clear_request(&mut self) {
+        if let Some(request_id) = self.pending_request_id {
+            self.freshness.invalidate(request_id);
+        }
         clear_request(&mut self.pending_request_id, &mut self.in_progress);
+    }
+
+    pub(in crate::app) fn invalidate_all(&self) {
+        self.freshness.invalidate_all();
     }
 }
 

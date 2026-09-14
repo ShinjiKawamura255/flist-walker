@@ -95,7 +95,8 @@ pub struct AuthorizedActionReport {
     pub display_targets: Vec<PathBuf>,
     /// Safe, user-facing authorization or lifecycle reason.
     pub diagnostic: Option<String>,
-    /// Raw executor error for a non-GUI adapter's diagnostic channel.
+    /// Raw executor error for internal tracing only. Public adapters must not
+    /// copy this value into user-facing diagnostics.
     pub backend_error: Option<String>,
 }
 

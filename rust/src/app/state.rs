@@ -593,8 +593,14 @@ impl RequestTabRoutingState {
         self.preview.retain(|_, id| *id != tab_id);
     }
 
-    pub(super) fn clear_action_for_tab(&mut self, tab_id: u64) {
+    pub(super) fn clear_action_for_tab(&mut self, tab_id: u64) -> Vec<u64> {
+        let removed = self
+            .action
+            .iter()
+            .filter_map(|(request_id, id)| (*id == tab_id).then_some(*request_id))
+            .collect();
         self.action.retain(|_, id| *id != tab_id);
+        removed
     }
 
     pub(super) fn clear_action(&mut self) {
@@ -605,10 +611,11 @@ impl RequestTabRoutingState {
         self.sort.retain(|_, id| *id != tab_id);
     }
 
-    pub(super) fn clear_for_tab(&mut self, tab_id: u64) {
+    pub(super) fn clear_for_tab(&mut self, tab_id: u64) -> Vec<u64> {
         self.clear_preview_for_tab(tab_id);
-        self.clear_action_for_tab(tab_id);
+        let removed_actions = self.clear_action_for_tab(tab_id);
         self.clear_sort_for_tab(tab_id);
+        removed_actions
     }
 }
 
@@ -1354,8 +1361,8 @@ impl TabSessionState {
         self.request_tab_routing.sort.get(&request_id).copied()
     }
 
-    pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
-        self.request_tab_routing.clear_for_tab(tab_id);
+    pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) -> Vec<u64> {
+        self.request_tab_routing.clear_for_tab(tab_id)
     }
 
     pub(super) fn clear_preview_response_routing_for_tab(&mut self, tab_id: u64) {

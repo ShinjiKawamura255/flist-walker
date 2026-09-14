@@ -1,3 +1,4 @@
+use super::bus::ActionFreshnessRegistry;
 use super::channel::{
     bounded_request_channel, trace_worker_snapshot, BoundedSender, WorkerTraceContext,
 };
@@ -643,6 +644,7 @@ pub(in crate::app) fn spawn_action_worker(
     BoundedSender<ActionRequest>,
     Receiver<ActionResponse>,
     Vec<thread::JoinHandle<()>>,
+    Arc<ActionFreshnessRegistry>,
 ) {
     spawn_action_worker_with(shutdown, Arc::new(run_action_target))
 }
@@ -654,6 +656,7 @@ pub(crate) fn spawn_action_worker_with(
     BoundedSender<ActionRequest>,
     Receiver<ActionResponse>,
     Vec<thread::JoinHandle<()>>,
+    Arc<ActionFreshnessRegistry>,
 ) {
     const ACTION_WORKERS: usize = 2;
     const ACTION_QUEUE_CAPACITY: usize = 8;
@@ -661,12 +664,14 @@ pub(crate) fn spawn_action_worker_with(
     let (tx_req, rx_req) = bounded_request_channel::<ActionRequest>(ACTION_QUEUE_CAPACITY);
     let (tx_res, rx_res) = mpsc::channel::<ActionResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));
+    let freshness = Arc::new(ActionFreshnessRegistry::default());
     let mut handles = Vec::with_capacity(ACTION_WORKERS);
     for worker_index in 0..ACTION_WORKERS {
         let shutdown = Arc::clone(&shutdown);
         let execute = Arc::clone(&execute);
         let tx_res = tx_res.clone();
         let rx_req = Arc::clone(&rx_req);
+        let freshness = Arc::clone(&freshness);
         let worker_id = format!("flistwalker-action-{worker_index}");
         let handle = thread::Builder::new()
             .name(worker_id.clone())
@@ -677,6 +682,11 @@ pub(crate) fn spawn_action_worker_with(
                 };
                 let Ok((req, inflight)) = received else {
                     break;
+                };
+                let request_id = req.request_id;
+                let _terminal_freshness = ActionFreshnessRevocation {
+                    freshness: Arc::clone(&freshness),
+                    request_id,
                 };
                 if shutdown.load(Ordering::Relaxed) {
                     trace_worker_snapshot(
@@ -702,8 +712,13 @@ pub(crate) fn spawn_action_worker_with(
                     }
                     continue;
                 }
-                let request_id = req.request_id;
-                let outcome = run_action_request_with(req, &tx_res, execute.as_ref(), &shutdown);
+                let outcome = run_action_request_with(
+                    req,
+                    &tx_res,
+                    execute.as_ref(),
+                    &shutdown,
+                    freshness.as_ref(),
+                );
                 trace_worker_snapshot(
                     inflight.load(),
                     "action",
@@ -722,7 +737,18 @@ pub(crate) fn spawn_action_worker_with(
     }
     drop(tx_res);
 
-    (tx_req, rx_res, handles)
+    (tx_req, rx_res, handles, freshness)
+}
+
+struct ActionFreshnessRevocation {
+    freshness: Arc<ActionFreshnessRegistry>,
+    request_id: u64,
+}
+
+impl Drop for ActionFreshnessRevocation {
+    fn drop(&mut self) {
+        self.freshness.invalidate(self.request_id);
+    }
 }
 
 fn run_action_request_with(
@@ -730,12 +756,14 @@ fn run_action_request_with(
     tx_res: &Sender<ActionResponse>,
     execute: &(dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync),
     shutdown: &Arc<AtomicBool>,
+    freshness: &ActionFreshnessRegistry,
 ) -> &'static str {
     trace_worker_started("action", req.request_id);
     let (response, outcome) = process_action_request_with_outcome_and_cancellation(
         req,
         |path| execute(path),
         Arc::clone(shutdown),
+        &WorkerActionGuard { freshness },
     );
     info!(
         flow = "action",
@@ -785,6 +813,7 @@ pub(crate) fn process_action_request_with_outcome(
         req,
         execute,
         Arc::new(AtomicBool::new(false)),
+        &AlwaysCurrentActionGuard,
     )
 }
 
@@ -792,6 +821,7 @@ fn process_action_request_with_outcome_and_cancellation(
     req: ActionRequest,
     execute: impl FnMut(&Path) -> anyhow::Result<()>,
     cancellation: Arc<AtomicBool>,
+    guard: &dyn AuthorizedActionGuard,
 ) -> (ActionResponse, ActionTerminalOutcome) {
     let request_id = req.request_id;
     let mode = if req.open_parent_for_files {
@@ -807,7 +837,7 @@ fn process_action_request_with_outcome_and_cancellation(
         cancellation,
     );
     let backend = WorkerActionBackend::new(execute);
-    let report = execute_authorized_action_request(&request, &WorkerActionGuard, &backend);
+    let report = execute_authorized_action_request(&request, guard, &backend);
     let outcome = if report.outcome == AuthorizedActionOutcome::Completed {
         ActionTerminalOutcome::Completed
     } else {
@@ -822,9 +852,21 @@ fn process_action_request_with_outcome_and_cancellation(
     )
 }
 
-struct WorkerActionGuard;
+struct WorkerActionGuard<'a> {
+    freshness: &'a ActionFreshnessRegistry,
+}
 
-impl AuthorizedActionGuard for WorkerActionGuard {
+impl AuthorizedActionGuard for WorkerActionGuard<'_> {
+    fn is_current(&self, request_id: u64, trusted_root: &Path) -> bool {
+        self.freshness.is_current(request_id, trusted_root)
+    }
+}
+
+#[cfg(test)]
+struct AlwaysCurrentActionGuard;
+
+#[cfg(test)]
+impl AuthorizedActionGuard for AlwaysCurrentActionGuard {
     fn is_current(&self, _request_id: u64, _trusted_root: &Path) -> bool {
         true
     }

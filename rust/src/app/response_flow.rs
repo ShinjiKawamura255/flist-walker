@@ -19,7 +19,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
-        self.shell.tabs.clear_response_routing_for_tab(tab_id);
+        let action_request_ids = self.shell.tabs.clear_response_routing_for_tab(tab_id);
+        for request_id in action_request_ids {
+            self.shell.worker_bus.action.invalidate_request(request_id);
+        }
     }
 
     #[cfg(test)]
@@ -43,6 +46,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn clear_all_action_request_state(&mut self) {
+        self.shell.worker_bus.action.invalidate_all();
         self.shell.worker_bus.action.clear_request();
         self.shell.tabs.clear_action_request_routing();
         for tab in &mut self.shell.tabs {
@@ -85,6 +89,10 @@ impl FlistWalkerApp {
     /// action worker の応答を現在 tab または背景 tab に反映する。
     pub(super) fn poll_action_response(&mut self) {
         while let Ok(response) = self.shell.worker_bus.action.rx.try_recv() {
+            self.shell
+                .worker_bus
+                .action
+                .finish_request(response.request_id);
             if self.apply_active_action_response(&response) {
                 continue;
             }

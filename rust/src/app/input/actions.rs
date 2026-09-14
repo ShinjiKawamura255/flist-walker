@@ -45,7 +45,7 @@ impl FlistWalkerApp {
             return;
         }
         if let Some(blocked) = self.first_action_path_outside_root(&paths) {
-            self.shell.worker_bus.action.clear_request();
+            self.clear_all_action_request_state();
             self.set_notice(format!(
                 "Action blocked: path is outside current root: {}",
                 normalize_path_for_display(&blocked)
@@ -55,6 +55,15 @@ impl FlistWalkerApp {
 
         let request_id = self.shell.worker_bus.action.allocate_request_id();
         let tab_id = self.current_tab_id();
+        if !self
+            .shell
+            .worker_bus
+            .action
+            .prepare_request(request_id, &self.shell.runtime.root)
+        {
+            self.set_notice("Action worker is unavailable");
+            return;
+        }
         let req = ActionRequest {
             request_id,
             root: self.shell.runtime.root.clone(),
@@ -99,6 +108,7 @@ impl FlistWalkerApp {
                 }
             }
             Err(std::sync::mpsc::TrySendError::Full(_)) => {
+                self.shell.worker_bus.action.invalidate_request(request_id);
                 super::super::worker::channel::trace_worker_load(
                     &self.shell.worker_bus.action.tx,
                     "action",
