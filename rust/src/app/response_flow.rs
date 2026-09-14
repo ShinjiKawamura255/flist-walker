@@ -54,6 +54,24 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn clear_current_tab_action_request_state(&mut self) {
+        let Some(tab_id) = self.current_tab_id() else {
+            self.shell.worker_bus.action.clear_request();
+            return;
+        };
+        for request_id in self
+            .shell
+            .tabs
+            .clear_action_response_routing_for_tab(tab_id)
+        {
+            self.shell.worker_bus.action.invalidate_request(request_id);
+        }
+        self.shell.worker_bus.action.clear_request();
+        if let Some(tab) = self.shell.tabs.iter_mut().find(|tab| tab.id == tab_id) {
+            tab.clear_action_request_state();
+        }
+    }
+
     pub(super) fn bind_sort_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
         self.shell.tabs.bind_sort_request(request_id, tab_id);
     }

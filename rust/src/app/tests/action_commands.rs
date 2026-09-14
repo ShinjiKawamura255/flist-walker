@@ -82,6 +82,53 @@ fn tc_164_tab_close_invalidates_routed_action_freshness() {
 }
 
 #[test]
+fn tc_164_current_tab_precheck_rejection_preserves_background_action() {
+    let root = test_root("tc-164-tab-scoped-precheck");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let background_tab_id = app.current_tab_id().expect("background tab id");
+    let background_request_id = 72;
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .prepare_request(background_request_id, &root));
+    app.shell
+        .worker_bus
+        .action
+        .accept_request(background_request_id);
+    app.bind_action_request_to_tab(background_request_id, background_tab_id);
+
+    app.create_new_tab();
+    let active_tab_id = app.current_tab_id().expect("active tab id");
+    assert_ne!(active_tab_id, background_tab_id);
+    let escaped = root.join("..").join("outside").join("blocked.txt");
+    app.shell.runtime.committed_for_test_mut().results = vec![(escaped, 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+
+    app.execute_selected();
+
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .freshness
+        .is_current(background_request_id, &root));
+    assert_eq!(
+        app.action_request_tab(background_request_id),
+        Some(background_tab_id)
+    );
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(
+        background.pending_action_request_id,
+        Some(background_request_id)
+    );
+    assert!(background.action_in_progress);
+    assert!(app.shell.runtime.notice.starts_with("Action blocked:"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_164_gui_root_switch_stops_backend_calls_after_inflight_target() {
     use std::sync::{Condvar, Mutex};
 

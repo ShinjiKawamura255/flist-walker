@@ -1373,6 +1373,10 @@ impl TabSessionState {
         self.request_tab_routing.clear_action();
     }
 
+    pub(super) fn clear_action_response_routing_for_tab(&mut self, tab_id: u64) -> Vec<u64> {
+        self.request_tab_routing.clear_action_for_tab(tab_id)
+    }
+
     #[cfg(test)]
     pub(super) fn routed_tab_ids_for_test(&self) -> Vec<u64> {
         let mut tab_ids = self
