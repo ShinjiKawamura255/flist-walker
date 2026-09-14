@@ -27,8 +27,8 @@
 - 役割: UI の action intent、worker の root confinement、OS 固有の open/execute leaf を分離し、認可済み path だけが OS 境界へ到達する testable seam を保つ。
 - 役割補足: UI は同期 filesystem I/O を行わない `Reject` / `Defer` の字句的 precheck と trusted root を含む request 構築だけを担当する。`Defer` は許可を意味せず、worker の権威的な判定へ必ず送る。
 - 役割補足: action authorization module は action mode から raw effective target と display path を導出し、字句的 root と解決済み root の両 scope に対する component containment、解決済み execution path の deduplication、execution/display path の分離を担当する。raw target が字句的 root 配下、または解決先が解決済み root 配下なら許可するため、root 自体および root 配下の symlink/junction を OS 間で同じ契約として扱う。
-- 役割補足: Action worker は全 target の fail-closed な事前認可、各 OS 呼び出し直前の再認可、実行順序、途中失敗時の残件停止と partial-completion 通知を担当する。OS leaf は認可済みの解決済み path を実行し、root policy を判断しない。
-- 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/worker/protocol.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/actions.rs`
+- 役割補足: GUI action bus は request を enqueue する前に `(request_id, trusted_root)` を request-scoped freshness registry へ登録し、enqueue failure、同一tabの後続request、root変更、tab close、worker終端、response cleanupで冪等に失効させる。Action worker は exact identity/root が current の場合だけ全 target の fail-closed な事前認可へ進み、各 OS 呼び出し直前にも freshness/cancel と再認可を確認する。途中失敗または失効後は残件を停止して partial-completion を通知し、OS leaf は認可済みの解決済み path を実行して root policy を判断しない。
+- 実装: `rust/src/app/coordinator.rs`, `rust/src/app/input/actions.rs`, `rust/src/app/response_flow.rs`, `rust/src/app/state.rs`, `rust/src/app/tabs.rs`, `rust/src/app/shell_support.rs`, `rust/src/app/worker/bus.rs`, `rust/src/app/worker/protocol.rs`, `rust/src/app/worker/tasks.rs`, `rust/src/actions.rs`
 
 - DES-005 CLI Adapter
 - TUI producerは公開前にretirement workerへArc guardを登録する。retirementは保持4件＋queue4件に制限し、満杯時はproducerだけがcancel-aware待機する。indexはrequest単位のbatch owner、search/catalogは共有snapshotを持ち、UIで最後のPathBuf配列ownerを解放しない。

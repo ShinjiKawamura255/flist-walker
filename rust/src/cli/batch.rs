@@ -685,6 +685,14 @@ impl AuthorizedActionBackend for CliActionBackend {
 }
 
 fn write_cli_action_report(report: &AuthorizedActionReport) {
+    if let Some(backend_error) = report.backend_error.as_deref() {
+        warn!(
+            request_id = report.request_id,
+            outcome = ?report.outcome,
+            error = %backend_error,
+            "CLI action backend failed"
+        );
+    }
     eprintln!("{}", format_cli_action_report(report));
 }
 
@@ -737,22 +745,25 @@ fn format_cli_action_report(report: &AuthorizedActionReport) -> String {
         .map(normalize_path_for_display)
         .unwrap_or_else(|| "selected target".to_string());
     let diagnostic = report.diagnostic.as_deref().unwrap_or("executor failed");
-    let backend_error = report.backend_error.as_deref().unwrap_or("unknown error");
     match report.outcome {
         AuthorizedActionOutcome::Completed => {
-            format!("Action completed: {}/{} targets", report.completed, report.total)
+            format!(
+                "Action completed: {}/{} targets",
+                report.completed, report.total
+            )
         }
         AuthorizedActionOutcome::Blocked => format!(
             "Action blocked: {path}: {}",
-            report.diagnostic.as_deref().unwrap_or("authorization failed")
+            report
+                .diagnostic
+                .as_deref()
+                .unwrap_or("authorization failed")
         ),
         AuthorizedActionOutcome::Canceled => "Action canceled".to_string(),
         AuthorizedActionOutcome::Superseded => "Action superseded".to_string(),
-        AuthorizedActionOutcome::Failed => {
-            format!("Action failed: {path}: {diagnostic}: {backend_error}")
-        }
+        AuthorizedActionOutcome::Failed => format!("Action failed: {path}: {diagnostic}"),
         AuthorizedActionOutcome::PartialFailure => format!(
-            "Action partial failure: completed {}/{} targets at {path}: {diagnostic}: {backend_error}",
+            "Action partial failure: completed {}/{} targets at {path}: {diagnostic}",
             report.completed, report.total
         ),
     }
@@ -1236,9 +1247,17 @@ mod tests {
         ));
         assert_eq!(partial.outcome, AuthorizedActionOutcome::PartialFailure);
         assert_eq!((partial.completed, partial.total), (1, 2));
+        assert_eq!(
+            partial.backend_error.as_deref(),
+            Some("recorded backend failure 1"),
+            "raw backend detail remains available to internal tracing"
+        );
         let partial_diagnostic = format_cli_action_report(&partial);
         assert!(partial_diagnostic.contains("completed 1/2 targets"));
-        assert!(partial_diagnostic.contains("recorded backend failure 1"));
+        assert!(
+            !partial_diagnostic.contains("recorded backend failure 1"),
+            "public CLI diagnostics must not expose raw backend errors"
+        );
         assert!(partial_diagnostic.contains(&normalize_path_for_display(&second)));
         assert_eq!(partial_backend.calls().len(), 2);
         assert_eq!(

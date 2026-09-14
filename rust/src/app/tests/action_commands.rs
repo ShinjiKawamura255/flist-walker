@@ -3,6 +3,7 @@ use crate::actions::{
     action_target_path_for_open_in_folder, authorize_action_targets, lexical_action_path_precheck,
     ActionPathPrecheck,
 };
+use crate::app::worker::bus::ActionFreshnessRegistry;
 use crate::app::worker::channel::bounded_request_channel;
 #[cfg(target_os = "windows")]
 use crate::app::worker::tasks::action_notice_for_targets;
@@ -37,6 +38,128 @@ fn execute_selected_enqueues_action_request_without_sync_io() {
     assert!(app.shell.worker_bus.action.in_progress);
     assert!(!app.shell.runtime.notice.starts_with("Action failed:"));
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn action_freshness_requires_exact_request_identity_and_trusted_root() {
+    let freshness = ActionFreshnessRegistry::default();
+    let root = PathBuf::from("trusted-root");
+    assert!(freshness.activate(17, &root));
+
+    assert!(freshness.is_current(17, &root));
+    assert!(!freshness.is_current(18, &root));
+    assert!(!freshness.is_current(17, Path::new("different-root")));
+
+    freshness.invalidate(17);
+    assert!(!freshness.is_current(17, &root));
+}
+
+#[test]
+fn tc_164_tab_close_invalidates_routed_action_freshness() {
+    let root = test_root("tc-164-tab-close-action");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let closing_tab_id = app.current_tab_id().expect("closing tab id");
+    app.create_new_tab();
+    let request_id = 71;
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .prepare_request(request_id, &root));
+    app.bind_action_request_to_tab(request_id, closing_tab_id);
+
+    app.close_tab_index(0);
+
+    assert!(!app
+        .shell
+        .worker_bus
+        .action
+        .freshness
+        .is_current(request_id, &root));
+    assert_eq!(app.action_request_tab(request_id), None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_164_gui_root_switch_stops_backend_calls_after_inflight_target() {
+    use std::sync::{Condvar, Mutex};
+
+    let root = test_root("tc-164-gui-action-root-switch");
+    let next_root = test_root("tc-164-gui-action-next-root");
+    fs::create_dir_all(&root).expect("create root");
+    fs::create_dir_all(&next_root).expect("create next root");
+    let first = root.join("first.txt");
+    let second = root.join("second.txt");
+    fs::write(&first, "first").expect("write first");
+    fs::write(&second, "second").expect("write second");
+
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let calls = Arc::new(AtomicUsize::new(0));
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let (started_tx, started_rx) = mpsc::channel();
+    let executor: SharedActionExecutor = {
+        let calls = Arc::clone(&calls);
+        let gate = Arc::clone(&gate);
+        Arc::new(move |_| {
+            let call_index = calls.fetch_add(1, Ordering::SeqCst);
+            if call_index == 0 {
+                started_tx.send(()).expect("signal first backend call");
+                let (lock, ready) = &*gate;
+                let mut open = lock.lock().expect("lock gate");
+                while !*open {
+                    open = ready.wait(open).expect("wait gate");
+                }
+            }
+            Ok(())
+        })
+    };
+    let (tx, rx, handles, freshness) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.worker_bus.action.tx = tx;
+    app.shell.worker_bus.action.rx = rx;
+    app.shell.worker_bus.action.freshness = freshness;
+    app.shell.runtime.pinned_paths.insert(first);
+    app.shell.runtime.pinned_paths.insert(second);
+    app.execute_selected();
+
+    started_rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("first backend call started");
+    assert!(app.try_retire_active_root_resources(next_root.clone()));
+    assert_eq!(app.shell.runtime.root, next_root);
+
+    let (lock, ready) = &*gate;
+    *lock.lock().expect("lock gate") = true;
+    ready.notify_all();
+    let response = app
+        .shell
+        .worker_bus
+        .action
+        .rx
+        .recv_timeout(Duration::from_secs(1))
+        .expect("action worker response");
+
+    assert!(response.notice.contains("superseded"));
+    assert_eq!(
+        app.shell.worker_bus.action.freshness.active_count(),
+        0,
+        "worker terminal cleanup must revoke the request even before UI routing"
+    );
+    assert_eq!(
+        calls.load(Ordering::SeqCst),
+        1,
+        "root switch must prevent every later backend call"
+    );
+
+    shutdown.store(true, Ordering::Relaxed);
+    drop(app);
+    for handle in handles {
+        handle.join().expect("join action worker");
+    }
+    let _ = fs::remove_dir_all(&root);
+    let _ = fs::remove_dir_all(&next_root);
 }
 
 #[test]
@@ -175,7 +298,7 @@ fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
             Ok(())
         })
     };
-    let (tx, rx, handles) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
+    let (tx, rx, handles, freshness) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
     assert_eq!(
         handles.len(),
         2,
@@ -188,7 +311,9 @@ fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
         paths: vec![selected.clone()],
         open_parent_for_files: false,
     };
+    assert!(freshness.activate(1, &root));
     tx.send(request(1)).expect("send first action");
+    assert!(freshness.activate(2, &root));
     tx.send(request(2)).expect("send second action");
     started_rx
         .recv_timeout(Duration::from_secs(1))
@@ -199,6 +324,7 @@ fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
     assert_eq!(max_active.load(Ordering::SeqCst), 2);
 
     for request_id in 3..=10 {
+        assert!(freshness.activate(request_id, &root));
         tx.send(request(request_id))
             .expect("fill bounded action queue");
     }
@@ -230,6 +356,7 @@ fn tc_150_action_worker_uses_two_workers_and_bounds_total_to_ten() {
     }
     assert_eq!(tx.load().queued, 0);
     assert_eq!(tx.load().inflight, 0);
+    assert_eq!(freshness.active_count(), 0);
 
     shutdown.store(true, Ordering::Relaxed);
     drop(tx);
@@ -250,7 +377,7 @@ fn tc_153_action_shutdown_drains_accepted_queue_with_terminal_cancellation() {
             Ok(())
         })
     };
-    let (tx, rx, handles) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
+    let (tx, rx, handles, _freshness) = spawn_action_worker_with(Arc::clone(&shutdown), executor);
     shutdown.store(true, Ordering::Relaxed);
     for request_id in 1..=4 {
         tx.send(ActionRequest {
@@ -322,6 +449,11 @@ fn tc_150_action_full_preserves_prior_accepted_request_state() {
     let prior_request_id = 41;
     let next_request_id = 42;
     app.shell.worker_bus.action.next_request_id = next_request_id;
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .prepare_request(prior_request_id, &root));
     app.shell.worker_bus.action.pending_request_id = Some(prior_request_id);
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
@@ -338,6 +470,18 @@ fn tc_150_action_full_preserves_prior_accepted_request_state() {
     assert!(app.shell.worker_bus.action.in_progress);
     assert_eq!(app.action_request_tab(prior_request_id), Some(tab_id));
     assert_eq!(app.action_request_tab(next_request_id), None);
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .freshness
+        .is_current(prior_request_id, &root));
+    assert!(!app
+        .shell
+        .worker_bus
+        .action
+        .freshness
+        .is_current(next_request_id, &root));
     assert!(app.shell.runtime.notice.contains("busy"));
     drop(rx);
     let _ = fs::remove_dir_all(&root);
@@ -354,6 +498,11 @@ fn tc_150_action_disconnect_settles_action_state() {
     drop(rx);
     app.shell.worker_bus.action.tx = tx;
     let prior_request_id = 41;
+    assert!(app
+        .shell
+        .worker_bus
+        .action
+        .prepare_request(prior_request_id, &root));
     app.shell.worker_bus.action.pending_request_id = Some(prior_request_id);
     app.shell.worker_bus.action.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
@@ -366,6 +515,7 @@ fn tc_150_action_disconnect_settles_action_state() {
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
     assert!(!app.shell.worker_bus.action.in_progress);
     assert_eq!(app.action_request_tab(prior_request_id), None);
+    assert_eq!(app.shell.worker_bus.action.freshness.active_count(), 0);
     assert!(app.shell.runtime.notice.contains("unavailable"));
     let _ = fs::remove_dir_all(&root);
 }
@@ -949,6 +1099,8 @@ fn stale_action_completion_is_ignored_by_request_id() {
     app.shell.runtime.notice = "latest notice".to_string();
     app.shell.worker_bus.action.pending_request_id = Some(2);
     app.shell.worker_bus.action.in_progress = true;
+    assert!(app.shell.worker_bus.action.prepare_request(1, &root));
+    assert!(app.shell.worker_bus.action.prepare_request(2, &root));
     let tab_id = app.current_tab_id().expect("tab id");
     app.bind_action_request_to_tab(1, tab_id);
     app.bind_action_request_to_tab(2, tab_id);
@@ -962,6 +1114,8 @@ fn stale_action_completion_is_ignored_by_request_id() {
     assert_eq!(app.shell.runtime.notice, "latest notice");
     assert_eq!(app.shell.worker_bus.action.pending_request_id, Some(2));
     assert!(app.shell.worker_bus.action.in_progress);
+    assert!(!app.shell.worker_bus.action.freshness.is_current(1, &root));
+    assert!(app.shell.worker_bus.action.freshness.is_current(2, &root));
 
     tx.send(ActionResponse {
         request_id: 2,
@@ -973,6 +1127,7 @@ fn stale_action_completion_is_ignored_by_request_id() {
     assert_eq!(app.shell.runtime.notice, "Action: latest");
     assert_eq!(app.shell.worker_bus.action.pending_request_id, None);
     assert!(!app.shell.worker_bus.action.in_progress);
+    assert_eq!(app.shell.worker_bus.action.freshness.active_count(), 0);
     let _ = fs::remove_dir_all(&root);
 }
 

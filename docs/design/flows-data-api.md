@@ -22,7 +22,7 @@
 - `candidate: Candidate`
 - `score: f64`
 - `SortMode`: score/name/path/modified/created/size の方向付き enum。shared sort は full match set と mode を受け、adapter がその後に limit を適用する。
-- `AuthorizedActionRequest`: trusted root、current-row snapshot、request identity、cancellation token、action kind。
+- `AuthorizedActionRequest`: trusted root、current-row snapshot、request identity、cancellation token、action kind。GUI adapter は同じ request identity/root を request-scoped freshness registry へ enqueue 前に登録し、root/tab lifecycle と worker terminal の双方で冪等に失効させる。shared report の raw backend detail は内部 trace 専用とし、CLI/GUI の利用者向け通知へ転記しない。
 - `FileListWritePlan`: ordered root/ancestor targets、expected prior contents、new contents、consent scope。`FileListTransactionReport` は committed/failed/rolled-back/rollback-failed display paths と settlement reason を保持する。
 - `UiStatePatch`: named non-history JSON leaf patch と ordered history deltas。worker generation は commit に含めた enqueue range を記録する。
 - `MaxDepth`: 無制限または 1 以上の上限。Walker queue は root からの depth を path と一緒に保持し、FileList は filesystem I/O を行わない root 相対 lexical depth helper を共有する。

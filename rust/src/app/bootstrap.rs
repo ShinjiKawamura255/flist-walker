@@ -204,7 +204,7 @@ impl FlistWalkerApp {
         let (preview_tx, preview_rx, preview_handle) =
             spawn_preview_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("preview", preview_handle);
-        let (action_tx, action_rx, action_handles) =
+        let (action_tx, action_rx, action_handles, action_freshness) =
             spawn_action_worker(Arc::clone(&worker_shutdown));
         for (idx, handle) in action_handles.into_iter().enumerate() {
             worker_runtime.push(format!("action-{idx}"), handle);
@@ -260,6 +260,7 @@ impl FlistWalkerApp {
                     next_request_id: 1,
                     pending_request_id: None,
                     in_progress: false,
+                    freshness: action_freshness,
                 },
                 sort: SortWorkerBus {
                     tx: sort_tx,
