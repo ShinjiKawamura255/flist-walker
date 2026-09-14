@@ -1059,6 +1059,57 @@ fn tc165_symlink_target_plan_fails_before_any_write() {
     let _ = fs::remove_dir_all(&root);
 }
 
+// This fixture requires distinct case-variant directory entries. The separate
+// resolved-identity test covers case-insensitive volumes, while Linux exercises
+// the production symlink stop path end to end.
+#[cfg(target_os = "linux")]
+#[test]
+fn tc165_ancestor_symlink_alias_stops_before_higher_ancestor() {
+    use std::os::unix::fs::symlink;
+
+    let top = test_root("tc165-ancestor-symlink-alias");
+    let parent = top.join("parent");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create root");
+    let top_filelist = top.join("FileList.txt");
+    let parent_filelist = parent.join("FileList.txt");
+    let parent_alias = parent.join("filelist.txt");
+    fs::write(&top_filelist, "top.txt\n").expect("write top FileList");
+    fs::write(&parent_filelist, "parent.txt\n").expect("write parent FileList");
+    symlink("FileList.txt", &parent_alias).expect("create ancestor FileList alias");
+
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: false,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("symlink alias stops after retaining safe lower target");
+
+    assert_eq!(plan.targets().len(), 2);
+    assert!(plan
+        .targets()
+        .iter()
+        .any(|target| target.path == parent_filelist));
+    assert!(!plan
+        .targets()
+        .iter()
+        .any(|target| target.path == parent_alias || target.path == top_filelist));
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+    assert_eq!(report.exit_code(), 0);
+    assert!(fs::read_to_string(&parent_filelist)
+        .expect("read parent FileList")
+        .contains("child"));
+    assert_eq!(
+        fs::read_to_string(&top_filelist).expect("read unchanged top FileList"),
+        "top.txt\n"
+    );
+    let _ = fs::remove_dir_all(&top);
+}
+
 #[test]
 fn tc165_cancellation_before_first_replacement_is_clean() {
     let root = test_root("tc165-cancel-before-first");
