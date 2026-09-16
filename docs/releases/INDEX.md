@@ -2,12 +2,13 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.27.0 (2026-09-06)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.27.0).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.27.1 (2026-09-16)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.27.1).
 
 ## Release And Candidate Records
 
 | Record | Role |
 | --- | --- |
+| [v0.27.1 Release Record](v0.27.1.md) | Tag, candidate and tagged workflows, assets, GUI validation, warnings, and final review evidence |
 | [v0.18.10 Release Record](v0.18.10.md) | Tag, CI, assets, native/GUI validation, warning decision, and review evidence |
 | [v0.18.9 Candidate Rejection](v0.18.9-candidate-rejection.md) | Rejection decision, validation result, reason, and remediation |
 | [v0.18.8 Release Notes](v0.18.8.md) | Published release content retained for reference |
@@ -17,6 +18,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.27.1/` | Published release body and sanitized GUI validation evidence |
 | `evidence/v0.20.1/` | Historical release-body draft evidence retained for reference |
 | `evidence/v0.18.9/` | GUI reports, headful smoke evidence, logs, and release-body draft |
 | `evidence/v0.18.10/` | GUI report and release-body draft |
