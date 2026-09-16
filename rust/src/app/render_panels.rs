@@ -36,6 +36,17 @@ struct ActiveResultRenderProbe {
 #[cfg(test)]
 thread_local! {
     static RESULT_RENDER_PROBE: RefCell<Option<ActiveResultRenderProbe>> = const { RefCell::new(None) };
+    static FORCE_IGNORE_LIST_CHECKBOX_CLICK: RefCell<bool> = const { RefCell::new(false) };
+}
+
+#[cfg(test)]
+pub(super) fn force_ignore_list_checkbox_click() {
+    FORCE_IGNORE_LIST_CHECKBOX_CLICK.with(|forced| *forced.borrow_mut() = true);
+}
+
+#[cfg(test)]
+fn take_forced_ignore_list_checkbox_click() -> bool {
+    FORCE_IGNORE_LIST_CHECKBOX_CLICK.with(|forced| std::mem::take(&mut *forced.borrow_mut()))
 }
 
 #[cfg(test)]

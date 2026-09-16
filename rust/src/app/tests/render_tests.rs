@@ -590,6 +590,42 @@ fn top_panel_checkbox_icon_and_label_share_center_axis() {
 }
 
 #[test]
+fn tc_110_ignore_list_checkbox_click_requests_refresh_without_replacing_visible_snapshot() {
+    let root = test_root("ignore-list-checkbox-refresh");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.ui.ignore_list_enabled = false;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
+        file_entry(root.join("keep.txt")),
+        file_entry(root.join("ignored.txt")),
+    ]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    let visible_before = Arc::clone(&app.shell.runtime.entries);
+    let ctx = egui::Context::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(2_000.0, 900.0));
+
+    render_panels::force_ignore_list_checkbox_click();
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(screen_rect),
+            ..Default::default()
+        },
+        |ui| render_panels::render_top_panel(&mut app, ui),
+    );
+
+    assert!(app.shell.ui.ignore_list_enabled);
+    rx.try_recv().expect("index request should be sent");
+    assert!(Arc::ptr_eq(&app.shell.runtime.entries, &visible_before));
+    assert!(app.shell.indexing.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_180_unlimited_toggle_restores_all_and_reenables_at_depth_one() {
     let mut draft = 4;
 
