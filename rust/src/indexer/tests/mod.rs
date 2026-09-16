@@ -1429,6 +1429,9 @@ fn tc165_preferred_target_change_after_plan_fails_closed() {
     )
     .expect("plan");
     fs::write(&upper, "higher-priority-after-plan\n").expect("write preferred target");
+    let case_variants_share_storage = fs::read_to_string(&lower)
+        .expect("read lower after preferred write")
+        == "higher-priority-after-plan\n";
 
     let report = execute_filelist_write_plan(&plan, &|| false);
 
@@ -1436,7 +1439,11 @@ fn tc165_preferred_target_change_after_plan_fails_closed() {
     assert!(report.committed.is_empty());
     assert_eq!(
         fs::read_to_string(&lower).expect("read lower"),
-        "lower-before-plan\n"
+        if case_variants_share_storage {
+            "higher-priority-after-plan\n"
+        } else {
+            "lower-before-plan\n"
+        }
     );
     assert_eq!(
         fs::read_to_string(&upper).expect("read upper"),

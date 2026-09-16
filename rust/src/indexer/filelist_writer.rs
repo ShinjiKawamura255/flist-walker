@@ -854,7 +854,7 @@ fn inspect_filelist_directory(directory: &Path) -> Result<fs::Metadata> {
 }
 
 fn file_system_object_identity(
-    path: &Path,
+    _path: &Path,
     metadata: &fs::Metadata,
 ) -> Result<FileSystemObjectIdentity> {
     #[cfg(unix)]
@@ -869,7 +869,7 @@ fn file_system_object_identity(
     #[cfg(windows)]
     {
         let _ = metadata;
-        windows_file_system_object_identity(path).map_err(Into::into)
+        windows_file_system_object_identity(_path).map_err(Into::into)
     }
 }
 
