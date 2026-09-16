@@ -1,4 +1,8 @@
 use super::*;
+use crate::app::{
+    BackgroundIndexFinalizeIdentity, BackgroundIndexFinalizeInputs, BackgroundIndexFinalizePolicy,
+    PendingBackgroundIndexFinalize,
+};
 use std::sync::atomic::{AtomicBool, Ordering};
 
 #[test]
@@ -18,6 +22,13 @@ fn deferred_filelist_starts_after_index_finished() {
     app.shell.indexing.in_progress = true;
     let tab_id = app.current_tab_id().expect("tab id");
     app.create_filelist();
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_some());
     let request_id = app
         .shell
         .indexing
@@ -41,7 +52,10 @@ fn deferred_filelist_starts_after_index_finished() {
             source: IndexSource::Walker,
         })
         .expect("send finished");
-    app.poll_index_response();
+    for _ in 0..8 {
+        app.poll_index_response();
+        app.try_finish_active_index_after_pending_drain();
+    }
 
     if app
         .shell
@@ -56,10 +70,24 @@ fn deferred_filelist_starts_after_index_finished() {
 
     let req = filelist_rx
         .try_recv()
-        .expect("filelist request should be sent");
+        .unwrap_or_else(|error| {
+            panic!(
+                "filelist request should be sent: {error:?}; notice={}; pending_after_index={}; pending_finish={}; refresh_after={:?}",
+                app.shell.runtime.notice,
+                app.shell
+                    .features
+                    .filelist
+                    .workflow
+                    .pending_after_index
+                    .is_some(),
+                app.shell.indexing.pending_finish.is_some(),
+                app.shell.indexing.refresh_after_pending_finish
+            )
+        });
     assert_eq!(req.tab_id, tab_id);
     assert_eq!(req.root, root);
-    assert_eq!(req.entries, vec![path]);
+    assert_eq!(req.entries, Some(vec![path]));
+    assert_eq!(req.phase, FileListRequestPhase::Preflight);
     assert!(app
         .shell
         .features
@@ -68,6 +96,194 @@ fn deferred_filelist_starts_after_index_finished() {
         .pending_after_index
         .is_none());
     assert!(app.shell.features.filelist.workflow.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn active_filelist_finalization_waits_when_both_finalizer_slots_are_full() {
+    let root = test_root("filelist-active-finalizer-capacity");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+    let active_request_id = 903;
+    app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
+        tab_id,
+        root: root.clone(),
+        index_request_id: Some(active_request_id),
+    });
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: active_request_id,
+        source: IndexSource::Walker,
+    });
+    app.shell.indexing.build.index.entries = vec![unknown_entry(root.join("entry.txt"))];
+
+    for request_id in [901, 902] {
+        let finalizer = PendingBackgroundIndexFinalize::new(
+            BackgroundIndexFinalizeIdentity {
+                tab_id,
+                request_id,
+                source: IndexSource::Walker,
+            },
+            BackgroundIndexFinalizePolicy {
+                include_files: true,
+                include_dirs: true,
+                root: root.clone(),
+                prefer_relative: false,
+                ignore_case: true,
+                ignore_list_enabled: false,
+                ignore_terms_source: Arc::new(Vec::new()),
+            },
+            BackgroundIndexFinalizeInputs {
+                initial_entries: VecDeque::new(),
+                pending_entries: VecDeque::new(),
+                continuation_entries: VecDeque::new(),
+                discarded_entries: VecDeque::new(),
+                discarded_pending_entries: VecDeque::new(),
+                capture_filelist_paths: false,
+            },
+        );
+        app.shell
+            .indexing
+            .background_finalizations
+            .insert(request_id, finalizer);
+    }
+
+    assert!(!app.try_finish_active_index_after_pending_drain());
+    assert!(app.shell.indexing.pending_finish.is_some());
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 1);
+    assert!(app.shell.indexing.background_finalizations.is_full());
+    app.shell
+        .indexing
+        .background_finalizations
+        .remove(&901)
+        .expect("free one finalizer slot");
+    assert!(app.try_finish_active_index_after_pending_drain());
+    let preflight = filelist_rx
+        .try_recv()
+        .expect("capacity release should resume FileList preflight");
+    assert_eq!(preflight.phase, FileListRequestPhase::Preflight);
+    assert_eq!(preflight.entries.as_ref().map(Vec::len), Some(1));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn unmatched_active_terminal_does_not_supply_create_filelist_snapshot() {
+    let root = test_root("filelist-unmatched-active-terminal");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    reset_index_request_state_for_test(&mut app);
+    let tab_id = app.current_tab_id().expect("tab id");
+    let old_request_id = 904;
+    app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
+        tab_id,
+        root: root.clone(),
+        index_request_id: None,
+    });
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: old_request_id,
+        source: IndexSource::Walker,
+    });
+    app.shell.indexing.refresh_after_pending_finish =
+        Some(super::PendingIndexRefreshMode::CreateFileListWalker);
+    app.shell.indexing.build.index.entries = vec![unknown_entry(root.join("partial.txt"))];
+
+    assert!(app.try_finish_active_index_after_pending_drain());
+
+    assert!(filelist_rx.try_recv().is_err());
+    let dedicated = request_rx.try_recv().expect("dedicated Walker request");
+    assert!(dedicated.complete_walker_snapshot);
+    assert_ne!(dedicated.request_id, old_request_id);
+    assert_eq!(
+        app.shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .and_then(|pending| pending.index_request_id),
+        Some(dedicated.request_id)
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn unmatched_background_terminal_does_not_supply_create_filelist_snapshot() {
+    let root = test_root("filelist-unmatched-background-terminal");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let background_tab_index = 0;
+    let background_tab_id = app
+        .shell
+        .tabs
+        .get(background_tab_index)
+        .expect("background tab")
+        .id;
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    reset_index_request_state_for_test(&mut app);
+    let old_request_id = app
+        .shell
+        .indexing
+        .allocate_request_id(Some(background_tab_id));
+    {
+        let tab = app
+            .shell
+            .tabs
+            .get_mut(background_tab_index)
+            .expect("background tab");
+        tab.index_state.pending_index_request_id = Some(old_request_id);
+        tab.index_state.index_in_progress = true;
+        tab.index_state.refresh_after_pending_finish =
+            Some(super::PendingIndexRefreshMode::CreateFileListWalker);
+    }
+    app.shell.indexing.background_states.insert(
+        old_request_id,
+        BackgroundIndexState {
+            source: Some(IndexSource::Walker),
+            entries: vec![file_entry(root.join("partial.txt"))],
+            replaced: true,
+        },
+    );
+    app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
+        tab_id: background_tab_id,
+        root: root.clone(),
+        index_request_id: None,
+    });
+
+    app.handle_background_index_response(
+        background_tab_index,
+        IndexResponse::Finished {
+            request_id: old_request_id,
+            source: IndexSource::Walker,
+        },
+    );
+
+    assert!(filelist_rx.try_recv().is_err());
+    let dedicated = request_rx
+        .try_recv()
+        .expect("dedicated background Walker request");
+    assert_eq!(dedicated.tab_id, background_tab_id);
+    assert!(dedicated.complete_walker_snapshot);
+    assert_ne!(dedicated.request_id, old_request_id);
+    assert_eq!(
+        app.shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .and_then(|pending| pending.index_request_id),
+        Some(dedicated.request_id)
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -84,6 +300,7 @@ fn deferred_filelist_is_canceled_when_root_changes() {
     app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id,
         root: root_old.clone(),
+        index_request_id: None,
     });
     app.shell.runtime.root = root_new.clone();
 

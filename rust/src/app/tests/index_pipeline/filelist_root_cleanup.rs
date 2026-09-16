@@ -64,13 +64,16 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.indexing.tx = tx;
+    app.shell.worker_bus.filelist.tx = filelist_tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root_old.clone(),
-        entries: vec![root_old.join("a.txt")],
+        prepared_request_id: 81,
         existing_path: root_old.join("FileList.txt"),
+        ancestor_confirmation_needed: false,
     });
 
     app.apply_root_change(root_new.clone());
@@ -82,6 +85,11 @@ fn root_change_cancels_pending_filelist_overwrite_confirmation() {
         .workflow
         .pending_confirmation
         .is_none());
+    let discard = filelist_rx
+        .try_recv()
+        .expect("root change should discard the worker-owned snapshot");
+    assert_eq!(discard.phase, FileListRequestPhase::Discard);
+    assert_eq!(discard.prepared_request_id, Some(81));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
 }
@@ -95,7 +103,9 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
 
     let mut app = FlistWalkerApp::new(root_old.clone(), 50, String::new());
     let (tx, _rx) = bounded_request_channel::<IndexRequest>(2);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.indexing.tx = tx;
+    app.shell.worker_bus.filelist.tx = filelist_tx;
     let tab_id = app.current_tab_id().expect("tab id");
     app.shell
         .features
@@ -104,7 +114,7 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
         .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id,
         root: root_old.clone(),
-        entries: vec![root_old.join("a.txt")],
+        prepared_request_id: 82,
     });
 
     app.apply_root_change(root_new.clone());
@@ -116,6 +126,11 @@ fn root_change_cancels_pending_filelist_ancestor_confirmation() {
         .workflow
         .pending_ancestor_confirmation
         .is_none());
+    let discard = filelist_rx
+        .try_recv()
+        .expect("root change should discard the worker-owned snapshot");
+    assert_eq!(discard.phase, FileListRequestPhase::Discard);
+    assert_eq!(discard.prepared_request_id, Some(82));
     assert!(app.shell.runtime.notice.contains("Root changed"));
     let _ = fs::remove_dir_all(&root_old);
     let _ = fs::remove_dir_all(&root_new);
@@ -156,7 +171,7 @@ fn root_change_cancels_pending_filelist_use_walker_confirmation() {
 }
 
 #[test]
-fn create_filelist_requests_confirmation_before_ancestor_propagation() {
+fn filelist_preflight_response_requests_confirmation_before_ancestor_propagation() {
     let top = test_root("filelist-ancestor-confirm");
     let root = top.join("child");
     fs::create_dir_all(&root).expect("create child");
@@ -171,8 +186,23 @@ fn create_filelist_requests_confirmation_before_ancestor_propagation() {
     app.shell.runtime.committed_for_test_mut().all_entries =
         Arc::new(vec![unknown_entry(root.join("main.rs"))]);
     app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    let (request_tx, request_rx) = mpsc::channel::<FileListRequest>();
+    let (response_tx, response_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.tx = request_tx;
+    app.shell.worker_bus.filelist.rx = response_rx;
+    let tab_id = app.current_tab_id().expect("tab id");
 
-    app.create_filelist();
+    app.request_filelist_creation(tab_id, root.clone(), vec![root.join("main.rs")]);
+    let request = request_rx.try_recv().expect("preflight request");
+    response_tx
+        .send(FileListResponse::PreflightFinished {
+            request_id: request.request_id,
+            root: root.clone(),
+            existing_path: None,
+            ancestor_confirmation_needed: true,
+        })
+        .expect("send preflight response");
+    app.poll_filelist_response();
 
     assert!(
         app.shell.runtime.notice.contains("ancestor")
@@ -217,14 +247,25 @@ fn denying_ancestor_propagation_still_creates_root_filelist() {
     app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+    app.shell
+        .features
+        .filelist
+        .workflow
+        .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
+        tab_id,
+        root: root.clone(),
+        prepared_request_id: 201,
+    });
 
-    app.create_filelist();
     app.skip_pending_filelist_ancestor_propagation();
 
     let req = filelist_rx
         .try_recv()
         .expect("root filelist creation should proceed without ancestor propagation");
     assert_eq!(req.root, root);
+    assert_eq!(req.prepared_request_id, Some(201));
+    assert_eq!(req.phase, FileListRequestPhase::Write);
     assert!(!req.propagate_to_ancestors);
     let parent_content = fs::read_to_string(&parent_filelist).expect("read parent filelist");
     assert_eq!(parent_content, "child/old.txt\n");
@@ -252,9 +293,22 @@ fn create_filelist_skips_ancestor_confirmation_when_child_reference_is_already_p
         Arc::new(vec![unknown_entry(root.join("main.rs"))]);
     app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    let (response_tx, response_rx) = mpsc::channel::<FileListResponse>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
+    app.shell.worker_bus.filelist.rx = response_rx;
+    let tab_id = app.current_tab_id().expect("tab id");
 
-    app.create_filelist();
+    app.request_filelist_creation(tab_id, root.clone(), vec![root.join("main.rs")]);
+    let preflight = filelist_rx.try_recv().expect("preflight request");
+    response_tx
+        .send(FileListResponse::PreflightFinished {
+            request_id: preflight.request_id,
+            root: root.clone(),
+            existing_path: None,
+            ancestor_confirmation_needed: false,
+        })
+        .expect("send preflight response");
+    app.poll_filelist_response();
 
     assert!(app
         .shell
@@ -267,6 +321,8 @@ fn create_filelist_skips_ancestor_confirmation_when_child_reference_is_already_p
         .try_recv()
         .expect("filelist request should be sent without ancestor prompt");
     assert_eq!(req.root, root);
+    assert_eq!(req.prepared_request_id, Some(preflight.request_id));
+    assert_eq!(req.phase, FileListRequestPhase::Write);
     assert!(!req.propagate_to_ancestors);
     let _ = fs::remove_dir_all(&top);
 }

@@ -4,10 +4,11 @@ use super::channel::{
 };
 use super::protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, CatalogResponse,
-    FileListRequest, FileListResponse, KindResolveRequest, KindResolveResponse, PreviewRequest,
-    PreviewResponse, RootValidationIntent, RootValidationRequest, RootValidationResponse,
-    SearchRequest, SearchResponse, SortMetadataRequest, SortMetadataResponse, UpdateRequest,
-    UpdateRequestKind, UpdateResponse, ValidatedRoot,
+    FileListRequest, FileListRequestPhase, FileListResponse, KindResolveRequest,
+    KindResolveResponse, PreviewRequest, PreviewResponse, RootValidationIntent,
+    RootValidationRequest, RootValidationResponse, SearchRequest, SearchResponse,
+    SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
+    ValidatedRoot,
 };
 #[cfg(not(test))]
 use crate::actions::execute_or_open;
@@ -19,7 +20,7 @@ use crate::app::SortMetadata;
 use crate::entry::EntryKind;
 use crate::indexer::{
     execute_filelist_write_plan, plan_filelist_write_cancellable, FileListWriteOptions,
-    FileListWriteStatus,
+    FileListWritePlan, FileListWriteStatus, FileListWriteTargetKind,
 };
 use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome};
@@ -518,12 +519,37 @@ pub(in crate::app) fn spawn_filelist_worker(
     let (tx_res, rx_res) = mpsc::channel::<FileListResponse>();
 
     let handle = thread::spawn(move || {
-        while let Ok(req) = rx_req.recv() {
+        struct PreparedFileListWrite {
+            request_id: u64,
+            tab_id: u64,
+            root: PathBuf,
+            entry_count: usize,
+            plan: FileListWritePlan,
+        }
+
+        let mut prepared_write: Option<PreparedFileListWrite> = None;
+        while let Ok(mut req) = rx_req.recv() {
             if shutdown.load(Ordering::Relaxed) {
                 break;
             }
+            if matches!(req.phase, FileListRequestPhase::Discard) {
+                if prepared_write
+                    .as_ref()
+                    .is_some_and(|prepared| Some(prepared.request_id) == req.prepared_request_id)
+                {
+                    prepared_write = None;
+                }
+                continue;
+            }
             trace_worker_started("filelist", req.request_id);
             if req.cancel.load(Ordering::Relaxed) {
+                if matches!(req.phase, FileListRequestPhase::Write)
+                    && prepared_write.as_ref().is_some_and(|prepared| {
+                        Some(prepared.request_id) == req.prepared_request_id
+                    })
+                {
+                    prepared_write = None;
+                }
                 info!(
                     flow = "filelist",
                     event = "canceled",
@@ -542,21 +568,94 @@ pub(in crate::app) fn spawn_filelist_worker(
                 }
                 continue;
             }
-            let _tab_id = req.tab_id;
-            let count = req.entries.len();
             let cancellation_requested =
                 || shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Relaxed);
-            let msg = match plan_filelist_write_cancellable(
-                &req.root,
-                &req.entries,
-                FileListWriteOptions {
-                    // GUI confirmation is the explicit root-overwrite consent.
-                    allow_root_overwrite: true,
-                    propagate_to_ancestors: req.propagate_to_ancestors,
-                },
-                &cancellation_requested,
-            ) {
-                Ok(plan) => {
+            let canceled_response = || FileListResponse::Canceled {
+                request_id: req.request_id,
+                root: req.root.clone(),
+            };
+            let msg = match req.phase {
+                FileListRequestPhase::Preflight => {
+                    let Some(entries) = req.entries.take() else {
+                        let msg = FileListResponse::Failed {
+                            request_id: req.request_id,
+                            root: req.root.clone(),
+                            error: "FileList preflight snapshot is unavailable".to_string(),
+                        };
+                        if tx_res.send(msg).is_err() {
+                            trace_worker_receiver_closed("filelist", req.request_id);
+                            break;
+                        }
+                        continue;
+                    };
+                    let entry_count = entries.len();
+                    match plan_filelist_write_cancellable(
+                        &req.root,
+                        &entries,
+                        FileListWriteOptions {
+                            allow_root_overwrite: true,
+                            propagate_to_ancestors: true,
+                        },
+                        &cancellation_requested,
+                    ) {
+                        Ok(plan) => {
+                            let existing_path = std::fs::symlink_metadata(plan.root_target())
+                                .is_ok()
+                                .then(|| plan.root_target().to_path_buf());
+                            let ancestor_confirmation_needed = plan
+                                .targets()
+                                .iter()
+                                .any(|target| target.kind == FileListWriteTargetKind::Ancestor);
+                            prepared_write = Some(PreparedFileListWrite {
+                                request_id: req.request_id,
+                                tab_id: req.tab_id,
+                                root: req.root.clone(),
+                                entry_count,
+                                plan,
+                            });
+                            FileListResponse::PreflightFinished {
+                                request_id: req.request_id,
+                                root: req.root.clone(),
+                                existing_path,
+                                ancestor_confirmation_needed,
+                            }
+                        }
+                        Err(report) if report.status == FileListWriteStatus::Canceled => {
+                            canceled_response()
+                        }
+                        Err(report) => FileListResponse::Failed {
+                            request_id: req.request_id,
+                            root: req.root.clone(),
+                            error: report.summary(),
+                        },
+                    }
+                }
+                FileListRequestPhase::Write => {
+                    let prepared_matches = prepared_write.as_ref().is_some_and(|prepared| {
+                        Some(prepared.request_id) == req.prepared_request_id
+                            && prepared.tab_id == req.tab_id
+                            && path_key(&prepared.root) == path_key(&req.root)
+                    });
+                    let Some(prepared) = prepared_matches.then(|| prepared_write.take()).flatten()
+                    else {
+                        let msg = FileListResponse::Failed {
+                            request_id: req.request_id,
+                            root: req.root.clone(),
+                            error: "prepared FileList write plan is unavailable or stale"
+                                .to_string(),
+                        };
+                        if tx_res.send(msg).is_err() {
+                            trace_worker_receiver_closed("filelist", req.request_id);
+                            break;
+                        }
+                        continue;
+                    };
+                    let count = prepared.entry_count;
+                    let plan = if req.propagate_to_ancestors {
+                        prepared.plan
+                    } else {
+                        prepared.plan.into_root_only()
+                    };
                     let path = plan.root_target().to_path_buf();
                     let report = execute_filelist_write_plan(&plan, &cancellation_requested);
                     match report.status {
@@ -567,10 +666,7 @@ pub(in crate::app) fn spawn_filelist_worker(
                             count,
                         },
                         FileListWriteStatus::Canceled if report.exit_code() == 130 => {
-                            FileListResponse::Canceled {
-                                request_id: req.request_id,
-                                root: req.root.clone(),
-                            }
+                            canceled_response()
                         }
                         FileListWriteStatus::Canceled | FileListWriteStatus::Failed => {
                             FileListResponse::Failed {
@@ -581,19 +677,24 @@ pub(in crate::app) fn spawn_filelist_worker(
                         }
                     }
                 }
-                Err(report) if report.status == FileListWriteStatus::Canceled => {
-                    FileListResponse::Canceled {
-                        request_id: req.request_id,
-                        root: req.root.clone(),
-                    }
-                }
-                Err(report) => FileListResponse::Failed {
-                    request_id: req.request_id,
-                    root: req.root.clone(),
-                    error: report.summary(),
-                },
+                FileListRequestPhase::Discard => unreachable!("discard handled before execution"),
             };
             match &msg {
+                FileListResponse::PreflightFinished {
+                    request_id,
+                    root,
+                    existing_path,
+                    ancestor_confirmation_needed,
+                    ..
+                } => info!(
+                    flow = "filelist",
+                    event = "preflight_finished",
+                    request_id = *request_id,
+                    root = %root.display(),
+                    existing_path = ?existing_path,
+                    ancestor_confirmation_needed = *ancestor_confirmation_needed,
+                    "worker preflight finished"
+                ),
                 FileListResponse::Finished {
                     request_id,
                     root,
@@ -1168,6 +1269,266 @@ pub(in crate::app) fn spawn_update_worker(
     });
 
     (tx_req, rx_res, handle)
+}
+
+#[cfg(test)]
+mod filelist_worker_tests {
+    use super::*;
+    use std::sync::atomic::AtomicUsize;
+    use std::time::Duration;
+
+    static ROOT_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
+
+    fn test_root(label: &str) -> PathBuf {
+        let sequence = ROOT_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        std::env::temp_dir().join(format!(
+            "flistwalker-{label}-{}-{sequence}",
+            std::process::id()
+        ))
+    }
+
+    fn request(
+        request_id: u64,
+        tab_id: u64,
+        root: PathBuf,
+        phase: FileListRequestPhase,
+        entries: Option<Vec<PathBuf>>,
+        prepared_request_id: Option<u64>,
+        canceled: bool,
+    ) -> FileListRequest {
+        FileListRequest {
+            request_id,
+            tab_id,
+            root,
+            entries,
+            prepared_request_id,
+            phase,
+            propagate_to_ancestors: false,
+            cancel: Arc::new(AtomicBool::new(canceled)),
+        }
+    }
+
+    fn stop_worker(
+        shutdown: &Arc<AtomicBool>,
+        tx: Sender<FileListRequest>,
+        handle: thread::JoinHandle<()>,
+    ) {
+        shutdown.store(true, Ordering::Release);
+        drop(tx);
+        handle.join().expect("join FileList worker");
+    }
+
+    #[test]
+    fn filelist_worker_preflight_then_write_owns_snapshot_until_normal_completion() {
+        let root = test_root("worker-owned-normal");
+        std::fs::create_dir_all(&root).expect("create root");
+        let entry = root.join("entry.txt");
+        std::fs::write(&entry, "entry").expect("write entry");
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (tx, rx, handle) = spawn_filelist_worker(Arc::clone(&shutdown));
+
+        tx.send(request(
+            1,
+            9,
+            root.clone(),
+            FileListRequestPhase::Preflight,
+            Some(vec![entry]),
+            None,
+            false,
+        ))
+        .expect("send preflight");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("preflight response"),
+            FileListResponse::PreflightFinished { request_id: 1, .. }
+        ));
+        tx.send(request(
+            2,
+            9,
+            root.clone(),
+            FileListRequestPhase::Write,
+            None,
+            Some(1),
+            false,
+        ))
+        .expect("send write");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("write response"),
+            FileListResponse::Finished {
+                request_id: 2,
+                count: 1,
+                ..
+            }
+        ));
+
+        stop_worker(&shutdown, tx, handle);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_worker_write_rejects_target_created_after_preflight() {
+        let root = test_root("worker-preflight-target-race");
+        std::fs::create_dir_all(&root).expect("create root");
+        let entry = root.join("entry.txt");
+        std::fs::write(&entry, "entry").expect("write entry");
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (tx, rx, handle) = spawn_filelist_worker(Arc::clone(&shutdown));
+
+        tx.send(request(
+            31,
+            6,
+            root.clone(),
+            FileListRequestPhase::Preflight,
+            Some(vec![entry]),
+            None,
+            false,
+        ))
+        .expect("send preflight");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("preflight response"),
+            FileListResponse::PreflightFinished {
+                request_id: 31,
+                existing_path: None,
+                ..
+            }
+        ));
+
+        let raced_target = root.join("FileList.txt");
+        std::fs::write(&raced_target, "external-content\n").expect("create raced target");
+        tx.send(request(
+            32,
+            6,
+            root.clone(),
+            FileListRequestPhase::Write,
+            None,
+            Some(31),
+            false,
+        ))
+        .expect("send write");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("write response"),
+            FileListResponse::Failed { request_id: 32, .. }
+        ));
+        assert_eq!(
+            std::fs::read_to_string(&raced_target).expect("read raced target"),
+            "external-content\n"
+        );
+
+        stop_worker(&shutdown, tx, handle);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_worker_discard_releases_prepared_snapshot_before_write() {
+        let root = test_root("worker-owned-discard");
+        std::fs::create_dir_all(&root).expect("create root");
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (tx, rx, handle) = spawn_filelist_worker(Arc::clone(&shutdown));
+
+        tx.send(request(
+            11,
+            4,
+            root.clone(),
+            FileListRequestPhase::Preflight,
+            Some(vec![root.join("entry.txt")]),
+            None,
+            false,
+        ))
+        .expect("send preflight");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("preflight response"),
+            FileListResponse::PreflightFinished { request_id: 11, .. }
+        ));
+        tx.send(request(
+            11,
+            0,
+            PathBuf::new(),
+            FileListRequestPhase::Discard,
+            None,
+            Some(11),
+            false,
+        ))
+        .expect("discard prepared snapshot");
+        tx.send(request(
+            12,
+            4,
+            root.clone(),
+            FileListRequestPhase::Write,
+            None,
+            Some(11),
+            false,
+        ))
+        .expect("send stale write");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("stale response"),
+            FileListResponse::Failed { request_id: 12, .. }
+        ));
+
+        stop_worker(&shutdown, tx, handle);
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn filelist_worker_canceled_write_releases_prepared_snapshot() {
+        let root = test_root("worker-owned-cancel");
+        std::fs::create_dir_all(&root).expect("create root");
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let (tx, rx, handle) = spawn_filelist_worker(Arc::clone(&shutdown));
+
+        tx.send(request(
+            21,
+            5,
+            root.clone(),
+            FileListRequestPhase::Preflight,
+            Some(vec![root.join("entry.txt")]),
+            None,
+            false,
+        ))
+        .expect("send preflight");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("preflight response"),
+            FileListResponse::PreflightFinished { request_id: 21, .. }
+        ));
+        tx.send(request(
+            22,
+            5,
+            root.clone(),
+            FileListRequestPhase::Write,
+            None,
+            Some(21),
+            true,
+        ))
+        .expect("send canceled write");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("canceled response"),
+            FileListResponse::Canceled { request_id: 22, .. }
+        ));
+        tx.send(request(
+            23,
+            5,
+            root.clone(),
+            FileListRequestPhase::Write,
+            None,
+            Some(21),
+            false,
+        ))
+        .expect("send repeated write");
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(2))
+                .expect("missing snapshot response"),
+            FileListResponse::Failed { request_id: 23, .. }
+        ));
+
+        stop_worker(&shutdown, tx, handle);
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }
 
 #[cfg(test)]

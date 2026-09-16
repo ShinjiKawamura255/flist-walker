@@ -182,6 +182,60 @@ impl FlistWalkerApp {
         let current_root = self.shell.runtime.root.clone();
         while let Ok(response) = self.shell.worker_bus.filelist.rx.try_recv() {
             match response {
+                FileListResponse::PreflightFinished {
+                    request_id,
+                    root,
+                    existing_path,
+                    ancestor_confirmation_needed,
+                } => {
+                    let cancellation_requested =
+                        self.shell.features.filelist.workflow.pending_request_id
+                            == Some(request_id)
+                            && self.shell.features.filelist.workflow.cancel_requested;
+                    let Some((context, commands)) = self
+                        .shell
+                        .features
+                        .filelist
+                        .settle_response_context_commands(request_id, &root, &current_root)
+                    else {
+                        let commands = self
+                            .shell
+                            .features
+                            .filelist
+                            .discard_prepared_commands(request_id);
+                        self.dispatch_filelist_commands(commands);
+                        continue;
+                    };
+                    self.dispatch_filelist_commands(commands);
+                    if cancellation_requested {
+                        self.discard_prepared_filelist_snapshot(request_id);
+                        self.handle_filelist_canceled_response(context);
+                        continue;
+                    }
+                    let active_tab_id = self.current_tab_id();
+                    if matches!(context.root_scope, FileListResponseScope::CurrentRoot)
+                        && context.tab_id == active_tab_id
+                    {
+                        self.complete_filelist_preflight(
+                            active_tab_id.unwrap_or_default(),
+                            root,
+                            request_id,
+                            existing_path,
+                            ancestor_confirmation_needed,
+                        );
+                    } else {
+                        let commands = self
+                            .shell
+                            .features
+                            .filelist
+                            .discard_prepared_commands(request_id);
+                        self.dispatch_filelist_commands(commands);
+                        self.set_filelist_notice_for_tab_id(
+                            context.tab_id,
+                            "Create File List canceled because the active root changed".to_string(),
+                        );
+                    }
+                }
                 FileListResponse::Finished {
                     request_id,
                     root,

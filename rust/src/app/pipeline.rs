@@ -144,6 +144,7 @@ impl FlistWalkerApp {
             include_dirs: self.shell.runtime.include_dirs,
             max_depth: self.shell.runtime.max_depth,
             follow_links: self.shell.runtime.follow_links,
+            complete_walker_snapshot: false,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -171,6 +172,20 @@ impl FlistWalkerApp {
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.shell.indexing.allocate_request_id(tab_id);
+        if let Some(pending) = self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_mut()
+        {
+            if pending.tab_id == tab_id.unwrap_or_default()
+                && path_key(&pending.root) == path_key(&self.shell.runtime.root)
+            {
+                pending.index_request_id = Some(request_id);
+            }
+        }
         self.prepare_active_index_refresh_request(request_id, true);
         self.refresh_status_line();
 
@@ -183,6 +198,7 @@ impl FlistWalkerApp {
             include_dirs: self.shell.runtime.include_dirs,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             follow_links: self.shell.runtime.follow_links,
+            complete_walker_snapshot: true,
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -258,6 +274,19 @@ impl FlistWalkerApp {
             indexing.cleanup_request(request_id);
             return;
         };
+        if matches!(mode, super::PendingIndexRefreshMode::CreateFileListWalker) {
+            if let Some(pending) = shell
+                .features
+                .filelist
+                .workflow
+                .pending_after_index
+                .as_mut()
+            {
+                if pending.tab_id == tab_id && path_key(&pending.root) == path_key(&tab.root) {
+                    pending.index_request_id = Some(request_id);
+                }
+            }
+        }
         tab.index_state.refresh_after_pending_finish = None;
         tab.index_state.root_after_pending_finish = None;
         indexing.begin_background_refresh(tab, request_id, "Refreshing from created FileList");
@@ -279,6 +308,10 @@ impl FlistWalkerApp {
                     crate::indexer::MaxDepth::unlimited()
                 }
             },
+            complete_walker_snapshot: matches!(
+                mode,
+                super::PendingIndexRefreshMode::CreateFileListWalker
+            ),
         };
         self.enqueue_index_request(req);
         self.dispatch_index_queue();
@@ -848,6 +881,25 @@ impl FlistWalkerApp {
         }
     }
 
+    pub(super) fn stage_filelist_snapshot_reclaim(&mut self, paths: Vec<PathBuf>) -> bool {
+        if paths.capacity() == 0 {
+            return true;
+        }
+        if let Some((_, resources)) = self.shell.indexing.pending_stale_build_reclaim.as_mut() {
+            resources.push_filelist_snapshot(paths);
+            return false;
+        }
+        let mut resources = super::tab_resources::RetiredIndexBuildResources::empty();
+        resources.push_filelist_snapshot(paths);
+        match self.shell.tabs.try_retire_index_build_resources(resources) {
+            Ok(()) => true,
+            Err(resources) => {
+                self.shell.indexing.pending_stale_build_reclaim = Some((None, *resources));
+                false
+            }
+        }
+    }
+
     pub(super) fn stage_stale_terminal_reclaim(&mut self, request_id: u64) -> bool {
         let superseded = self.shell.indexing.is_superseded_request(request_id);
         let tab_index =
@@ -1313,7 +1365,8 @@ impl FlistWalkerApp {
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == tab_id
+                pending.index_request_id == Some(request_id)
+                    && pending.tab_id == tab_id
                     && path_key(&pending.root) == path_key(&self.shell.runtime.root)
             });
         let finalization = super::PendingBackgroundIndexFinalize::new(
@@ -1356,6 +1409,10 @@ impl FlistWalkerApp {
         if self.shell.indexing.pending_entries_request_id == Some(pending_finish.request_id)
             && !self.shell.indexing.build.pending_entries.is_empty()
         {
+            return false;
+        }
+        if !self.stage_active_filelist_finalization_if_needed(&pending_finish) {
+            self.set_notice("Waiting for Create File List snapshot finalization capacity");
             return false;
         }
         if self
@@ -1430,6 +1487,74 @@ impl FlistWalkerApp {
             }
             None => {}
         }
+        true
+    }
+
+    fn stage_active_filelist_finalization_if_needed(
+        &mut self,
+        pending_finish: &PendingActiveIndexFinish,
+    ) -> bool {
+        if self
+            .shell
+            .indexing
+            .background_finalizations
+            .contains_key(&pending_finish.request_id)
+        {
+            return true;
+        }
+        let tab_id = self.current_tab_id().unwrap_or_default();
+        let should_capture = self
+            .shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .is_some_and(|pending| {
+                pending.index_request_id == Some(pending_finish.request_id)
+                    && pending.tab_id == tab_id
+                    && path_key(&pending.root) == path_key(&self.shell.runtime.root)
+            });
+        if !should_capture {
+            return true;
+        }
+        if !self
+            .shell
+            .indexing
+            .background_finalizations
+            .has_capacity_for(pending_finish.request_id)
+        {
+            return false;
+        }
+        let initial_entries = std::mem::take(&mut self.shell.indexing.build.index.entries).into();
+        let finalization = super::PendingBackgroundIndexFinalize::new(
+            super::BackgroundIndexFinalizeIdentity {
+                tab_id,
+                request_id: pending_finish.request_id,
+                source: pending_finish.source.clone(),
+            },
+            super::BackgroundIndexFinalizePolicy {
+                include_files: self.shell.runtime.include_files,
+                include_dirs: self.shell.runtime.include_dirs,
+                root: self.shell.runtime.root.clone(),
+                prefer_relative: Self::prefer_relative_display_for(&pending_finish.source),
+                ignore_case: self.shell.runtime.ignore_case,
+                ignore_list_enabled: self.shell.ui.ignore_list_enabled,
+                ignore_terms_source: Arc::clone(&self.shell.runtime.ignore_list_terms),
+            },
+            super::BackgroundIndexFinalizeInputs {
+                initial_entries,
+                pending_entries: Default::default(),
+                continuation_entries: Default::default(),
+                discarded_entries: Default::default(),
+                discarded_pending_entries: Default::default(),
+                capture_filelist_paths: true,
+            },
+        );
+        self.shell
+            .indexing
+            .background_finalizations
+            .insert(pending_finish.request_id, finalization);
         true
     }
 
@@ -1585,16 +1710,18 @@ impl FlistWalkerApp {
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == current_tab_id
+                pending.index_request_id == Some(request_id)
+                    && pending.tab_id == current_tab_id
                     && path_key(&pending.root) == path_key(&self.shell.runtime.root)
             })
         {
             let root = self.shell.runtime.root.clone();
-            let entries = finalized_filelist_paths
-                .take()
-                .unwrap_or_else(|| self.filelist_entries_snapshot());
             self.shell.features.filelist.workflow.pending_after_index = None;
-            self.request_filelist_creation(current_tab_id, root, entries);
+            if let Some(entries) = finalized_filelist_paths.take() {
+                self.request_filelist_creation(current_tab_id, root, entries);
+            } else {
+                self.set_notice("Create File List snapshot was not captured; retry the operation");
+            }
         }
         self.shell.indexing.complete_active_request(request_id);
     }

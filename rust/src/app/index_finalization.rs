@@ -57,6 +57,7 @@ pub(super) struct PendingBackgroundIndexFinalize {
     pub(super) unresolved_kind_paths: VecDeque<PathBuf>,
     pub(super) unresolved_kind_paths_set: HashSet<PathBuf>,
     pub(super) kind_cursor: usize,
+    pub(super) capture_filelist_paths: bool,
     pub(super) filelist_paths: Option<Vec<PathBuf>>,
     pub(super) scratch_reclaimed: bool,
 }
@@ -77,6 +78,7 @@ pub(super) struct BackgroundIndexFilterScratch {
     unresolved_kind_paths: VecDeque<PathBuf>,
     unresolved_kind_paths_set: HashSet<PathBuf>,
     kind_cursor: usize,
+    filelist_paths: Option<Vec<PathBuf>>,
 }
 
 impl BackgroundIndexFinalizeScratch {
@@ -97,6 +99,7 @@ impl BackgroundIndexFilterScratch {
             .map_or(0, Vec::capacity)
             .saturating_add(self.unresolved_kind_paths.capacity())
             .saturating_add(self.unresolved_kind_paths_set.capacity())
+            .saturating_add(self.filelist_paths.as_ref().map_or(0, Vec::capacity))
     }
 }
 
@@ -173,6 +176,7 @@ impl PendingBackgroundIndexFinalize {
                 HashSet::new()
             },
             kind_cursor: 0,
+            capture_filelist_paths,
             filelist_paths: capture_filelist_paths.then(|| Vec::with_capacity(selected_len)),
             scratch_reclaimed: false,
         }
@@ -228,6 +232,7 @@ impl PendingBackgroundIndexFinalize {
             unresolved_kind_paths: std::mem::take(&mut self.unresolved_kind_paths),
             unresolved_kind_paths_set: std::mem::take(&mut self.unresolved_kind_paths_set),
             kind_cursor: self.kind_cursor,
+            filelist_paths: self.filelist_paths.take(),
         }
     }
 
@@ -237,6 +242,7 @@ impl PendingBackgroundIndexFinalize {
         self.unresolved_kind_paths = scratch.unresolved_kind_paths;
         self.unresolved_kind_paths_set = scratch.unresolved_kind_paths_set;
         self.kind_cursor = scratch.kind_cursor;
+        self.filelist_paths = scratch.filelist_paths;
     }
 
     pub(super) fn apply_filter_policy(
@@ -278,6 +284,9 @@ impl PendingBackgroundIndexFinalize {
             HashSet::new()
         };
         self.kind_cursor = 0;
+        if self.capture_filelist_paths {
+            self.filelist_paths = Some(Vec::with_capacity(self.completed_entries.capacity()));
+        }
     }
 
     pub(super) fn take_scratch(&mut self) -> BackgroundIndexFinalizeScratch {
@@ -308,8 +317,10 @@ impl PendingBackgroundIndexFinalize {
                 .or_else(|| self.pending_entries.pop_front().map(Entry::from))
                 .or_else(|| self.continuation_entries.pop_front());
             if let Some(entry) = next {
-                if let Some(paths) = self.filelist_paths.as_mut() {
-                    paths.push(entry.path.clone());
+                if self.filtered_entries.is_none() {
+                    if let Some(paths) = self.filelist_paths.as_mut() {
+                        paths.push(entry.path.clone());
+                    }
                 }
                 self.completed_entries.push(entry);
             } else {
@@ -354,6 +365,9 @@ impl PendingBackgroundIndexFinalize {
                 )
             });
             if !ignored && entry.is_visible_for_flags(self.include_files, self.include_dirs) {
+                if let Some(paths) = self.filelist_paths.as_mut() {
+                    paths.push(entry.path.clone());
+                }
                 if let Some(filtered_entries) = self.filtered_entries.as_mut() {
                     filtered_entries.push(entry.clone());
                 }
@@ -361,5 +375,64 @@ impl PendingBackgroundIndexFinalize {
             self.filter_cursor = self.filter_cursor.saturating_add(1);
             processed = processed.saturating_add(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::entry::EntryKind;
+    use std::time::Duration;
+
+    #[test]
+    fn filelist_paths_restart_from_empty_when_filter_policy_changes() {
+        let root = PathBuf::from("root");
+        let entries = ["kept-0.txt", "ignored-1.txt", "kept-2.txt", "ignored-3.txt"]
+            .into_iter()
+            .map(|name| Entry::new(root.join(name), Some(EntryKind::file())))
+            .collect();
+        let mut finalizer = PendingBackgroundIndexFinalize::new(
+            BackgroundIndexFinalizeIdentity {
+                tab_id: 1,
+                request_id: 2,
+                source: IndexSource::Walker,
+            },
+            BackgroundIndexFinalizePolicy {
+                include_files: true,
+                include_dirs: true,
+                root: root.clone(),
+                prefer_relative: false,
+                ignore_case: true,
+                ignore_list_enabled: false,
+                ignore_terms_source: Arc::new(Vec::new()),
+            },
+            BackgroundIndexFinalizeInputs {
+                initial_entries: entries,
+                pending_entries: VecDeque::new(),
+                continuation_entries: VecDeque::new(),
+                discarded_entries: VecDeque::new(),
+                discarded_pending_entries: VecDeque::new(),
+                capture_filelist_paths: true,
+            },
+        );
+
+        finalizer.advance(2, Duration::from_secs(1));
+        let old_output = finalizer.take_filter_scratch();
+        finalizer.apply_filter_policy(
+            true,
+            true,
+            true,
+            true,
+            Arc::new(vec!["ignored".to_string()]),
+        );
+        drop(old_output);
+        while !finalizer.is_complete() {
+            finalizer.advance(16, Duration::from_secs(1));
+        }
+
+        assert_eq!(
+            finalizer.filelist_paths,
+            Some(vec![root.join("kept-0.txt"), root.join("kept-2.txt")])
+        );
     }
 }

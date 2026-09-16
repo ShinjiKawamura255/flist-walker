@@ -116,9 +116,34 @@ impl FileListWriteReport {
 #[derive(Debug, Clone)]
 struct PriorFileState {
     bytes: Option<Vec<u8>>,
+    fingerprint: Option<FileMetadataFingerprint>,
     permissions: Option<fs::Permissions>,
     modified: Option<SystemTime>,
     accessed: Option<SystemTime>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FileSystemObjectIdentity {
+    #[cfg(unix)]
+    device: u64,
+    #[cfg(unix)]
+    inode: u64,
+    #[cfg(windows)]
+    volume_serial_number: u32,
+    #[cfg(windows)]
+    file_index: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FileMetadataFingerprint {
+    identity: FileSystemObjectIdentity,
+    len: u64,
+    modified: SystemTime,
+    readonly: bool,
+    #[cfg(unix)]
+    mode: u32,
+    #[cfg(windows)]
+    file_attributes: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -127,11 +152,13 @@ pub struct FileListWriteTarget {
     pub kind: FileListWriteTargetKind,
     content: Vec<u8>,
     prior: PriorFileState,
+    parent_identity: FileSystemObjectIdentity,
     preserve_mtime_on_success: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct FileListWritePlan {
+    root: PathBuf,
     root_target: PathBuf,
     targets: Vec<FileListWriteTarget>,
 }
@@ -143,6 +170,12 @@ impl FileListWritePlan {
 
     pub fn targets(&self) -> &[FileListWriteTarget] {
         &self.targets
+    }
+
+    pub fn into_root_only(mut self) -> Self {
+        self.targets
+            .retain(|target| target.kind == FileListWriteTargetKind::Root);
+        self
     }
 }
 
@@ -273,6 +306,13 @@ fn find_all_filelists_in_directory(dir: &Path) -> std::io::Result<Vec<PathBuf>> 
     }
     matches.sort_by(|left, right| compare_filelist_path_precedence(left, right));
     Ok(matches)
+}
+
+fn preferred_root_filelist_write_target(root: &Path) -> std::io::Result<PathBuf> {
+    Ok(find_all_filelists_in_directory(root)?
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| root.join("FileList.txt")))
 }
 
 #[derive(Debug)]
@@ -451,7 +491,8 @@ pub fn has_ancestor_filelists(root: &Path) -> bool {
 }
 
 pub fn ancestor_filelist_propagation_needed(root: &Path) -> bool {
-    let child_filelist = root.join("FileList.txt");
+    let child_filelist =
+        preferred_root_filelist_write_target(root).unwrap_or_else(|_| root.join("FileList.txt"));
     let mut needs_confirmation = false;
     visit_ancestor_directories(root, |ancestor_dir| {
         let discovery = discover_ancestor_filelists_in_directory(ancestor_dir);
@@ -537,17 +578,13 @@ where
             error,
         ))
     })?;
-    let root_target = find_all_filelists_in_directory(root)
-        .map_err(|error| {
-            Box::new(FileListWriteReport::preflight_failed(
-                fallback_target.clone(),
-                root.to_path_buf(),
-                error,
-            ))
-        })?
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| fallback_target.clone());
+    let root_target = preferred_root_filelist_write_target(root).map_err(|error| {
+        Box::new(FileListWriteReport::preflight_failed(
+            fallback_target.clone(),
+            root.to_path_buf(),
+            error,
+        ))
+    })?;
     if fs::symlink_metadata(&root_target).is_ok() && !options.allow_root_overwrite {
         return Err(Box::new(FileListWriteReport::preflight_failed(
             root_target.clone(),
@@ -655,6 +692,7 @@ where
     }
 
     Ok(FileListWritePlan {
+        root: root.to_path_buf(),
         root_target,
         targets,
     })
@@ -685,6 +723,25 @@ where
     W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
 {
     let mut report = FileListWriteReport::completed(plan.root_target.clone());
+    match preferred_root_filelist_write_target(&plan.root) {
+        Ok(current_target) if path_key(&current_target) == path_key(&plan.root_target) => {}
+        Ok(current_target) => {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: current_target,
+                error: "preferred FileList target changed after planning".to_string(),
+            });
+            return report;
+        }
+        Err(error) => {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: plan.root.clone(),
+                error: error.to_string(),
+            });
+            return report;
+        }
+    }
     let mut committed_indexes = Vec::new();
     for (index, target) in plan.targets.iter().enumerate() {
         if should_cancel() {
@@ -703,6 +760,15 @@ where
         }
         if should_cancel() {
             report.status = FileListWriteStatus::Canceled;
+            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
+            return report;
+        }
+        if let Err(error) = revalidate_filelist_target(target) {
+            report.status = FileListWriteStatus::Failed;
+            report.failed.push(FileListWriteFailure {
+                path: target.path.clone(),
+                error: error.to_string(),
+            });
             rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
             return report;
         }
@@ -765,6 +831,10 @@ fn concise_panic_detail(message: &str) -> Option<String> {
 }
 
 fn validate_filelist_directory(directory: &Path) -> Result<()> {
+    inspect_filelist_directory(directory).map(|_| ())
+}
+
+fn inspect_filelist_directory(directory: &Path) -> Result<fs::Metadata> {
     let metadata = fs::symlink_metadata(directory).with_context(|| {
         format!(
             "failed to inspect FileList directory {}",
@@ -780,7 +850,143 @@ fn validate_filelist_directory(directory: &Path) -> Result<()> {
             directory.display()
         );
     }
-    Ok(())
+    Ok(metadata)
+}
+
+fn file_system_object_identity(
+    path: &Path,
+    metadata: &fs::Metadata,
+) -> Result<FileSystemObjectIdentity> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        Ok(FileSystemObjectIdentity {
+            device: metadata.dev(),
+            inode: metadata.ino(),
+        })
+    }
+    #[cfg(windows)]
+    {
+        let _ = metadata;
+        windows_file_system_object_identity(path).map_err(Into::into)
+    }
+}
+
+#[cfg(windows)]
+fn windows_file_system_object_identity(path: &Path) -> std::io::Result<FileSystemObjectIdentity> {
+    use std::ffi::c_void;
+    use std::os::windows::ffi::OsStrExt;
+
+    #[repr(C)]
+    struct FileTime {
+        low_date_time: u32,
+        high_date_time: u32,
+    }
+
+    #[repr(C)]
+    struct ByHandleFileInformation {
+        file_attributes: u32,
+        creation_time: FileTime,
+        last_access_time: FileTime,
+        last_write_time: FileTime,
+        volume_serial_number: u32,
+        file_size_high: u32,
+        file_size_low: u32,
+        number_of_links: u32,
+        file_index_high: u32,
+        file_index_low: u32,
+    }
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateFileW(
+            file_name: *const u16,
+            desired_access: u32,
+            share_mode: u32,
+            security_attributes: *mut c_void,
+            creation_disposition: u32,
+            flags_and_attributes: u32,
+            template_file: *mut c_void,
+        ) -> *mut c_void;
+        fn GetFileInformationByHandle(
+            file: *mut c_void,
+            information: *mut ByHandleFileInformation,
+        ) -> i32;
+        fn CloseHandle(object: *mut c_void) -> i32;
+    }
+
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+    const FILE_SHARE_DELETE: u32 = 0x0000_0004;
+    const OPEN_EXISTING: u32 = 3;
+    const FILE_FLAG_BACKUP_SEMANTICS: u32 = 0x0200_0000;
+    const INVALID_HANDLE_VALUE: *mut c_void = -1_isize as *mut c_void;
+
+    let wide: Vec<u16> = path
+        .as_os_str()
+        .encode_wide()
+        .chain(std::iter::once(0))
+        .collect();
+    let handle = unsafe {
+        CreateFileW(
+            wide.as_ptr(),
+            0,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            std::ptr::null_mut(),
+            OPEN_EXISTING,
+            FILE_FLAG_BACKUP_SEMANTICS,
+            std::ptr::null_mut(),
+        )
+    };
+    if handle == INVALID_HANDLE_VALUE {
+        return Err(std::io::Error::last_os_error());
+    }
+    let mut information = std::mem::MaybeUninit::<ByHandleFileInformation>::uninit();
+    let ok = unsafe { GetFileInformationByHandle(handle, information.as_mut_ptr()) };
+    let query_error = if ok == 0 {
+        Some(std::io::Error::last_os_error())
+    } else {
+        None
+    };
+    let close_ok = unsafe { CloseHandle(handle) };
+    if let Some(error) = query_error {
+        return Err(error);
+    }
+    if close_ok == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    let information = unsafe { information.assume_init() };
+    Ok(FileSystemObjectIdentity {
+        volume_serial_number: information.volume_serial_number,
+        file_index: (u64::from(information.file_index_high) << 32)
+            | u64::from(information.file_index_low),
+    })
+}
+
+fn file_metadata_fingerprint(
+    path: &Path,
+    metadata: &fs::Metadata,
+) -> Result<FileMetadataFingerprint> {
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+    #[cfg(windows)]
+    use std::os::windows::fs::MetadataExt;
+
+    Ok(FileMetadataFingerprint {
+        identity: file_system_object_identity(path, metadata)?,
+        len: metadata.len(),
+        modified: metadata.modified()?,
+        readonly: metadata.permissions().readonly(),
+        #[cfg(unix)]
+        mode: metadata.permissions().mode(),
+        #[cfg(windows)]
+        file_attributes: metadata.file_attributes(),
+    })
+}
+
+fn filelist_directory_identity(directory: &Path) -> Result<FileSystemObjectIdentity> {
+    file_system_object_identity(directory, &inspect_filelist_directory(directory)?)
 }
 
 fn inspect_filelist_target(path: &Path) -> Result<Option<fs::Metadata>> {
@@ -804,29 +1010,71 @@ fn inspect_filelist_target(path: &Path) -> Result<Option<fs::Metadata>> {
 }
 
 fn revalidate_filelist_target(target: &FileListWriteTarget) -> std::io::Result<()> {
-    let metadata = inspect_filelist_target(&target.path)
+    let changed = || {
+        std::io::Error::other(format!(
+            "FileList target changed after planning: {}",
+            target.path.display()
+        ))
+    };
+    let parent = target.path.parent().ok_or_else(changed)?;
+    let parent_before = filelist_directory_identity(parent)
         .map_err(|error| std::io::Error::other(error.to_string()))?;
-    match (&target.prior.bytes, metadata) {
-        (None, None) => Ok(()),
-        (Some(expected), Some(_)) => {
-            let actual = fs::read(&target.path)?;
-            if actual == *expected {
-                Ok(())
+    if parent_before != target.parent_identity {
+        return Err(changed());
+    }
+    let metadata_before = inspect_filelist_target(&target.path)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    match (
+        &target.prior.bytes,
+        &target.prior.fingerprint,
+        metadata_before,
+    ) {
+        (None, None, None) => {
+            let parent_after = filelist_directory_identity(parent)
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
+            if parent_after != target.parent_identity
+                || inspect_filelist_target(&target.path)
+                    .map_err(|error| std::io::Error::other(error.to_string()))?
+                    .is_some()
+            {
+                Err(changed())
             } else {
-                Err(std::io::Error::other(format!(
-                    "FileList target changed after planning: {}",
-                    target.path.display()
-                )))
+                Ok(())
             }
         }
-        (None, Some(_)) => Err(std::io::Error::other(format!(
+        (Some(expected_bytes), Some(expected_fingerprint), Some(metadata_before)) => {
+            if file_metadata_fingerprint(&target.path, &metadata_before)
+                .map_err(|error| std::io::Error::other(error.to_string()))?
+                != *expected_fingerprint
+            {
+                return Err(changed());
+            }
+            let actual = fs::read(&target.path)?;
+            let metadata_after = inspect_filelist_target(&target.path)
+                .map_err(|error| std::io::Error::other(error.to_string()))?
+                .ok_or_else(changed)?;
+            let parent_after = filelist_directory_identity(parent)
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
+            if actual == *expected_bytes
+                && file_metadata_fingerprint(&target.path, &metadata_after)
+                    .map_err(|error| std::io::Error::other(error.to_string()))?
+                    == *expected_fingerprint
+                && parent_after == target.parent_identity
+            {
+                Ok(())
+            } else {
+                Err(changed())
+            }
+        }
+        (None, None, Some(_)) => Err(std::io::Error::other(format!(
             "FileList target appeared after planning: {}",
             target.path.display()
         ))),
-        (Some(_), None) => Err(std::io::Error::other(format!(
+        (Some(_), Some(_), None) => Err(std::io::Error::other(format!(
             "FileList target disappeared after planning: {}",
             target.path.display()
         ))),
+        _ => Err(changed()),
     }
 }
 
@@ -836,34 +1084,58 @@ fn prepare_filelist_target(
     content: Vec<u8>,
     preserve_mtime_on_success: bool,
 ) -> Result<FileListWriteTarget> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| anyhow::anyhow!("FileList target has no parent: {}", path.display()))?;
+    let parent_identity = filelist_directory_identity(parent)?;
     let prior = match inspect_filelist_target(&path)? {
-        Some(metadata) => {
-            let accessed = match metadata.accessed() {
+        Some(metadata_before) => {
+            let fingerprint = file_metadata_fingerprint(&path, &metadata_before)?;
+            let accessed = match metadata_before.accessed() {
                 Ok(time) => Some(time),
                 Err(error) if error.kind() == std::io::ErrorKind::Unsupported => None,
                 Err(error) => return Err(error.into()),
             };
+            let bytes = fs::read(&path).with_context(|| {
+                format!("failed to read prior FileList target {}", path.display())
+            })?;
+            let metadata_after = inspect_filelist_target(&path)?.ok_or_else(|| {
+                anyhow::anyhow!("FileList target changed while planning: {}", path.display())
+            })?;
+            if file_metadata_fingerprint(&path, &metadata_after)? != fingerprint
+                || filelist_directory_identity(parent)? != parent_identity
+            {
+                anyhow::bail!("FileList target changed while planning: {}", path.display());
+            }
             PriorFileState {
-                bytes: Some(fs::read(&path).with_context(|| {
-                    format!("failed to read prior FileList target {}", path.display())
-                })?),
-                permissions: Some(metadata.permissions()),
-                modified: Some(metadata.modified()?),
+                bytes: Some(bytes),
+                fingerprint: Some(fingerprint),
+                permissions: Some(metadata_before.permissions()),
+                modified: Some(metadata_before.modified()?),
                 accessed,
             }
         }
-        None => PriorFileState {
-            bytes: None,
-            permissions: None,
-            modified: None,
-            accessed: None,
-        },
+        None => {
+            if filelist_directory_identity(parent)? != parent_identity
+                || inspect_filelist_target(&path)?.is_some()
+            {
+                anyhow::bail!("FileList target changed while planning: {}", path.display());
+            }
+            PriorFileState {
+                bytes: None,
+                fingerprint: None,
+                permissions: None,
+                modified: None,
+                accessed: None,
+            }
+        }
     };
     Ok(FileListWriteTarget {
         path,
         kind,
         content,
         prior,
+        parent_identity,
         preserve_mtime_on_success,
     })
 }

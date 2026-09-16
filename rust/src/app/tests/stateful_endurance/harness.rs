@@ -666,31 +666,41 @@ impl StatefulHarness {
         }
         let tab_id = self.app.current_tab_id().expect("active endurance tab");
         let root = self.app.shell.runtime.root.clone();
-        self.app.start_filelist_creation(
-            tab_id,
-            root.clone(),
-            vec![root.join("fixture.txt")],
-            false,
-        );
+        self.app
+            .request_filelist_creation(tab_id, root.clone(), vec![root.join("fixture.txt")]);
     }
 
     fn respond_to_filelist(&mut self, request: FileListRequest, outcome: TerminalOutcome) {
-        let response = match outcome {
-            TerminalOutcome::Finished => FileListResponse::Finished {
-                request_id: request.request_id,
-                path: request.root.join("FileList.txt"),
-                root: request.root,
-                count: request.entries.len(),
-            },
-            TerminalOutcome::Failed => FileListResponse::Failed {
+        if matches!(request.phase, FileListRequestPhase::Discard) {
+            return;
+        }
+        let response = match (request.phase, outcome) {
+            (FileListRequestPhase::Preflight, TerminalOutcome::Finished) => {
+                FileListResponse::PreflightFinished {
+                    request_id: request.request_id,
+                    root: request.root,
+                    existing_path: None,
+                    ancestor_confirmation_needed: false,
+                }
+            }
+            (FileListRequestPhase::Write, TerminalOutcome::Finished) => {
+                FileListResponse::Finished {
+                    request_id: request.request_id,
+                    path: request.root.join("FileList.txt"),
+                    root: request.root,
+                    count: 1,
+                }
+            }
+            (_, TerminalOutcome::Failed) => FileListResponse::Failed {
                 request_id: request.request_id,
                 root: request.root,
                 error: "controlled endurance failure".to_string(),
             },
-            TerminalOutcome::Canceled => FileListResponse::Canceled {
+            (_, TerminalOutcome::Canceled) => FileListResponse::Canceled {
                 request_id: request.request_id,
                 root: request.root,
             },
+            (FileListRequestPhase::Discard, _) => unreachable!("discard handled above"),
         };
         self.filelist_responses
             .send(response)
