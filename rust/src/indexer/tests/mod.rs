@@ -9,6 +9,7 @@ use super::filelist_writer::{
     annotate_write_target_error, execute_filelist_write_plan_with, filelist_modified_time,
     finalize_ancestor_filelist_discovery, normalize_filelist_entry_for_text_compare,
     sort_and_deduplicate_filelist_candidates_by, visit_ancestor_directories,
+    FileListReplacementPhase,
 };
 use super::*;
 use anyhow::Context;
@@ -1120,6 +1121,60 @@ fn tc165_hard_abort_before_root_preserves_state_and_retry_converges() {
         filelist_permission_signature(&parent_filelist),
         expected_permissions
     );
+}
+
+#[test]
+fn tc165_post_replace_sync_failure_rolls_back_the_current_target() {
+    for fail_at in 0..=1 {
+        let top = TempDir::new(&format!("tc165-post-replace-sync-{fail_at}"));
+        let root = top.path().join("child");
+        fs::create_dir_all(&root).expect("create root");
+        let root_filelist = root.join("FileList.txt");
+        let parent_filelist = top.path().join("FileList.txt");
+        fs::write(&root_filelist, "root-old\n").expect("write root FileList");
+        fs::write(&parent_filelist, "parent-old\n").expect("write parent FileList");
+        let plan = plan_filelist_write(
+            &root,
+            &[root.join("entry.txt")],
+            FileListWriteOptions {
+                allow_root_overwrite: true,
+                propagate_to_ancestors: true,
+            },
+        )
+        .expect("plan");
+
+        let commit_calls = AtomicUsize::new(0);
+        let report =
+            execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, phase| {
+                if matches!(phase, FileListReplacementPhase::Commit)
+                    && commit_calls.fetch_add(1, Ordering::SeqCst) == fail_at
+                {
+                    crate::fs_atomic::write_bytes_atomic_with_sync_for_test(
+                        &target.path,
+                        bytes,
+                        |_| Err(std::io::Error::other("injected directory sync failure")),
+                    )
+                } else {
+                    crate::fs_atomic::write_bytes_atomic(&target.path, bytes)
+                }
+            });
+
+        assert_eq!(report.status, FileListWriteStatus::Failed);
+        assert_eq!(report.committed.len(), fail_at + 1);
+        assert_eq!(report.rolled_back.len(), fail_at + 1);
+        assert!(report.rollback_failed.is_empty());
+        assert!(report.failed[0]
+            .error
+            .contains("destination was replaced but durability sync failed"));
+        assert_eq!(
+            fs::read_to_string(&root_filelist).expect("read restored root"),
+            "root-old\n"
+        );
+        assert_eq!(
+            fs::read_to_string(&parent_filelist).expect("read restored parent"),
+            "parent-old\n"
+        );
+    }
 }
 
 #[test]

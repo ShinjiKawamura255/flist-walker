@@ -1,4 +1,6 @@
-use crate::fs_atomic::{write_bytes_atomic_with_metadata, AtomicWriteMetadata};
+use crate::fs_atomic::{
+    atomic_write_replaced_destination, write_bytes_atomic_with_metadata, AtomicWriteMetadata,
+};
 use crate::path_utils::path_key;
 use anyhow::{Context, Result};
 use std::any::Any;
@@ -786,6 +788,10 @@ where
             &target.content,
             FileListReplacementPhase::Commit,
         ) {
+            if atomic_write_replaced_destination(&error) {
+                report.committed.push(target.path.clone());
+                committed_indexes.push(index);
+            }
             report.status = FileListWriteStatus::Failed;
             report.failed.push(FileListWriteFailure {
                 path: target.path.clone(),

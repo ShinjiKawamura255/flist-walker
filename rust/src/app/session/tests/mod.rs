@@ -429,6 +429,111 @@ fn tc_167_observed_settings_commit_rolls_back_saved_roots_when_ui_state_write_fa
 }
 
 #[test]
+fn tc_167_post_replace_sync_failure_rolls_back_saved_roots() {
+    let base = temp_dir("observed-settings-post-replace-roots");
+    let ui_state_path = base.join("ui-state.json");
+    let roots_path = base.join("roots.txt");
+    fs::create_dir_all(&base).expect("create base");
+    fs::write(
+        &ui_state_path,
+        json!({"default_root": "old-root"}).to_string(),
+    )
+    .expect("seed UI state");
+    fs::write(&roots_path, "old-root\n").expect("seed roots");
+    let before_ui = fs::read(&ui_state_path).expect("read prior UI state");
+    let calls = std::sync::atomic::AtomicUsize::new(0);
+
+    let result = commit_settings_with_writer(
+        &ui_state_path,
+        &[],
+        false,
+        Duration::from_secs(1),
+        SettingsCommitRequest {
+            request_id: 43,
+            patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
+            saved_roots: Some((roots_path.clone(), "new-root\n".to_string())),
+        },
+        |path, bytes| {
+            if calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                crate::fs_atomic::write_bytes_atomic_with_sync_for_test(path, bytes, |_| {
+                    Err(std::io::Error::other("injected directory sync failure"))
+                })
+            } else {
+                crate::fs_atomic::write_bytes_atomic(path, bytes)
+            }
+        },
+    );
+
+    let error = match result {
+        Ok(_) => panic!("post-replace sync failure must be reported"),
+        Err(error) => error,
+    };
+    assert!(error
+        .to_string()
+        .contains("destination was replaced but durability sync failed"));
+    assert_eq!(fs::read(&ui_state_path).expect("read UI state"), before_ui);
+    assert_eq!(
+        fs::read_to_string(&roots_path).expect("read restored roots"),
+        "old-root\n"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn tc_167_post_replace_ui_state_sync_failure_rolls_back_both_files() {
+    let base = temp_dir("observed-settings-post-replace-ui");
+    let ui_state_path = base.join("ui-state.json");
+    let roots_path = base.join("roots.txt");
+    fs::create_dir_all(&base).expect("create base");
+    fs::write(
+        &ui_state_path,
+        json!({"default_root": "old-root"}).to_string(),
+    )
+    .expect("seed UI state");
+    fs::write(&roots_path, "old-root\n").expect("seed roots");
+    let before_ui = fs::read(&ui_state_path).expect("read prior UI state");
+    let calls = std::sync::atomic::AtomicUsize::new(0);
+
+    let result = commit_settings_with_writer(
+        &ui_state_path,
+        &[],
+        false,
+        Duration::from_secs(1),
+        SettingsCommitRequest {
+            request_id: 44,
+            patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
+            saved_roots: Some((roots_path.clone(), "new-root\n".to_string())),
+        },
+        |path, bytes| {
+            if calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 1 {
+                crate::fs_atomic::write_bytes_atomic_with_sync_for_test(path, bytes, |_| {
+                    Err(std::io::Error::other("injected directory sync failure"))
+                })
+            } else {
+                crate::fs_atomic::write_bytes_atomic(path, bytes)
+            }
+        },
+    );
+
+    let error = match result {
+        Ok(_) => panic!("post-replace sync failure must be reported"),
+        Err(error) => error,
+    };
+    assert!(error
+        .to_string()
+        .contains("destination was replaced but durability sync failed"));
+    assert_eq!(
+        fs::read(&ui_state_path).expect("read restored UI state"),
+        before_ui
+    );
+    assert_eq!(
+        fs::read_to_string(&roots_path).expect("read restored roots"),
+        "old-root\n"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
 fn tc_168_observed_settings_commit_enqueue_does_not_wait_for_ui_state_lock() {
     let base = temp_dir("observed-settings-frame-latency");
     let ui_state_path = base.join("ui-state.json");

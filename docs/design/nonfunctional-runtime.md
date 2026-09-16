@@ -85,7 +85,7 @@
 - God Object 解消の第一段として、Create File List は `app/filelist/` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
 - FileList 系の副作用は `UiCommand`、`WorkerCommand`、`FileListAppCommand` のようなカテゴリ化した戻り値で表現し、単一巨大 enum や `&mut FlistWalkerApp` への直接依存を増やさない。
 - `pending_after_index`、tab/root 切替時の再インデックス判断、active/background tab への反映は orchestration として `FlistWalkerApp` 側に残し、manager は必要な app command を返すだけに留める。
-- FileList 作成は各 target と同一 directory の create-new 一時ファイルへ出力し、bytes、既存 permissions、祖先の accessed/modified time を適用して file sync 後に atomic replace する。祖先 target は root に近い位置から上位へ処理し、root target を最後の commit point とする。通常の failure/cancel/panic は従来どおり rollback を試み、root commit 前の process abort は旧 root と append-only の祖先参照だけを残すため、再実行時の重複除去で収束する。untrusted root 内に新たな transaction marker は置かない。
+- FileList 作成は各 target と同一 directory の create-new 一時ファイルへ出力し、bytes、既存 permissions、祖先の accessed/modified time を適用して file sync 後に atomic replace する。祖先 target は root に近い位置から上位へ処理し、root target を最後の commit point とする。replace 後の directory sync failure は destination が変化済みであることを型付き error で上位へ伝え、current target を含めて rollback しながら durability failure を保持する。通常の failure/cancel/panic は従来どおり rollback を試み、root commit 前の process abort は旧 root と append-only の祖先参照だけを残すため、再実行時の重複除去で収束する。untrusted root 内に新たな transaction marker は置かない。
 - Create File List の worker request は cancel flag を持ち、テキスト生成、root 直下への最終置換、祖先 FileList 追記の各境界で中断確認する。キャンセル後は `Canceled` 応答を返し、UI は notice 更新だけ行う。
 - FileList 作成後は root の親から filesystem root まで順に辿り、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ子 FileList 参照を相対表現で追記する。既に同一参照がある場合は追記しない。
 - 祖先 FileList を追記した場合でも、その FileList の mtime は更新前の値へ復元し、階層 FileList の新旧判定を崩さない。
@@ -120,6 +120,7 @@
 - `Ctrl+R` は履歴検索モードを開始し、同じ検索欄を履歴検索入力へ切り替える。履歴検索中は `Enter` / `Ctrl+J` / `Ctrl+M` で選択中履歴を query へ展開し、`Esc` / `Ctrl+G` で開始前 query を復元してキャンセルする。
 - query 履歴は通常終了時の UI state に最大 100 件まで永続化し、次回起動時に後方互換を保って復元する。
 - runtime config の `history_persist_disabled` が有効なときは、UI state 読み書き時に query history フィールドを空として扱い、履歴の永続化だけを無効にする。
+- runtime config の migration、初回 seed、GUI 設定 open による不足 file 生成は同じ sidecar lock と in-lock current recheck を共有する。設定 open は現在プロセスの実効 config を候補にするが、待機中に別の協調 writer が current を作成した場合はその winner を保持し、process env を再適用しない。
 - 結果ソート状態と sort scope はタブ単位で保持するが、query 変更や結果スナップショット更新時には `Score` / `Shown results` へ戻し、保留中の sort request_id を無効化する。
 - 結果ペイン上部に `Sort` ドロップダウンを配置し、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Path (A-Z)` / `Path (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択可能にする。併せて `Scope` ドロップダウンを配置し、`Shown results` / `All matches` を選択可能にする。
 - `Created` 属性は取得失敗を正常系として扱い、notice ではなく並び順の末尾送りだけで吸収する。
