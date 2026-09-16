@@ -563,6 +563,140 @@ fn migrate_file_if_needed_does_not_overwrite_existing_current_file() {
 }
 
 #[test]
+fn migrate_file_if_needed_keeps_current_that_appears_before_fallback_promotion() {
+    let _guard = locked_env();
+    let base = test_home("migrate-race-current-wins");
+    let legacy_base = base.join("legacy");
+    let current_base = base.join("current");
+    fs::create_dir_all(&legacy_base).expect("create legacy dir");
+    fs::create_dir_all(&current_base).expect("create current dir");
+    let legacy_path = runtime_config_file_path_in(&legacy_base);
+    let current_path = runtime_config_file_path_in(&current_base);
+    fs::write(&legacy_path, b"legacy").expect("write legacy");
+    let promoted = std::cell::Cell::new(false);
+
+    let migrated = migrate_file_if_needed_with(
+        &current_path,
+        &legacy_path,
+        |_, destination| {
+            fs::write(destination, b"current-winner").expect("create racing current");
+            Err(std::io::Error::other("force fallback"))
+        },
+        |_, _| {
+            promoted.set(true);
+            Ok(())
+        },
+    );
+
+    assert!(!migrated);
+    assert!(!promoted.get());
+    assert_eq!(
+        fs::read(&current_path).expect("read current"),
+        b"current-winner"
+    );
+    assert_eq!(fs::read(&legacy_path).expect("read legacy"), b"legacy");
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn migrate_file_if_needed_failed_atomic_fallback_leaves_no_partial_current() {
+    let _guard = locked_env();
+    let base = test_home("migrate-fallback-failure");
+    let legacy_base = base.join("legacy");
+    let current_base = base.join("current");
+    fs::create_dir_all(&legacy_base).expect("create legacy dir");
+    fs::create_dir_all(&current_base).expect("create current dir");
+    let legacy_path = runtime_config_file_path_in(&legacy_base);
+    let current_path = runtime_config_file_path_in(&current_base);
+    fs::write(&legacy_path, b"legacy-complete").expect("write legacy");
+
+    let migrated = migrate_file_if_needed_with(
+        &current_path,
+        &legacy_path,
+        |_, _| Err(std::io::Error::other("force fallback")),
+        |destination, _| {
+            fs::write(destination, b"partial")?;
+            fs::remove_file(destination)?;
+            Err(std::io::Error::other("injected atomic promotion failure"))
+        },
+    );
+
+    assert!(!migrated);
+    assert!(!current_path.exists());
+    assert_eq!(
+        fs::read(&legacy_path).expect("read legacy"),
+        b"legacy-complete"
+    );
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn migrate_file_if_needed_atomic_fallback_copies_exact_bytes_and_removes_legacy() {
+    let _guard = locked_env();
+    let base = test_home("migrate-fallback-success");
+    let legacy_base = base.join("legacy");
+    let current_base = base.join("current");
+    fs::create_dir_all(&legacy_base).expect("create legacy dir");
+    fs::create_dir_all(&current_base).expect("create current dir");
+    let legacy_path = runtime_config_file_path_in(&legacy_base);
+    let current_path = runtime_config_file_path_in(&current_base);
+    let legacy_bytes = b"{\"exact\":true}\n";
+    fs::write(&legacy_path, legacy_bytes).expect("write legacy");
+
+    let migrated = migrate_file_if_needed_with(
+        &current_path,
+        &legacy_path,
+        |_, _| Err(std::io::Error::other("force fallback")),
+        write_bytes_atomic,
+    );
+
+    assert!(migrated);
+    assert_eq!(fs::read(&current_path).expect("read current"), legacy_bytes);
+    assert!(!legacy_path.exists());
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn load_or_seed_rechecks_current_after_waiting_for_sidecar_lock() {
+    let _guard = locked_env();
+    let base = test_home("seed-lock-recheck");
+    fs::create_dir_all(&base).expect("create base");
+    let current_path = runtime_config_file_path_in(&base);
+    let lock = acquire_sidecar_lock(&current_path, Duration::from_millis(100))
+        .expect("hold runtime config lock");
+    let child_path = current_path.clone();
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    let child = std::thread::spawn(move || {
+        started_tx.send(()).expect("signal start");
+        let loaded = RuntimeConfig::load_or_seed_at(Some(child_path));
+        done_tx.send(loaded).expect("send loaded config");
+    });
+    started_rx.recv().expect("child started");
+    std::thread::sleep(Duration::from_millis(30));
+    assert!(
+        done_rx.try_recv().is_err(),
+        "loader must wait for active lock"
+    );
+
+    let winner = RuntimeConfig {
+        walker_max_entries: 12_345,
+        ..RuntimeConfig::default()
+    };
+    save_runtime_config_to_path(&current_path, &winner).expect("write winning current config");
+    drop(lock);
+
+    let loaded = done_rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("loader completes after lock release");
+    child.join().expect("join loader");
+    assert_eq!(loaded.walker_max_entries, 12_345);
+    let persisted = load_runtime_config_from_path(&current_path).expect("read persisted config");
+    assert_eq!(persisted.walker_max_entries, 12_345);
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
 fn load_runtime_config_removes_deprecated_walker_options_from_existing_file() {
     let _guard = locked_env();
     let home = test_home("deprecated-walker-options");

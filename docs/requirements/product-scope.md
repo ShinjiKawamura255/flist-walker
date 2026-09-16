@@ -57,7 +57,7 @@
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の非 fuzzy 除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
 - AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` / `tab_pin_moves_to_next_row` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
-- AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。
+- AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。runtime config の移行と初回 seed は current path の sidecar lock 取得後に current を再確認し、協調する並行起動が先に作成した current を上書きしない。cross-filesystem fallback が失敗しても partial current を残さず legacy を保持する。
 - AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。
 - AC-029: GUI の設定ボタンを押すと runtime config file が生成済みの状態で開かれ、既定アプリケーションが失敗した場合はテキストエディタ相当のフォールバックが試行される。
 - AC-030: 保存済みウィンドウ位置が現在の仮想ディスプレイ矩形外にある状態で GUI を起動しても、初期ウィンドウは現在の表示範囲内に配置される。現在の仮想ディスプレイ内の負座標配置は維持される。
