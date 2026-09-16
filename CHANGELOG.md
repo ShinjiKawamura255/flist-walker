@@ -10,7 +10,7 @@
 - なし。
 
 ### Fixed
-- regex 検索後の plain 検索で候補が欠落する問題、64 KiB 境界の UTF-8 preview が文字化けする問題、および大規模な増分検索 snapshot／nested FileList 置換で全件コピー・再走査が重なる問題を修正した。
+- なし。
 
 ### Breaking
 - なし。
@@ -23,6 +23,32 @@
 
 ### Known issues
 - なし。
+
+## [0.27.1] - 2026-09-16
+### Added
+- なし。
+
+### Changed
+- CLI/TUI に完全パスの昇順・降順、file/folder 指定の短縮・複数形 alias、limit 切り詰め時の progress warning を追加し、query 編集・除外 query の shell quoting 案内を整理した。
+- GUI の root 設定永続化を bounded worker へ移し、保存失敗時に live state を変更せず draft と再試行可能な通知を維持するようにした。
+
+### Fixed
+- regex 検索後の plain 検索で候補が欠落する問題、64 KiB 境界の UTF-8 preview が文字化けする問題、および大規模な増分検索 snapshot／nested FileList 置換で全件コピー・再走査が重なる問題を修正した。
+- action 完了の tab/request freshness、CLI backend error の機微情報抑制、FileList の case variant 選択・ancestor symlink 境界・作成 transaction／cancel／rollback を修正した。
+- GUI の非同期設定保存、tab-local action failure、background FileList 応答、session restore、payload ownership の競合・巻き戻り・UI thread blocking を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- `ureq` から利用する `rustls` を 0.23.45、`rustls-webpki` を 0.103.15 へ更新し、RUSTSEC-2026-0285 を解消した。license family と release notice 配布導線は変更していない。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
 
 ## [0.27.0] - 2026-09-06
 ### Added
@@ -2039,7 +2065,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...HEAD
+[0.27.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.1...v0.26.0
 [0.25.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.0...v0.25.1
