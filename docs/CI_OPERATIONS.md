@@ -10,6 +10,7 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - heavy PR CIはLinuxのclippy/coverageに加えてmacOS/Windows native jobでlocked clippyを実行し、platform cfg固有warningをtag作成前にblockする。tag release preflightはLinux/macOS/Windows nativeの各jobでlocked test/clippyを再実行し、release policy checker/testはclippy stepを特定platformへ限定するconditionを拒否する。
 - `Release Tagged Build` の manual candidate は default branch の明示versionだけを受理し、read-only jobでtag pushと同じnative preflight、audit、4 platform asset build、bundle/signature/inventory/N-1検証を実行してvalidated artifactを14日保持する。`contents: write`と`gh release create`はtag push専用jobだけに置き、manual runでは必ずskipする。これによりtag作成前に実物bundleを検証しつつ、candidate modeからreleaseを公開できないようにする。
 - `CI Policy Guardian` は `pull_request_target` で default branch の trusted checker を checkoutし、PR head の workflow/pin/Dependabot policy blob だけを GitHub API から一時領域へ取得して data として検査する。PR head の checkout/実行、secret、cache、artifact、write permission は使用しない。
+- `CI Policy` job は候補 branch 上で `scripts/tests/` の全 Python unit test を discovery 実行し、続けて repository contract を CLI として実行する。trusted checker は両コマンドを必須 token とし、CI policy test は片方でも削除された workflow を拒否する。
 - workflow一式、Dependabot設定、toolchain定義、audit exception設定、checker本体とtestはfail-closedなtrusted policy setとし、通常PRではrunner世代、Rust/Cargo tool version、full-SHA Action pinだけを変更できる。構造変更やaccepted advisory変更は設定snapshot、独立agent review、一時的required-check変更、即時復元、protected-route再検証を一体で行う専用rolloutとする。
 - ローカルの意味あるコミット境界・順序・message・author は rebase merge で保持する。GitHub が新しい commit SHA と committer metadata を生成することは許容する。
 - feature branch は任意のタイミングで push してよい。履歴整理が必要な場合の force-with-lease は非保護 feature branch に限り、`master` の force push、branch deletion、直接 push、admin bypass で gate を回避してはならない。merge 済み remote feature branch は GitHub が自動削除する。
@@ -32,6 +33,14 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - Non-goals: platform test、coverage threshold、Cargo audit、Universal/Fw E2Eの削除、unknown pathの推測skip、hosted queue時間の保証。
 - Related Tests: `test_heavy_ci_change_classification_regression`, `test_heavy_ci_result_truth_table_regression`, `test_ci_contract_requires_fail_closed_heavy_ci_skip_regression`, `test_ci_contract_requires_both_windows_gnu_updater_variants_regression`。updater N-1 checkerは、Guardianで不変化された`test_required_policy_regression_executes_updater_checker_golden_contract`が通常PRの`CI Policy`内で候補checkerを直接実行して保護する。
 - Notes for Future Changes: allowlist拡張はpathの実行可能性を確認し、classificationとjob-result truth tableのnegative testを同一変更で追加する。workflow/checker/testの構造変更は下記controlled rolloutを使う。
+
+### Regression Guard: repository tooling coverage
+
+- Scenario: required CI が immutable policy test だけを明示実行し、worktree preflight、repository contract、validation routing の unit regression がローカル検証にしか現れない。
+- Expected Behavior: `CI Policy` job は `python -m unittest discover -s scripts/tests` と `python scripts/check_repo_contract.py` を実行し、trusted checker/test はどちらか一方の command 削除も拒否する。
+- Non-goals: Rust test matrix、coverage threshold、Guardian の trusted-base / read-only 境界、repository contract の責務内容の変更。
+- Related Tests: `test_ci_contract_requires_repository_tooling_suite_regression` と discovery 配下の全 test。
+- Notes for Future Changes: test layout または canonical entrypoint を変更する場合は workflow、checker、negative test、VM-009 を同一 controlled rollout で更新する。
 
 ### Timing baseline and hosted acceptance (2026-08-25)
 

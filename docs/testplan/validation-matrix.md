@@ -66,7 +66,7 @@ The `Typical Targets` in each VM detail are human guidance, not an exhaustive pa
 
 ### CI Reliability, Version Pins, Security Audit, or Merge Policy Changes
 - Apply: VM-009 in addition to VM-005/VM-006 when their release or coverage surfaces are affected.
-- Run `python -m unittest scripts.tests.test_check_ci_policy` and parse every `.github/workflows/*.yml` file.
+- Run `python -m unittest discover -s scripts/tests`, `python scripts/check_repo_contract.py`, and parse every `.github/workflows/*.yml` file.
 - Verify required workflows use numbered runner generations, Rust/tool versions, full Action SHAs, least permissions, timeout/concurrency, image-version evidence, and download-only Cargo caches; read-only trusted-base guardian以外の`pull_request_target`は禁止する。
 - Exercise TC-056/TC-056B negative cases: audit-relevant pathのskipped auditは失敗し、非audit pathだけskipped auditを許容する。heavy CIはallowlisted documentation `A`/`M`だけ全対象jobの`skipped`を許容し、Rust/scripts/workflow/policy、rename/delete、unknown path、base SHA不明、diff失敗では全対象jobの`success`を要求する。GNU E2Eの`needs`が専用GNU producerとchange detectionだけであることを確認する。
 - Review `CI Gate` aggregation, scheduled audit/canary issue tracking, exact Dependabot rebase auto-merge registration, and the pin promotion/rollback rules in `docs/CI_OPERATIONS.md`. For local rebase lifecycle changes, use a disposable Git repository to verify that a clean `master == origin/master` can start a feature branch and a rebase-equivalent, PR-identified branch is eligible for the constrained cleanup. Verify that dirty state, divergent master, PR identity mismatch, patch difference, feature-branch merge commit, `master` target, and worktree use stop the operation.

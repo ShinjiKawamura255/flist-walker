@@ -294,6 +294,22 @@ jobs:
         self.assertTrue(any("audit result in gate" in item for item in violations))
         self.assertTrue(any("Cargo safe-skip gate" in item for item in violations))
 
+    def test_ci_contract_requires_repository_tooling_suite_regression(self) -> None:
+        text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertEqual([], POLICY.validate_ci_contract(text))
+        required = {
+            "python -m unittest discover -s scripts/tests": "repository tooling tests",
+            "python scripts/check_repo_contract.py": "repository contract",
+        }
+        for token, expected in required.items():
+            with self.subTest(token=token):
+                self.assertIn(token, text)
+                mutated = text.replace(token, "removed-repository-tooling-command", 1)
+                violations = POLICY.validate_ci_contract(mutated)
+                self.assertTrue(any(expected in item for item in violations), violations)
+
     def test_ci_contract_requires_both_windows_gnu_updater_variants_regression(self) -> None:
         text = (ROOT / ".github" / "workflows" / "ci-cross-platform.yml").read_text(
             encoding="utf-8"

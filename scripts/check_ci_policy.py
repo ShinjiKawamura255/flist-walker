@@ -389,6 +389,8 @@ def validate_ci_contract(text: str) -> list[str]:
         "audit workflow": r".github/workflows/security-audit\.yml",
         "policy implementation": r"scripts/check_ci_policy\.py",
         "policy tests": r"scripts/tests/test_check_ci_policy\.py",
+        "repository tooling tests": "python -m unittest discover -s scripts/tests",
+        "repository contract": "python scripts/check_repo_contract.py",
         "audit result in gate": "AUDIT_RESULT",
         "Cargo safe-skip gate": "CARGO_CHANGED",
         "required audit success check": '[[ "$AUDIT_RESULT" == "success" ]]',
