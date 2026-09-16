@@ -1,39 +1,29 @@
 use super::super::{
-    FlistWalkerApp, IndexSource, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
+    FlistWalkerApp, PendingFileListAfterIndex, PendingFileListAncestorConfirmation,
     PendingFileListConfirmation, PendingFileListUseWalkerConfirmation,
 };
-use crate::indexer::{ancestor_filelist_propagation_needed, find_filelist_in_first_level};
 use std::path::PathBuf;
 impl FlistWalkerApp {
-    pub(in crate::app) fn filelist_entries_snapshot(&self) -> Vec<PathBuf> {
-        let compiled_ignore_terms = self.shell.ui.ignore_list_enabled.then(|| {
-            crate::query::CompiledIgnoreTerms::compile(
-                self.shell.runtime.ignore_list_terms.as_slice(),
-                self.shell.runtime.ignore_case,
-            )
-        });
-        self.shell
-            .runtime
-            .all_entries
-            .iter()
-            .filter(|entry| {
-                self.is_entry_visible_for_current_filter(entry, compiled_ignore_terms.as_ref())
-            })
-            .map(|entry| entry.path.clone())
-            .collect()
+    pub(in crate::app) fn discard_prepared_filelist_snapshot(&mut self, request_id: u64) {
+        let commands = self
+            .shell
+            .features
+            .filelist
+            .discard_prepared_commands(request_id);
+        self.dispatch_filelist_commands(commands);
     }
 
     pub(in crate::app) fn start_filelist_creation(
         &mut self,
         tab_id: u64,
         root: PathBuf,
-        entries: Vec<PathBuf>,
+        prepared_request_id: u64,
         propagate_to_ancestors: bool,
     ) {
         let commands = self.shell.features.filelist.start_request_commands(
             tab_id,
             root,
-            entries,
+            prepared_request_id,
             propagate_to_ancestors,
         );
         self.dispatch_filelist_commands(commands);
@@ -45,13 +35,30 @@ impl FlistWalkerApp {
         root: PathBuf,
         entries: Vec<PathBuf>,
     ) {
-        if let Some(existing_path) = find_filelist_in_first_level(&root) {
+        let commands = self
+            .shell
+            .features
+            .filelist
+            .start_preflight_commands(tab_id, root, entries);
+        self.dispatch_filelist_commands(commands);
+    }
+
+    pub(in crate::app) fn complete_filelist_preflight(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        prepared_request_id: u64,
+        existing_path: Option<PathBuf>,
+        ancestor_confirmation_needed: bool,
+    ) {
+        if let Some(existing_path) = existing_path {
             self.shell.features.filelist.workflow.pending_confirmation =
                 Some(PendingFileListConfirmation {
                     tab_id,
                     root,
-                    entries,
+                    prepared_request_id,
                     existing_path: existing_path.clone(),
+                    ancestor_confirmation_needed,
                 });
             self.set_notice(format!(
                 "{} already exists. Choose overwrite or cancel.",
@@ -59,16 +66,22 @@ impl FlistWalkerApp {
             ));
             return;
         }
-        self.request_filelist_creation_after_overwrite_check(tab_id, root, entries);
+        self.request_filelist_creation_after_overwrite_check(
+            tab_id,
+            root,
+            prepared_request_id,
+            ancestor_confirmation_needed,
+        );
     }
 
     pub(in crate::app) fn request_filelist_creation_after_overwrite_check(
         &mut self,
         tab_id: u64,
         root: PathBuf,
-        entries: Vec<PathBuf>,
+        prepared_request_id: u64,
+        ancestor_confirmation_needed: bool,
     ) {
-        if ancestor_filelist_propagation_needed(&root) {
+        if ancestor_confirmation_needed {
             self.shell
                 .features
                 .filelist
@@ -76,14 +89,14 @@ impl FlistWalkerApp {
                 .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
                 tab_id,
                 root,
-                entries,
+                prepared_request_id,
             });
             self.set_notice(
                 "Create File List will also update parent FileList entries. Continue or choose current root only.",
             );
             return;
         }
-        self.start_filelist_creation(tab_id, root, entries, false);
+        self.start_filelist_creation(tab_id, root, prepared_request_id, false);
     }
 
     pub(in crate::app) fn create_filelist(&mut self) {
@@ -141,60 +154,24 @@ impl FlistWalkerApp {
             return;
         }
 
-        let mut needs_reindex = false;
+        let filters_adjusted =
+            !self.shell.runtime.include_files || !self.shell.runtime.include_dirs;
         if !self.shell.runtime.include_files || !self.shell.runtime.include_dirs {
             self.shell.runtime.include_files = true;
             self.shell.runtime.include_dirs = true;
-            needs_reindex = true;
-        }
-        if !matches!(self.shell.indexing.build.index.source, IndexSource::Walker) {
-            needs_reindex = true;
-        }
-        if self.shell.indexing.in_progress || self.shell.indexing.pending_finish.is_some() {
-            self.shell.features.filelist.workflow.pending_after_index =
-                Some(PendingFileListAfterIndex {
-                    tab_id,
-                    root: self.shell.runtime.root.clone(),
-                });
-            if needs_reindex {
-                if self.shell.runtime.use_filelist {
-                    self.request_create_filelist_walker_refresh();
-                    self.set_notice(
-                        "Preparing background Walker index with files/folders enabled before Create File List",
-                    );
-                } else {
-                    self.request_index_refresh();
-                    self.set_notice(
-                        "Preparing Walker index with files/folders enabled before Create File List",
-                    );
-                }
-            } else {
-                self.set_notice("Waiting for current indexing to finish before Create File List");
-            }
-            return;
         }
 
-        if needs_reindex {
-            self.shell.features.filelist.workflow.pending_after_index =
-                Some(PendingFileListAfterIndex {
-                    tab_id,
-                    root: self.shell.runtime.root.clone(),
-                });
-            if self.shell.runtime.use_filelist {
-                self.request_create_filelist_walker_refresh();
-                self.set_notice(
-                    "Preparing background Walker index with files/folders enabled before Create File List",
-                );
-            } else {
-                self.request_index_refresh();
-                self.set_notice(
-                    "Preparing Walker index with files/folders enabled before Create File List",
-                );
-            }
-            return;
-        }
-
-        let entries = self.filelist_entries_snapshot();
-        self.request_filelist_creation(tab_id, self.shell.runtime.root.clone(), entries);
+        self.shell.features.filelist.workflow.pending_after_index =
+            Some(PendingFileListAfterIndex {
+                tab_id,
+                root: self.shell.runtime.root.clone(),
+                index_request_id: None,
+            });
+        self.request_create_filelist_walker_refresh();
+        self.set_notice(if filters_adjusted {
+            "Preparing complete Walker snapshot with files/folders enabled before Create File List"
+        } else {
+            "Preparing fresh complete Walker snapshot before Create File List"
+        });
     }
 }

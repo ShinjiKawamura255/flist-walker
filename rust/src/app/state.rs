@@ -83,19 +83,21 @@ pub(super) struct HighlightCacheKey {
 pub(super) struct PendingFileListConfirmation {
     pub(super) tab_id: u64,
     pub(super) root: PathBuf,
-    pub(super) entries: Vec<PathBuf>,
+    pub(super) prepared_request_id: u64,
     pub(super) existing_path: PathBuf,
+    pub(super) ancestor_confirmation_needed: bool,
 }
 
 pub(super) struct PendingFileListAncestorConfirmation {
     pub(super) tab_id: u64,
     pub(super) root: PathBuf,
-    pub(super) entries: Vec<PathBuf>,
+    pub(super) prepared_request_id: u64,
 }
 
 pub(super) struct PendingFileListAfterIndex {
     pub(super) tab_id: u64,
     pub(super) root: PathBuf,
+    pub(super) index_request_id: Option<u64>,
 }
 
 #[derive(Clone, Debug)]

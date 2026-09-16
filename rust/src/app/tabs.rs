@@ -222,7 +222,10 @@ impl FlistWalkerApp {
     }
 
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
-        self.shell.features.filelist.clear_pending_for_tab(tab_id);
+        let prepared_request_ids = self.shell.features.filelist.clear_pending_for_tab(tab_id);
+        for prepared_request_id in prepared_request_ids {
+            self.discard_prepared_filelist_snapshot(prepared_request_id);
+        }
         self.shell.indexing.clear_for_tab_after_reclaim(tab_id);
         self.shell.search.clear_for_tab(tab_id);
         self.clear_response_routing_for_tab(tab_id);
@@ -464,7 +467,8 @@ impl FlistWalkerApp {
                 .as_ref()
                 .is_some_and(|pending| {
                     self.shell.tabs.get(tab_index).is_some_and(|tab| {
-                        pending.tab_id == tab.id
+                        pending.index_request_id == Some(request_id)
+                            && pending.tab_id == tab.id
                             && path_key(&pending.root) == path_key(&tab.root)
                             && tab
                                 .index_state
@@ -739,7 +743,9 @@ impl FlistWalkerApp {
             .pending_after_index
             .as_ref()
             .is_some_and(|pending| {
-                pending.tab_id == tab.id && path_key(&pending.root) == path_key(&tab.root)
+                pending.index_request_id == Some(request_id)
+                    && pending.tab_id == tab.id
+                    && path_key(&pending.root) == path_key(&tab.root)
             });
         if pending_after_index_matches {
             effect.deferred_filelist = Some((
@@ -1198,6 +1204,14 @@ impl FlistWalkerApp {
                 self.shell.tabs.get(next_index).map(|tab| tab.id);
             return;
         }
+        if let Some(current_tab_id) = self.current_tab_id() {
+            if !self.cancel_pending_filelist_for_tab_transition(current_tab_id) {
+                self.shell.tabs.pending_activation_tab_id =
+                    self.shell.tabs.get(next_index).map(|tab| tab.id);
+                self.set_notice("Waiting to cancel Create File List before switching tabs");
+                return;
+            }
+        }
         self.shell.tabs.pending_activation_tab_id = None;
         let previous_tab_id = self.current_tab_id();
         let previous_was_indexing = self.shell.indexing.pending_request_id.is_some();
@@ -1274,6 +1288,12 @@ impl FlistWalkerApp {
             return;
         }
         self.commit_query_history_if_needed(true);
+        if let Some(current_tab_id) = self.current_tab_id() {
+            if !self.cancel_pending_filelist_for_tab_transition(current_tab_id) {
+                self.set_notice("Waiting to cancel Create File List before creating a tab");
+                return;
+            }
+        }
         let requires_default_walk_reindex =
             !self.shell.runtime.max_depth.is_unlimited() || self.shell.runtime.follow_links;
         let id = self.shell.tabs.take_next_tab_id();

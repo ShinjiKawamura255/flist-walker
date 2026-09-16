@@ -84,6 +84,74 @@ fn tc_207_active_failure_reclaims_building_payload_off_ui() {
 }
 
 #[test]
+fn tc_207_filelist_send_failure_reclaims_snapshot_off_ui() {
+    let root = test_root("tc-207-filelist-send-failure-reclaim");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("active tab");
+    let (disconnected_tx, disconnected_rx) = mpsc::channel::<FileListRequest>();
+    drop(disconnected_rx);
+    app.shell.worker_bus.filelist.tx = disconnected_tx;
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+    let entries = (0..2_000)
+        .map(|index| root.join(format!("snapshot-{index}.txt")))
+        .collect::<Vec<_>>();
+
+    app.request_filelist_creation(tab_id, root.clone(), entries);
+
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_none());
+    assert!(!app.shell.features.filelist.workflow.in_progress);
+
+    set_reclaim_drop_observer(None);
+    let drop_threads = drop_rx
+        .try_iter()
+        .chain(drop_rx.recv_timeout(Duration::from_millis(250)))
+        .collect::<Vec<_>>();
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_207_filelist_send_failure_keeps_snapshot_when_reclaimer_is_full() {
+    let root = test_root("tc-207-filelist-send-failure-debt");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let tab_id = app.current_tab_id().expect("active tab");
+    let (disconnected_tx, disconnected_rx) = mpsc::channel::<FileListRequest>();
+    drop(disconnected_rx);
+    app.shell.worker_bus.filelist.tx = disconnected_tx;
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(4_200 + index as u64);
+        tab.result_state.committed.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+    let entries = (0..2_000)
+        .map(|index| root.join(format!("snapshot-{index}.txt")))
+        .collect::<Vec<_>>();
+
+    app.request_filelist_creation(tab_id, root.clone(), entries);
+
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_some());
+    assert!(!app.shell.features.filelist.workflow.in_progress);
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc_207_active_cancel_keeps_fixed_build_debt_until_reclaimer_accepts() {
     let root = test_root("tc-207-active-cancel-reclaim-full");
     fs::create_dir_all(&root).expect("create root");

@@ -738,12 +738,15 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
     let root = test_root("render-command-filelist-dialog");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
     let tab_id = app.current_tab_id().expect("active tab id");
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
-        entries: vec![root.join("entry.txt")],
+        prepared_request_id: 91,
         existing_path: root.join("FileList.txt"),
+        ancestor_confirmation_needed: false,
     });
     let ctx = egui::Context::default();
 
@@ -761,6 +764,11 @@ fn dispatch_render_commands_consumes_filelist_dialog_queue() {
         .is_none());
     assert_eq!(app.shell.runtime.notice, "Create File List canceled");
     assert!(app.shell.ui.pending_render_commands.is_empty());
+    let discard = filelist_rx
+        .try_recv()
+        .expect("cancel should discard the worker-owned snapshot");
+    assert_eq!(discard.phase, FileListRequestPhase::Discard);
+    assert_eq!(discard.prepared_request_id, Some(91));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1675,8 +1683,9 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
-        entries: vec![root.join("entry.txt")],
+        prepared_request_id: 92,
         existing_path: root.join("FileList.txt"),
+        ancestor_confirmation_needed: false,
     });
     app.shell.features.update.state.prompt = Some(UpdatePromptState {
         candidate: test_render_update_candidate(),
@@ -1799,8 +1808,9 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
-        entries: vec![root.join("entry.txt")],
+        prepared_request_id: 93,
         existing_path: root.join("FileList.txt"),
+        ancestor_confirmation_needed: false,
     });
     app.shell
         .features
@@ -1809,7 +1819,7 @@ fn render_panels_and_dialogs_execute_in_headless_frame() {
         .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id,
         root: root.clone(),
-        entries: vec![root.join("entry.txt")],
+        prepared_request_id: 94,
     });
     app.shell
         .features

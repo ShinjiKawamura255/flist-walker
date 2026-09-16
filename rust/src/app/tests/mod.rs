@@ -23,14 +23,14 @@ pub(super) use crate::app::worker::protocol::{
 pub(super) use crate::app::{clear_process_shutdown_request, process_shutdown_requested};
 pub(super) use crate::app::{
     egui, ActionRequest, ActionResponse, AppRuntimeState, AppShellState, CacheStateBundle,
-    EntryKind, FileListDialogKind, FileListManager, FileListRequest, FileListResponse,
-    FlistWalkerApp, HighlightCacheKey, HighlightCacheState, IgnoreMatcherCacheState,
-    IndexBuildResult, IndexEntry, IndexRequest, IndexResponse, IndexSource, LaunchSettings,
-    PreviewRequest, PreviewResponse, QueryState, ResultSortMode, ResultSortScope, RootBrowserState,
-    RuntimeUiState, SavedTabState, SavedWindowGeometry, SearchCoordinator, SearchRequest,
-    SearchResponse, SortMetadataCacheState, SortMetadataRequest, SortMetadataResponse,
-    TabAccentColor, TabAccentPalette, TabDragState, TabResourceLifecycle, TabSessionState,
-    UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
+    EntryKind, FileListDialogKind, FileListManager, FileListRequest, FileListRequestPhase,
+    FileListResponse, FlistWalkerApp, HighlightCacheKey, HighlightCacheState,
+    IgnoreMatcherCacheState, IndexBuildResult, IndexEntry, IndexRequest, IndexResponse,
+    IndexSource, LaunchSettings, PreviewRequest, PreviewResponse, QueryState, ResultSortMode,
+    ResultSortScope, RootBrowserState, RuntimeUiState, SavedTabState, SavedWindowGeometry,
+    SearchCoordinator, SearchRequest, SearchResponse, SortMetadataCacheState, SortMetadataRequest,
+    SortMetadataResponse, TabAccentColor, TabAccentPalette, TabDragState, TabResourceLifecycle,
+    TabSessionState, UpdateRequest, UpdateResponse, WorkerBus, WorkerRuntime,
 };
 pub(super) use crate::app::{render_tabs, request_process_shutdown, spawn_kind_resolver_worker};
 pub(super) use crate::entry::Entry;

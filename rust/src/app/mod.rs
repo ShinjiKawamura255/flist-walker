@@ -91,9 +91,10 @@ use worker::bus::{
 };
 use worker::protocol::{
     ActionRequest, ActionResponse, CatalogRequest, CatalogRequestKind, FileListRequest,
-    FileListResponse, IndexEntry, IndexRequest, IndexResponse, KindResolveRequest, PreviewRequest,
-    PreviewResponse, RootValidationIntent, RootValidationRequest, SearchRequest, SearchResponse,
-    SortMetadataRequest, SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
+    FileListRequestPhase, FileListResponse, IndexEntry, IndexRequest, IndexResponse,
+    KindResolveRequest, PreviewRequest, PreviewResponse, RootValidationIntent,
+    RootValidationRequest, SearchRequest, SearchResponse, SortMetadataRequest,
+    SortMetadataResponse, UpdateRequest, UpdateRequestKind, UpdateResponse,
 };
 use worker::runtime::WorkerRuntime;
 use worker::tasks::{

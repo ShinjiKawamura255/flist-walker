@@ -29,6 +29,14 @@ const FILELIST_BATCH_SIZE: usize = 1024;
 const WALKER_BATCH_SIZE: usize = 256;
 const INDEX_BATCH_FLUSH_INTERVAL: Duration = Duration::from_millis(100);
 
+fn walker_entry_limit(complete_walker_snapshot: bool, configured_limit: usize) -> usize {
+    if complete_walker_snapshot {
+        usize::MAX
+    } else {
+        configured_limit
+    }
+}
+
 mod root_projection;
 
 trait IndexResponseSink {
@@ -577,7 +585,7 @@ fn stream_walker_index(
     let mut cancel_check_budget = 0usize;
     let mut emitted_entries = 0usize;
     let settings = walker_runtime_settings(&current_runtime_config());
-    let max_entries = settings.max_entries;
+    let max_entries = walker_entry_limit(req.complete_walker_snapshot, settings.max_entries);
     let mut truncated = false;
     let mut metrics = WalkerMetrics::new(settings.backend);
     let should_cancel = || {

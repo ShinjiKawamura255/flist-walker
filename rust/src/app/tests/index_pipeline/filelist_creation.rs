@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn create_filelist_waits_while_indexing() {
+fn create_filelist_replaces_in_progress_index_with_complete_walker_snapshot() {
     let root = test_root("filelist-waits-indexing");
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
@@ -34,12 +34,22 @@ fn create_filelist_waits_while_indexing() {
         .pending_request_id
         .is_none());
     assert!(!app.shell.features.filelist.workflow.in_progress);
-    assert!(index_rx.try_recv().is_err());
-    assert!(app
-        .shell
-        .runtime
-        .notice
-        .contains("Waiting for current indexing"));
+    let request = index_rx
+        .try_recv()
+        .expect("dedicated complete Walker request should be sent");
+    assert!(!request.use_filelist);
+    assert!(request.complete_walker_snapshot);
+    assert_eq!(request.max_depth, crate::indexer::MaxDepth::unlimited());
+    assert_eq!(
+        app.shell
+            .features
+            .filelist
+            .workflow
+            .pending_after_index
+            .as_ref()
+            .and_then(|pending| pending.index_request_id),
+        Some(request.request_id)
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -63,6 +73,7 @@ fn create_filelist_while_indexing_with_filter_change_requests_reindex() {
     assert_eq!(req.root, root);
     assert!(req.include_files);
     assert!(req.include_dirs);
+    assert!(req.complete_walker_snapshot);
     assert!(app
         .shell
         .features
@@ -95,6 +106,49 @@ fn create_filelist_forces_files_and_dirs_before_reindex() {
     assert!(!req.use_filelist);
     assert!(req.include_files);
     assert!(req.include_dirs);
+    assert!(req.complete_walker_snapshot);
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_some());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn create_filelist_with_ready_walker_requests_paced_snapshot_finalization() {
+    let root = test_root("filelist-ready-walker-paced-snapshot");
+    fs::create_dir_all(&root).expect("create dir");
+    let path = root.join("main.rs");
+    fs::write(&path, "fn main() {}").expect("write file");
+
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.indexing.tx = index_tx;
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.indexing.build.index.source = IndexSource::Walker;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![file_entry(path)]);
+
+    app.create_filelist();
+
+    assert!(
+        filelist_rx.try_recv().is_err(),
+        "the UI frame must not clone and dispatch the complete path snapshot"
+    );
+    let request = index_rx
+        .try_recv()
+        .expect("a request-owned Walker finalization should capture FileList paths");
+    assert_eq!(request.root, root);
+    assert!(!request.use_filelist);
+    assert_eq!(request.max_depth, crate::indexer::MaxDepth::unlimited());
+    assert!(request.complete_walker_snapshot);
     assert!(app
         .shell
         .features
@@ -149,6 +203,7 @@ fn create_filelist_with_use_filelist_enabled_confirms_and_prepares_background_wa
     assert_eq!(req.tab_id, current_tab_id);
     assert_eq!(req.root, root);
     assert!(!req.use_filelist);
+    assert!(req.complete_walker_snapshot);
     assert!(app
         .shell
         .runtime
@@ -239,7 +294,7 @@ fn filelist_finished_enables_use_filelist_for_creator_tab() {
 }
 
 #[test]
-fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
+fn filelist_preflight_response_requests_overwrite_confirmation_when_file_exists() {
     let root = test_root("filelist-overwrite-confirm");
     fs::create_dir_all(&root).expect("create dir");
     fs::write(root.join("FileList.txt"), "old\n").expect("write filelist");
@@ -247,14 +302,25 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
     fs::write(&path, "fn main() {}").expect("write file");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    app.shell.indexing.in_progress = false;
-    app.shell.runtime.use_filelist = false;
-    app.shell.runtime.committed_for_test_mut().all_entries =
-        Arc::new(vec![file_entry(path.clone())]);
-    app.set_entry_kind(&path, EntryKind::file());
-    app.shell.indexing.build.index.source = IndexSource::Walker;
+    let (filelist_request_tx, filelist_request_rx) = mpsc::channel::<FileListRequest>();
+    let (filelist_response_tx, filelist_response_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.tx = filelist_request_tx;
+    app.shell.worker_bus.filelist.rx = filelist_response_rx;
+    let tab_id = app.current_tab_id().expect("tab id");
 
-    app.create_filelist();
+    app.request_filelist_creation(tab_id, root.clone(), vec![path]);
+    let request = filelist_request_rx
+        .try_recv()
+        .expect("preflight request should be sent");
+    filelist_response_tx
+        .send(FileListResponse::PreflightFinished {
+            request_id: request.request_id,
+            root: root.clone(),
+            existing_path: Some(root.join("FileList.txt")),
+            ancestor_confirmation_needed: false,
+        })
+        .expect("send preflight response");
+    app.poll_filelist_response();
 
     assert!(app
         .shell
@@ -275,11 +341,84 @@ fn create_filelist_requests_overwrite_confirmation_when_file_exists() {
 }
 
 #[test]
+fn request_filelist_creation_schedules_filesystem_preflight_on_worker() {
+    let root = test_root("filelist-worker-preflight");
+    fs::create_dir_all(&root).expect("create dir");
+    fs::write(root.join("FileList.txt"), "old\n").expect("write filelist");
+    let entries = vec![root.join("main.rs")];
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
+    let tab_id = app.current_tab_id().expect("tab id");
+
+    app.request_filelist_creation(tab_id, root.clone(), entries.clone());
+
+    assert!(
+        app.shell
+            .features
+            .filelist
+            .workflow
+            .pending_confirmation
+            .is_none(),
+        "filesystem discovery must not complete synchronously on the UI thread"
+    );
+    let request = filelist_rx
+        .try_recv()
+        .expect("FileList worker should own filesystem preflight");
+    assert_eq!(request.tab_id, tab_id);
+    assert_eq!(request.root, root);
+    assert_eq!(request.entries, Some(entries));
+    assert_eq!(request.phase, FileListRequestPhase::Preflight);
+    assert!(app.shell.features.filelist.workflow.in_progress);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn canceled_preflight_response_discards_worker_owned_snapshot() {
+    let root = test_root("filelist-canceled-preflight-response");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, request_rx) = mpsc::channel::<FileListRequest>();
+    let (response_tx, response_rx) = mpsc::channel::<FileListResponse>();
+    app.shell.worker_bus.filelist.tx = request_tx;
+    app.shell.worker_bus.filelist.rx = response_rx;
+    let tab_id = app.current_tab_id().expect("tab id");
+
+    app.request_filelist_creation(tab_id, root.clone(), vec![root.join("main.rs")]);
+    let preflight = request_rx.try_recv().expect("preflight request");
+    app.cancel_create_filelist();
+    response_tx
+        .send(FileListResponse::PreflightFinished {
+            request_id: preflight.request_id,
+            root: root.clone(),
+            existing_path: None,
+            ancestor_confirmation_needed: false,
+        })
+        .expect("send raced preflight response");
+    app.poll_filelist_response();
+
+    let discard = request_rx
+        .try_recv()
+        .expect("canceled preflight snapshot should be discarded by the worker");
+    assert_eq!(discard.phase, FileListRequestPhase::Discard);
+    assert_eq!(discard.prepared_request_id, Some(preflight.request_id));
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_confirmation
+        .is_none());
+    assert!(!app.shell.features.filelist.workflow.in_progress);
+    assert!(app.shell.runtime.notice.contains("canceled"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn confirm_pending_overwrite_starts_filelist_creation() {
     let root = test_root("filelist-overwrite-confirm-start");
     fs::create_dir_all(&root).expect("create dir");
     let file_path = root.join("FileList.txt");
-    let entries = vec![root.join("src/main.rs")];
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
     app.shell.worker_bus.filelist.tx = filelist_tx;
@@ -287,8 +426,9 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id,
         root: root.clone(),
-        entries: entries.clone(),
+        prepared_request_id: 71,
         existing_path: file_path,
+        ancestor_confirmation_needed: false,
     });
 
     app.confirm_pending_filelist_overwrite();
@@ -298,7 +438,9 @@ fn confirm_pending_overwrite_starts_filelist_creation() {
         .expect("filelist request should be sent");
     assert_eq!(req.tab_id, tab_id);
     assert_eq!(req.root, root);
-    assert_eq!(req.entries, entries);
+    assert_eq!(req.entries, None);
+    assert_eq!(req.prepared_request_id, Some(71));
+    assert_eq!(req.phase, FileListRequestPhase::Write);
     assert!(app.shell.features.filelist.workflow.in_progress);
     assert!(app
         .shell
@@ -318,6 +460,7 @@ fn cancel_create_filelist_clears_pending_after_index() {
     app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),
+        index_request_id: None,
     });
 
     app.cancel_create_filelist();
@@ -334,6 +477,128 @@ fn cancel_create_filelist_clears_pending_after_index() {
         .runtime
         .notice
         .contains("Create File List canceled"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn cancel_create_filelist_clears_intent_while_reclaimer_is_full() {
+    let root = test_root("filelist-cancel-full-reclaimer");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.create_filelist();
+    let request = index_rx.try_recv().expect("complete Walker request");
+    app.shell.indexing.build.index.entries = (0..2_000)
+        .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
+        .collect();
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(4_300 + index as u64);
+        tab.result_state.committed.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}.txt")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .expect("fill reclaimer");
+    }
+
+    app.cancel_create_filelist();
+
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_none());
+    assert!(app.shell.indexing.build_reclaim_pending);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 2_000);
+    app.shell.tabs.resume_resource_reclaimer();
+    app.poll_index_response();
+    assert!(!app.shell.indexing.build_reclaim_pending);
+    assert_eq!(app.shell.indexing.build.index.entries.capacity(), 0);
+    assert!(!app
+        .shell
+        .indexing
+        .request_tabs
+        .contains_key(&request.request_id));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tab_switch_cancels_complete_walker_and_reclaims_build_snapshot_off_ui() {
+    let root = test_root("filelist-cancel-complete-walker-on-tab-switch");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let source_tab_id = app.current_tab_id().expect("source tab");
+    {
+        let target = app.shell.tabs.get_mut(0).expect("target tab");
+        target
+            .index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+        target
+            .index_state
+            .set_committed_snapshot_present_for_test(true);
+    }
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+
+    app.create_filelist();
+
+    let request = index_rx
+        .try_recv()
+        .expect("complete Walker request should be sent");
+    assert!(request.complete_walker_snapshot);
+    app.shell.indexing.build.index.entries = (0..2_000)
+        .map(|index| file_entry(root.join(format!("building-{index}.txt"))))
+        .collect();
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let (drop_tx, drop_rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(drop_tx));
+
+    app.switch_to_tab_index(0);
+
+    set_reclaim_drop_observer(None);
+    assert_eq!(app.shell.tabs.active_tab_index(), 0);
+    assert!(app
+        .shell
+        .features
+        .filelist
+        .workflow
+        .pending_after_index
+        .is_none());
+    assert!(!app
+        .shell
+        .indexing
+        .request_tabs
+        .contains_key(&request.request_id));
+    let source = app
+        .shell
+        .tabs
+        .iter()
+        .find(|tab| tab.id == source_tab_id)
+        .expect("source tab remains");
+    assert_eq!(source.index_state.build.index.entries.capacity(), 0);
+    let drop_threads = drop_rx
+        .try_iter()
+        .chain(drop_rx.recv_timeout(Duration::from_millis(250)))
+        .collect::<Vec<_>>();
+    assert!(
+        drop_threads
+            .iter()
+            .any(|name| name == "flistwalker-tab-reclaimer"),
+        "drop threads: {drop_threads:?}"
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

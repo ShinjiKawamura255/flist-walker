@@ -30,6 +30,8 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     app.create_new_tab();
     assert_eq!(app.shell.tabs.len(), 2);
+    let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    app.shell.worker_bus.filelist.tx = filelist_tx;
 
     let removed_tab_id = app.shell.tabs.get(0).expect("tab 0").id;
     let survivor_tab_id = app.shell.tabs.get(1).expect("tab 1").id;
@@ -39,12 +41,14 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     app.shell.features.filelist.workflow.pending_after_index = Some(PendingFileListAfterIndex {
         tab_id: removed_tab_id,
         root: root.clone(),
+        index_request_id: None,
     });
     app.shell.features.filelist.workflow.pending_confirmation = Some(PendingFileListConfirmation {
         tab_id: removed_tab_id,
         root: root.clone(),
-        entries: vec![path.clone()],
+        prepared_request_id: 101,
         existing_path: root.join("FileList.txt"),
+        ancestor_confirmation_needed: false,
     });
     app.shell
         .features
@@ -53,7 +57,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: removed_tab_id,
         root: root.clone(),
-        entries: vec![path.clone()],
+        prepared_request_id: 102,
     });
     app.shell
         .features
@@ -81,6 +85,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
     app.shell.indexing.pending_queue.push_back(IndexRequest {
         request_id: 12,
@@ -91,6 +96,7 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
     if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.insert(removed_tab_id, 11);
@@ -194,6 +200,19 @@ fn close_tab_clears_filelist_and_request_routing_for_removed_tab() {
     assert_eq!(app.action_request_tab(42), Some(survivor_tab_id));
     assert_eq!(app.sort_request_tab(51), None);
     assert_eq!(app.sort_request_tab(52), Some(survivor_tab_id));
+    let discarded_prepared_ids = [
+        filelist_rx
+            .try_recv()
+            .expect("close should discard overwrite snapshot"),
+        filelist_rx
+            .try_recv()
+            .expect("close should discard ancestor snapshot"),
+    ]
+    .map(|request| {
+        assert_eq!(request.phase, FileListRequestPhase::Discard);
+        request.prepared_request_id.expect("prepared request id")
+    });
+    assert_eq!(discarded_prepared_ids, [101, 102]);
 
     let _ = fs::remove_dir_all(&root);
 }

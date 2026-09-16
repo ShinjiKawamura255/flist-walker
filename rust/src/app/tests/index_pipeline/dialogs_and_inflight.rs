@@ -85,6 +85,7 @@ fn request_create_filelist_walker_refresh_resets_index_state_and_registers_reque
     let req = rx.try_recv().expect("index request should be sent");
     assert_eq!(req.tab_id, tab_id);
     assert!(!req.use_filelist);
+    assert!(req.complete_walker_snapshot);
     assert!(app
         .shell
         .indexing
@@ -174,7 +175,10 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
     fs::create_dir_all(&root).expect("create dir");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (filelist_tx, filelist_rx) = mpsc::channel::<FileListRequest>();
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
     app.shell.worker_bus.filelist.tx = filelist_tx;
+    app.shell.indexing.tx = index_tx;
+    reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = true;
     app.shell.indexing.build.index.source = IndexSource::Walker;
     app.shell.indexing.in_progress = false;
@@ -188,10 +192,12 @@ fn create_filelist_with_use_filelist_enabled_and_walker_source_skips_confirmatio
         .workflow
         .pending_use_walker_confirmation
         .is_none());
-    let req = filelist_rx
+    assert!(filelist_rx.try_recv().is_err());
+    let req = index_rx
         .try_recv()
-        .expect("filelist request should be sent without confirmation");
+        .expect("Walker snapshot request should be sent without confirmation");
     assert_eq!(req.root, root);
+    assert!(!req.use_filelist);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -210,7 +216,7 @@ fn dialog_arrow_keys_move_dialog_selection_not_results() {
         .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),
-        entries: vec![root.join("a.txt")],
+        prepared_request_id: 41,
     });
 
     run_shortcuts_frame(
@@ -248,7 +254,7 @@ fn dialog_space_confirms_selected_dialog_action() {
         .pending_ancestor_confirmation = Some(PendingFileListAncestorConfirmation {
         tab_id: app.current_tab_id().expect("tab id"),
         root: root.clone(),
-        entries: vec![root.join("a.txt")],
+        prepared_request_id: 42,
     });
 
     run_shortcuts_frame(
@@ -373,6 +379,7 @@ fn tc_205_active_request_preempts_only_the_non_preferred_warm_generation() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
     {
         let mut latest = app
@@ -700,6 +707,7 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
 
     assert!(app.pop_next_index_request().is_none());
@@ -743,6 +751,7 @@ fn replacement_request_keeps_real_inflight_accounting_until_terminal_response() 
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
 
     assert!(app
@@ -800,6 +809,7 @@ fn pending_queue_eviction_restores_background_tab_refresh_on_reactivation() {
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             follow_links: false,
+            complete_walker_snapshot: false,
         });
     }
 
@@ -862,6 +872,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             follow_links: false,
+            complete_walker_snapshot: false,
         })
         .expect("fill worker queue");
     }
@@ -875,6 +886,7 @@ fn tc_152_full_index_worker_queue_requeues_without_marking_inflight() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     };
     app.shell
         .indexing
@@ -918,6 +930,7 @@ fn tc_152_dispatch_keeps_coordinator_inflight_at_two() {
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             follow_links: false,
+            complete_walker_snapshot: false,
         });
     }
 
@@ -948,6 +961,7 @@ fn tc_152_full_index_queue_retries_after_capacity_returns_regression() {
             include_dirs: true,
             max_depth: crate::indexer::MaxDepth::unlimited(),
             follow_links: false,
+            complete_walker_snapshot: false,
         })
         .expect("fill queue");
     }
@@ -964,6 +978,7 @@ fn tc_152_full_index_queue_retries_after_capacity_returns_regression() {
         include_dirs: true,
         max_depth: crate::indexer::MaxDepth::unlimited(),
         follow_links: false,
+        complete_walker_snapshot: false,
     });
 
     app.dispatch_index_queue();

@@ -1,4 +1,4 @@
-use super::super::FileListRequest;
+use super::super::{FileListRequest, FileListRequestPhase};
 use super::commands::{FileListCommand, FileListUiCommand, FileListWorkerCommand};
 use crate::app::state::{
     FileListManager, FileListRequestContext, FileListResponseContext, FileListResponseScope,
@@ -12,7 +12,42 @@ impl FileListManager {
         &mut self,
         tab_id: u64,
         root: PathBuf,
+        prepared_request_id: u64,
+        propagate_to_ancestors: bool,
+    ) -> Vec<FileListCommand> {
+        self.start_request_commands_for_phase(
+            tab_id,
+            root,
+            None,
+            Some(prepared_request_id),
+            FileListRequestPhase::Write,
+            propagate_to_ancestors,
+        )
+    }
+
+    pub(in crate::app::filelist) fn start_preflight_commands(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
         entries: Vec<PathBuf>,
+    ) -> Vec<FileListCommand> {
+        self.start_request_commands_for_phase(
+            tab_id,
+            root,
+            Some(entries),
+            None,
+            FileListRequestPhase::Preflight,
+            false,
+        )
+    }
+
+    fn start_request_commands_for_phase(
+        &mut self,
+        tab_id: u64,
+        root: PathBuf,
+        entries: Option<Vec<PathBuf>>,
+        prepared_request_id: Option<u64>,
+        phase: FileListRequestPhase,
         propagate_to_ancestors: bool,
     ) -> Vec<FileListCommand> {
         let cancel = Arc::new(AtomicBool::new(false));
@@ -22,6 +57,8 @@ impl FileListManager {
             tab_id,
             root,
             entries,
+            prepared_request_id,
+            phase,
             propagate_to_ancestors,
             cancel,
         };
@@ -29,6 +66,24 @@ impl FileListManager {
             FileListCommand::Ui(FileListUiCommand::RefreshStatusLine),
             FileListCommand::Worker(FileListWorkerCommand::Start(req)),
         ]
+    }
+
+    pub(in crate::app::filelist) fn discard_prepared_commands(
+        &self,
+        prepared_request_id: u64,
+    ) -> Vec<FileListCommand> {
+        vec![FileListCommand::Worker(FileListWorkerCommand::Start(
+            FileListRequest {
+                request_id: prepared_request_id,
+                tab_id: 0,
+                root: PathBuf::new(),
+                entries: None,
+                prepared_request_id: Some(prepared_request_id),
+                phase: FileListRequestPhase::Discard,
+                propagate_to_ancestors: false,
+                cancel: Arc::new(AtomicBool::new(false)),
+            },
+        ))]
     }
 
     pub(in crate::app::filelist) fn send_failure_commands(&mut self) -> Vec<FileListCommand> {
@@ -135,7 +190,7 @@ impl FileListManager {
         &mut self,
         current_tab_id: u64,
         current_root_key: &str,
-    ) -> bool {
+    ) -> Option<u64> {
         let should_cancel = self
             .workflow
             .pending_confirmation
@@ -144,16 +199,20 @@ impl FileListManager {
                 pending.tab_id == current_tab_id && path_key(&pending.root) != current_root_key
             });
         if should_cancel {
-            self.workflow.pending_confirmation = None;
+            return self
+                .workflow
+                .pending_confirmation
+                .take()
+                .map(|pending| pending.prepared_request_id);
         }
-        should_cancel
+        None
     }
 
     pub(in crate::app::filelist) fn cancel_stale_pending_ancestor_confirmation(
         &mut self,
         current_tab_id: u64,
         current_root_key: &str,
-    ) -> bool {
+    ) -> Option<u64> {
         let should_cancel = self
             .workflow
             .pending_ancestor_confirmation
@@ -162,9 +221,13 @@ impl FileListManager {
                 pending.tab_id == current_tab_id && path_key(&pending.root) != current_root_key
             });
         if should_cancel {
-            self.workflow.pending_ancestor_confirmation = None;
+            return self
+                .workflow
+                .pending_ancestor_confirmation
+                .take()
+                .map(|pending| pending.prepared_request_id);
         }
-        should_cancel
+        None
     }
 
     pub(in crate::app::filelist) fn cancel_stale_pending_use_walker_confirmation(
@@ -186,7 +249,8 @@ impl FileListManager {
         should_cancel
     }
 
-    pub(in crate::app) fn clear_pending_for_tab(&mut self, tab_id: u64) {
+    pub(in crate::app) fn clear_pending_for_tab(&mut self, tab_id: u64) -> Vec<u64> {
+        let mut prepared_request_ids = Vec::new();
         if self.workflow.pending_request_tab_id == Some(tab_id) {
             if let Some(cancel) = self.workflow.pending_cancel.as_ref() {
                 cancel.store(true, Ordering::Relaxed);
@@ -210,7 +274,9 @@ impl FileListManager {
             .as_ref()
             .is_some_and(|pending| pending.tab_id == tab_id)
         {
-            self.workflow.pending_confirmation = None;
+            if let Some(pending) = self.workflow.pending_confirmation.take() {
+                prepared_request_ids.push(pending.prepared_request_id);
+            }
         }
         if self
             .workflow
@@ -218,7 +284,9 @@ impl FileListManager {
             .as_ref()
             .is_some_and(|pending| pending.tab_id == tab_id)
         {
-            self.workflow.pending_ancestor_confirmation = None;
+            if let Some(pending) = self.workflow.pending_ancestor_confirmation.take() {
+                prepared_request_ids.push(pending.prepared_request_id);
+            }
         }
         if self
             .workflow
@@ -228,5 +296,6 @@ impl FileListManager {
         {
             self.workflow.pending_use_walker_confirmation = None;
         }
+        prepared_request_ids
     }
 }

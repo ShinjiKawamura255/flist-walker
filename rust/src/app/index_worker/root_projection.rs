@@ -272,6 +272,7 @@ mod tests {
             include_dirs: true,
             max_depth: MaxDepth::unlimited(),
             follow_links: false,
+            complete_walker_snapshot: false,
         })
         .unwrap();
         let deadline = Instant::now() + Duration::from_secs(5);

@@ -601,6 +601,42 @@ fn ancestor_filelist_propagation_needed_skips_already_referenced_child() {
     let _ = fs::remove_dir_all(&top);
 }
 
+#[cfg(not(windows))]
+#[test]
+fn ancestor_confirmation_uses_existing_lowercase_root_target_regression() {
+    let parent = test_root("ancestor-existing-lowercase-target");
+    let root = parent.join("child");
+    let _ = fs::remove_dir_all(&parent);
+    fs::create_dir_all(&root).expect("create child root");
+    fs::write(root.join("filelist.txt"), "child-entry\n").expect("write lowercase FileList");
+    fs::write(parent.join("FileList.txt"), "child/filelist.txt\n")
+        .expect("write ancestor FileList");
+
+    assert!(
+        !ancestor_filelist_propagation_needed(&root),
+        "confirmation must use the lowercase target selected by the write plan"
+    );
+    let _ = fs::remove_dir_all(&parent);
+}
+
+#[cfg(not(windows))]
+#[test]
+fn ancestor_confirmation_rejects_reference_to_nonselected_canonical_target_regression() {
+    let parent = test_root("ancestor-nonselected-canonical-target");
+    let root = parent.join("child");
+    let _ = fs::remove_dir_all(&parent);
+    fs::create_dir_all(&root).expect("create child root");
+    fs::write(root.join("filelist.txt"), "child-entry\n").expect("write lowercase FileList");
+    fs::write(parent.join("FileList.txt"), "child/FileList.txt\n")
+        .expect("write ancestor FileList");
+
+    assert!(
+        ancestor_filelist_propagation_needed(&root),
+        "a differently-cased nonexistent target must not suppress confirmation"
+    );
+    let _ = fs::remove_dir_all(&parent);
+}
+
 #[test]
 fn normalize_filelist_entry_for_text_compare_collapses_relative_variants() {
     assert_eq!(
@@ -1223,6 +1259,193 @@ fn tc165_target_changed_after_plan_fails_without_first_write() {
 }
 
 #[test]
+fn tc165_same_bytes_replacement_after_plan_fails_without_first_write() {
+    let root = test_root("tc165-same-bytes-replacement");
+    fs::create_dir_all(&root).expect("create root");
+    let target = root.join("FileList.txt");
+    fs::write(&target, "same-content\n").expect("write planned state");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    fs::remove_file(&target).expect("remove planned target");
+    fs::write(&target, "same-content\n").expect("recreate same bytes");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&target).expect("read replacement"),
+        "same-content\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc165_metadata_only_change_after_plan_fails_without_first_write() {
+    let root = test_root("tc165-metadata-only-change");
+    fs::create_dir_all(&root).expect("create root");
+    let target = root.join("FileList.txt");
+    fs::write(&target, "same-content\n").expect("write planned state");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&target)
+        .expect("open metadata target")
+        .set_times(fs::FileTimes::new().set_modified(UNIX_EPOCH + Duration::from_secs(2)))
+        .expect("change only modified time");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&target).expect("read metadata target"),
+        "same-content\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(unix)]
+#[test]
+fn tc165_writable_permission_change_after_plan_fails_without_first_write() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let root = test_root("tc165-writable-permission-change");
+    fs::create_dir_all(&root).expect("create root");
+    let target = root.join("FileList.txt");
+    fs::write(&target, "same-content\n").expect("write planned state");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    let mut permissions = fs::metadata(&target).expect("metadata").permissions();
+    permissions.set_mode(permissions.mode() ^ 0o040);
+    fs::set_permissions(&target, permissions).expect("change writable permissions");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&target).expect("read permission target"),
+        "same-content\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc165_parent_directory_replacement_after_plan_fails_without_first_write() {
+    let root = test_root("tc165-parent-directory-replacement");
+    fs::create_dir_all(&root).expect("create root");
+    let target = root.join("FileList.txt");
+    fs::write(&target, "same-content\n").expect("write planned state");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    fs::remove_file(&target).expect("remove planned target");
+    fs::remove_dir(&root).expect("remove planned parent");
+    fs::create_dir_all(&root).expect("recreate parent");
+    fs::write(&target, "same-content\n").expect("recreate same target");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&target).expect("read recreated target"),
+        "same-content\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc165_target_created_after_plan_fails_without_overwrite() {
+    let root = test_root("tc165-target-created-before-first");
+    fs::create_dir_all(&root).expect("create root");
+    let target = root.join("FileList.txt");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    fs::write(&target, "appeared-after-plan\n").expect("create target after plan");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&target).expect("read target"),
+        "appeared-after-plan\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[cfg(not(windows))]
+#[test]
+fn tc165_preferred_target_change_after_plan_fails_closed() {
+    let root = test_root("tc165-preferred-target-changed");
+    fs::create_dir_all(&root).expect("create root");
+    let lower = root.join("filelist.txt");
+    let upper = root.join("FileList.txt");
+    fs::write(&lower, "lower-before-plan\n").expect("write lowercase target");
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: false,
+        },
+    )
+    .expect("plan");
+    fs::write(&upper, "higher-priority-after-plan\n").expect("write preferred target");
+
+    let report = execute_filelist_write_plan(&plan, &|| false);
+
+    assert_eq!(report.status, FileListWriteStatus::Failed);
+    assert!(report.committed.is_empty());
+    assert_eq!(
+        fs::read_to_string(&lower).expect("read lower"),
+        "lower-before-plan\n"
+    );
+    assert_eq!(
+        fs::read_to_string(&upper).expect("read upper"),
+        "higher-priority-after-plan\n"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn tc165_later_target_change_rolls_back_earlier_commit() {
     let top = test_root("tc165-later-target-change");
     let root = top.join("child");
@@ -1297,6 +1520,15 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
         "root-old\n"
     );
 
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("re-plan after identity-changing rollback");
     let calls = AtomicUsize::new(0);
     let rollback_failed = execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| {
         let call = calls.fetch_add(1, Ordering::SeqCst);

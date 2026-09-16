@@ -1,4 +1,4 @@
-use super::super::{FileListRequest, FlistWalkerApp};
+use super::super::{FileListRequest, FileListRequestPhase, FlistWalkerApp};
 // FileList reducer command surface. FileListManager owns the workflow state,
 // and this module bridges those commands back into FlistWalkerApp.
 pub(super) enum FileListUiCommand {
@@ -38,7 +38,14 @@ impl FlistWalkerApp {
                     self.set_notice(notice);
                 }
                 FileListCommand::Worker(FileListWorkerCommand::Start(req)) => {
-                    if self.shell.worker_bus.filelist.tx.send(req).is_err() {
+                    let discard_only = matches!(req.phase, FileListRequestPhase::Discard);
+                    if let Err(error) = self.shell.worker_bus.filelist.tx.send(req) {
+                        if let Some(entries) = error.0.entries {
+                            self.stage_filelist_snapshot_reclaim(entries);
+                        }
+                        if discard_only {
+                            continue;
+                        }
                         let fallback = self.shell.features.filelist.send_failure_commands();
                         self.dispatch_filelist_commands(fallback);
                     }

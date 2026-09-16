@@ -81,6 +81,7 @@
 - OS シグナル（例: `Ctrl+C`）受信時は shutdown 要求を立て、GUI 側で window close を発行して終了処理へ収束させる。
 - FileList 作成応答は request_id と要求 root を照合し、root 変更後に到着した旧 root の完了/失敗応答では再インデックスを行わず通知のみ行う。
 - Create File List は app 側で pending confirmation / pending after index / in-flight request を 1 系列の状態として管理し、status panel の `Cancel Create File List` から共通キャンセル処理へ流す。
+- Create File List の既存 FileList 検出と祖先追記要否判定は FileList worker の cancellable preflight とし、UI thread では filesystem を走査しない。preflight request が完全 path snapshot の ownership を worker へ移し、worker はその時点の target set、内容、mtime、権限、file object identity、親ディレクトリ identity を含む write plan を prepared request ID に結び付けて保持する。確認後の write は同じ plan だけを実行し、読取り前後と各 atomic replace 直前に target selection と fingerprint を再検証して、同一内容での差替えや metadata/親 identity の変化も最初の write 前に fail closed とする。path-based revalidation と atomic replace の間に外部プロセスが介入できる残余 TOCTOU は OS の compare-and-replace primitive を採用しない限り残る。正常 write、利用者 cancel、root/tab 変更、stale response、worker shutdown の全経路で、snapshot と plan は同じ固定 worker 上で消費または破棄する。
 - God Object 解消の第一段として、Create File List は `app/filelist/` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
 - FileList 系の副作用は `UiCommand`、`WorkerCommand`、`FileListAppCommand` のようなカテゴリ化した戻り値で表現し、単一巨大 enum や `&mut FlistWalkerApp` への直接依存を増やさない。
 - `pending_after_index`、tab/root 切替時の再インデックス判断、active/background tab への反映は orchestration として `FlistWalkerApp` 側に残し、manager は必要な app command を返すだけに留める。
@@ -104,8 +105,10 @@
 - Regression guard: root 自体が link/junction の場合と、字句的 root 配下の link/junction が物理的な root 外へ解決される場合は、字句または解決済み scope の片方を満たすため許可する。両 scope の外側は拒否し、この lexical-or-resolved 契約を TC-050 / TC-051 で維持する。
 - 最終再検証と OS 利用の間の link/object 差し替えを完全に排除できないため、handle-relative launch がない platform では residual TOCTOU として扱う。解決済み path を直ちに dispatch して窓を縮小するが、外部 action の原子性や rollback は保証しない。
 - Create File List は root 直下の FileList 作成と祖先追記を分離し、祖先追記がありうる場合のみ GUI 側の確認ダイアログを通す。
+- 祖先追記確認は write plan と同じ deterministic root target selector を使い、既存 `FileList.txt` / `filelist.txt` / case variant のうち実際に置換する path を祖先参照と比較する。
 - 利用者が祖先追記を拒否した場合、root 直下の FileList 作成は成功扱いのまま維持し、祖先追記経路だけをスキップする。
 - Source が FileList のアクティブタブで Create File List を要求した場合は、新規タブを作らずに同一タブへ `use_filelist = false` の一時 index request を発行する。完了後はその Walker snapshot で FileList を作成し、FileList 作成完了応答で同一タブを通常の FileList 再インデックスへ戻す。
+- Source が Walker であっても Create File List は表示用 committed snapshot を UI frame 内で全件 clone せず、通常表示用 request を supersede する request-owned fresh Walker indexing と frame-budget finalization により完全 path snapshot を構築してから worker preflight へ ownership transfer する。この専用 request は `walker_max_entries` を適用せず、root 全体を対象にする。固定2 finalizer が満杯なら active terminal state と未移送 entries を保持したまま capacity を待ち、slot 上限を迂回しない。filter policy が finalization 中に変わった場合は FileList path accumulation も先頭から作り直す。タブ切替・cancel・worker send failure では request ID 単位で stale 化し、未移送 snapshot は固定 reclaimer の admission/debt 経路へ渡して UI thread で大量破棄しない。
 - FileList 作成完了時の再インデックス対象は request に紐づく tab_id/root で判定し、元タブが background 化していてもその tab へ再インデックス request を投げる。完了時点で元タブの root が変わっていた場合は旧 root 応答として notice のみ更新し、tab 状態は戻さない。
 - `Ctrl+Shift+C`（macOS では `Cmd+Shift+C`）は TextEdit の既定コピー処理より後段で実行し、検索窓フォーカス中でも選択パスコピーを優先する。`egui-winit` が clipboard chord を `Event::Copy` に正規化して `Key::C` を出さない場合も、Shift 付き primary modifier のときだけ選択パスコピーへ流す。
 - Windows のプレビュー抑止判定は属性ビットだけに依存せず、`FileAttributeTagInfo` と `CfGetPlaceholderStateFromAttributeTag` を使って Cloud Files API 準拠 placeholder を検出する。属性/タグ取得に失敗した場合のみ既存の属性ビット判定へフォールバックする。

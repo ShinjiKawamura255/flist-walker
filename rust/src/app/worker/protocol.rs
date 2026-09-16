@@ -58,6 +58,7 @@ pub(in crate::app) struct IndexRequest {
     pub(in crate::app) include_dirs: bool,
     pub(in crate::app) max_depth: MaxDepth,
     pub(in crate::app) follow_links: bool,
+    pub(in crate::app) complete_walker_snapshot: bool,
 }
 
 pub(in crate::app) enum IndexResponse {
@@ -183,12 +184,27 @@ pub(in crate::app) struct FileListRequest {
     pub(in crate::app) request_id: u64,
     pub(in crate::app) tab_id: u64,
     pub(in crate::app) root: PathBuf,
-    pub(in crate::app) entries: Vec<PathBuf>,
+    pub(in crate::app) entries: Option<Vec<PathBuf>>,
+    pub(in crate::app) prepared_request_id: Option<u64>,
+    pub(in crate::app) phase: FileListRequestPhase,
     pub(in crate::app) propagate_to_ancestors: bool,
     pub(in crate::app) cancel: Arc<AtomicBool>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::app) enum FileListRequestPhase {
+    Preflight,
+    Write,
+    Discard,
+}
+
 pub(in crate::app) enum FileListResponse {
+    PreflightFinished {
+        request_id: u64,
+        root: PathBuf,
+        existing_path: Option<PathBuf>,
+        ancestor_confirmation_needed: bool,
+    },
     Finished {
         request_id: u64,
         root: PathBuf,

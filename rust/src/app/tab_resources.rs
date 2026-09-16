@@ -5,6 +5,7 @@ use super::{
     AppTabState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
     BackgroundIndexState, FlistWalkerApp, IndexEntry, PendingBackgroundIndexFinalize,
 };
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, SyncSender, TrySendError};
 use std::sync::Arc;
@@ -129,6 +130,7 @@ struct RetiredRoutingPayload {
     background_filter_scratch: Vec<BackgroundIndexFilterScratch>,
     mailboxes: Vec<(u64, Arc<super::index_mailbox::IndexResponseMailbox>)>,
     stale_index_entries: Vec<IndexEntry>,
+    filelist_snapshots: Vec<Vec<PathBuf>>,
 }
 
 impl RetiredIndexBuildResources {
@@ -214,6 +216,10 @@ impl RetiredIndexBuildResources {
     pub(super) fn set_stale_index_entries(&mut self, entries: Vec<IndexEntry>) {
         self.routing.stale_index_entries = entries;
     }
+
+    pub(super) fn push_filelist_snapshot(&mut self, paths: Vec<PathBuf>) {
+        self.routing.filelist_snapshots.push(paths);
+    }
 }
 
 impl RetiredActiveResources {
@@ -249,6 +255,11 @@ impl RetiredRoutingPayload {
                 .iter()
                 .all(|(_, mailbox)| !mailbox.has_payload())
             && self.stale_index_entries.capacity() == 0
+            && self.filelist_snapshots.capacity() == 0
+            && self
+                .filelist_snapshots
+                .iter()
+                .all(|paths| paths.capacity() == 0)
     }
 }
 
