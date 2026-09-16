@@ -1,3 +1,4 @@
+use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -6,6 +7,38 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 static TMP_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Debug)]
+struct AtomicWriteAfterReplaceError {
+    source: std::io::Error,
+}
+
+impl fmt::Display for AtomicWriteAfterReplaceError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "destination was replaced but durability sync failed: {}",
+            self.source
+        )
+    }
+}
+
+impl std::error::Error for AtomicWriteAfterReplaceError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+pub(crate) fn atomic_write_replaced_destination(error: &std::io::Error) -> bool {
+    error
+        .get_ref()
+        .and_then(|source| source.downcast_ref::<AtomicWriteAfterReplaceError>())
+        .is_some()
+}
+
+fn post_replace_sync_error(error: std::io::Error) -> std::io::Error {
+    std::io::Error::new(error.kind(), AtomicWriteAfterReplaceError { source: error })
+}
 
 pub struct SidecarFileLock {
     // Keeping this handle alive keeps the OS advisory lock alive. The OS
@@ -70,6 +103,24 @@ pub(crate) fn write_bytes_atomic_with_metadata(
     write_bytes_atomic_inner(path, bytes, metadata, |_| Ok(()), sync_directory)
 }
 
+#[cfg(test)]
+pub(crate) fn write_bytes_atomic_with_sync_for_test<S>(
+    path: &Path,
+    bytes: &[u8],
+    sync_directory: S,
+) -> std::io::Result<()>
+where
+    S: FnMut(&Path) -> std::io::Result<()>,
+{
+    write_bytes_atomic_inner(
+        path,
+        bytes,
+        AtomicWriteMetadata::default(),
+        |_| Ok(()),
+        sync_directory,
+    )
+}
+
 fn write_bytes_atomic_inner<B, S>(
     path: &Path,
     bytes: &[u8],
@@ -81,7 +132,7 @@ where
     B: FnMut(&Path) -> std::io::Result<()>,
     S: FnMut(&Path) -> std::io::Result<()>,
 {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = parent_directory(path);
     let directory_sync_targets = directory_sync_targets(parent)?;
     fs::create_dir_all(parent)?;
     let tmp = build_temp_path(path);
@@ -106,7 +157,7 @@ where
         drop(file);
         replace_file(&tmp, path)?;
         for directory in &directory_sync_targets {
-            sync_directory(directory)?;
+            sync_directory(directory).map_err(post_replace_sync_error)?;
         }
         Ok(())
     })();
@@ -121,22 +172,29 @@ fn directory_sync_targets(parent: &Path) -> std::io::Result<Vec<PathBuf>> {
     let mut current = parent;
     while !current.try_exists()? {
         missing.push(current.to_path_buf());
-        current = current.parent().ok_or_else(|| {
-            std::io::Error::new(
+        let next = parent_directory(current);
+        if next == current {
+            return Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
                 format!("no existing ancestor for {}", parent.display()),
-            )
-        })?;
+            ));
+        }
+        current = next;
     }
     let mut targets = vec![parent.to_path_buf()];
     for directory in missing {
-        if let Some(ancestor) = directory.parent() {
-            if targets.last().is_none_or(|last| last != ancestor) {
-                targets.push(ancestor.to_path_buf());
-            }
+        let ancestor = parent_directory(&directory);
+        if targets.last().is_none_or(|last| last != ancestor) {
+            targets.push(ancestor.to_path_buf());
         }
     }
     Ok(targets)
+}
+
+fn parent_directory(path: &Path) -> &Path {
+    path.parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."))
 }
 
 fn build_temp_path(path: &Path) -> PathBuf {
@@ -150,7 +208,7 @@ fn build_temp_path(path: &Path) -> PathBuf {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("tmp");
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = parent_directory(path);
     parent.join(format!(".{filename}.{pid}.{now}.{seq}.tmp"))
 }
 
@@ -209,6 +267,7 @@ fn replace_file(src: &Path, dst: &Path) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use std::cell::RefCell;
+    use std::process::Command;
 
     fn test_root(name: &str) -> PathBuf {
         let nonce = SystemTime::now()
@@ -279,6 +338,55 @@ mod tests {
         assert!(*observed.borrow());
         assert_eq!(fs::read_to_string(&path).expect("read destination"), "old");
         assert_eq!(fs::read_dir(&root).expect("read root").count(), 1);
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn atomic_write_marks_directory_sync_failure_as_post_replace() {
+        let root = test_root("post-replace-sync-failure");
+        fs::create_dir_all(&root).expect("create dir");
+        let path = root.join("state.json");
+        fs::write(&path, "old").expect("write old");
+
+        let err = write_bytes_atomic_inner(
+            &path,
+            b"new",
+            AtomicWriteMetadata::default(),
+            |_| Ok(()),
+            |_| Err(std::io::Error::other("injected directory sync failure")),
+        )
+        .expect_err("directory sync must fail");
+
+        assert!(atomic_write_replaced_destination(&err));
+        assert_eq!(fs::read(&path).expect("read replaced destination"), b"new");
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn atomic_write_bare_relative_child() {
+        if std::env::var_os("FLISTWALKER_TEST_BARE_RELATIVE_ATOMIC_WRITE").is_none() {
+            return;
+        }
+        write_text_atomic(Path::new("state.json"), "new").expect("write bare relative path");
+    }
+
+    #[test]
+    fn atomic_write_supports_bare_relative_filename() {
+        let root = test_root("bare-relative");
+        fs::create_dir_all(&root).expect("create dir");
+        let helper = "fs_atomic::tests::atomic_write_bare_relative_child";
+        let status = Command::new(std::env::current_exe().expect("test executable"))
+            .arg("--exact")
+            .arg(helper)
+            .current_dir(&root)
+            .env("FLISTWALKER_TEST_BARE_RELATIVE_ATOMIC_WRITE", "1")
+            .status()
+            .expect("run bare relative child");
+        assert!(status.success());
+        assert_eq!(
+            fs::read(root.join("state.json")).expect("read written file"),
+            b"new"
+        );
         let _ = fs::remove_dir_all(&root);
     }
 

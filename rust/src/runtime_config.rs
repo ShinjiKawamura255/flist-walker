@@ -221,6 +221,24 @@ impl RuntimeConfig {
     }
 }
 
+pub fn ensure_runtime_config_file_at(path: &Path, config: &RuntimeConfig) -> Result<()> {
+    if path
+        .try_exists()
+        .with_context(|| format!("failed to inspect runtime config at {}", path.display()))?
+    {
+        return Ok(());
+    }
+    let _lock = acquire_sidecar_lock(path, Duration::from_secs(5))
+        .with_context(|| format!("failed to lock runtime config at {}", path.display()))?;
+    if path
+        .try_exists()
+        .with_context(|| format!("failed to recheck runtime config at {}", path.display()))?
+    {
+        return Ok(());
+    }
+    save_runtime_config_to_path(path, config)
+}
+
 pub fn runtime_config_file_path() -> Option<PathBuf> {
     settings_base_dir().map(|base| runtime_config_file_path_in(&base))
 }

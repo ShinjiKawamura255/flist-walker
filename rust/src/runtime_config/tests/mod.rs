@@ -697,6 +697,49 @@ fn load_or_seed_rechecks_current_after_waiting_for_sidecar_lock() {
 }
 
 #[test]
+fn ensure_runtime_config_rechecks_current_after_waiting_for_sidecar_lock() {
+    let base = test_home("ensure-lock-recheck");
+    fs::create_dir_all(&base).expect("create base");
+    let current_path = runtime_config_file_path_in(&base);
+    let lock = acquire_sidecar_lock(&current_path, Duration::from_millis(100))
+        .expect("hold runtime config lock");
+    let candidate = RuntimeConfig {
+        walker_max_entries: 99_999,
+        ..RuntimeConfig::default()
+    };
+    let child_path = current_path.clone();
+    let (started_tx, started_rx) = std::sync::mpsc::channel();
+    let (done_tx, done_rx) = std::sync::mpsc::channel();
+    let child = std::thread::spawn(move || {
+        started_tx.send(()).expect("signal start");
+        let result = ensure_runtime_config_file_at(&child_path, &candidate);
+        done_tx.send(result).expect("send ensure result");
+    });
+    started_rx.recv().expect("child started");
+    std::thread::sleep(Duration::from_millis(30));
+    assert!(
+        done_rx.try_recv().is_err(),
+        "ensure must wait for active lock"
+    );
+
+    let winner = RuntimeConfig {
+        walker_max_entries: 12_345,
+        ..RuntimeConfig::default()
+    };
+    save_runtime_config_to_path(&current_path, &winner).expect("write winning current config");
+    drop(lock);
+
+    done_rx
+        .recv_timeout(Duration::from_secs(2))
+        .expect("ensure completes after lock release")
+        .expect("ensure succeeds");
+    child.join().expect("join ensure worker");
+    let persisted = load_runtime_config_from_path(&current_path).expect("read persisted config");
+    assert_eq!(persisted.walker_max_entries, 12_345);
+    let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
 fn load_runtime_config_removes_deprecated_walker_options_from_existing_file() {
     let _guard = locked_env();
     let home = test_home("deprecated-walker-options");

@@ -6,7 +6,8 @@ use super::{
 use crate::actions::open_text_file_with_default_or_editor;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::{
-    legacy_settings_base_dirs, migrate_file_if_needed, runtime_config_file_path, settings_base_dir,
+    ensure_runtime_config_file_at, legacy_settings_base_dirs, migrate_file_if_needed,
+    runtime_config_file_path, settings_base_dir,
 };
 use anyhow::{Context, Result};
 use std::fs;
@@ -470,9 +471,7 @@ impl FlistWalkerApp {
         // Opening settings never reloads process-wide environment on a live GUI.
         let config = crate::runtime_config::current_runtime_config();
         let path = runtime_config_file_path().context("runtime config path is unavailable")?;
-        if !path.exists() {
-            config.save_to_path(&path)?;
-        }
+        ensure_runtime_config_file_at(&path, &config)?;
         Ok(path)
     }
 
