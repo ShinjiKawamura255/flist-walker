@@ -375,10 +375,12 @@ impl FlistWalkerApp {
         use_filelist_changed: bool,
         files_changed: bool,
         dirs_changed: bool,
+        ignore_list_changed: bool,
     ) {
-        let user_changed_filter = use_filelist_changed || files_changed || dirs_changed;
+        let user_changed_filter =
+            use_filelist_changed || files_changed || dirs_changed || ignore_list_changed;
         let mut reindex = use_filelist_changed;
-        reindex |= files_changed || dirs_changed;
+        reindex |= files_changed || dirs_changed || ignore_list_changed;
         if self.use_filelist_requires_locked_filters()
             && (!self.shell.runtime.include_files || !self.shell.runtime.include_dirs)
         {

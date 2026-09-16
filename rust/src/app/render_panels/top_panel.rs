@@ -274,10 +274,15 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 "Use Ignore List",
             )
                 .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
-            if ignore_list_response.changed()
-            {
-                app.shell.tabs.mark_active_tab_meaningfully_engaged();
-                app.apply_entry_filters(false);
+            let ignore_list_changed = ignore_list_response.changed();
+            #[cfg(test)]
+            let ignore_list_changed = if super::take_forced_ignore_list_checkbox_click() {
+                app.shell.ui.ignore_list_enabled = !app.shell.ui.ignore_list_enabled;
+                true
+            } else {
+                ignore_list_changed
+            };
+            if ignore_list_changed {
                 app.mark_ui_state_dirty();
                 app.persist_ui_state_now();
             }
@@ -391,6 +396,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 use_filelist_changed,
                 files_changed,
                 dirs_changed,
+                ignore_list_changed,
             );
         });
 

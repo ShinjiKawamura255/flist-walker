@@ -114,11 +114,38 @@ fn files_toggle_change_requests_reindex() {
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
-    app.maybe_reindex_from_filter_toggles(false, true, false);
+    app.maybe_reindex_from_filter_toggles(false, true, false, false);
 
     let req = rx.try_recv().expect("index request should be sent");
     assert!(!req.include_files);
     assert!(req.include_dirs);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_ignore_list_toggle_requests_reindex_without_replacing_visible_snapshot() {
+    let root = test_root("ignore-list-toggle-reindex");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
+        file_entry(root.join("keep.txt")),
+        file_entry(root.join("ignored.txt")),
+    ]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    let visible_before = Arc::clone(&app.shell.runtime.entries);
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+
+    rx.try_recv().expect("index request should be sent");
+    assert!(Arc::ptr_eq(&app.shell.runtime.entries, &visible_before));
+    assert_eq!(app.shell.runtime.entries.len(), 2);
+    assert!(app.shell.indexing.in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -134,7 +161,7 @@ fn use_filelist_forces_type_filters_to_both_enabled() {
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
-    app.maybe_reindex_from_filter_toggles(true, false, false);
+    app.maybe_reindex_from_filter_toggles(true, false, false, false);
 
     let req = rx.try_recv().expect("index request should be sent");
     assert!(app.shell.runtime.include_files);
@@ -158,7 +185,7 @@ fn use_filelist_with_walker_source_keeps_type_filters_editable() {
     app.shell.runtime.include_files = false;
     app.shell.runtime.include_dirs = true;
 
-    app.maybe_reindex_from_filter_toggles(true, false, false);
+    app.maybe_reindex_from_filter_toggles(true, false, false, false);
 
     let req = rx.try_recv().expect("index request should be sent");
     assert!(req.use_filelist);
