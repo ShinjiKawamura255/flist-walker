@@ -27,6 +27,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How does a runtime flow or module work internally? | [DETAILED_DESIGN.md](DETAILED_DESIGN.md) |
 | Which checks are required for my change? | [TESTPLAN.md](TESTPLAN.md), then the [Validation Matrix](testplan/validation-matrix.md) |
 | How is a release built and published? | [RELEASE.md](RELEASE.md) |
+| How do I recover from an ambiguous local updater state? | [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md) |
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
 | What native GUI residual evidence exists outside a release record? | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
@@ -77,6 +78,7 @@ Root SDD files are concise entrypoints. Topic content remains grouped by SDD res
 | --- | --- |
 | Release procedure and asset rules | [RELEASE.md](RELEASE.md) |
 | Release failure response | [RELEASE_INCIDENT_RUNBOOK.md](RELEASE_INCIDENT_RUNBOOK.md) |
+| Ambiguous local updater recovery | [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md) |
 | OSS licenses, notices, and audit posture | [OSS_COMPLIANCE.md](OSS_COMPLIANCE.md) |
 | CI, machine PR, canary, and pin update operation | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | Support and issue-report guidance | [SUPPORT.md](SUPPORT.md) |

@@ -31,6 +31,10 @@ Use the feature request template and describe the workflow first. Include platfo
 
 If a report would require sharing secrets, private paths, or sensitive repository names, do not post those details publicly. Open a minimal public issue that describes the class of problem and ask for a private coordination path.
 
+## Updater Recovery
+
+If startup or update reports an ambiguous or recovery-required installation state, stop repeated update attempts and follow [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md). Preserve the affected installation directory and updater artifacts; do not delete, rename, or overwrite them as a generic fix. Before sharing any file list, hash record, screenshot, or diagnostic text, redact private paths, user names, repository names, tokens, and secrets.
+
 ## Maintainer Triage Checklist
 
 - Confirm the report includes version, OS, launch mode, and reproduction steps.

@@ -85,7 +85,7 @@
 - God Object 解消の第一段として、Create File List は `app/filelist/` 内の FileList 専用 reducer/manager 境界へ寄せ、FileList worker request/response の lifecycle と stale/cancel 判定だけを manager 側で所有する。
 - FileList 系の副作用は `UiCommand`、`WorkerCommand`、`FileListAppCommand` のようなカテゴリ化した戻り値で表現し、単一巨大 enum や `&mut FlistWalkerApp` への直接依存を増やさない。
 - `pending_after_index`、tab/root 切替時の再インデックス判断、active/background tab への反映は orchestration として `FlistWalkerApp` 側に残し、manager は必要な app command を返すだけに留める。
-- FileList 作成は OS 一時領域に出力してから最終配置へ移動する。クロスデバイスで `rename` 不可の場合は `copy` フォールバックし、最終配置のみを更新する。
+- FileList 作成は各 target と同一 directory の create-new 一時ファイルへ出力し、bytes、既存 permissions、祖先の accessed/modified time を適用して file sync 後に atomic replace する。祖先 target は root に近い位置から上位へ処理し、root target を最後の commit point とする。通常の failure/cancel/panic は従来どおり rollback を試み、root commit 前の process abort は旧 root と append-only の祖先参照だけを残すため、再実行時の重複除去で収束する。untrusted root 内に新たな transaction marker は置かない。
 - Create File List の worker request は cancel flag を持ち、テキスト生成、root 直下への最終置換、祖先 FileList 追記の各境界で中断確認する。キャンセル後は `Canceled` 応答を返し、UI は notice 更新だけ行う。
 - FileList 作成後は root の親から filesystem root まで順に辿り、祖先ディレクトリ直下の既存 `FileList.txt` / `filelist.txt` へ子 FileList 参照を相対表現で追記する。既に同一参照がある場合は追記しない。
 - 祖先 FileList を追記した場合でも、その FileList の mtime は更新前の値へ復元し、階層 FileList の新旧判定を崩さない。
@@ -161,7 +161,7 @@
 - acknowledgement 後、helper は parent 終了を最大 30 秒待つ。Windows の process handle 取得失敗は PID 不存在が確認できた場合以外 fail closed とする。pre-registration parent crash は helper が無変更で終了し、startup recovery は live parent を先に defer する。live helper は process executable path、copied-helper hash、marker token と acknowledgement を照合し、matching identity が確認できる場合だけ defer、mismatch は証跡を保持して ambiguous とする。owner 判定前に marker temporary artifact を変更しない。
 - sidecar を先に適用し、binary を最後の commit point とする。各操作直前に prepared new hash と既存 target old hash を marker と再照合する。Windows の既存 target は updater process 内の native `ReplaceFileW(target, new, backup, 0, null, null)`、Linux は create-new backup の file/parent sync 後に same-directory rename と parent sync を用いる。不在 target は destination を上書きしない same-directory hard-link promotion、parent sync、source unlink を用いる。
 - precommit/restart-process-creation failure は originally-present target を検証済み backup から atomic restore し、originally-absent target を除去して旧 bundle hash を検証する。binary commit 後は完全な新 bundle を hash 検証して startup cleanup へ渡す。
-- startup recovery は phase と旧新 hash を照合して precommit rollback、committed、rolled-back のいずれかへ収束する。marker/lock/ack/helper/new/backup/failed/marker-temporary artifact は削除前に regular-file/type、transaction identity、利用可能な旧新 hash または token を一括検証する。backup 欠落、hash 不一致、不正 transition、path/type/reparse 変化は ambiguous とし、検証前に何も削除せず lock/marker/backup を保持して別 update を拒否する。
+- startup recovery は phase と旧新 hash を照合して precommit rollback、committed、rolled-back のいずれかへ収束する。marker/lock/ack/helper/new/backup/failed/marker-temporary artifact は削除前に regular-file/type、transaction identity、利用可能な旧新 hash または token を一括検証する。backup 欠落、hash 不一致、不正 transition、path/type/reparse 変化は ambiguous とし、検証前に何も削除せず lock/marker/backup を保持して別 update を拒否する。利用者と運用者には [UPDATER_RECOVERY.md](../UPDATER_RECOVERY.md) の証跡保全と clean parallel install を案内し、generic な artifact 削除を復旧手段として提示しない。
 - macOS は最新 version 検知のみ実施し、自動適用は非対応として release URL への案内に留める。
 
 - DES-008 Testability

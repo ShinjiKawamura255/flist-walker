@@ -1,4 +1,4 @@
-use crate::fs_atomic::write_bytes_atomic;
+use crate::fs_atomic::{write_bytes_atomic_with_metadata, AtomicWriteMetadata};
 use crate::path_utils::path_key;
 use anyhow::{Context, Result};
 use std::any::Any;
@@ -18,6 +18,12 @@ use super::filelist_reader::{
 pub enum FileListWriteTargetKind {
     Root,
     Ancestor,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) enum FileListReplacementPhase {
+    Commit,
+    Rollback,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -608,7 +614,7 @@ where
                 ))
             }
         })?;
-    let mut targets = vec![prepare_filelist_target(
+    let root_write_target = prepare_filelist_target(
         root_target.clone(),
         FileListWriteTargetKind::Root,
         root_text.into_bytes(),
@@ -620,7 +626,8 @@ where
             root_target.clone(),
             error,
         ))
-    })?];
+    })?;
+    let mut targets = Vec::new();
 
     if options.propagate_to_ancestors {
         let mut ancestor = root.parent();
@@ -690,6 +697,7 @@ where
             ancestor = discovery.next_ancestor(directory);
         }
     }
+    targets.push(root_write_target);
 
     Ok(FileListWritePlan {
         root: root.to_path_buf(),
@@ -708,8 +716,8 @@ pub fn execute_filelist_write_plan<C>(
 where
     C: Fn() -> bool,
 {
-    execute_filelist_write_plan_with(plan, should_cancel, &mut |path, bytes| {
-        write_bytes_atomic(path, bytes)
+    execute_filelist_write_plan_with(plan, should_cancel, &mut |target, bytes, phase| {
+        write_filelist_target_atomically(target, bytes, phase)
     })
 }
 
@@ -720,7 +728,7 @@ pub(super) fn execute_filelist_write_plan_with<C, W>(
 ) -> FileListWriteReport
 where
     C: Fn() -> bool,
-    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
 {
     let mut report = FileListWriteReport::completed(plan.root_target.clone());
     match preferred_root_filelist_write_target(&plan.root) {
@@ -772,7 +780,12 @@ where
             rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
             return report;
         }
-        if let Err(error) = replace_filelist_target(replace, &target.path, &target.content) {
+        if let Err(error) = replace_filelist_target(
+            replace,
+            target,
+            &target.content,
+            FileListReplacementPhase::Commit,
+        ) {
             report.status = FileListWriteStatus::Failed;
             report.failed.push(FileListWriteFailure {
                 path: target.path.clone(),
@@ -783,6 +796,8 @@ where
         }
         report.committed.push(target.path.clone());
         committed_indexes.push(index);
+        #[cfg(test)]
+        abort_after_filelist_commit_if_requested(committed_indexes.len());
         if let Err(error) = restore_success_metadata(target) {
             report.status = FileListWriteStatus::Failed;
             report.failed.push(FileListWriteFailure {
@@ -796,11 +811,45 @@ where
     report
 }
 
-fn replace_filelist_target<W>(replace: &mut W, path: &Path, bytes: &[u8]) -> std::io::Result<()>
+fn write_filelist_target_atomically(
+    target: &FileListWriteTarget,
+    bytes: &[u8],
+    phase: FileListReplacementPhase,
+) -> std::io::Result<()> {
+    let preserve_times =
+        matches!(phase, FileListReplacementPhase::Rollback) || target.preserve_mtime_on_success;
+    write_bytes_atomic_with_metadata(
+        &target.path,
+        bytes,
+        AtomicWriteMetadata {
+            permissions: target.prior.permissions.clone(),
+            accessed: preserve_times.then_some(target.prior.accessed).flatten(),
+            modified: preserve_times.then_some(target.prior.modified).flatten(),
+        },
+    )
+}
+
+fn replace_filelist_target<W>(
+    replace: &mut W,
+    target: &FileListWriteTarget,
+    bytes: &[u8],
+    phase: FileListReplacementPhase,
+) -> std::io::Result<()>
 where
-    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
 {
-    catch_unwind(AssertUnwindSafe(|| replace(path, bytes))).map_err(replacement_panic_error)?
+    catch_unwind(AssertUnwindSafe(|| replace(target, bytes, phase)))
+        .map_err(replacement_panic_error)?
+}
+
+#[cfg(test)]
+fn abort_after_filelist_commit_if_requested(committed_count: usize) {
+    let requested = std::env::var("FLISTWALKER_TEST_ABORT_AFTER_FILELIST_COMMITS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok());
+    if requested == Some(committed_count) {
+        std::process::abort();
+    }
 }
 
 fn replacement_panic_error(payload: Box<dyn Any + Send>) -> std::io::Error {
@@ -1173,13 +1222,15 @@ fn rollback_committed_targets<W>(
     report: &mut FileListWriteReport,
     replace: &mut W,
 ) where
-    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
 {
     for index in committed_indexes.iter().rev().copied() {
         let target = &targets[index];
         let result = match &target.prior.bytes {
-            Some(bytes) => replace_filelist_target(replace, &target.path, bytes)
-                .and_then(|_| restore_file_metadata(&target.path, &target.prior)),
+            Some(bytes) => {
+                replace_filelist_target(replace, target, bytes, FileListReplacementPhase::Rollback)
+                    .and_then(|_| restore_file_metadata(&target.path, &target.prior))
+            }
             None => fs::remove_file(&target.path),
         };
         match result {
