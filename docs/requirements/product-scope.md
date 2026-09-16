@@ -37,7 +37,7 @@
 - AC-006: GUI で検索・選択・実行/オープン・再読込を確認できる。`Manage list` では root を追加でき、通常時の単一行選択から編集でき、削除モード中だけ表示されるチェックボックスで複数 root を draft から削除できる。
 - AC-007: root 外パスは結果一覧に表示されても実行/オープンされず、利用者へブロック理由が通知される。
 - AC-008: UNC root 配下の候補は root 外判定に誤って拒否されない。
-- AC-009: Create File List 実行時、既存 root FileList の置換と祖先 FileList 更新はそれぞれ明示 consent を要求し、拒否時は未認可 target を更新しない。取消または部分失敗では commit 済み target の rollback を試み、失敗 target を報告する。
+- AC-009: Create File List 実行時、既存 root FileList の置換と祖先 FileList 更新はそれぞれ明示 consent を要求し、拒否時は未認可 target を更新しない。取消または部分失敗では commit 済み target の rollback を試み、失敗 target を報告する。hard abort に対しては祖先を下位から先に更新し、root を最後の commit point とする。root commit 前に停止した場合は root の旧状態または不在を維持し、祖先には既存論理行を失わない重複除去可能な参照だけを残して、再実行で一意な完了状態へ収束する。置換前に権限と祖先の必要な時刻 metadata を適用し、既存の UTF-8 BOM / CRLF 入力は writer の正規化契約に従う。
 - AC-010: runtime config の `history_persist_disabled` が有効なときは query history を読み書きしない。有効時は複数 writer の ordered delta を失わず、既存/unknown UI state field を保持して最大 100 件へ merge する。
 - AC-010A: runtime config の `emacs_keybindings_enabled` が `false` のときは Emacs 風ショートカットをアプリ操作として消費せず、`true` または未指定時は既存どおり有効にする。GUI では `ctrl_w_deletes_word_in_query=true` と併用し、検索欄または履歴検索フィルターへフォーカス中の場合だけ `Ctrl+W` を直前単語の削除へ割り当て、タブ終了より優先する。単語間の `:`、`\\`、`/` などの区切り文字へ到達しても削除が停止せず、繰り返し操作で query 全体を削除できる。新規オプションの既定値は `false` とし、検索欄外、Emacs 無効時、または新規オプション無効時は従来の primary modifier + `W` によるタブ終了を維持する。IME 合成中はこの切替による単語削除もタブ終了も起動しない。
 - AC-010B: GUI/TUI は runtime config の `tab_pin_moves_to_next_row` が `true` のとき、`Tab` / `Shift+Tab` / `Ctrl+I` による PIN 固定/解除後に選択行を次行へ進める。未指定または `false` のときは既存どおり現在行に留まる。`Ctrl+I` を含む Emacs 風操作は `emacs_keybindings_enabled` が `true` のときだけ有効にする。

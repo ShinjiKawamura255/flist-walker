@@ -2,6 +2,8 @@
 
 公開済みreleaseに重大な欠陥、改ざん疑い、署名不整合、誤ったassetを検出した場合の被害抑制手順。
 
+単一端末の ambiguous な update transaction は [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md) で証跡を保全して回復する。公開 asset、署名、checksum、update feed、または同一版の複数端末へ影響する疑いがある場合は、この runbook へ切り替える。
+
 ## 起動条件
 - Critical: 署名またはchecksum不整合、改ざん疑い、任意コード実行、データ破壊。直ちに新規取得を停止する。
 - High: 起動不能、自動更新不能、主要操作の広範な破損。影響を確認し、原則として新規取得を停止する。

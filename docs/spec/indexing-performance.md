@@ -27,7 +27,8 @@
 - MUST: Create File List worker 応答は request_id と requested root の組で相関し、requested root と一致しない stale completion / failure / cancel では pending / in_progress cleanup 以外の follow-up（`use_filelist` 復帰、再インデックス、notice 更新）を行ってはならない。
 - MUST: FileList create は root detection precedence で選択した既存 root target を再利用し、target が無い場合だけ `FileList.txt` を新規 target とする。canonical names と case variant が併存する fixture でも write plan は決定論的で、lower-priority target を暗黙に上書きしてはならない。
 - MUST: FileList create は全 contents と root/ancestor target metadata を commit 前に precompute する。既存 root target は `--overwrite-filelist` または interactive overwrite consent 無しに 0 write で拒否し、ancestor は root-only を既定とし、propagation consent は precomputed ancestor target set だけを認可する。
-- MUST: replacement の直前ごとに cancellation を確認する。write/read error は failure とし、partial failure/cancel では committed target の全てを rollback するよう試行する。success は exit 0、commit 前 cancel または rollback 完了済み clean cancel は exit 130、write/read/rollback error は cancel 起因でも exit 1 とする。committed/failed/rolled-back/rollback-failed display path は stderr にのみ報告し、stdout は空にする。cross-file crash atomicity は保証しない。
+- MUST: replacement の直前ごとに cancellation を確認する。write/read error は failure とし、partial failure/cancel では committed target の全てを rollback するよう試行する。success は exit 0、commit 前 cancel または rollback 完了済み clean cancel は exit 130、write/read/rollback error は cancel 起因でも exit 1 とする。committed/failed/rolled-back/rollback-failed display path は stderr にのみ報告し、stdout は空にする。
+- MUST: 複数 target の commit 順は root に近い祖先から上位祖先へ進め、root target を最後の commit point とする。各 target は同一 directory の一時ファイルへ新 bytes と必要 metadata（既存 permissions、祖先では既存 mtime を含む）を適用して同期してから atomic replace する。root commit 前の hard abort では root の旧状態または不在を維持し、先行した祖先には既存論理行を失わない append-only の子参照だけを許容する。再実行は既存参照を重複させず root commit まで収束しなければならない。root commit 後は全祖先更新済みの完了状態とする。
 - SHOULD: 相対パスはルート起点で絶対化する。
 - SHOULD: 重複を除去する。
 - SHOULD: include_files/include_dirs が両方有効な場合、通常の FILE/DIR は即時確定し、LINK の表示は先行できる一方でリンク先の FILE/DIR 判定は遅延解決して初期読み込みを優先する。
@@ -45,7 +46,7 @@
 - 安定した拒否対象 root FileList は valid prefix を候補として返さない。FileList が validation と parse の間に同一 handle 上で in-place 更新された場合、valid UTF-8 の混在 snapshot までは検知保証しないが、各 parse chunk の strict UTF-8/NUL/行上限確認は維持する。
 - 利用者が祖先追記確認を拒否した場合、root 直下の FileList 作成だけを継続し、祖先追記は行わない。
 - 利用者が Create File List をキャンセルした場合、進行中 request は `Canceled` として扱い、成功/失敗通知や再インデックスを発生させない。
-- transaction panic は worker-owned report を使って rollback を試行し、成功として扱わない。force-kill/crash 後の cross-file atomicity は本仕様の対象外とする。
+- transaction panic は worker-owned report を使って rollback を試行し、成功として扱わない。process abort は上記の root commit point 契約に従う。電源断や filesystem 固有の永続化保証を含む物理 crash certification は対象外であり、file/directory sync を提供しない filesystem では残余リスクとして扱う。
 
 ### Regression Guard: single-discovery nested FileList path basis
 

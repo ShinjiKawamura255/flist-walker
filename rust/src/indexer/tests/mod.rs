@@ -15,6 +15,7 @@ use anyhow::Context;
 use std::collections::HashSet;
 use std::fs;
 use std::io::BufRead;
+use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -970,6 +971,158 @@ fn tc165_plan_materializes_all_ancestor_targets_before_execution() {
 }
 
 #[test]
+fn tc165_plan_orders_ancestors_before_the_root_commit_point() {
+    let top = test_root("tc165-root-commit-point-order");
+    let parent = top.join("parent");
+    let root = parent.join("child");
+    fs::create_dir_all(&root).expect("create root");
+    fs::write(top.join("FileList.txt"), "top-old\n").expect("write top FileList");
+    fs::write(parent.join("FileList.txt"), "parent-old\n").expect("write parent FileList");
+
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: false,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("plan");
+
+    assert_eq!(plan.targets().len(), 3);
+    assert!(plan.targets()[..2]
+        .iter()
+        .all(|target| target.kind == FileListWriteTargetKind::Ancestor));
+    assert_eq!(
+        plan.targets().last().map(|target| target.kind),
+        Some(FileListWriteTargetKind::Root)
+    );
+    let _ = fs::remove_dir_all(&top);
+}
+
+fn filelist_permission_signature(path: &Path) -> u32 {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::metadata(path).expect("metadata").permissions().mode()
+    }
+    #[cfg(not(unix))]
+    {
+        u32::from(
+            fs::metadata(path)
+                .expect("metadata")
+                .permissions()
+                .readonly(),
+        )
+    }
+}
+
+#[test]
+fn tc165_hard_abort_child_after_first_filelist_commit() {
+    let Some(root) = std::env::var_os("FLISTWALKER_FILELIST_ABORT_FIXTURE_ROOT") else {
+        return;
+    };
+    let root = PathBuf::from(root);
+    let plan = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("plan abort fixture");
+    let _ = execute_filelist_write_plan(&plan, &|| false);
+    panic!("abort injection did not terminate the child process");
+}
+
+#[test]
+fn tc165_hard_abort_before_root_preserves_state_and_retry_converges() {
+    let top = TempDir::new("tc165-hard-abort-convergence");
+    let root = top.path().join("child");
+    fs::create_dir_all(&root).expect("create root");
+    let root_filelist = root.join("FileList.txt");
+    let parent_filelist = top.path().join("FileList.txt");
+    fs::write(&root_filelist, b"root-old\n").expect("write root FileList");
+    fs::write(&parent_filelist, b"\xEF\xBB\xBFparent-old\r\n")
+        .expect("write BOM/CRLF parent FileList");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&parent_filelist, fs::Permissions::from_mode(0o640))
+            .expect("set parent permissions");
+    }
+    let expected_modified = UNIX_EPOCH + Duration::from_secs(1_700_000_000);
+    fs::File::options()
+        .write(true)
+        .open(&parent_filelist)
+        .expect("open parent FileList")
+        .set_times(fs::FileTimes::new().set_modified(expected_modified))
+        .expect("set parent mtime");
+    let expected_permissions = filelist_permission_signature(&parent_filelist);
+
+    let helper = "indexer::tests::tc165_hard_abort_child_after_first_filelist_commit";
+    let status = Command::new(std::env::current_exe().expect("test executable"))
+        .arg("--exact")
+        .arg(helper)
+        .env("FLISTWALKER_FILELIST_ABORT_FIXTURE_ROOT", &root)
+        .env("FLISTWALKER_TEST_ABORT_AFTER_FILELIST_COMMITS", "1")
+        .status()
+        .expect("run abort child");
+    assert!(!status.success(), "child must terminate by injected abort");
+
+    assert_eq!(
+        fs::read(&root_filelist).expect("read root after abort"),
+        b"root-old\n"
+    );
+    let expected_reference = format!("child{}FileList.txt\n", std::path::MAIN_SEPARATOR);
+    assert_eq!(
+        fs::read(&parent_filelist).expect("read parent after abort"),
+        format!("parent-old\r\n{expected_reference}").as_bytes()
+    );
+    assert_eq!(
+        fs::metadata(&parent_filelist)
+            .and_then(|metadata| metadata.modified())
+            .expect("parent mtime after abort"),
+        expected_modified
+    );
+    assert_eq!(
+        filelist_permission_signature(&parent_filelist),
+        expected_permissions
+    );
+
+    let retry = plan_filelist_write(
+        &root,
+        &[root.join("entry.txt")],
+        FileListWriteOptions {
+            allow_root_overwrite: true,
+            propagate_to_ancestors: true,
+        },
+    )
+    .expect("plan retry");
+    let report = execute_filelist_write_plan(&retry, &|| false);
+    assert_eq!(report.status, FileListWriteStatus::Completed);
+    assert_eq!(
+        fs::read_to_string(&root_filelist).expect("read converged root"),
+        "entry.txt\n"
+    );
+    assert_eq!(
+        fs::read(&parent_filelist).expect("read converged parent"),
+        format!("parent-old\r\n{expected_reference}").as_bytes()
+    );
+    assert_eq!(
+        fs::metadata(&parent_filelist)
+            .and_then(|metadata| metadata.modified())
+            .expect("parent mtime after retry"),
+        expected_modified
+    );
+    assert_eq!(
+        filelist_permission_signature(&parent_filelist),
+        expected_permissions
+    );
+}
+
+#[test]
 fn tc165_invalid_upper_ancestor_preserves_lower_planned_target() {
     let top = test_root("tc165-invalid-upper-ancestor");
     let parent = top.join("parent");
@@ -1209,8 +1362,8 @@ fn tc165_cancellation_after_commit_rolls_back_every_committed_target() {
     let report = execute_filelist_write_plan_with(
         &plan,
         &|| writes.load(Ordering::SeqCst) >= 1,
-        &mut |path, bytes| {
-            crate::fs_atomic::write_bytes_atomic(path, bytes)?;
+        &mut |target, bytes, _| {
+            crate::fs_atomic::write_bytes_atomic(&target.path, bytes)?;
             writes.fetch_add(1, Ordering::SeqCst);
             Ok(())
         },
@@ -1476,8 +1629,8 @@ fn tc165_later_target_change_rolls_back_earlier_commit() {
 
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
-    assert_eq!(report.committed, vec![root_filelist.clone()]);
-    assert_eq!(report.rolled_back, vec![root_filelist.clone()]);
+    assert!(report.committed.is_empty());
+    assert!(report.rolled_back.is_empty());
     assert_eq!(report.failed[0].path, parent_filelist);
     assert_eq!(
         fs::read_to_string(&root_filelist).expect("read root"),
@@ -1510,7 +1663,8 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     .expect("plan");
 
     let calls = AtomicUsize::new(0);
-    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| {
+    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| {
+        let path = &target.path;
         let call = calls.fetch_add(1, Ordering::SeqCst);
         match call {
             0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
@@ -1520,8 +1674,8 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     });
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
-    assert_eq!(report.committed, vec![root_filelist.clone()]);
-    assert_eq!(report.rolled_back, vec![root_filelist.clone()]);
+    assert_eq!(report.committed, vec![parent.clone()]);
+    assert_eq!(report.rolled_back, vec![parent.clone()]);
     assert_eq!(
         fs::read_to_string(&root_filelist).expect("read root"),
         "root-old\n"
@@ -1537,17 +1691,19 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     )
     .expect("re-plan after identity-changing rollback");
     let calls = AtomicUsize::new(0);
-    let rollback_failed = execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| {
-        let call = calls.fetch_add(1, Ordering::SeqCst);
-        match call {
-            0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
-            1 => Err(std::io::Error::other("injected commit failure")),
-            _ => Err(std::io::Error::other("injected rollback failure")),
-        }
-    });
+    let rollback_failed =
+        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| {
+            let path = &target.path;
+            let call = calls.fetch_add(1, Ordering::SeqCst);
+            match call {
+                0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
+                1 => Err(std::io::Error::other("injected commit failure")),
+                _ => Err(std::io::Error::other("injected rollback failure")),
+            }
+        });
     assert_eq!(rollback_failed.exit_code(), 1);
     assert_eq!(rollback_failed.rollback_failed.len(), 1);
-    assert_eq!(rollback_failed.rollback_failed[0].path, root_filelist);
+    assert_eq!(rollback_failed.rollback_failed[0].path, parent);
     let _ = fs::remove_dir_all(&top);
 }
 
@@ -1571,18 +1727,19 @@ fn tc165_panic_replacing_later_target_rolls_back_earlier_commit() {
     .expect("plan");
 
     let calls = AtomicUsize::new(0);
-    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| match calls
-        .fetch_add(1, Ordering::SeqCst)
-    {
-        0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
-        1 => panic!("injected commit replacement panic"),
-        _ => crate::fs_atomic::write_bytes_atomic(path, bytes),
-    });
+    let report =
+        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| match calls
+            .fetch_add(1, Ordering::SeqCst)
+        {
+            0 => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
+            1 => panic!("injected commit replacement panic"),
+            _ => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
+        });
 
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
-    assert_eq!(report.committed, vec![root_filelist.clone()]);
-    assert_eq!(report.rolled_back, vec![root_filelist.clone()]);
+    assert_eq!(report.committed, vec![parent_filelist.clone()]);
+    assert_eq!(report.rolled_back, vec![parent_filelist.clone()]);
     assert_eq!(
         fs::read_to_string(&root_filelist).expect("read restored root"),
         "root-old\n"
@@ -1615,10 +1772,10 @@ fn tc165_panic_during_rollback_is_reported_without_unwinding() {
 
     let calls = AtomicUsize::new(0);
     let report = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_filelist_write_plan_with(&plan, &|| false, &mut |path, bytes| match calls
+        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| match calls
             .fetch_add(1, Ordering::SeqCst)
         {
-            0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
+            0 => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
             1 => panic!("injected commit replacement panic"),
             _ => panic!("injected rollback replacement panic"),
         })
@@ -1628,7 +1785,7 @@ fn tc165_panic_during_rollback_is_reported_without_unwinding() {
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
     assert_eq!(report.rollback_failed.len(), 1);
-    assert_eq!(report.rollback_failed[0].path, root_filelist);
+    assert_eq!(report.rollback_failed[0].path, parent_filelist);
     assert!(report.rollback_failed[0]
         .error
         .starts_with("FileList replacement panicked:"));
