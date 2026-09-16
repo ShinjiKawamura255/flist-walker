@@ -105,8 +105,10 @@ jobs:
           echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
           echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate CI policy
-        run: python -m unittest scripts.tests.test_check_ci_policy
+      - name: Validate repository tooling
+        run: |
+          python -m unittest discover -s scripts/tests
+          python scripts/check_repo_contract.py
 
   rust-test-build:
     name: Rust Test and Build (${{ matrix.label }})

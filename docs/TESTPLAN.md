@@ -28,7 +28,7 @@ ID-bearing tables and normative sections SHOULD be kept in ascending ID order to
 - [VM-006 CI coverage gate / GUI validation docs](testplan/validation/vm-006.md): coverage command or script/parser checks as applicable.
 - [VM-007 Supportability docs/templates](testplan/validation/vm-007.md): affected doc/template diff review and support wording checks.
 - [VM-008 Runtime config bootstrap](testplan/validation/vm-008.md): `cd rust && cargo test` plus first-run/config precedence checks when relevant.
-- [VM-009 CI reliability / pins / merge policy](testplan/validation/vm-009.md): CI policy unit tests, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
+- [VM-009 CI reliability / pins / merge policy](testplan/validation/vm-009.md): all repository-tooling unit tests, repository contract, guardian fail-closed mode, workflow parse, Rust/audit regression, PR `CI Gate` / `CI Policy Guardian`, and repository-settings/protected-auto-merge evidence.
 - [VM-010 Stateful endurance](testplan/validation/vm-010.md): deterministic fixed corpus/seed replay, invariant self-tests, quiescence, full Rust regression; add VM-002/003/009 when production orchestration/index/CI surfaces change.
 
 ## Docs-only Validation
