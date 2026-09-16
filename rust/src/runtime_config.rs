@@ -1,10 +1,11 @@
-use crate::fs_atomic::write_text_atomic;
+use crate::fs_atomic::{acquire_sidecar_lock, write_bytes_atomic, write_text_atomic};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
+use std::time::Duration;
 use tracing::warn;
 
 pub const RUNTIME_CONFIG_FILE_NAME: &str = ".flistwalker_config.json";
@@ -195,32 +196,22 @@ impl RuntimeConfig {
             return config;
         };
 
-        let legacy_paths = legacy_runtime_config_file_paths(&path);
         if let Some(config) = load_runtime_config_from_path(&path) {
             config.apply_to_process_env();
             return config;
         }
 
-        if let Some(config) = try_load_or_migrate_runtime_config(&path, &legacy_paths) {
-            config.apply_to_process_env();
-            return config;
-        }
-
-        let (config, seed) = Self::seed_from_current_env();
-        if !path.exists() {
-            if let Err(err) = save_seeded_runtime_config_to_path(&path, &seed) {
+        let config = match acquire_sidecar_lock(&path, Duration::from_secs(5)) {
+            Ok(_lock) => load_migrate_or_seed_runtime_config_locked(&path),
+            Err(err) => {
                 warn!(
-                    "failed to create runtime config at {}: {}",
+                    "failed to acquire runtime config lock for {}: {}; using current environment values without writing",
                     path.display(),
                     err
                 );
+                Self::seed_from_current_env().0
             }
-        } else {
-            warn!(
-                "failed to read runtime config at {}; using current environment values",
-                path.display()
-            );
-        }
+        };
         config.apply_to_process_env();
         config
     }
@@ -284,6 +275,31 @@ pub fn legacy_runtime_config_file_paths(current_path: &Path) -> Vec<PathBuf> {
 }
 
 pub(crate) fn migrate_file_if_needed(current_path: &Path, legacy_path: &Path) -> bool {
+    let Ok(_lock) = acquire_sidecar_lock(current_path, Duration::from_secs(5)) else {
+        return false;
+    };
+    migrate_file_if_needed_locked(current_path, legacy_path)
+}
+
+fn migrate_file_if_needed_locked(current_path: &Path, legacy_path: &Path) -> bool {
+    migrate_file_if_needed_with(
+        current_path,
+        legacy_path,
+        |source, destination| fs::rename(source, destination),
+        write_bytes_atomic,
+    )
+}
+
+fn migrate_file_if_needed_with<R, W>(
+    current_path: &Path,
+    legacy_path: &Path,
+    mut rename: R,
+    mut promote: W,
+) -> bool
+where
+    R: FnMut(&Path, &Path) -> std::io::Result<()>,
+    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+{
     if current_path.exists() || !legacy_path.exists() {
         return false;
     }
@@ -297,31 +313,52 @@ pub(crate) fn migrate_file_if_needed(current_path: &Path, legacy_path: &Path) ->
             return false;
         }
     }
-    match fs::rename(legacy_path, current_path) {
+    match rename(legacy_path, current_path) {
         Ok(_) => true,
-        Err(rename_err) => match fs::copy(legacy_path, current_path) {
-            Ok(_) => {
-                if let Err(remove_err) = remove_file_best_effort(legacy_path) {
+        Err(rename_err) => {
+            if current_path.exists() {
+                return false;
+            }
+            let bytes = match fs::read(legacy_path) {
+                Ok(bytes) => bytes,
+                Err(read_err) => {
                     warn!(
-                        "copied legacy file from {} to {}, but failed to remove original: {}",
+                        "failed to migrate legacy file from {} to {}: rename error: {}; read error: {}",
                         legacy_path.display(),
                         current_path.display(),
-                        remove_err
+                        rename_err,
+                        read_err
                     );
+                    return false;
                 }
-                true
+            };
+            if current_path.exists() {
+                return false;
             }
-            Err(copy_err) => {
-                warn!(
-                    "failed to migrate legacy file from {} to {}: rename error: {}; copy error: {}",
-                    legacy_path.display(),
-                    current_path.display(),
-                    rename_err,
-                    copy_err
-                );
-                false
+            match promote(current_path, &bytes) {
+                Ok(()) => {
+                    if let Err(remove_err) = remove_file_best_effort(legacy_path) {
+                        warn!(
+                            "copied legacy file from {} to {}, but failed to remove original: {}",
+                            legacy_path.display(),
+                            current_path.display(),
+                            remove_err
+                        );
+                    }
+                    true
+                }
+                Err(promote_err) => {
+                    warn!(
+                        "failed to migrate legacy file from {} to {}: rename error: {}; atomic promotion error: {}",
+                        legacy_path.display(),
+                        current_path.display(),
+                        rename_err,
+                        promote_err
+                    );
+                    false
+                }
             }
-        },
+        }
     }
 }
 
@@ -363,7 +400,33 @@ fn save_seeded_runtime_config_to_path(path: &Path, seed: &RuntimeConfigSeed) -> 
     write_text_atomic(path, &text).context("failed to write runtime config")
 }
 
-fn try_load_or_migrate_runtime_config(
+fn load_migrate_or_seed_runtime_config_locked(current_path: &Path) -> RuntimeConfig {
+    if let Some(config) = load_runtime_config_from_path(current_path) {
+        return config;
+    }
+    let legacy_paths = legacy_runtime_config_file_paths(current_path);
+    if let Some(config) = try_load_or_migrate_runtime_config_locked(current_path, &legacy_paths) {
+        return config;
+    }
+    let (config, seed) = RuntimeConfig::seed_from_current_env();
+    if !current_path.exists() {
+        if let Err(err) = save_seeded_runtime_config_to_path(current_path, &seed) {
+            warn!(
+                "failed to create runtime config at {}: {}",
+                current_path.display(),
+                err
+            );
+        }
+    } else {
+        warn!(
+            "failed to read runtime config at {}; using current environment values",
+            current_path.display()
+        );
+    }
+    config
+}
+
+fn try_load_or_migrate_runtime_config_locked(
     current_path: &Path,
     legacy_paths: &[PathBuf],
 ) -> Option<RuntimeConfig> {
@@ -371,8 +434,11 @@ fn try_load_or_migrate_runtime_config(
         return None;
     }
     for legacy_path in legacy_paths {
-        if migrate_file_if_needed(current_path, legacy_path) {
+        if migrate_file_if_needed_locked(current_path, legacy_path) {
             return load_runtime_config_from_path(current_path);
+        }
+        if let Some(config) = load_runtime_config_from_path(current_path) {
+            return Some(config);
         }
     }
     for legacy_path in legacy_paths {
