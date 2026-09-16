@@ -56,6 +56,14 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## rustls 0.23.45 security update (2026-09-16)
+
+- Transitive TLS dependency `rustls` moves from 0.23.38 to 0.23.45 through `ureq 2.12.1`, and `rustls-webpki` moves from 0.103.13 to 0.103.15, resolving RUSTSEC-2026-0285.
+- `rustls 0.23.45` remains `Apache-2.0 OR ISC OR MIT`; `rustls-webpki 0.103.15` remains `ISC`. No new package, copyleft family, bundled license text, or additional standalone notice obligation enters the packaged graphs.
+- `THIRD_PARTY_NOTICES.txt` records the updated resolved versions. The existing archive, standalone sidecar, macOS bundle, and self-update `LICENSE` / `THIRD_PARTY_NOTICES` routes are unchanged.
+- `cargo metadata --locked --format-version 1 --filter-platform` resolves with rustls 0.23.45 and rustls-webpki 0.103.15 for `x86_64-pc-windows-gnu` (292 packages), `x86_64-unknown-linux-gnu` (328), `x86_64-apple-darwin` (304), and `aarch64-apple-darwin` (303).
+- `cargo audit` loaded 1246 advisories, scanned 452 locked dependencies, and exited successfully without vulnerability or warning output.
+
 ## macOS menu dependency review (2026-09-05)
 
 - macOS directly uses `objc2 0.6.4` (MIT), `objc2-app-kit 0.3.2` (Zlib OR Apache-2.0 OR MIT), and `objc2-foundation 0.3.2` (MIT) to remove the native Quit menu key equivalent while retaining its action and the other menu entries. All three already occur in the packaged macOS dependency graph.
