@@ -513,57 +513,15 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
-        self.shell
-            .indexing
-            .pending_queue
-            .iter()
-            .any(|req| req.tab_id == tab_id)
-    }
-
-    pub(super) fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
-        self.shell
-            .indexing
-            .inflight_requests
-            .iter()
-            .any(|request_id| {
-                self.shell
-                    .indexing
-                    .request_tabs
-                    .get(request_id)
-                    .is_some_and(|rid_tab_id| *rid_tab_id == tab_id)
-            })
-    }
-
-    pub(super) fn pop_next_index_request(&mut self) -> Option<IndexRequest> {
-        let active_tab_id = self.current_tab_id()?;
-        if let Some(pos) =
-            self.shell.indexing.pending_queue.iter().position(|req| {
-                req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id)
-            })
-        {
-            return self.shell.indexing.pending_queue.remove(pos);
-        }
-        if self.shell.indexing.background_finalizations.is_full() {
-            return None;
-        }
-        if let Some(pos) = self
-            .shell
-            .indexing
-            .pending_queue
-            .iter()
-            .position(|req| !self.has_inflight_for_tab(req.tab_id))
-        {
-            return self.shell.indexing.pending_queue.remove(pos);
-        }
-        None
-    }
-
     pub(super) fn preempt_background_for_active_request(&mut self) -> bool {
         let Some(active_tab_id) = self.current_tab_id() else {
             return false;
         };
-        if !self.queued_request_for_tab_exists(active_tab_id) {
+        if !self
+            .shell
+            .indexing
+            .queued_request_for_tab_exists(active_tab_id)
+        {
             return false;
         }
         if self.shell.indexing.inflight_requests.len() < Self::INDEX_MAX_CONCURRENT {
@@ -622,7 +580,10 @@ impl FlistWalkerApp {
                 let _ = self.preempt_background_for_active_request();
                 break;
             }
-            let Some(req) = self.pop_next_index_request() else {
+            let next_request = self
+                .current_tab_id()
+                .and_then(|active_tab_id| self.shell.indexing.pop_next_request(active_tab_id));
+            let Some(req) = next_request else {
                 break;
             };
             let req_id = req.request_id;

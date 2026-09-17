@@ -1231,11 +1231,13 @@ fn same_tab_request_waits_until_previous_inflight_finishes() {
         complete_walker_snapshot: false,
     });
 
-    assert!(app.pop_next_index_request().is_none());
+    assert!(app.shell.indexing.pop_next_request(tab_id).is_none());
 
     app.shell.indexing.inflight_requests.remove(&1);
     let popped = app
-        .pop_next_index_request()
+        .shell
+        .indexing
+        .pop_next_request(tab_id)
         .expect("queued same-tab request should run");
     assert_eq!(popped.request_id, 2);
     let _ = fs::remove_dir_all(&root);
@@ -1289,7 +1291,7 @@ fn replacement_request_keeps_real_inflight_accounting_until_terminal_response() 
         .indexing
         .background_states
         .contains_key(&old_request_id));
-    assert!(app.pop_next_index_request().is_none());
+    assert!(app.shell.indexing.pop_next_request(tab_id).is_none());
     assert_eq!(app.shell.indexing.pending_queue.len(), 1);
     assert_eq!(
         app.shell.indexing.pending_queue[0].request_id,

@@ -139,6 +139,36 @@ pub(super) struct IndexCoordinator {
 }
 
 impl IndexCoordinator {
+    pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
+        self.pending_queue.iter().any(|req| req.tab_id == tab_id)
+    }
+
+    pub(super) fn has_inflight_for_tab(&self, tab_id: u64) -> bool {
+        self.inflight_requests.iter().any(|request_id| {
+            self.request_tabs
+                .get(request_id)
+                .is_some_and(|request_tab_id| *request_tab_id == tab_id)
+        })
+    }
+
+    pub(super) fn pop_next_request(&mut self, active_tab_id: u64) -> Option<IndexRequest> {
+        if let Some(pos) = self
+            .pending_queue
+            .iter()
+            .position(|req| req.tab_id == active_tab_id && !self.has_inflight_for_tab(req.tab_id))
+        {
+            return self.pending_queue.remove(pos);
+        }
+        if self.background_finalizations.is_full() {
+            return None;
+        }
+        let pos = self
+            .pending_queue
+            .iter()
+            .position(|req| !self.has_inflight_for_tab(req.tab_id))?;
+        self.pending_queue.remove(pos)
+    }
+
     pub(super) const fn lifecycle(&self) -> super::TabResourceLifecycle {
         self.resource_state.lifecycle()
     }
