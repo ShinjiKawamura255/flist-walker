@@ -673,15 +673,30 @@ impl FlistWalkerApp {
             return effect;
         }
 
-        let previous = {
+        let stale_sort_request_id = self
+            .shell
+            .tabs
+            .get(tab_index)
+            .and_then(|tab| tab.result_state.pending_sort_request_id);
+        let (previous, mut retained_results) = {
             let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
-            tab.index_state
+            let preserve_last_good_results =
+                tab.result_state.result_sort_mode != ResultSortMode::Score;
+            let mut previous = tab
+                .index_state
                 .committed_snapshot_present()
-                .then(|| tab.take_committed_resources())
+                .then(|| tab.take_committed_resources());
+            let retained_results = previous.as_mut().and_then(|previous| {
+                preserve_last_good_results.then(|| previous.take_visible_result_snapshot())
+            });
+            (previous, retained_results)
         };
         if let Some(previous) = previous {
             if !previous.is_empty() {
-                if let Err(previous) = self.shell.tabs.try_retire_active_resources(previous) {
+                if let Err(mut previous) = self.shell.tabs.try_retire_active_resources(previous) {
+                    if let Some(retained_results) = retained_results.take() {
+                        previous.restore_visible_result_snapshot(retained_results);
+                    }
                     let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
                     tab.restore_committed_resources(previous);
                     tab.notice = "Waiting for background tab resource reclamation".to_string();
@@ -689,8 +704,26 @@ impl FlistWalkerApp {
                 }
             }
         }
+        if let Some(retained_results) = retained_results {
+            let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
+            tab.result_state.committed.results = retained_results.results;
+            tab.result_state.committed.preview = retained_results.preview;
+            tab.result_state.committed.total_match_count = retained_results.total_match_count;
+            tab.result_state.committed.current_row = retained_results.current_row;
+        }
+        if let Some(request_id) = stale_sort_request_id {
+            self.take_sort_request_tab(request_id);
+        }
+        self.shell
+            .tabs
+            .get_mut(tab_index)
+            .expect("validated tab")
+            .result_state
+            .clear_sort_request_state();
 
         let limit = self.shell.runtime.limit;
+        let sort_metadata = self.shell.cache.sort_metadata.get_map().clone();
+        let mut background_sort_request = None;
         let mut finalization = self
             .shell
             .indexing
@@ -751,6 +784,8 @@ impl FlistWalkerApp {
             features.filelist.workflow.pending_after_index = None;
         }
         if tab.query_state.query.trim().is_empty() {
+            let preserve_sort = tab.result_state.result_sort_mode != ResultSortMode::Score;
+            let total_match_count = tab.result_state.committed.entries.len();
             let results = tab
                 .result_state
                 .committed
@@ -760,42 +795,93 @@ impl FlistWalkerApp {
                 .cloned()
                 .map(|entry| (entry.path, 0.0))
                 .collect::<Vec<_>>();
-            tab.result_state.clear_sort_request_state();
-            tab.result_state.result_sort_mode = ResultSortMode::Score;
-            tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
-            tab.result_state.committed.base_results = results.clone();
-            tab.result_state.committed.base_results_are_score_ranked = true;
-            tab.result_state.committed.results = results;
-            tab.result_state.results_compacted = false;
-            tab.result_state.committed.total_match_count = tab.result_state.committed.entries.len();
-            let evicted_selected_path = tab.result_state.evicted_selected_path.take();
-            if tab.result_state.committed.results.is_empty() {
-                tab.result_state.committed.current_row = None;
-                tab.result_state.committed.preview.clear();
-                tab.clear_preview_request_state();
-            } else if let Some(selected) = evicted_selected_path {
-                tab.result_state.committed.current_row = tab
-                    .result_state
-                    .committed
-                    .results
-                    .iter()
-                    .position(|(path, _)| *path == selected)
-                    .or(Some(0));
-            } else {
-                let max_index = tab.result_state.committed.results.len().saturating_sub(1);
-                tab.result_state.committed.current_row = Some(
-                    tab.result_state
+            let install_results_now = if preserve_sort {
+                tab.result_state.committed.base_results = results;
+                tab.result_state.committed.base_results_are_score_ranked = false;
+                if tab.result_state.result_sort_mode.uses_metadata() {
+                    let missing_paths = tab
+                        .result_state
                         .committed
-                        .current_row
-                        .unwrap_or(0)
-                        .min(max_index),
-                );
+                        .base_results
+                        .iter()
+                        .filter(|(path, _)| !sort_metadata.contains_key(path))
+                        .map(|(path, _)| path.clone())
+                        .collect::<Vec<_>>();
+                    if missing_paths.is_empty() {
+                        tab.result_state.committed.results = Self::build_sorted_results_from(
+                            &tab.result_state.committed.base_results,
+                            tab.result_state.result_sort_mode,
+                            &sort_metadata,
+                        );
+                        tab.result_state.committed.total_match_count = total_match_count;
+                        true
+                    } else {
+                        background_sort_request = Some((
+                            tab.id,
+                            tab.result_state.result_sort_mode,
+                            missing_paths,
+                            total_match_count,
+                        ));
+                        false
+                    }
+                } else {
+                    tab.result_state.committed.results = Self::build_sorted_results_from(
+                        &tab.result_state.committed.base_results,
+                        tab.result_state.result_sort_mode,
+                        &sort_metadata,
+                    );
+                    tab.result_state.committed.total_match_count = total_match_count;
+                    true
+                }
+            } else {
+                tab.result_state.result_sort_mode = ResultSortMode::Score;
+                tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
+                tab.result_state.committed.base_results = results.clone();
+                tab.result_state.committed.base_results_are_score_ranked = true;
+                tab.result_state.committed.results = results;
+                tab.result_state.committed.total_match_count = total_match_count;
+                true
+            };
+            tab.result_state.results_compacted = false;
+            if install_results_now {
+                let evicted_selected_path = tab.result_state.evicted_selected_path.take();
+                if tab.result_state.committed.results.is_empty() {
+                    tab.result_state.committed.current_row = None;
+                    tab.result_state.committed.preview.clear();
+                    tab.clear_preview_request_state();
+                } else if let Some(selected) = evicted_selected_path {
+                    tab.result_state.committed.current_row = tab
+                        .result_state
+                        .committed
+                        .results
+                        .iter()
+                        .position(|(path, _)| *path == selected)
+                        .or(Some(0));
+                } else {
+                    let max_index = tab.result_state.committed.results.len().saturating_sub(1);
+                    tab.result_state.committed.current_row = Some(
+                        tab.result_state
+                            .committed
+                            .current_row
+                            .unwrap_or(0)
+                            .min(max_index),
+                    );
+                }
             }
         } else {
             effect.trigger_search = true;
         }
         effect.cleanup_request_id = Some(request_id);
         effect.follow_up = follow_up;
+        if let Some((tab_id, mode, paths, total_match_count)) = background_sort_request {
+            result_reducer::request_background_sort_metadata(
+                self,
+                tab_id,
+                mode,
+                paths,
+                Some(total_match_count),
+            );
+        }
         effect
     }
 

@@ -1513,6 +1513,9 @@ impl FlistWalkerApp {
             self.shell.runtime.set_preview(retained_results.preview);
             self.shell
                 .runtime
+                .set_total_match_count(retained_results.total_match_count);
+            self.shell
+                .runtime
                 .set_current_row(retained_results.current_row);
         }
         if preserve_last_good_results {
@@ -1640,6 +1643,8 @@ impl FlistWalkerApp {
         self.shell.runtime.replace_all_entries(all_entries);
         let preserve_empty_query_sort = self.shell.runtime.query_state.query.trim().is_empty()
             && self.shell.runtime.result_sort_mode != ResultSortMode::Score;
+        let mut pending_empty_query_total_match_count = None;
+        let mut preserve_sort_failed = false;
         self.shell
             .indexing
             .apply_resource_transition(TabResourceTransition::Success);
@@ -1671,9 +1676,7 @@ impl FlistWalkerApp {
                     // The incremental snapshot replaces the previous result set at
                     // index completion, so its denominator must replace any count
                     // left by the search that was active before the refresh.
-                    self.shell
-                        .runtime
-                        .set_total_match_count(self.shell.runtime.entries.len());
+                    let total_match_count = self.shell.runtime.entries.len();
                     let results = self
                         .shell
                         .runtime
@@ -1685,7 +1688,9 @@ impl FlistWalkerApp {
                         .collect();
                     if preserve_empty_query_sort {
                         self.shell.runtime.replace_base_results(results, false);
+                        pending_empty_query_total_match_count = Some(total_match_count);
                     } else {
+                        self.shell.runtime.set_total_match_count(total_match_count);
                         self.replace_results_snapshot(results, true);
                     }
                 } else {
@@ -1711,9 +1716,7 @@ impl FlistWalkerApp {
                 self.shell.search.clear_active_request_state();
                 // The index refresh supersedes the previous result snapshot;
                 // keep the Results denominator aligned with the final index.
-                self.shell
-                    .runtime
-                    .set_total_match_count(self.shell.runtime.entries.len());
+                let total_match_count = self.shell.runtime.entries.len();
                 let results = self
                     .shell
                     .runtime
@@ -1725,7 +1728,9 @@ impl FlistWalkerApp {
                     .collect();
                 if preserve_empty_query_sort {
                     self.shell.runtime.replace_base_results(results, false);
+                    pending_empty_query_total_match_count = Some(total_match_count);
                 } else {
+                    self.shell.runtime.set_total_match_count(total_match_count);
                     self.replace_results_snapshot(results, true);
                 }
             } else {
@@ -1746,7 +1751,23 @@ impl FlistWalkerApp {
             // work together. The final index snapshot supersedes the retained
             // snapshot, so reapply the preserved empty-query sort after the
             // replacement index settles.
-            self.apply_result_sort(false);
+            let sort_outcome = self.apply_result_sort(false);
+            if let Some(total_match_count) = pending_empty_query_total_match_count {
+                match sort_outcome {
+                    result_reducer::ResultSortApplyOutcome::Applied => {
+                        self.shell.runtime.set_total_match_count(total_match_count);
+                    }
+                    result_reducer::ResultSortApplyOutcome::Pending => {
+                        if self.shell.worker_bus.sort.in_progress {
+                            self.shell.worker_bus.sort.pending_total_match_count =
+                                Some(total_match_count);
+                        }
+                    }
+                    result_reducer::ResultSortApplyOutcome::Failed => {
+                        preserve_sort_failed = true;
+                    }
+                }
+            }
         }
 
         if matches!(self.shell.indexing.build.index.source, IndexSource::Walker) {
@@ -1763,7 +1784,7 @@ impl FlistWalkerApp {
             self.take_filelist_index_completion_notice(request_id, current_tab_id, &current_root)
         {
             self.set_notice(notice);
-        } else {
+        } else if !preserve_sort_failed {
             self.clear_notice();
         }
         if self

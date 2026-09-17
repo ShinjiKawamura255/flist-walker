@@ -118,6 +118,7 @@ pub(super) struct RetiredActiveResources {
 pub(super) struct RetainedActiveResultSnapshot {
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) preview: String,
+    pub(super) total_match_count: usize,
     pub(super) current_row: Option<usize>,
 }
 
@@ -237,6 +238,7 @@ impl RetiredActiveResources {
         RetainedActiveResultSnapshot {
             results: std::mem::take(&mut self.committed.results),
             preview: std::mem::take(&mut self.committed.preview),
+            total_match_count: self.committed.total_match_count,
             current_row: self.committed.current_row.take(),
         }
     }
@@ -247,6 +249,7 @@ impl RetiredActiveResources {
     ) {
         self.committed.results = snapshot.results;
         self.committed.preview = snapshot.preview;
+        self.committed.total_match_count = snapshot.total_match_count;
         self.committed.current_row = snapshot.current_row;
     }
 }

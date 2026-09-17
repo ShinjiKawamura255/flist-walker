@@ -2377,6 +2377,10 @@ fn restoring_closed_tab_reissues_empty_all_matches_sort_after_index_restart() {
     assert_ne!(final_search.request_id, immediate_search.request_id);
     assert_eq!(final_search.sort_mode, ResultSortMode::SizeDesc);
     assert_eq!(final_search.sort_scope, ResultSortScope::AllMatches);
+    assert_eq!(
+        app.shell.worker_bus.sort.pending_total_match_count, None,
+        "all-matches refresh waits on search, not the metadata-sort owner"
+    );
     assert!(matches!(
         app.shell.search.route_response(502),
         SearchResponseRoute::Stale

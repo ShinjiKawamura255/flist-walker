@@ -313,11 +313,14 @@ fn tc_110_metadata_sort_keeps_last_good_snapshot_until_sort_worker_finishes() {
     app.shell.indexing.rx = response_rx;
     let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
     app.shell.worker_bus.sort.tx = sort_tx;
+    let (sort_response_tx, sort_response_rx) = mpsc::channel::<SortMetadataResponse>();
+    app.shell.worker_bus.sort.rx = sort_response_rx;
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.use_filelist = false;
     app.shell.ui.ignore_list_enabled = true;
     app.shell.runtime.ignore_list_terms = Arc::new(vec!["never-match".to_string()]);
     app.replace_results_snapshot(vec![(old.clone(), 0.0)], false);
+    app.shell.runtime.set_total_match_count(7);
     app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
     app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
 
@@ -354,6 +357,83 @@ fn tc_110_metadata_sort_keeps_last_good_snapshot_until_sort_worker_finishes() {
     assert_eq!(sort_request.mode, ResultSortMode::SizeDesc);
     assert_eq!(sort_request.paths, vec![new_z.clone(), new_a.clone()]);
     assert_eq!(app.shell.runtime.results, vec![(old, 0.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 7);
+    sort_response_tx
+        .send(SortMetadataResponse {
+            request_id: sort_request.request_id,
+            entries: vec![
+                (
+                    new_z.clone(),
+                    SortMetadata {
+                        size_bytes: Some(2),
+                        ..SortMetadata::default()
+                    },
+                ),
+                (
+                    new_a.clone(),
+                    SortMetadata {
+                        size_bytes: Some(1),
+                        ..SortMetadata::default()
+                    },
+                ),
+            ],
+            mode: ResultSortMode::SizeDesc,
+        })
+        .expect("send metadata sort response");
+    app.poll_sort_response();
+    assert_eq!(app.shell.runtime.results, vec![(new_z, 0.0), (new_a, 0.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_metadata_sort_worker_failure_keeps_last_good_snapshot_and_count() {
+    let root = test_root("ignore-refresh-metadata-sort-worker-failure");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old.txt");
+    let new_entry = root.join("new.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = response_rx;
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    drop(sort_rx);
+    app.shell.worker_bus.sort.tx = sort_tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.replace_results_snapshot(vec![(old.clone(), 0.0)], false);
+    app.shell.runtime.set_total_match_count(7);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let request = request_rx.try_recv().expect("index refresh request");
+    response_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: request.request_id,
+            entries: vec![IndexEntry {
+                path: new_entry.clone(),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send replacement index");
+    response_tx
+        .send(IndexResponse::Finished {
+            request_id: request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send terminal response");
+    for _ in 0..4 {
+        app.poll_index_response();
+    }
+
+    assert_eq!(app.shell.runtime.results, vec![(old, 0.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 7);
+    assert_eq!(app.shell.runtime.base_results, vec![(new_entry, 0.0)]);
+    assert!(!app.shell.worker_bus.sort.in_progress);
+    assert_eq!(app.shell.runtime.notice, "Sort worker is unavailable");
     let _ = fs::remove_dir_all(&root);
 }
 
