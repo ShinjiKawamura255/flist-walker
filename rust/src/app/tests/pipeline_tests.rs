@@ -50,7 +50,7 @@ fn queued_request_for_tab_exists_is_false_when_queue_is_empty() {
     fs::create_dir_all(&root).expect("create dir");
     let app = FlistWalkerApp::new(root.clone(), 50, String::new());
 
-    assert!(!app.queued_request_for_tab_exists(1));
+    assert!(!app.shell.indexing.queued_request_for_tab_exists(1));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -72,7 +72,7 @@ fn queued_request_for_tab_exists_is_true_for_matching_tab() {
         complete_walker_snapshot: false,
     });
 
-    assert!(app.queued_request_for_tab_exists(tab_id));
+    assert!(app.shell.indexing.queued_request_for_tab_exists(tab_id));
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -115,8 +115,11 @@ fn has_inflight_for_tab_uses_request_tab_mapping() {
     app.shell.indexing.request_tabs.insert(11, tab_id);
     app.shell.indexing.inflight_requests.insert(11);
 
-    assert!(app.has_inflight_for_tab(tab_id));
-    assert!(!app.has_inflight_for_tab(tab_id.saturating_add(1)));
+    assert!(app.shell.indexing.has_inflight_for_tab(tab_id));
+    assert!(!app
+        .shell
+        .indexing
+        .has_inflight_for_tab(tab_id.saturating_add(1)));
     let _ = fs::remove_dir_all(&root);
 }
 
