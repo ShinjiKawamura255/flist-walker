@@ -149,10 +149,12 @@ pub(in crate::app) struct SortWorkerBus {
     pub(in crate::app) next_request_id: u64,
     pub(in crate::app) pending_request_id: Option<u64>,
     pub(in crate::app) in_progress: bool,
+    pub(in crate::app) pending_total_match_count: Option<usize>,
 }
 
 impl SortWorkerBus {
     pub(in crate::app) fn begin_request(&mut self) -> u64 {
+        self.pending_total_match_count = None;
         begin_request(
             &mut self.next_request_id,
             &mut self.pending_request_id,
@@ -162,6 +164,7 @@ impl SortWorkerBus {
 
     pub(in crate::app) fn clear_request(&mut self) {
         clear_request(&mut self.pending_request_id, &mut self.in_progress);
+        self.pending_total_match_count = None;
     }
 }
 

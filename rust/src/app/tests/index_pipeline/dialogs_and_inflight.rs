@@ -224,6 +224,346 @@ fn deferred_normal_refresh_takes_precedence_over_later_ignore_list_toggle() {
 }
 
 #[test]
+fn tc_110_ignore_refresh_keeps_sorted_snapshot_until_empty_query_terminal_sort() {
+    let root = test_root("ignore-refresh-empty-query-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let old_a = root.join("old-a.txt");
+    let old_b = root.join("old-b.txt");
+    let new_a = root.join("a.txt");
+    let new_z = root.join("z.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = response_rx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["never-match".to_string()]);
+    app.replace_results_snapshot(vec![(old_a.clone(), 0.0), (old_b.clone(), 0.0)], false);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let request = request_rx.try_recv().expect("index refresh request");
+    app.shell.indexing.last_incremental_results_refresh = Instant::now() - Duration::from_secs(3);
+    response_tx
+        .send(IndexResponse::Batch {
+            request_id: request.request_id,
+            entries: vec![
+                IndexEntry {
+                    path: new_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send reverse-order batch");
+    app.poll_index_response();
+
+    assert_eq!(
+        app.shell.runtime.results,
+        vec![(old_a, 0.0), (old_b, 0.0)],
+        "incremental arrival order must not replace the sorted last-good snapshot"
+    );
+
+    response_tx
+        .send(IndexResponse::Finished {
+            request_id: request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send terminal response");
+    for _ in 0..4 {
+        app.poll_index_response();
+    }
+
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>(),
+        vec![new_a, new_z]
+    );
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_metadata_sort_keeps_last_good_snapshot_until_sort_worker_finishes() {
+    let root = test_root("ignore-refresh-metadata-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old.txt");
+    let new_a = root.join("a.txt");
+    let new_z = root.join("z.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    let (response_tx, response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = response_rx;
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["never-match".to_string()]);
+    app.replace_results_snapshot(vec![(old.clone(), 0.0)], false);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let request = request_rx.try_recv().expect("index refresh request");
+    response_tx
+        .send(IndexResponse::Batch {
+            request_id: request.request_id,
+            entries: vec![
+                IndexEntry {
+                    path: new_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send reverse-order batch");
+    response_tx
+        .send(IndexResponse::Finished {
+            request_id: request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send terminal response");
+    for _ in 0..4 {
+        app.poll_index_response();
+    }
+
+    let sort_request = sort_rx.try_recv().expect("metadata sort request");
+    assert_eq!(sort_request.mode, ResultSortMode::SizeDesc);
+    assert_eq!(sort_request.paths, vec![new_z.clone(), new_a.clone()]);
+    assert_eq!(app.shell.runtime.results, vec![(old, 0.0)]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_non_empty_query_refresh_keeps_sort_contract() {
+    let root = test_root("ignore-refresh-non-empty-query-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old-match.txt");
+    let new_a = root.join("a-match.txt");
+    let new_z = root.join("z-match.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "match".to_string());
+    let (request_tx, request_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = request_tx;
+    let (index_response_tx, index_response_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.rx = index_response_rx;
+    let (search_tx, search_request_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_tx;
+    let (search_response_tx, search_response_rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.rx = search_response_rx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.ui.ignore_list_enabled = true;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["never-match".to_string()]);
+    app.replace_results_snapshot(vec![(old.clone(), 1.0)], false);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let index_request = request_rx.try_recv().expect("index refresh request");
+    index_response_tx
+        .send(IndexResponse::Batch {
+            request_id: index_request.request_id,
+            entries: vec![
+                IndexEntry {
+                    path: new_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send reverse-order batch");
+    app.poll_index_response();
+
+    let search_request = search_request_rx
+        .try_recv()
+        .expect("incremental search request");
+    assert_eq!(search_request.sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(search_request.sort_scope, ResultSortScope::AllMatches);
+    assert_eq!(app.shell.runtime.results, vec![(old, 1.0)]);
+
+    search_response_tx
+        .send(SearchResponse {
+            request_id: search_request.request_id,
+            results: vec![(new_a.clone(), 2.0), (new_z.clone(), 1.0)],
+            total_match_count: 2,
+            sort_mode: search_request.sort_mode,
+            sort_scope: search_request.sort_scope,
+            error: None,
+        })
+        .expect("send sorted search response");
+    app.poll_search_response();
+
+    assert_eq!(app.shell.runtime.results, vec![(new_a, 2.0), (new_z, 1.0)]);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_non_empty_metadata_sort_keeps_last_good_until_sort_response() {
+    let root = test_root("ignore-refresh-non-empty-metadata-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old-match.txt");
+    let new_a = root.join("a-match.txt");
+    let new_z = root.join("z-match.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "match".to_string());
+    let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
+    app.shell.worker_bus.sort.tx = sort_tx;
+    let (sort_response_tx, sort_response_rx) = mpsc::channel::<SortMetadataResponse>();
+    app.shell.worker_bus.sort.rx = sort_response_rx;
+    app.replace_results_snapshot(vec![(old.clone(), 1.0)], false);
+    app.shell.runtime.set_total_match_count(7);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+    app.shell.indexing.in_progress = true;
+    app.shell.search.set_pending_request_id(Some(77));
+    app.shell.search.set_in_progress(true);
+
+    assert!(crate::app::result_reducer::apply_active_search_response(
+        &mut app,
+        SearchResponse {
+            request_id: 77,
+            results: vec![(new_z.clone(), 2.0), (new_a.clone(), 1.0)],
+            total_match_count: 2,
+            sort_mode: ResultSortMode::SizeDesc,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        }
+    ));
+
+    let sort_request = sort_rx.try_recv().expect("metadata sort request");
+    assert_eq!(sort_request.mode, ResultSortMode::SizeDesc);
+    assert_eq!(sort_request.paths, vec![new_z.clone(), new_a.clone()]);
+    assert_eq!(app.shell.runtime.results, vec![(old.clone(), 1.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 7);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::SizeDesc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
+    sort_response_tx
+        .send(SortMetadataResponse {
+            request_id: sort_request.request_id,
+            entries: vec![
+                (
+                    new_z.clone(),
+                    SortMetadata {
+                        size_bytes: Some(2),
+                        ..SortMetadata::default()
+                    },
+                ),
+                (
+                    new_a.clone(),
+                    SortMetadata {
+                        size_bytes: Some(1),
+                        ..SortMetadata::default()
+                    },
+                ),
+            ],
+            mode: ResultSortMode::SizeDesc,
+        })
+        .expect("send metadata sort response");
+    app.poll_sort_response();
+
+    assert_eq!(app.shell.runtime.results, vec![(new_z, 2.0), (new_a, 1.0)]);
+    assert_eq!(app.shell.runtime.total_match_count, 2);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_empty_search_response_replaces_last_good_sorted_snapshot() {
+    let root = test_root("ignore-refresh-empty-search-response");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old-match.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "match".to_string());
+    app.replace_results_snapshot(vec![(old, 1.0)], false);
+    app.shell.runtime.set_total_match_count(1);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+    app.shell.indexing.in_progress = true;
+    app.shell.search.set_pending_request_id(Some(78));
+    app.shell.search.set_in_progress(true);
+
+    assert!(crate::app::result_reducer::apply_active_search_response(
+        &mut app,
+        SearchResponse {
+            request_id: 78,
+            results: Vec::new(),
+            total_match_count: 0,
+            sort_mode: ResultSortMode::NameAsc,
+            sort_scope: ResultSortScope::ShownResults,
+            error: None,
+        }
+    ));
+
+    assert!(app.shell.runtime.results.is_empty());
+    assert_eq!(app.shell.runtime.total_match_count, 0);
+    assert_eq!(app.shell.runtime.current_row, None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn deferred_create_filelist_refresh_takes_precedence_over_ignore_list_toggle() {
+    let root = test_root("deferred-filelist-before-ignore-list-toggle");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = true;
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: 41,
+        source: IndexSource::FileList(root.join("FileList.txt")),
+    });
+
+    app.request_create_filelist_walker_refresh();
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+
+    assert!(rx.try_recv().is_err());
+    app.shell.indexing.pending_finish = None;
+    app.shell.indexing.build_reclaim_pending = true;
+    app.retry_pending_active_index_build_reclaim();
+
+    let request = rx
+        .try_recv()
+        .expect("deferred create-filelist request should be sent after reclaim");
+    assert!(request.complete_walker_snapshot);
+    assert!(!request.use_filelist);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn use_filelist_forces_type_filters_to_both_enabled() {
     let root = test_root("use-filelist-forces-type-filters");
     fs::create_dir_all(&root).expect("create dir");

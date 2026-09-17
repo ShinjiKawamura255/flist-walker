@@ -264,6 +264,7 @@ pub(super) struct TabResultState {
     pub(super) result_sort_scope: ResultSortScope,
     pub(super) pending_sort_request_id: Option<u64>,
     pub(super) sort_in_progress: bool,
+    pub(super) pending_sorted_total_match_count: Option<usize>,
     pub(super) pinned_paths: HashSet<PathBuf>,
     pub(super) evicted_selected_path: Option<PathBuf>,
     pub(super) results_compacted: bool,
@@ -548,6 +549,7 @@ impl TabResultState {
     pub(super) fn clear_sort_request_state(&mut self) {
         self.pending_sort_request_id = None;
         self.sort_in_progress = false;
+        self.pending_sorted_total_match_count = None;
     }
 
     #[cfg(test)]
@@ -558,6 +560,7 @@ impl TabResultState {
             result_sort_scope: shell.shell.runtime.result_sort_scope,
             pending_sort_request_id: shell.shell.worker_bus.sort.pending_request_id,
             sort_in_progress: shell.shell.worker_bus.sort.in_progress,
+            pending_sorted_total_match_count: shell.shell.worker_bus.sort.pending_total_match_count,
             pinned_paths: shell.shell.runtime.pinned_paths.clone(),
             evicted_selected_path: shell.shell.runtime.evicted_selected_path.clone(),
             results_compacted: false,
@@ -574,6 +577,8 @@ impl TabResultState {
         shell.shell.runtime.result_sort_scope = self.result_sort_scope;
         shell.shell.worker_bus.sort.pending_request_id = self.pending_sort_request_id;
         shell.shell.worker_bus.sort.in_progress = self.sort_in_progress;
+        shell.shell.worker_bus.sort.pending_total_match_count =
+            self.pending_sorted_total_match_count;
         shell.shell.runtime.pinned_paths = self.pinned_paths.clone();
         shell.shell.runtime.evicted_selected_path = self.evicted_selected_path.clone();
     }
@@ -594,6 +599,10 @@ impl TabResultState {
         mem::swap(
             &mut self.sort_in_progress,
             &mut shell.shell.worker_bus.sort.in_progress,
+        );
+        mem::swap(
+            &mut self.pending_sorted_total_match_count,
+            &mut shell.shell.worker_bus.sort.pending_total_match_count,
         );
         mem::swap(
             &mut self.pinned_paths,
@@ -717,6 +726,7 @@ impl AppTabState {
                 result_sort_scope: ResultSortScope::ShownResults,
                 pending_sort_request_id: None,
                 sort_in_progress: false,
+                pending_sorted_total_match_count: None,
                 pinned_paths: HashSet::new(),
                 evicted_selected_path: None,
                 results_compacted: false,
@@ -815,6 +825,7 @@ impl AppTabState {
                 result_sort_scope: shell.shell.runtime.result_sort_scope,
                 pending_sort_request_id: None,
                 sort_in_progress: false,
+                pending_sorted_total_match_count: None,
                 pinned_paths: HashSet::new(),
                 evicted_selected_path: None,
                 results_compacted: false,

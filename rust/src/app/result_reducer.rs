@@ -134,18 +134,22 @@ pub(super) fn apply_background_search_response(
         .error
         .map(|error| format!("Search failed: {error}"))
         .unwrap_or_default();
+    let response_total_match_count = response.total_match_count;
+    let local_sort = response.sort_scope == super::ResultSortScope::ShownResults
+        && response.sort_mode != ResultSortMode::Score;
+    let preserve_visible_until_local_sort = tab.index_state.index_in_progress && local_sort;
     tab.result_state.committed.base_results_are_score_ranked = !response
         .sort_scope
         .sorts_all_matches_before_limit(response.sort_mode);
     tab.result_state.committed.base_results = response.results.clone();
-    tab.result_state.committed.results = response.results;
-    tab.result_state.committed.total_match_count = response.total_match_count;
+    if !preserve_visible_until_local_sort {
+        tab.result_state.committed.results = response.results;
+        tab.result_state.committed.total_match_count = response_total_match_count;
+    }
     tab.result_state.results_compacted = false;
     tab.result_state.result_sort_mode = response.sort_mode;
     tab.result_state.result_sort_scope = response.sort_scope;
     tab.result_state.clear_sort_request_state();
-    let local_sort = response.sort_scope == super::ResultSortScope::ShownResults
-        && response.sort_mode != ResultSortMode::Score;
     let missing_paths = if local_sort && response.sort_mode.uses_metadata() {
         tab.result_state
             .committed
@@ -163,6 +167,7 @@ pub(super) fn apply_background_search_response(
             response.sort_mode,
             app.shell.cache.sort_metadata.get_map(),
         );
+        tab.result_state.committed.total_match_count = response_total_match_count;
     }
     if let Some(selected) = tab.result_state.evicted_selected_path.clone() {
         let selected_row = tab
@@ -192,6 +197,12 @@ pub(super) fn apply_background_search_response(
     }
     if !missing_paths.is_empty() {
         request_background_sort_metadata(app, tab_id, response.sort_mode, missing_paths);
+        if preserve_visible_until_local_sort {
+            if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
+                tab.result_state.pending_sorted_total_match_count =
+                    Some(response_total_match_count);
+            }
+        }
     }
 }
 
@@ -209,24 +220,48 @@ pub(super) fn apply_active_search_response(
     } else {
         app.clear_notice();
     }
-    app.shell
-        .runtime
-        .set_total_match_count(response.total_match_count);
+    let response_total_match_count = response.total_match_count;
     app.shell.runtime.result_sort_mode = response.sort_mode;
     app.shell.runtime.result_sort_scope = response.sort_scope;
     let base_results_are_score_ranked = !response
         .sort_scope
         .sorts_all_matches_before_limit(response.sort_mode);
-    replace_results_snapshot_with_ranking(
-        app,
-        response.results,
-        false,
-        base_results_are_score_ranked,
-    );
+    let preserve_visible_until_local_sort = app.shell.indexing.in_progress
+        && response.sort_scope == super::ResultSortScope::ShownResults
+        && response.sort_mode != ResultSortMode::Score;
+    if preserve_visible_until_local_sort {
+        app.shell
+            .runtime
+            .replace_base_results(response.results, base_results_are_score_ranked);
+    } else {
+        app.shell
+            .runtime
+            .set_total_match_count(response_total_match_count);
+        replace_results_snapshot_with_ranking(
+            app,
+            response.results,
+            false,
+            base_results_are_score_ranked,
+        );
+    }
     if response.sort_scope == super::ResultSortScope::ShownResults
         && response.sort_mode != ResultSortMode::Score
     {
-        apply_result_sort(app, false);
+        if preserve_visible_until_local_sort && app.shell.runtime.base_results.is_empty() {
+            apply_results_with_selection_policy(app, Vec::new(), false, false);
+        } else {
+            apply_result_sort(app, false);
+        }
+        if preserve_visible_until_local_sort {
+            if app.shell.worker_bus.sort.in_progress {
+                app.shell.worker_bus.sort.pending_total_match_count =
+                    Some(response_total_match_count);
+            } else {
+                app.shell
+                    .runtime
+                    .set_total_match_count(response_total_match_count);
+            }
+        }
     }
     if !app.shell.indexing.in_progress && !response_failed {
         clear_unrestored_evicted_selection(app);
@@ -545,6 +580,7 @@ pub(super) fn apply_background_sort_response(
     if Some(response.request_id) != tab.result_state.pending_sort_request_id {
         return;
     }
+    let pending_total_match_count = tab.result_state.pending_sorted_total_match_count.take();
     tab.result_state.clear_sort_request_state();
     if response.mode == tab.result_state.result_sort_mode {
         let previous_path = selected_tab_path(tab).cloned();
@@ -553,6 +589,9 @@ pub(super) fn apply_background_sort_response(
             tab.result_state.result_sort_mode,
             &sort_metadata,
         );
+        if let Some(total_match_count) = pending_total_match_count {
+            tab.result_state.committed.total_match_count = total_match_count;
+        }
         tab.result_state.results_compacted = false;
         if tab.result_state.committed.results.is_empty() {
             tab.result_state.committed.current_row = None;
@@ -583,9 +622,13 @@ pub(super) fn apply_active_sort_response(
         return false;
     }
     app.take_sort_request_tab(response.request_id);
+    let pending_total_match_count = app.shell.worker_bus.sort.pending_total_match_count.take();
     app.shell.worker_bus.sort.clear_request();
     if response.mode == app.shell.runtime.result_sort_mode {
         apply_result_sort(app, false);
+        if let Some(total_match_count) = pending_total_match_count {
+            app.shell.runtime.set_total_match_count(total_match_count);
+        }
     } else {
         app.refresh_status_line();
     }

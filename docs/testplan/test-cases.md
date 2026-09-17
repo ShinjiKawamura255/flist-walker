@@ -125,7 +125,7 @@
 | TC-107 | unit | `ui_model` の preview text は action policy を埋め込まず、実行可否は `actions.rs` 側の責務に留める | SP-004, SP-010 |
 | TC-108 | ci | `cargo llvm-cov` の line coverage gate は 75% 未満への退行を CI で失敗させ、`lcov.info` artifact を継続生成する | SP-012 |
 | TC-109 | docs | GitHub Issue template と `docs/SUPPORT.md` は、version / OS / launch mode / reproduction / redaction を求めつつ、既定 telemetry や自動 crash upload を導入しない supportability 導線を固定する | SP-010, SP-012 |
-| TC-110 | unit | ignore list ファイルの候補は既定有効で除外され、GUI の `Use Ignore List` チェックボックスで有効/無効を切り替えられる。切替は表示中の committed snapshot を同期置換せず bounded index refresh を開始し、候補全件のscan/cloneを操作frameから外す。単独の Ignore List 切替は、即時refreshとresource reclaim待ち後のrefreshの両方で現在のresult sort mode/scopeを維持する | SP-015 |
+| TC-110 | unit | ignore list ファイルの候補は既定有効で除外され、GUI の `Use Ignore List` チェックボックスで有効/無効を切り替えられる。切替は表示中の committed snapshot を同期置換せず bounded index refresh を開始し、候補全件のscan/cloneを操作frameから外す。単独の Ignore List 切替は、即時refreshとresource reclaim待ち後のrefreshの両方で現在のresult sort mode/scopeを維持する。逆順の増分batchでも非Scoreのsort済みlast-goodを維持し、空queryの同期sort、非空queryのAllMatches sort、ShownResults metadata sortが確定した時だけ新snapshotへ切り替える。pending Normal/Create File List intentを後続のIgnore List切替で弱めない | SP-015 |
 | TC-111 | unit | runtime config file が無い初回起動では current env を seed にした `~/.flistwalker/.flistwalker_config.json` が自動生成され、既存 file がある場合は env 変更より file 内容が優先される | SP-016 |
 | TC-112 | unit | 回帰: `Files` / `Folders` 両方有効の高速経路でも ignore list は省略されず、`old` / `~` を literal に含む候補が結果へ戻らない | SP-015 |
 | TC-113 | unit | 起動時初期化は embedded ignore sample を `flistwalker.ignore.txt.example` として生成し、既存ファイルを上書きしない | SP-017 |
