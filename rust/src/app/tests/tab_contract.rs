@@ -123,6 +123,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         result_sort_scope: ResultSortScope::AllMatches,
         pending_sort_request_id: Some(21),
         sort_in_progress: true,
+        pending_sorted_total_match_count: Some(12),
         pinned_paths: HashSet::from([root.join("pinned.txt")]),
         evicted_selected_path: None,
         results_compacted: false,

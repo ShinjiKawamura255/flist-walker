@@ -115,6 +115,12 @@ pub(super) struct RetiredActiveResources {
     committed: TabCommittedPayload,
 }
 
+pub(super) struct RetainedActiveResultSnapshot {
+    pub(super) results: Vec<(PathBuf, f64)>,
+    pub(super) preview: String,
+    pub(super) current_row: Option<usize>,
+}
+
 pub(super) struct RetiredIndexBuildResources {
     #[cfg(test)]
     _drop_probe: ReclaimDropProbe,
@@ -225,6 +231,23 @@ impl RetiredIndexBuildResources {
 impl RetiredActiveResources {
     pub(super) fn is_empty(&self) -> bool {
         self.committed.is_empty()
+    }
+
+    pub(super) fn take_visible_result_snapshot(&mut self) -> RetainedActiveResultSnapshot {
+        RetainedActiveResultSnapshot {
+            results: std::mem::take(&mut self.committed.results),
+            preview: std::mem::take(&mut self.committed.preview),
+            current_row: self.committed.current_row.take(),
+        }
+    }
+
+    pub(super) fn restore_visible_result_snapshot(
+        &mut self,
+        snapshot: RetainedActiveResultSnapshot,
+    ) {
+        self.committed.results = snapshot.results;
+        self.committed.preview = snapshot.preview;
+        self.committed.current_row = snapshot.current_row;
     }
 }
 

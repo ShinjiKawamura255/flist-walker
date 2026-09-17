@@ -298,6 +298,7 @@ impl FlistWalkerApp {
                     next_request_id: 1,
                     pending_request_id: None,
                     in_progress: false,
+                    pending_total_match_count: None,
                 },
                 kind: KindWorkerBus {
                     tx: kind_tx,

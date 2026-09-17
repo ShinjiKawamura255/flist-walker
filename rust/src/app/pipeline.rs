@@ -1493,13 +1493,33 @@ impl FlistWalkerApp {
                 return true;
             }
         }
-        let previous = self.take_active_committed_resources();
+        let preserve_last_good_results =
+            self.shell.runtime.result_sort_mode != ResultSortMode::Score;
+        let mut previous = self.take_active_committed_resources();
+        let mut retained_results =
+            preserve_last_good_results.then(|| previous.take_visible_result_snapshot());
         if !previous.is_empty() {
-            if let Err(previous) = self.shell.tabs.try_retire_active_resources(previous) {
+            if let Err(mut previous) = self.shell.tabs.try_retire_active_resources(previous) {
+                if let Some(retained_results) = retained_results.take() {
+                    previous.restore_visible_result_snapshot(retained_results);
+                }
                 self.restore_active_committed_resources(previous);
                 self.set_notice("Waiting for background tab resource reclamation");
                 return false;
             }
+        }
+        if let Some(retained_results) = retained_results {
+            self.shell.runtime.replace_results(retained_results.results);
+            self.shell.runtime.set_preview(retained_results.preview);
+            self.shell
+                .runtime
+                .set_current_row(retained_results.current_row);
+        }
+        if preserve_last_good_results {
+            if let Some(request_id) = self.shell.worker_bus.sort.pending_request_id {
+                self.take_sort_request_tab(request_id);
+            }
+            self.shell.worker_bus.sort.clear_request();
         }
         let refresh_after_finish = self.shell.indexing.refresh_after_pending_finish.take();
         let root_after_finish = self.shell.indexing.root_after_pending_finish.take();
@@ -1618,6 +1638,8 @@ impl FlistWalkerApp {
         self.shell.indexing.build.index.source = pending_finish.source;
         let all_entries = Arc::new(std::mem::take(&mut self.shell.indexing.build.index.entries));
         self.shell.runtime.replace_all_entries(all_entries);
+        let preserve_empty_query_sort = self.shell.runtime.query_state.query.trim().is_empty()
+            && self.shell.runtime.result_sort_mode != ResultSortMode::Score;
         self.shell
             .indexing
             .apply_resource_transition(TabResourceTransition::Success);
@@ -1661,7 +1683,11 @@ impl FlistWalkerApp {
                         .cloned()
                         .map(|entry| (entry.path, 0.0))
                         .collect();
-                    self.replace_results_snapshot(results, true);
+                    if preserve_empty_query_sort {
+                        self.shell.runtime.replace_base_results(results, false);
+                    } else {
+                        self.replace_results_snapshot(results, true);
+                    }
                 } else {
                     self.update_results();
                 }
@@ -1697,7 +1723,11 @@ impl FlistWalkerApp {
                     .cloned()
                     .map(|entry| (entry.path, 0.0))
                     .collect();
-                self.replace_results_snapshot(results, true);
+                if preserve_empty_query_sort {
+                    self.shell.runtime.replace_base_results(results, false);
+                } else {
+                    self.replace_results_snapshot(results, true);
+                }
             } else {
                 self.update_results();
             }

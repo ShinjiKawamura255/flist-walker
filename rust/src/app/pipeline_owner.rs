@@ -196,6 +196,14 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn apply_incremental_empty_query_results(&mut self) {
+        if self.app.shell.indexing.in_progress
+            && self.app.shell.runtime.result_sort_mode != ResultSortMode::Score
+        {
+            // A preserve-sort refresh keeps the sorted last-good snapshot visible.
+            // The terminal snapshot is installed only when its selected sort can
+            // be applied synchronously or handed to the bounded sort worker.
+            return;
+        }
         let needs_filtering = !self.app.shell.runtime.include_files
             || !self.app.shell.runtime.include_dirs
             || self.ignore_list_filter_active();
