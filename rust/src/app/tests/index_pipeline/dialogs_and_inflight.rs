@@ -133,6 +133,8 @@ fn tc_110_ignore_list_toggle_requests_reindex_without_replacing_visible_snapshot
     app.shell.runtime.use_filelist = false;
     app.shell.ui.ignore_list_enabled = true;
     app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignored".to_string()]);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![
         file_entry(root.join("keep.txt")),
         file_entry(root.join("ignored.txt")),
@@ -146,6 +148,78 @@ fn tc_110_ignore_list_toggle_requests_reindex_without_replacing_visible_snapshot
     assert!(Arc::ptr_eq(&app.shell.runtime.entries, &visible_before));
     assert_eq!(app.shell.runtime.entries.len(), 2);
     assert!(app.shell.indexing.in_progress);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_deferred_ignore_list_refresh_preserves_sort_when_reclaim_completes() {
+    let root = test_root("deferred-ignore-list-toggle-reindex");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: 41,
+        source: IndexSource::Walker,
+    });
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+
+    assert!(rx.try_recv().is_err());
+    app.shell.indexing.pending_finish = None;
+    app.shell.indexing.build_reclaim_pending = true;
+    app.retry_pending_active_index_build_reclaim();
+
+    rx.try_recv()
+        .expect("deferred index request should be sent after reclaim");
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn deferred_normal_refresh_takes_precedence_over_later_ignore_list_toggle() {
+    let root = test_root("deferred-normal-before-ignore-list-toggle");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = tx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: 41,
+        source: IndexSource::Walker,
+    });
+
+    app.maybe_reindex_from_filter_toggles(false, true, false, false);
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+
+    assert!(rx.try_recv().is_err());
+    app.shell.indexing.pending_finish = None;
+    app.shell.indexing.build_reclaim_pending = true;
+    app.retry_pending_active_index_build_reclaim();
+
+    rx.try_recv()
+        .expect("deferred index request should be sent after reclaim");
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::Score);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
     let _ = fs::remove_dir_all(&root);
 }
 

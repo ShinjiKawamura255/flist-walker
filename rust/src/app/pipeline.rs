@@ -108,25 +108,65 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_index_refresh(&mut self) {
+        self.request_index_refresh_with_mode(super::PendingIndexRefreshMode::Normal);
+    }
+
+    fn request_index_refresh_preserving_sort(&mut self) {
+        self.request_index_refresh_with_mode(super::PendingIndexRefreshMode::PreserveSort);
+    }
+
+    pub(super) fn resume_index_refresh(&mut self, mode: super::PendingIndexRefreshMode) {
+        match mode {
+            super::PendingIndexRefreshMode::Normal => self.request_index_refresh(),
+            super::PendingIndexRefreshMode::PreserveSort => {
+                self.request_index_refresh_preserving_sort()
+            }
+            super::PendingIndexRefreshMode::CreateFileListWalker => {
+                self.request_create_filelist_walker_refresh()
+            }
+        }
+    }
+
+    fn remember_pending_index_refresh(&mut self, mode: super::PendingIndexRefreshMode) {
+        if matches!(mode, super::PendingIndexRefreshMode::PreserveSort)
+            && self
+                .shell
+                .indexing
+                .refresh_after_pending_finish
+                .is_some_and(|pending| {
+                    !matches!(pending, super::PendingIndexRefreshMode::PreserveSort)
+                })
+        {
+            return;
+        }
+        self.shell.indexing.refresh_after_pending_finish = Some(mode);
+    }
+
+    fn request_index_refresh_with_mode(&mut self, mode: super::PendingIndexRefreshMode) {
+        debug_assert!(!matches!(
+            mode,
+            super::PendingIndexRefreshMode::CreateFileListWalker
+        ));
         if self.shell.indexing.pending_finish.is_some() {
-            self.shell.indexing.refresh_after_pending_finish =
-                Some(super::PendingIndexRefreshMode::Normal);
+            self.remember_pending_index_refresh(mode);
             self.set_notice("Waiting for background tab resource reclamation");
             return;
         }
         if let Some(root) = self.shell.indexing.root_after_pending_finish.clone() {
-            self.shell.indexing.refresh_after_pending_finish =
-                Some(super::PendingIndexRefreshMode::Normal);
+            self.remember_pending_index_refresh(mode);
             self.apply_root_change_direct(root);
             return;
         }
         if !self.try_retire_active_index_build_resources() {
-            self.shell.indexing.refresh_after_pending_finish =
-                Some(super::PendingIndexRefreshMode::Normal);
+            self.remember_pending_index_refresh(mode);
             return;
         }
         self.ensure_entry_filters();
-        self.invalidate_result_sort(true);
+        if matches!(mode, super::PendingIndexRefreshMode::PreserveSort) {
+            self.shell.worker_bus.sort.clear_request();
+        } else {
+            self.invalidate_result_sort(true);
+        }
         self.clear_sort_metadata_cache();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
@@ -296,14 +336,16 @@ impl FlistWalkerApp {
             tab_id,
             root: tab.root.clone(),
             use_filelist: match mode {
-                super::PendingIndexRefreshMode::Normal => tab.use_filelist,
+                super::PendingIndexRefreshMode::Normal
+                | super::PendingIndexRefreshMode::PreserveSort => tab.use_filelist,
                 super::PendingIndexRefreshMode::CreateFileListWalker => false,
             },
             include_files: tab.include_files,
             include_dirs: tab.include_dirs,
             follow_links: tab.follow_links,
             max_depth: match mode {
-                super::PendingIndexRefreshMode::Normal => tab.max_depth,
+                super::PendingIndexRefreshMode::Normal
+                | super::PendingIndexRefreshMode::PreserveSort => tab.max_depth,
                 super::PendingIndexRefreshMode::CreateFileListWalker => {
                     crate::indexer::MaxDepth::unlimited()
                 }
@@ -393,7 +435,11 @@ impl FlistWalkerApp {
             if user_changed_filter {
                 self.shell.tabs.mark_active_tab_meaningfully_engaged();
             }
-            self.request_index_refresh();
+            if ignore_list_changed && !use_filelist_changed && !files_changed && !dirs_changed {
+                self.request_index_refresh_preserving_sort();
+            } else {
+                self.request_index_refresh();
+            }
         }
     }
 
@@ -816,12 +862,7 @@ impl FlistWalkerApp {
             return;
         }
         if let Some(mode) = self.shell.indexing.refresh_after_pending_finish {
-            match mode {
-                super::PendingIndexRefreshMode::Normal => self.request_index_refresh(),
-                super::PendingIndexRefreshMode::CreateFileListWalker => {
-                    self.request_create_filelist_walker_refresh()
-                }
-            }
+            self.resume_index_refresh(mode);
         }
     }
 
@@ -1447,12 +1488,7 @@ impl FlistWalkerApp {
                 self.cancel_stale_pending_filelist_confirmations_for_active_root();
                 self.cancel_stale_pending_after_index_for_active_root();
                 self.mark_ui_state_dirty();
-                match follow_up {
-                    super::PendingIndexRefreshMode::Normal => self.request_index_refresh(),
-                    super::PendingIndexRefreshMode::CreateFileListWalker => {
-                        self.request_create_filelist_walker_refresh()
-                    }
-                }
+                self.resume_index_refresh(follow_up);
                 self.set_notice(format!("Root changed: {}", self.root_display_text()));
                 return true;
             }
@@ -1482,12 +1518,8 @@ impl FlistWalkerApp {
                 return true;
             }
         }
-        match refresh_after_finish {
-            Some(super::PendingIndexRefreshMode::Normal) => self.request_index_refresh(),
-            Some(super::PendingIndexRefreshMode::CreateFileListWalker) => {
-                self.request_create_filelist_walker_refresh()
-            }
-            None => {}
+        if let Some(mode) = refresh_after_finish {
+            self.resume_index_refresh(mode);
         }
         true
     }
