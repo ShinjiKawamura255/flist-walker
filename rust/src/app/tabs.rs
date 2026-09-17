@@ -783,7 +783,11 @@ impl FlistWalkerApp {
             ));
             features.filelist.workflow.pending_after_index = None;
         }
-        if tab.query_state.query.trim().is_empty() {
+        let empty_query = tab.query_state.query.trim().is_empty();
+        let requires_all_matches_sort = empty_query
+            && tab.result_state.result_sort_mode != ResultSortMode::Score
+            && tab.result_state.result_sort_scope == ResultSortScope::AllMatches;
+        if empty_query && !requires_all_matches_sort {
             let preserve_sort = tab.result_state.result_sort_mode != ResultSortMode::Score;
             let total_match_count = tab.result_state.committed.entries.len();
             let results = tab
@@ -869,6 +873,7 @@ impl FlistWalkerApp {
                 }
             }
         } else {
+            tab.result_state.results_compacted = false;
             effect.trigger_search = true;
         }
         effect.cleanup_request_id = Some(request_id);

@@ -145,7 +145,7 @@
 - MUST: 検索クエリの `!` 除外は fuzzy fallback を使わず、literal substring / `^` 先頭 / `$` 末尾の一致で候補を除外しなければならない。
 - MUST: ignore list の各ルールは、検索クエリの `!` 除外と同じ非 fuzzy の比較ルールで候補を除外しなければならない。
 - MUST: GUI は `Use Ignore List` チェックボックスを提供し、既定で有効にしなければならない。
-- MUST: GUI で `Use Ignore List` を切り替えた frame は committed candidate 全件を同期 scan/clone してはならない。変更は request identity 付きの bounded index refresh へ渡し、active/background tab のいずれでも既存の表示 snapshot と現在の result sort mode/scope を維持したまま増分 filter と terminal settlement を行わなければならない。非 Score sort では、増分到着順の未sort結果や別世代の件数を表示せず、同期sortまたは bounded sort/search worker の結果を適用できるまでsort済みlast-good snapshotとその件数を維持しなければならない。sort worker が利用不能ならlast-goodを維持して失敗を表示し、stale応答で置換してはならない。
+- MUST: GUI で `Use Ignore List` を切り替えた frame は committed candidate 全件を同期 scan/clone してはならない。変更は request identity 付きの bounded index refresh へ渡し、active/background tab のいずれでも既存の表示 snapshot と現在の result sort mode/scope を維持したまま増分 filter と terminal settlement を行わなければならない。非 Score sort では、増分到着順の未sort結果や別世代の件数を表示せず、同期sortまたは bounded sort/search worker の結果を適用できるまでsort済みlast-good snapshotとその件数を維持しなければならない。空queryのAllMatches sortはlimit適用前の全候補をworkerでsortしなければならない。sort/search worker が利用不能ならlast-goodを維持して失敗を表示し、stale応答で置換してはならない。
 - MUST: チェックボックス有効時は、ignore list に一致する候補を検索結果と空クエリ表示から除外しなければならない。
 - MUST: チェックボックス無効時は、ignore list の除外を適用してはならない。
 - MUST: batch CLI とTUIは既定sidecarと `--ignore-file` の同じdecoder/matcherを使い、FileList/Walker、空query/非空queryのどの経路でも除外を適用しなければならない。
