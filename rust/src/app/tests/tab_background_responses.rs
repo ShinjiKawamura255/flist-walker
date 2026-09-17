@@ -969,6 +969,24 @@ fn tc_110_background_non_empty_refresh_keeps_last_good_until_sorted_search_respo
     assert_eq!(search_request.sort_mode, ResultSortMode::NameAsc);
     assert_eq!(search_request.sort_scope, ResultSortScope::AllMatches);
     let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(
+        background.result_state.committed.results,
+        vec![(old.clone(), 1.0)]
+    );
+    assert_eq!(background.result_state.committed.total_match_count, 1);
+
+    search_res_tx
+        .send(SearchResponse {
+            request_id: search_request.request_id + 1_000,
+            results: vec![(new_z.clone(), 99.0)],
+            total_match_count: 99,
+            sort_mode: ResultSortMode::NameAsc,
+            sort_scope: ResultSortScope::AllMatches,
+            error: None,
+        })
+        .expect("send stale background search");
+    app.poll_search_response();
+    let background = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(background.result_state.committed.results, vec![(old, 1.0)]);
     assert_eq!(background.result_state.committed.total_match_count, 1);
 
@@ -997,6 +1015,162 @@ fn tc_110_background_non_empty_refresh_keeps_last_good_until_sorted_search_respo
         ResultSortScope::AllMatches
     );
     assert_eq!(app.shell.runtime.results, vec![(new_a, 2.0), (new_z, 1.0)]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_background_empty_all_matches_refresh_sorts_full_replacement_before_limit() {
+    let root = test_root("ignore-refresh-background-empty-all-matches");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old.txt");
+    let new_a = root.join("a.txt");
+    let new_m = root.join("m.txt");
+    let new_z = root.join("z.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 1, String::new());
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    let (search_req_tx, search_req_rx) = mpsc::channel::<SearchRequest>();
+    let (search_res_tx, search_res_rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.tx = search_req_tx;
+    app.shell.search.rx = search_res_rx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(old.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.replace_results_snapshot(vec![(old.clone(), 1.0)], false);
+    app.shell.runtime.set_total_match_count(1);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let index_request = index_req_rx.try_recv().expect("index request");
+    app.create_new_tab();
+    index_res_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: index_request.request_id,
+            entries: vec![
+                IndexEntry {
+                    path: new_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_m.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send replacement index");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background terminal");
+    app.poll_index_response();
+
+    let search_request = search_req_rx.try_recv().expect("background search request");
+    assert!(search_request.query.is_empty());
+    assert_eq!(search_request.limit, 1);
+    assert_eq!(search_request.entries.len(), 3);
+    assert!(search_request
+        .entries
+        .iter()
+        .any(|entry| entry.path == new_a));
+    assert_eq!(search_request.sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(search_request.sort_scope, ResultSortScope::AllMatches);
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.committed.results, vec![(old, 1.0)]);
+    assert_eq!(background.result_state.committed.total_match_count, 1);
+
+    search_res_tx
+        .send(SearchResponse {
+            request_id: search_request.request_id,
+            results: vec![(new_a.clone(), 3.0)],
+            total_match_count: 3,
+            sort_mode: ResultSortMode::NameAsc,
+            sort_scope: ResultSortScope::AllMatches,
+            error: None,
+        })
+        .expect("send sorted background search");
+    app.poll_search_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(
+        background.result_state.committed.results,
+        vec![(new_a.clone(), 3.0)]
+    );
+    assert_eq!(background.result_state.committed.total_match_count, 3);
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.results, vec![(new_a, 3.0)]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_background_empty_all_matches_metadata_worker_failure_keeps_last_good() {
+    let root = test_root("ignore-refresh-background-empty-metadata-worker-failure");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old.txt");
+    let replacement = root.join("replacement.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 1, String::new());
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    let (search_req_tx, search_req_rx) = mpsc::channel::<SearchRequest>();
+    app.shell.search.tx = search_req_tx;
+    drop(search_req_rx);
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(old.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.replace_results_snapshot(vec![(old.clone(), 1.0)], false);
+    app.shell.runtime.set_total_match_count(1);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let index_request = index_req_rx.try_recv().expect("index request");
+    app.create_new_tab();
+    index_res_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: index_request.request_id,
+            entries: vec![IndexEntry {
+                path: replacement,
+                kind: EntryKind::file(),
+                kind_known: true,
+            }],
+        })
+        .expect("send replacement index");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background terminal");
+    app.poll_index_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.committed.results, vec![(old, 1.0)]);
+    assert_eq!(background.result_state.committed.total_match_count, 1);
+    assert_eq!(
+        background.result_state.result_sort_mode,
+        ResultSortMode::SizeDesc
+    );
+    assert_eq!(
+        background.result_state.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    assert_eq!(background.notice, "Search worker is unavailable");
+    assert!(!background.search_in_progress);
     let _ = fs::remove_dir_all(&root);
 }
 
