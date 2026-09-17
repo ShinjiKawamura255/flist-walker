@@ -188,12 +188,7 @@ impl FlistWalkerApp {
                 return;
             }
             if let Some(mode) = self.shell.indexing.refresh_after_pending_finish.take() {
-                match mode {
-                    super::PendingIndexRefreshMode::Normal => self.request_index_refresh(),
-                    super::PendingIndexRefreshMode::CreateFileListWalker => {
-                        self.request_create_filelist_walker_refresh()
-                    }
-                }
+                self.resume_index_refresh(mode);
                 return;
             }
         }
@@ -932,12 +927,7 @@ impl FlistWalkerApp {
         self.sync_active_tab_state();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.mark_ui_state_dirty();
-        match refresh_mode {
-            super::PendingIndexRefreshMode::Normal => self.request_index_refresh(),
-            super::PendingIndexRefreshMode::CreateFileListWalker => {
-                self.request_create_filelist_walker_refresh()
-            }
-        }
+        self.resume_index_refresh(refresh_mode);
         self.set_notice(format!("Root changed: {}", self.root_display_text()));
     }
 
