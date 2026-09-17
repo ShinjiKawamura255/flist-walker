@@ -137,7 +137,7 @@ pub(super) fn apply_background_search_response(
     let response_total_match_count = response.total_match_count;
     let local_sort = response.sort_scope == super::ResultSortScope::ShownResults
         && response.sort_mode != ResultSortMode::Score;
-    let preserve_visible_until_local_sort = tab.index_state.index_in_progress && local_sort;
+    let preserve_visible_until_local_sort = local_sort;
     tab.result_state.committed.base_results_are_score_ranked = !response
         .sort_scope
         .sorts_all_matches_before_limit(response.sort_mode);
@@ -196,13 +196,13 @@ pub(super) fn apply_background_search_response(
             .clear_preview_response_routing_for_tab(tab_id);
     }
     if !missing_paths.is_empty() {
-        request_background_sort_metadata(app, tab_id, response.sort_mode, missing_paths);
-        if preserve_visible_until_local_sort {
-            if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
-                tab.result_state.pending_sorted_total_match_count =
-                    Some(response_total_match_count);
-            }
-        }
+        request_background_sort_metadata(
+            app,
+            tab_id,
+            response.sort_mode,
+            missing_paths,
+            preserve_visible_until_local_sort.then_some(response_total_match_count),
+        );
     }
 }
 
@@ -226,8 +226,8 @@ pub(super) fn apply_active_search_response(
     let base_results_are_score_ranked = !response
         .sort_scope
         .sorts_all_matches_before_limit(response.sort_mode);
-    let preserve_visible_until_local_sort = app.shell.indexing.in_progress
-        && response.sort_scope == super::ResultSortScope::ShownResults
+    let preserve_visible_until_local_sort = response.sort_scope
+        == super::ResultSortScope::ShownResults
         && response.sort_mode != ResultSortMode::Score;
     if preserve_visible_until_local_sort {
         app.shell
@@ -247,19 +247,24 @@ pub(super) fn apply_active_search_response(
     if response.sort_scope == super::ResultSortScope::ShownResults
         && response.sort_mode != ResultSortMode::Score
     {
-        if preserve_visible_until_local_sort && app.shell.runtime.base_results.is_empty() {
-            apply_results_with_selection_policy(app, Vec::new(), false, false);
-        } else {
-            apply_result_sort(app, false);
-        }
-        if preserve_visible_until_local_sort {
-            if app.shell.worker_bus.sort.in_progress {
-                app.shell.worker_bus.sort.pending_total_match_count =
-                    Some(response_total_match_count);
+        let sort_outcome =
+            if preserve_visible_until_local_sort && app.shell.runtime.base_results.is_empty() {
+                apply_results_with_selection_policy(app, Vec::new(), false, false);
+                ResultSortApplyOutcome::Applied
             } else {
-                app.shell
+                apply_result_sort(app, false)
+            };
+        if preserve_visible_until_local_sort {
+            match sort_outcome {
+                ResultSortApplyOutcome::Applied => app
+                    .shell
                     .runtime
-                    .set_total_match_count(response_total_match_count);
+                    .set_total_match_count(response_total_match_count),
+                ResultSortApplyOutcome::Pending => {
+                    app.shell.worker_bus.sort.pending_total_match_count =
+                        Some(response_total_match_count);
+                }
+                ResultSortApplyOutcome::Failed => {}
             }
         }
     }
@@ -341,7 +346,7 @@ fn request_sort_metadata(
     app: &mut FlistWalkerApp,
     mode: ResultSortMode,
     missing_paths: Vec<PathBuf>,
-) {
+) -> bool {
     let request_id = app.shell.worker_bus.sort.begin_request();
     app.bind_sort_request_to_current_tab(request_id);
     app.refresh_status_line();
@@ -359,19 +364,22 @@ fn request_sort_metadata(
     {
         app.shell.worker_bus.sort.clear_request();
         app.set_notice("Sort worker is unavailable");
+        return false;
     }
+    true
 }
 
-fn request_background_sort_metadata(
+pub(super) fn request_background_sort_metadata(
     app: &mut FlistWalkerApp,
     tab_id: u64,
     mode: ResultSortMode,
     paths: Vec<PathBuf>,
-) {
+    pending_total_match_count: Option<usize>,
+) -> bool {
     let request_id = app.shell.worker_bus.sort.next_request_id;
     app.shell.worker_bus.sort.next_request_id = request_id.saturating_add(1);
     let Some(index) = app.find_tab_index_by_id(tab_id) else {
-        return;
+        return false;
     };
     if app
         .shell
@@ -388,16 +396,28 @@ fn request_background_sort_metadata(
         if let Some(tab) = app.shell.tabs.get_mut(index) {
             tab.notice = "Sort worker is unavailable".into();
         }
-        return;
+        return false;
     }
     // Background completion must not borrow the active tab's pending sort slot.
     let tab = app.shell.tabs.get_mut(index).expect("live background tab");
     tab.result_state.pending_sort_request_id = Some(request_id);
     tab.result_state.sort_in_progress = true;
+    tab.result_state.pending_sorted_total_match_count = pending_total_match_count;
     app.bind_sort_request_to_tab(request_id, tab_id);
+    true
 }
 
-pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: bool) {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum ResultSortApplyOutcome {
+    Applied,
+    Pending,
+    Failed,
+}
+
+pub(super) fn apply_result_sort(
+    app: &mut FlistWalkerApp,
+    keep_scroll_position: bool,
+) -> ResultSortApplyOutcome {
     if app.shell.runtime.result_sort_mode == ResultSortMode::Score
         && !app.shell.runtime.base_results_are_score_ranked
     {
@@ -405,25 +425,25 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
         // Sorting that subset cannot restore them; rebuild from current entries.
         app.shell.worker_bus.sort.clear_request();
         app.update_results();
-        return;
+        return ResultSortApplyOutcome::Pending;
     }
     if app.shell.runtime.result_sort_scope == super::ResultSortScope::AllMatches
         && app.shell.runtime.result_sort_mode != ResultSortMode::Score
     {
         app.shell.worker_bus.sort.clear_request();
         app.enqueue_search_request();
-        return;
+        return ResultSortApplyOutcome::Pending;
     }
     if app.shell.runtime.base_results.is_empty() {
         app.shell.worker_bus.sort.clear_request();
         app.refresh_status_line();
-        return;
+        return ResultSortApplyOutcome::Applied;
     }
     if !app.shell.runtime.result_sort_mode.uses_metadata() {
         let sorted = app.build_sorted_results(app.shell.runtime.result_sort_mode);
         app.shell.worker_bus.sort.clear_request();
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
-        return;
+        return ResultSortApplyOutcome::Applied;
     }
 
     let missing_paths = app
@@ -438,10 +458,14 @@ pub(super) fn apply_result_sort(app: &mut FlistWalkerApp, keep_scroll_position: 
         let sorted = app.build_sorted_results(app.shell.runtime.result_sort_mode);
         app.shell.worker_bus.sort.clear_request();
         apply_results_with_selection_policy(app, sorted, keep_scroll_position, false);
-        return;
+        return ResultSortApplyOutcome::Applied;
     }
 
-    request_sort_metadata(app, app.shell.runtime.result_sort_mode, missing_paths);
+    if request_sort_metadata(app, app.shell.runtime.result_sort_mode, missing_paths) {
+        ResultSortApplyOutcome::Pending
+    } else {
+        ResultSortApplyOutcome::Failed
+    }
 }
 
 fn apply_changed_sort(app: &mut FlistWalkerApp, pending_search: bool) {
@@ -453,7 +477,7 @@ fn apply_changed_sort(app: &mut FlistWalkerApp, pending_search: bool) {
         }
         // Empty-query Shown results are rebuilt without a worker response.
     }
-    apply_result_sort(app, false);
+    let _ = apply_result_sort(app, false);
 }
 
 pub(super) fn set_result_sort_mode(app: &mut FlistWalkerApp, mode: ResultSortMode) {

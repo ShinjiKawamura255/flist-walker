@@ -182,8 +182,11 @@ impl FlistWalkerApp {
     }
 
     /// 現在の sort mode を結果スナップショットへ反映する。
-    pub(super) fn apply_result_sort(&mut self, keep_scroll_position: bool) {
-        result_reducer::apply_result_sort(self, keep_scroll_position);
+    pub(super) fn apply_result_sort(
+        &mut self,
+        keep_scroll_position: bool,
+    ) -> result_reducer::ResultSortApplyOutcome {
+        result_reducer::apply_result_sort(self, keep_scroll_position)
     }
 
     /// sort mode を切り替え、即時適用または metadata 解決を始める。

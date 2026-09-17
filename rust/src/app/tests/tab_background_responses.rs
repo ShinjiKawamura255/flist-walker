@@ -700,13 +700,15 @@ fn background_tab_index_batches_do_not_override_active_tab_entries() {
 }
 
 #[test]
-fn background_index_finish_invalidates_older_sort_snapshot() {
+fn tc_110_background_index_finish_preserves_sort_and_rejects_stale_sort_response() {
     let root = test_root("background-index-invalidates-sort");
     fs::create_dir_all(&root).expect("create dir");
     let stale = root.join("stale.txt");
-    let current = root.join("current.txt");
+    let current_a = root.join("current-a.txt");
+    let current_z = root.join("current-z.txt");
     fs::write(&stale, "stale").expect("write stale");
-    fs::write(&current, "current").expect("write current");
+    fs::write(&current_a, "a").expect("write current a");
+    fs::write(&current_z, "zz").expect("write current z");
 
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
@@ -721,7 +723,7 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&app.shell.runtime.entries);
     app.shell.runtime.committed_for_test_mut().base_results = vec![(stale.clone(), 1.0)];
     app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
-    app.shell.runtime.committed_for_test_mut().total_match_count = 1;
+    app.shell.runtime.committed_for_test_mut().total_match_count = 7;
     app.shell.runtime.committed_for_test_mut().current_row = Some(0);
     let (sort_req_tx, sort_req_rx) = mpsc::channel::<SortMetadataRequest>();
     let (sort_res_tx, sort_res_rx) = mpsc::channel::<SortMetadataResponse>();
@@ -734,11 +736,18 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
     index_res_tx
         .send(IndexResponse::ReplaceAll {
             request_id: index_req.request_id,
-            entries: vec![IndexEntry {
-                path: current.clone(),
-                kind: EntryKind::file(),
-                kind_known: true,
-            }],
+            entries: vec![
+                IndexEntry {
+                    path: current_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: current_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
         })
         .expect("send replace");
     index_res_tx
@@ -748,12 +757,15 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
         })
         .expect("send finish");
     app.poll_index_response();
+    let replacement_sort_req = sort_req_rx.try_recv().expect("replacement sort request");
+    assert_ne!(replacement_sort_req.request_id, sort_req.request_id);
+    assert_eq!(replacement_sort_req.mode, ResultSortMode::SizeDesc);
 
     sort_res_tx
         .send(SortMetadataResponse {
             request_id: sort_req.request_id,
             entries: vec![(
-                stale,
+                stale.clone(),
                 SortMetadata {
                     size_bytes: Some(5),
                     ..SortMetadata::default()
@@ -767,19 +779,63 @@ fn background_index_finish_invalidates_older_sort_snapshot() {
     let background = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(
         background.result_state.result_sort_mode,
-        ResultSortMode::Score
+        ResultSortMode::SizeDesc
     );
-    assert_eq!(background.result_state.committed.total_match_count, 1);
+    assert_eq!(background.result_state.committed.total_match_count, 7);
     assert_eq!(
         background.result_state.committed.base_results,
-        vec![(current.clone(), 0.0)]
+        vec![(current_a.clone(), 0.0), (current_z.clone(), 0.0)]
     );
     assert_eq!(
         background.result_state.committed.results,
-        vec![(current, 0.0)]
+        vec![(stale, 1.0)]
+    );
+    assert_eq!(
+        background.result_state.pending_sort_request_id,
+        Some(replacement_sort_req.request_id)
+    );
+    assert!(background.result_state.sort_in_progress);
+
+    sort_res_tx
+        .send(SortMetadataResponse {
+            request_id: replacement_sort_req.request_id,
+            entries: vec![
+                (
+                    current_a.clone(),
+                    SortMetadata {
+                        size_bytes: Some(1),
+                        ..SortMetadata::default()
+                    },
+                ),
+                (
+                    current_z.clone(),
+                    SortMetadata {
+                        size_bytes: Some(2),
+                        ..SortMetadata::default()
+                    },
+                ),
+            ],
+            mode: ResultSortMode::SizeDesc,
+        })
+        .expect("send replacement sort");
+    app.poll_sort_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.committed.total_match_count, 2);
+    assert_eq!(
+        background.result_state.committed.results,
+        vec![(current_z.clone(), 0.0), (current_a.clone(), 0.0)]
     );
     assert!(background.result_state.pending_sort_request_id.is_none());
     assert!(!background.result_state.sort_in_progress);
+
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::SizeDesc);
+    assert_eq!(app.shell.runtime.total_match_count, 2);
+    assert_eq!(
+        app.shell.runtime.results,
+        vec![(current_z, 0.0), (current_a, 0.0)]
+    );
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -853,6 +909,94 @@ fn active_index_progress_before_tab_switch_is_preserved_on_background_finish() {
         .any(|entry| entry.path == second_file));
     assert!(!app.shell.indexing.in_progress);
 
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_110_background_non_empty_refresh_keeps_last_good_until_sorted_search_response() {
+    let root = test_root("ignore-refresh-background-non-empty-sort");
+    fs::create_dir_all(&root).expect("create dir");
+    let old = root.join("old-match.txt");
+    let new_a = root.join("a-match.txt");
+    let new_z = root.join("z-match.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "match".to_string());
+    let (index_req_tx, index_req_rx) = bounded_request_channel::<IndexRequest>(2);
+    let (index_res_tx, index_res_rx) = mpsc::channel::<IndexResponse>();
+    app.shell.indexing.tx = index_req_tx;
+    app.shell.indexing.rx = index_res_rx;
+    let (search_req_tx, search_req_rx) = mpsc::channel::<SearchRequest>();
+    let (search_res_tx, search_res_rx) = mpsc::channel::<SearchResponse>();
+    app.shell.search.tx = search_req_tx;
+    app.shell.search.rx = search_res_rx;
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.committed_for_test_mut().all_entries =
+        Arc::new(vec![file_entry(old.clone())]);
+    app.shell.runtime.committed_for_test_mut().entries = Arc::clone(&app.shell.runtime.all_entries);
+    app.replace_results_snapshot(vec![(old.clone(), 1.0)], false);
+    app.shell.runtime.set_total_match_count(1);
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+
+    app.maybe_reindex_from_filter_toggles(false, false, false, true);
+    let index_request = index_req_rx.try_recv().expect("index request");
+    app.create_new_tab();
+    index_res_tx
+        .send(IndexResponse::ReplaceAll {
+            request_id: index_request.request_id,
+            entries: vec![
+                IndexEntry {
+                    path: new_z.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+                IndexEntry {
+                    path: new_a.clone(),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                },
+            ],
+        })
+        .expect("send replacement index");
+    index_res_tx
+        .send(IndexResponse::Finished {
+            request_id: index_request.request_id,
+            source: IndexSource::Walker,
+        })
+        .expect("send background terminal");
+    app.poll_index_response();
+
+    let search_request = search_req_rx.try_recv().expect("background search request");
+    assert_eq!(search_request.sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(search_request.sort_scope, ResultSortScope::AllMatches);
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(background.result_state.committed.results, vec![(old, 1.0)]);
+    assert_eq!(background.result_state.committed.total_match_count, 1);
+
+    search_res_tx
+        .send(SearchResponse {
+            request_id: search_request.request_id,
+            results: vec![(new_a.clone(), 2.0), (new_z.clone(), 1.0)],
+            total_match_count: 2,
+            sort_mode: ResultSortMode::NameAsc,
+            sort_scope: ResultSortScope::AllMatches,
+            error: None,
+        })
+        .expect("send sorted background search");
+    app.poll_search_response();
+
+    let background = app.shell.tabs.get(0).expect("background tab");
+    assert_eq!(
+        background.result_state.committed.results,
+        vec![(new_a.clone(), 2.0), (new_z.clone(), 1.0)]
+    );
+    assert_eq!(background.result_state.committed.total_match_count, 2);
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+    assert_eq!(app.shell.runtime.results, vec![(new_a, 2.0), (new_z, 1.0)]);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -1412,10 +1556,18 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
             .set_committed_snapshot_present_for_test(true);
         tab.result_state.committed.all_entries = Arc::new(vec![old.clone()]);
         tab.result_state.committed.entries = Arc::new(vec![old.clone()]);
+        tab.result_state.committed.base_results = vec![(old.path.clone(), 0.0)];
         tab.result_state.committed.results = vec![(old.path.clone(), 0.0)];
+        tab.result_state.committed.total_match_count = 7;
+        tab.result_state.committed.current_row = Some(0);
+        tab.result_state.result_sort_mode = ResultSortMode::NameAsc;
+        tab.result_state.result_sort_scope = ResultSortScope::ShownResults;
+        tab.result_state.pending_sort_request_id = Some(406);
+        tab.result_state.sort_in_progress = true;
         tab.index_state.pending_index_request_id = Some(407);
         tab.index_state.index_in_progress = true;
     }
+    app.bind_sort_request_to_tab(406, background_tab_id);
     app.shell
         .indexing
         .request_tabs
@@ -1453,6 +1605,15 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     assert!(effect.cleanup_request_id.is_none());
     let waiting = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(waiting.result_state.committed.all_entries.as_ref(), &[old]);
+    assert_eq!(
+        waiting.result_state.result_sort_mode,
+        ResultSortMode::NameAsc
+    );
+    assert_eq!(waiting.result_state.committed.total_match_count, 7);
+    assert_eq!(waiting.result_state.committed.results.len(), 1);
+    assert_eq!(waiting.result_state.pending_sort_request_id, Some(406));
+    assert!(waiting.result_state.sort_in_progress);
+    assert_eq!(app.sort_request_tab(406), Some(background_tab_id));
     assert!(waiting.index_state.pending_index_finish.is_some());
     assert!(waiting
         .notice
@@ -1471,15 +1632,30 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
     let completed = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(
         completed.result_state.committed.all_entries.as_ref(),
-        &[new]
+        std::slice::from_ref(&new)
     );
     assert!(completed.index_state.pending_index_finish.is_none());
     assert_eq!(
         completed.index_state.lifecycle(),
         TabResourceLifecycle::Ready
     );
+    assert_eq!(
+        completed.result_state.result_sort_mode,
+        ResultSortMode::NameAsc
+    );
+    assert_eq!(completed.result_state.committed.total_match_count, 1);
+    assert_eq!(
+        completed.result_state.committed.results,
+        vec![(new.path.clone(), 0.0)]
+    );
+    assert!(completed.result_state.pending_sort_request_id.is_none());
+    assert!(!completed.result_state.sort_in_progress);
+    assert_eq!(app.sort_request_tab(406), None);
     assert!(!app.shell.indexing.request_tabs.contains_key(&407));
     assert_eq!(app.shell.indexing.warm_tab_id, Some(background_tab_id));
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(app.shell.runtime.results, vec![(new.path, 0.0)]);
     let _ = fs::remove_dir_all(&root);
 }
 
