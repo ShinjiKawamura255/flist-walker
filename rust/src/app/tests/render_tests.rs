@@ -626,6 +626,32 @@ fn tc_110_ignore_list_checkbox_click_requests_refresh_without_replacing_visible_
 }
 
 #[test]
+fn tc_208_pending_index_finish_requests_next_frame_within_16ms() {
+    let root = test_root("pending-index-finish-repaint");
+    fs::create_dir_all(&root).expect("create dir");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.ui.last_memory_sample = Instant::now();
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: 77,
+        source: IndexSource::Walker,
+    });
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(egui::RawInput::default(), |_| {});
+
+    let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+        app.schedule_frame_repaint(ui.ctx());
+    });
+    let repaint_delay = output.viewport_output[&egui::ViewportId::ROOT].repaint_delay;
+
+    assert!(
+        repaint_delay <= Duration::from_millis(16),
+        "pending terminal drain must keep rendering responsive: {repaint_delay:?}"
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn tc_180_unlimited_toggle_restores_all_and_reenables_at_depth_one() {
     let mut draft = 4;
 

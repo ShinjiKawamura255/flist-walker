@@ -312,8 +312,9 @@ mod tests {
     use flist_walker::app::StartupWindowPlacement;
 
     use super::{
-        build_root_viewport, merge_update_diagnostic, startup_native_window_geometry, APP_ID,
-        APP_TITLE, DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE,
+        build_root_viewport, load_app_icon, merge_update_diagnostic,
+        premultiplied_to_unmultiplied_rgba, startup_native_window_geometry, APP_ID, APP_TITLE,
+        DEFAULT_WINDOW_SIZE, MIN_WINDOW_SIZE,
     };
 
     #[test]
@@ -404,6 +405,23 @@ mod tests {
         assert_eq!(viewport.inner_size, Some(size));
         assert_eq!(viewport.min_inner_size, Some(MIN_WINDOW_SIZE));
         assert!(viewport.icon.is_some());
+    }
+
+    #[test]
+    fn embedded_svg_icon_renders_expected_rgba_surface() {
+        let icon = load_app_icon().expect("embedded app icon should render");
+
+        assert_eq!((icon.width, icon.height), (256, 256));
+        assert_eq!(icon.rgba.len(), 256 * 256 * 4);
+        assert!(icon.rgba.chunks_exact(4).any(|pixel| pixel[3] > 0));
+    }
+
+    #[test]
+    fn icon_unpremultiply_preserves_transparency_and_color() {
+        let rgba =
+            premultiplied_to_unmultiplied_rgba(&[0, 0, 0, 0, 64, 32, 16, 128, 255, 128, 0, 255]);
+
+        assert_eq!(rgba, [0, 0, 0, 0, 128, 64, 32, 128, 255, 128, 0, 255]);
     }
 
     #[test]
