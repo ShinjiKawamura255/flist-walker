@@ -91,18 +91,13 @@ pub(super) fn build_status_line(ctx: StatusLineContext<'_>) -> String {
     } else {
         String::new()
     };
-    let notice = if ctx.notice.is_empty() {
-        String::new()
-    } else {
-        format!(" | {}", normalize_text_for_display(ctx.notice))
-    };
     let memory = match ctx.memory_text {
         Some(mem) => format!(" | Mem: {mem}"),
         None => String::new(),
     };
 
-    format!(
-        "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}{}",
+    let summary = format!(
+        "{} | Entries: {} | Results: {}{}{}{}{}{}{}{}{}{}{}",
         tab_label,
         ctx.indexed_count,
         ctx.results_len,
@@ -115,9 +110,13 @@ pub(super) fn build_status_line(ctx: StatusLineContext<'_>) -> String {
         updating,
         sorting,
         history_search,
-        memory,
-        notice
-    )
+        memory
+    );
+    if ctx.notice.is_empty() {
+        summary
+    } else {
+        format!("{} | {summary}", normalize_text_for_display(ctx.notice))
+    }
 }
 
 pub(super) fn normalized_compare_key(path: &Path) -> String {
@@ -399,6 +398,10 @@ mod tests {
         assert!(status.contains("History search: 4/12"));
         assert!(status.contains("Mem: 123.4 MiB"));
         assert!(status.contains("hello"));
+        assert!(
+            status.starts_with("hello | Tab: 2/3"),
+            "a truncated footer must show the notice before status metrics"
+        );
     }
 
     #[test]
