@@ -77,6 +77,7 @@ mod query_history;
 mod render_tests;
 mod root_list_manager;
 mod session_restore;
+mod settings_dialog;
 mod shortcut_action;
 mod shortcut_help;
 mod shortcut_navigation;

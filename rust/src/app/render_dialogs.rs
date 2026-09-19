@@ -2,6 +2,7 @@ pub(super) mod filelist;
 pub(super) mod help;
 pub(super) mod preset_picker;
 pub(in crate::app) mod root_list;
+pub(super) mod settings;
 pub(super) mod update;
 
 use crate::app::FlistWalkerApp;
@@ -29,6 +30,10 @@ pub(super) fn render_previous_update_failure_dialog(app: &mut FlistWalkerApp, ct
 
 pub(super) fn render_help_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     help::render(app, ctx);
+}
+
+pub(super) fn render_settings_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    settings::render(app, ctx);
 }
 
 pub(super) fn render_preset_picker_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {

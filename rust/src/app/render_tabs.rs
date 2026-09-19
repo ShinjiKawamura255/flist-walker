@@ -290,7 +290,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let row_height = ui.spacing().interact_size.y;
-            let opening = app.shell.worker_bus.config_open.in_progress();
+            let opening = app.shell.worker_bus.config_settings.in_progress();
             let settings_response = ui
                 .add_enabled_ui(!opening, |ui| {
                     ui.add_sized(
@@ -299,8 +299,8 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     )
                 })
                 .inner
-                .on_hover_text("Open runtime config file")
-                .on_disabled_hover_text("Opening config file...");
+                .on_hover_text("Open settings")
+                .on_disabled_hover_text("Loading or saving settings...");
             #[cfg(test)]
             ui.ctx().data_mut(|data| {
                 data.insert_temp(
@@ -315,7 +315,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 )
             });
             if settings_response.clicked() {
-                app.queue_render_command(RenderCommand::OpenRuntimeConfig);
+                app.queue_render_command(RenderCommand::OpenSettingsDialog);
             }
         });
         if let Some(index) = close_tab {

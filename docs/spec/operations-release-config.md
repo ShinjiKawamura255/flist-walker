@@ -232,3 +232,11 @@
 - `winget` 不在、承認拒否、install 失敗、install 後の再検出失敗、build/strip 失敗では後続 build を実行せず、原因と再実行または手動導入コマンドを表示する。
 - install 後に現在の process で再検出できない場合は、新しい PowerShell を開いて再実行する案内を表示する。
 - partial install は自動 rollback せず、導入済み package ID/package 名を表示して再実行可能な状態を保つ。
+## SP-024 GUI settings editor
+
+- GUI の歯車は設定モーダルを開く。起動・履歴、キー操作、検索の群に、`restore_tabs_enabled`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`walker_max_entries` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
+- 6項目はすべて次回起動から反映する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
+- Walker 上限は正の `usize` 整数だけを受理する。空、0、負、小数、overflow は保存前に拒否し、暗黙に補正しない。
+- JSON を開く操作は従来の既定アプリ→標準エディタ fallback を使用し、モーダルと未保存草稿を維持する。外部編集後の再読み込みは草稿を置き換える明示操作とし、草稿が変更済みなら破棄確認を要求する。再読込失敗では元の草稿を保持する。読込中は取消可能とし、遅延応答は適用しない。
+- 保存は raw JSON と読込時の bytes を比較し、協調 writer の sidecar lock 下で最新内容と一致する場合だけ6キーを更新して atomic replace する。未知キーと developer 設定を保持する。外部変更、削除、不正 JSON、lock または書込失敗時は草稿を保持してエラーを示す。replace 後の directory sync 失敗では元 bytes への rollback を試み、rollback も失敗した場合は両方のエラーを示す。保存中のキャンセル・再保存・再読込・JSON open は受理しない。
+- 読込と保存は有界 worker に置き、応答はモーダル generation と対応付ける。現在の runtime config、既存 tab、履歴 writer、既存 worker を即時更新しない。履歴保存を OFF にしても既存履歴は削除せず、復元 tab の query 保存とは別設定である。明示起動引数は復元 tab より優先する。

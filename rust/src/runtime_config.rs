@@ -1,5 +1,8 @@
-use crate::fs_atomic::{acquire_sidecar_lock, write_bytes_atomic, write_text_atomic};
-use anyhow::{Context, Result};
+use crate::fs_atomic::{
+    acquire_sidecar_lock, atomic_write_replaced_destination, write_bytes_atomic,
+    write_bytes_atomic_with_metadata, write_text_atomic, AtomicWriteMetadata,
+};
+use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
@@ -55,6 +58,159 @@ pub struct RuntimeConfig {
     pub force_update_check_failure: String,
     #[serde(skip_serializing_if = "DeveloperRuntimeConfig::is_default")]
     pub developer: DeveloperRuntimeConfig,
+}
+
+/// The public settings edited by the GUI. This does not mutate the effective
+/// process configuration until the next application launch.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EditableSettings {
+    pub restore_tabs_enabled: bool,
+    pub history_persist_disabled: bool,
+    pub emacs_keybindings_enabled: bool,
+    pub ctrl_w_deletes_word_in_query: bool,
+    pub tab_pin_moves_to_next_row: bool,
+    pub walker_max_entries: usize,
+}
+
+impl From<&RuntimeConfig> for EditableSettings {
+    fn from(config: &RuntimeConfig) -> Self {
+        Self {
+            restore_tabs_enabled: config.restore_tabs_enabled,
+            history_persist_disabled: config.history_persist_disabled,
+            emacs_keybindings_enabled: config.emacs_keybindings_enabled,
+            ctrl_w_deletes_word_in_query: config.ctrl_w_deletes_word_in_query,
+            tab_pin_moves_to_next_row: config.tab_pin_moves_to_next_row,
+            walker_max_entries: config.walker_max_entries,
+        }
+    }
+}
+
+impl Default for EditableSettings {
+    fn default() -> Self {
+        Self::from(&RuntimeConfig::default())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct EditableSettingsSnapshot {
+    pub values: EditableSettings,
+    original_bytes: Vec<u8>,
+}
+
+pub fn read_editable_settings(path: &Path) -> Result<EditableSettingsSnapshot> {
+    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes)
+        .with_context(|| format!("invalid JSON in {}", path.display()))?;
+    if !value.is_object() {
+        bail!("runtime config must be a JSON object");
+    }
+    let config: RuntimeConfig = serde_json::from_slice(&bytes)
+        .with_context(|| format!("invalid runtime config in {}", path.display()))?;
+    Ok(EditableSettingsSnapshot {
+        values: EditableSettings::from(&config),
+        original_bytes: bytes,
+    })
+}
+
+pub fn save_editable_settings(
+    path: &Path,
+    baseline: &EditableSettingsSnapshot,
+    draft: &EditableSettings,
+) -> Result<EditableSettingsSnapshot> {
+    save_editable_settings_with_writer(path, baseline, draft, write_bytes_atomic_with_metadata)
+}
+
+fn save_editable_settings_with_writer(
+    path: &Path,
+    baseline: &EditableSettingsSnapshot,
+    draft: &EditableSettings,
+    mut write: impl FnMut(&Path, &[u8], AtomicWriteMetadata) -> std::io::Result<()>,
+) -> Result<EditableSettingsSnapshot> {
+    if draft.walker_max_entries == 0 {
+        bail!("walker entry limit must be at least 1");
+    }
+    let _lock = acquire_sidecar_lock(path, Duration::from_secs(5))
+        .with_context(|| format!("failed to lock {}", path.display()))?;
+    let latest = fs::read(path).with_context(|| format!("failed to reread {}", path.display()))?;
+    if latest != baseline.original_bytes {
+        bail!("runtime config changed outside the settings dialog");
+    }
+    let mut value: serde_json::Value = serde_json::from_slice(&latest)?;
+    let object = value
+        .as_object_mut()
+        .context("runtime config must be a JSON object")?;
+    object.insert(
+        "restore_tabs_enabled".into(),
+        serde_json::json!(draft.restore_tabs_enabled),
+    );
+    object.insert(
+        "history_persist_disabled".into(),
+        serde_json::json!(draft.history_persist_disabled),
+    );
+    object.insert(
+        "emacs_keybindings_enabled".into(),
+        serde_json::json!(draft.emacs_keybindings_enabled),
+    );
+    object.insert(
+        "ctrl_w_deletes_word_in_query".into(),
+        serde_json::json!(draft.ctrl_w_deletes_word_in_query),
+    );
+    object.insert(
+        "tab_pin_moves_to_next_row".into(),
+        serde_json::json!(draft.tab_pin_moves_to_next_row),
+    );
+    object.insert(
+        "walker_max_entries".into(),
+        serde_json::json!(draft.walker_max_entries),
+    );
+    let bytes = serde_json::to_vec_pretty(&value)?;
+    let permissions = fs::metadata(path)?.permissions();
+    // A non-cooperating editor can change the file while we hold our sidecar
+    // lock. Check again immediately before replacement to narrow that window.
+    if fs::read(path)? != latest {
+        bail!("runtime config changed outside the settings dialog");
+    }
+    if let Err(error) = write(
+        path,
+        &bytes,
+        AtomicWriteMetadata {
+            permissions: Some(permissions.clone()),
+            ..AtomicWriteMetadata::default()
+        },
+    ) {
+        if atomic_write_replaced_destination(&error) {
+            match fs::read(path) {
+                Ok(current) if current == bytes => {
+                    if let Err(rollback_error) = write_bytes_atomic_with_metadata(
+                        path,
+                        &latest,
+                        AtomicWriteMetadata {
+                            permissions: Some(permissions),
+                            ..AtomicWriteMetadata::default()
+                        },
+                    ) {
+                        bail!(
+                            "failed to save {}: {error}; rollback failed: {rollback_error}",
+                            path.display()
+                        );
+                    }
+                }
+                Ok(_) => bail!(
+                    "failed to save {}: {error}; file changed after replacement, rollback skipped",
+                    path.display()
+                ),
+                Err(read_error) => bail!(
+                    "failed to save {}: {error}; rollback safety check failed: {read_error}",
+                    path.display()
+                ),
+            }
+        }
+        return Err(error).with_context(|| format!("failed to save {}", path.display()));
+    }
+    Ok(EditableSettingsSnapshot {
+        values: draft.clone(),
+        original_bytes: bytes,
+    })
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
