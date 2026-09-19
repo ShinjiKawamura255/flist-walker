@@ -235,7 +235,7 @@
 ## SP-024 GUI settings editor
 
 - GUI の歯車は設定モーダルを開く。起動・履歴、キー操作、検索の群に、`restore_tabs_enabled`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`walker_max_entries` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
-- 6項目はすべて次回起動から反映する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
+- 6項目はすべて次回起動から反映する。保存成功時はモーダルを閉じ、次回起動から反映する旨をフッターの省略表示より前に見える位置へ通知する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
 - Walker 上限は正の `usize` 整数だけを受理する。空、0、負、小数、overflow は保存前に拒否し、暗黙に補正しない。
 - JSON を開く操作は従来の既定アプリ→標準エディタ fallback を使用し、モーダルと未保存草稿を維持する。外部編集後の再読み込みは草稿を置き換える明示操作とし、草稿が変更済みなら破棄確認を要求する。再読込失敗では元の草稿を保持する。読込中は取消可能とし、遅延応答は適用しない。
 - 保存は raw JSON と読込時の bytes を比較し、協調 writer の sidecar lock 下で最新内容と一致する場合だけ6キーを更新して atomic replace する。未知キーと developer 設定を保持する。外部変更、削除、不正 JSON、lock または書込失敗時は草稿を保持してエラーを示す。replace 後の directory sync 失敗では元 bytes への rollback を試み、rollback も失敗した場合は両方のエラーを示す。保存中のキャンセル・再保存・再読込・JSON open は受理しない。
