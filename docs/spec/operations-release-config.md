@@ -172,7 +172,7 @@
 - MUST: runtime config の legacy 移行、初回 seed、および GUI 設定 open 時の不足 file 生成は current path の sidecar lock で協調 writer を直列化し、lock 取得後に current を再確認しなければならない。先に current が確定した場合はそれを採用し、legacy、seed、または起動時の実効 config で上書きしてはならない。rename 不可時は legacy bytes を同一ディレクトリの create-new temporary fileへ完全書込み・同期してから atomic replace し、昇格失敗時は partial current を残さず legacy を保持しなければならない。
 - MUST: runtime config file が存在しない場合、ツールは有効な GUI、batch CLI、interactive CLI、`--list-saved-roots`、`--create-filelist` の dispatch 前に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。内部 update helper と引数検証失敗は bootstrap 対象外とする。
 - MUST: 自動生成される runtime config file には、一般利用者が調整してよい `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`emacs_keybindings_enabled`、`tab_pin_moves_to_next_row` を既定値で含めなければならない。
-- SHOULD: 既存 runtime config file に上記 5 項目が欠けている場合、読み込み時に現在の実効値で項目を補完して書き戻す。
+- SHOULD: 既存 runtime config file に上記 5 項目が欠けている場合、読み込み時に現在の実効値で項目を補完して書き戻す。書き戻しは current path の sidecar lock を取得して最新 JSON を再読込した後に行い、並行して成功した設定保存を古い snapshot で上書きしてはならない。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - MUST: shared persistence は default/saved-root の read-only access と query-history mutation を分離する。`history_persist_disabled` が true のとき、history load/save と history diagnostic text は no-op とする。
 - MUST: history writer は full snapshot ではなく ordered、trimmed、nonempty delta を submit する。cross-process sidecar lock の下で latest JSON を reread し、各 delta を exact duplicate removal、most-recent append、front trim 100 entries の順で適用する。serialized writers が別 query を追加した場合は commit order で両方を保持する。
