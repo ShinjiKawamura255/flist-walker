@@ -1464,7 +1464,7 @@ impl FlistWalkerApp {
                 if let Some(retained_results) = retained_results.take() {
                     previous.restore_visible_result_snapshot(retained_results);
                 }
-                self.restore_active_committed_resources(previous);
+                self.restore_active_committed_resources(*previous);
                 self.set_notice("Waiting for background tab resource reclamation");
                 return false;
             }

@@ -7,7 +7,7 @@ This file is the entry point for FlistWalker specifications. Detailed SP content
 | --- | --- |
 | [Indexing and Performance Specification](spec/indexing-performance.md) | SP-001, SP-002, SP-007, SP-021 |
 | [Search, Actions, CLI, Errors, and Testability Specification](spec/search-actions-cli.md) | SP-003, SP-004, SP-005, SP-006, SP-008, SP-009, SP-023 |
-| [GUI Behavior Specification](spec/gui-behavior.md) | SP-010, SP-011, SP-013, SP-022 |
+| [GUI Behavior Specification](spec/gui-behavior.md) | SP-010, SP-011, SP-013, SP-022, SP-025 |
 | [Operations, Release, and Runtime Configuration Specification](spec/operations-release-config.md) | SP-012, SP-014, SP-015, SP-016, SP-017, SP-018, SP-024 |
 
 ## Update Rule
@@ -51,3 +51,4 @@ This file is the entry point for FlistWalker specifications. Detailed SP content
 - FR-032, FR-033, FR-040, NFR-010, NFR-014 -> SP-006, SP-014, SP-018, SP-023 -> DES-005, DES-014, DES-019, DES-024 -> TC-215
 - FR-041 -> SP-006, SP-010 -> DES-005, DES-009 -> TC-201
 - FR-028, FR-044 -> SP-024 -> DES-025 -> TC-216, TC-217, TC-218
+- FR-045, NFR-008 -> SP-025 -> DES-026 -> TC-219, TC-220, TC-221, TC-222

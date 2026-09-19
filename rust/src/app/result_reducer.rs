@@ -533,7 +533,9 @@ pub(super) fn apply_background_preview_response(
         }
         return;
     }
-    app.cache_preview(response.path.clone(), response.preview.clone());
+    if response.document.is_none() && response.page_error.is_none() {
+        app.cache_preview(response.path.clone(), response.preview.clone());
+    }
     if let Some(tab) = app.shell.tabs.get_mut(tab_index) {
         tab.clear_preview_request_state();
         let current_path = if tab.result_state.results_compacted {
@@ -554,7 +556,24 @@ pub(super) fn apply_background_preview_response(
             })
         };
         if current_path.is_some_and(|current_path| *current_path == response.path) {
-            tab.result_state.committed.preview = response.preview;
+            if let Some(document) = response.document {
+                tab.result_state.committed.preview.clear();
+                tab.result_state.committed.preview_document = Some(document);
+                tab.result_state.committed.preview_page_error = None;
+            } else if let Some(error) = response.page_error {
+                if !response.is_more {
+                    tab.result_state.committed.preview = format!(
+                        "<preview {}>",
+                        super::paged_preview_flow::page_error_label(error)
+                    );
+                    tab.result_state.committed.preview_document = None;
+                }
+                tab.result_state.committed.preview_page_error = Some(error);
+            } else {
+                tab.result_state.committed.preview = response.preview;
+                tab.result_state.committed.preview_document = None;
+                tab.result_state.committed.preview_page_error = None;
+            }
         }
     }
 }
@@ -569,10 +588,19 @@ pub(super) fn apply_active_preview_response(
     app.take_preview_request_tab(response.request_id);
     app.shell.worker_bus.preview.clear_request();
     if response.canceled {
+        if response.is_more {
+            app.clear_paged_preview();
+            return true;
+        }
         app.shell.runtime.clear_preview();
         app.request_preview_for_current();
         return true;
     }
+    if response.document.is_some() || response.page_error.is_some() {
+        app.apply_paged_preview_response(response);
+        return true;
+    }
+    app.clear_paged_preview();
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(row) = app.shell.runtime.current_row {
         if let Some((current_path, _)) = app.shell.runtime.results.get(row) {

@@ -192,6 +192,9 @@ pub(super) struct TabCommittedPayload {
     pub(super) base_results_are_score_ranked: bool,
     pub(super) results: Vec<(PathBuf, f64)>,
     pub(super) preview: String,
+    pub(super) preview_document: Option<Arc<crate::ui_model::PagedTextPreview>>,
+    pub(super) preview_page_error: Option<crate::ui_model::PreviewPageError>,
+    pub(super) preview_stale: bool,
     pub(super) total_match_count: usize,
     pub(super) current_row: Option<usize>,
 }
@@ -205,6 +208,9 @@ impl Default for TabCommittedPayload {
             base_results_are_score_ranked: true,
             results: Vec::new(),
             preview: String::new(),
+            preview_document: None,
+            preview_page_error: None,
+            preview_stale: false,
             total_match_count: 0,
             current_row: None,
         }
@@ -218,6 +224,7 @@ impl TabCommittedPayload {
             && self.base_results.capacity() == 0
             && self.results.capacity() == 0
             && self.preview.capacity() == 0
+            && self.preview_document.is_none()
     }
 
     pub(super) fn heavy_resource_weight(&self) -> usize {
@@ -232,6 +239,11 @@ impl TabCommittedPayload {
             .saturating_add(self.base_results.capacity())
             .saturating_add(self.results.capacity())
             .saturating_add(self.preview.capacity())
+            .saturating_add(
+                self.preview_document
+                    .as_ref()
+                    .map_or(0, |document| document.capacity_bytes()),
+            )
     }
 }
 

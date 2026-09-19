@@ -5,6 +5,10 @@ use self::widgets::{centered_top_panel_label, paint_compact_combo_selected_text}
 use super::{
     render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode, ResultSortScope,
 };
+use crate::ui_model::{
+    format_file_size, format_system_time, normalize_path_for_display, PagedTextPreview,
+    PreviewPageError, PreviewPageState, SyntaxTokenKind,
+};
 use eframe::egui;
 #[cfg(test)]
 use std::cell::RefCell;
@@ -37,6 +41,7 @@ struct ActiveResultRenderProbe {
 thread_local! {
     static RESULT_RENDER_PROBE: RefCell<Option<ActiveResultRenderProbe>> = const { RefCell::new(None) };
     static FORCE_IGNORE_LIST_CHECKBOX_CLICK: RefCell<bool> = const { RefCell::new(false) };
+    static PREVIEW_RENDER_ROWS: RefCell<Option<usize>> = const { RefCell::new(None) };
 }
 
 #[cfg(test)]
@@ -201,6 +206,234 @@ fn result_row_height(ui: &egui::Ui) -> f32 {
     ui.text_style_height(&egui::TextStyle::Body) + (FlistWalkerApp::RESULT_ROW_V_MARGIN * 2.0)
 }
 
+#[derive(Clone, Copy)]
+enum PreviewAction {
+    More,
+    Reload,
+    ToggleColor,
+}
+
+fn preview_visible_prefix(line: &str) -> (&str, bool) {
+    if let Some((boundary, _)) = line.char_indices().nth(4_096) {
+        (&line[..boundary], true)
+    } else {
+        (line, false)
+    }
+}
+
+fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
+    let (r, g, b) = match (kind, dark) {
+        (SyntaxTokenKind::Keyword, true) => (198, 155, 255),
+        (SyntaxTokenKind::String, true) => (157, 213, 161),
+        (SyntaxTokenKind::Comment, true) => (143, 151, 163),
+        (SyntaxTokenKind::Number, true) => (242, 182, 126),
+        (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, true) => (107, 191, 246),
+        (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, true) => (239, 194, 117),
+        (SyntaxTokenKind::Keyword, false) => (111, 50, 150),
+        (SyntaxTokenKind::String, false) => (26, 111, 54),
+        (SyntaxTokenKind::Comment, false) => (96, 103, 111),
+        (SyntaxTokenKind::Number, false) => (151, 82, 27),
+        (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, false) => (29, 92, 157),
+        (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, false) => (135, 88, 16),
+    };
+    egui::Color32::from_rgb(r, g, b)
+}
+
+pub(super) fn preview_line_job(
+    document: &PagedTextPreview,
+    index: usize,
+    color_enabled: bool,
+    ui: &egui::Ui,
+) -> egui::text::LayoutJob {
+    let original = document.line(index).unwrap_or("");
+    let (visible, _) = preview_visible_prefix(original);
+    let prefix_len = visible.len();
+    let mut job = egui::text::LayoutJob::default();
+    job.wrap.max_width = f32::INFINITY;
+    let plain = egui::TextFormat {
+        font_id: egui::TextStyle::Monospace.resolve(ui.style()),
+        color: ui.visuals().text_color(),
+        ..Default::default()
+    };
+    if !color_enabled
+        || document
+            .syntax()
+            .is_none_or(|syntax| syntax.is_plain_fallback())
+    {
+        job.append(visible, 0.0, plain);
+        return job;
+    }
+    let Some(line_range) = document.line_range(index) else {
+        return job;
+    };
+    let line_start = line_range.start as usize;
+    let line_end = line_start + prefix_len;
+    let mut position = line_start;
+    let spans = document.syntax_spans();
+    let first = spans.partition_point(|span| span.range.end as usize <= line_start);
+    for span in &spans[first..] {
+        let span_start = span.range.start as usize;
+        if span_start >= line_end {
+            break;
+        }
+        let span_end = (span.range.end as usize).min(line_end);
+        let start = span_start.max(position).max(line_start);
+        if position < start {
+            job.append(
+                &original[position - line_start..start - line_start],
+                0.0,
+                plain.clone(),
+            );
+        }
+        if start < span_end {
+            let mut style = plain.clone();
+            style.color = preview_token_color(span.kind, ui.visuals().dark_mode);
+            job.append(
+                &original[start - line_start..span_end - line_start],
+                0.0,
+                style,
+            );
+            position = span_end;
+        }
+    }
+    if position < line_end {
+        job.append(
+            &original[position - line_start..prefix_len],
+            0.0,
+            plain.clone(),
+        );
+    }
+    job
+}
+
+fn render_paged_preview(
+    ui: &mut egui::Ui,
+    document: &PagedTextPreview,
+    generation: u64,
+    busy: bool,
+    error: Option<PreviewPageError>,
+    color_enabled: bool,
+) -> Option<PreviewAction> {
+    ui.label(format!(
+        "File: {}",
+        normalize_path_for_display(&document.header.path)
+    ));
+    let prefix = if document.header.is_symlink {
+        "Target "
+    } else {
+        ""
+    };
+    ui.label(format!(
+        "{prefix}Size: {}",
+        format_file_size(document.header.size)
+    ));
+    if let Some(created) = document.header.created.and_then(format_system_time) {
+        ui.label(format!("{prefix}Created: {created}"));
+    }
+    if let Some(modified) = document.header.modified.and_then(format_system_time) {
+        ui.label(format!("{prefix}Updated: {modified}"));
+    }
+    if !document.header.attributes.is_empty() {
+        ui.label(format!(
+            "Attributes: {}",
+            document.header.attributes.join(", ")
+        ));
+    }
+    if let Some(target) = &document.header.target {
+        ui.label(format!("Target: {target}"));
+    }
+    ui.separator();
+    let body_height = (ui.available_height() - 85.0).max(80.0);
+    let row_height = ui.text_style_height(&egui::TextStyle::Monospace) + 4.0;
+    egui::ScrollArea::both()
+        .id_salt(("paged-preview", generation))
+        .max_height(body_height)
+        .auto_shrink([false, false])
+        .show_rows(ui, row_height, document.line_count(), |ui, rows| {
+            for index in rows {
+                #[cfg(test)]
+                PREVIEW_RENDER_ROWS.with(|count| {
+                    if let Some(value) = count.borrow_mut().as_mut() {
+                        *value += 1;
+                    }
+                });
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::Label::new(
+                            egui::RichText::new(format!("{:>5}", index + 1))
+                                .weak()
+                                .monospace(),
+                        )
+                        .selectable(false),
+                    );
+                    ui.add(
+                        egui::Label::new(preview_line_job(document, index, color_enabled, ui))
+                            .selectable(true)
+                            .wrap_mode(egui::TextWrapMode::Extend),
+                    );
+                    if document
+                        .line(index)
+                        .is_some_and(|line| preview_visible_prefix(line).1)
+                    {
+                        ui.add(egui::Label::new("… [line truncated]").selectable(false));
+                    }
+                });
+            }
+        });
+    ui.separator();
+    let mut action = None;
+    ui.horizontal(|ui| {
+        let status = match document.state() {
+            PreviewPageState::More => "More available",
+            PreviewPageState::Eof => "End of file",
+            PreviewPageState::LimitReached => "Display limit reached",
+        };
+        ui.label(format!("{} lines shown · {status}", document.line_count()));
+        if busy {
+            ui.spinner();
+        }
+    });
+    if let Some(error) = error {
+        ui.colored_label(
+            ui.visuals().error_fg_color,
+            super::paged_preview_flow::page_error_label(error),
+        );
+    }
+    ui.horizontal(|ui| {
+        if document
+            .syntax()
+            .is_some_and(|syntax| !syntax.is_plain_fallback())
+            && ui
+                .button(if color_enabled {
+                    "Color: on"
+                } else {
+                    "Color: off"
+                })
+                .clicked()
+        {
+            action = Some(PreviewAction::ToggleColor);
+        }
+        if ui
+            .add_enabled(
+                !busy
+                    && document.state() == PreviewPageState::More
+                    && !error.is_some_and(super::paged_preview_flow::permanent_page_error),
+                egui::Button::new("Load more"),
+            )
+            .clicked()
+        {
+            action = Some(PreviewAction::More);
+        }
+        if ui
+            .add_enabled(!busy, egui::Button::new("Reload preview"))
+            .clicked()
+        {
+            action = Some(PreviewAction::Reload);
+        }
+    });
+    action
+}
+
 pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     if app.shell.runtime.query_state.history_search_active {
         app.shell.ui.set_preview_resize_in_progress(false);
@@ -209,6 +442,8 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
         return;
     }
     if app.shell.ui.show_preview() {
+        let paged_document = app.paged_preview_for_current().cloned();
+        let mut preview_action = None;
         let max_preview_width = (ui.available_width() - FlistWalkerApp::MIN_RESULTS_PANEL_WIDTH)
             .max(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH);
         let panel = egui::Panel::right("preview-panel")
@@ -227,22 +462,43 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                     let frame_fill = ui.visuals().extreme_bg_color;
                     egui::Frame::NONE.fill(frame_fill).show(ui, |ui| {
                         ui.set_min_size(egui::vec2(preview_width, preview_height));
-                        egui::ScrollArea::both()
-                            .auto_shrink([false, false])
-                            .show(ui, |ui| {
-                                ui.add_sized(
-                                    egui::vec2(preview_width, preview_height),
-                                    egui::TextEdit::multiline(app.shell.runtime.preview_text_mut())
+                        if let Some(document) = paged_document.as_ref() {
+                            preview_action = render_paged_preview(
+                                ui,
+                                document,
+                                app.paged_preview_view.display_generation,
+                                app.paged_preview_view.busy,
+                                app.paged_preview_view.error,
+                                app.paged_preview_view.color_enabled,
+                            );
+                        } else {
+                            egui::ScrollArea::both()
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| {
+                                    ui.add_sized(
+                                        egui::vec2(preview_width, preview_height),
+                                        egui::TextEdit::multiline(
+                                            app.shell.runtime.preview_text_mut(),
+                                        )
                                         .interactive(false)
                                         .font(preview_text_style())
                                         .desired_width(f32::INFINITY)
                                         .desired_rows(1),
-                                );
-                            });
+                                    );
+                                });
+                        }
                     });
                 },
             );
         });
+        match preview_action {
+            Some(PreviewAction::More) => app.request_paged_preview_more(),
+            Some(PreviewAction::Reload) => app.reload_paged_preview(),
+            Some(PreviewAction::ToggleColor) => {
+                app.paged_preview_view.color_enabled = !app.paged_preview_view.color_enabled
+            }
+            None => {}
+        }
         let new_width = response
             .response
             .rect
@@ -700,4 +956,48 @@ pub(super) fn render_central_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) 
     egui::CentralPanel::default().show(ui, |ui| {
         render_results_and_preview(app, ui);
     });
+}
+
+#[cfg(test)]
+mod preview_render_tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn paged_preview_renders_only_visible_rows() {
+        let path = std::env::temp_dir().join(format!(
+            "flistwalker-preview-rows-{}.rs",
+            std::process::id()
+        ));
+        let source = "fn row() {}\n".repeat(5_000);
+        fs::write(&path, source).expect("write fixture");
+        let mut document = PagedTextPreview::initial(&path, &|| false).expect("first page");
+        while document.state() == PreviewPageState::More {
+            document = document.read_more(&path, &|| false).expect("more page");
+        }
+        assert_eq!(document.line_count(), 5_000);
+        let ctx = egui::Context::default();
+        let mut rendered = 0;
+        for _ in 0..2 {
+            PREVIEW_RENDER_ROWS.with(|count| *count.borrow_mut() = Some(0));
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(800.0, 480.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    render_paged_preview(ui, &document, 1, false, None, true);
+                },
+            );
+            rendered = PREVIEW_RENDER_ROWS.with(|count| count.borrow_mut().take().unwrap_or(0));
+        }
+        assert!(
+            rendered > 0 && rendered < 100,
+            "rendered {rendered} of 5,000 lines"
+        );
+        fs::remove_file(path).expect("cleanup fixture");
+    }
 }

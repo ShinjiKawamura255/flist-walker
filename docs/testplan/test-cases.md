@@ -230,6 +230,11 @@
 | TC-213 | unit+integration+platform+perf | follow-linksのdefault false、GUI/CLI/TUI伝播、session/preset互換、新規tab非継承、FileList source優先とfresh作成への伝播を検証する。Unix実symlink/Windows実junctionで内部・外部・複数alias・祖先循環・broken・file link・linked Root・depth・種別・cancel・callback上限をserial/parallel双方で検証し、既存indexing性能guardを維持する | SP-002, SP-006, SP-019, SP-021 |
 | TC-214 | unit+platform | GUI workerのsymlink/junction RootからWalker/FileListのBatch/ReplaceAllを受信し、要求Root経由のEntry.pathとResults相対表示、外部絶対行保全、別名suffix、Windows通常/verbatim drive/UNC、component境界を検証する。実機未実行OSはNOT RUNとし、native Open/Revealを代替証跡に要求しない | SP-010 |
 | TC-215 | integration+platform+regression | fresh Windows GNU buildで byte-identical の `flistwalker.exe` / `FlistWalker.exe` が GUI subsystem 2、`fw.exe` が console subsystem 3 であることを PE header で検証し、resource/manifest/import 契約も同時に維持する。source に `FreeConsole()` 経路を残さず、TC-187 と fixed-key/hash-distinct payload の TC-191 Universal/Fw copied-sandbox E2E が通ることを確認する | SP-006, SP-014, SP-018, SP-023 |
-| TC-216 | unit+GUI | 6項目の保存済み JSON→草稿→保存→次回起動 round trip、既定値、履歴 checkbox の反転、数値境界、保存後の現行 process 設定不変を検証する | SP-024 |
+| TC-216 | unit+GUI | 6項目の保存済み JSON→草稿→保存→次回起動 round trip、既定値、履歴 checkbox の反転、数値境界、保存後の現行 process 設定不変、保存成功通知がフッターの状態数値より先にあり省略時も先頭に残ることを検証する | SP-024 |
 | TC-217 | unit+GUI | Cancel/Esc/close/reset の非保存、modal 中の背後 shortcut 抑止、JSON open 時の草稿保持・fallback・重複抑止、外部編集後の明示 reload 確認と再読込失敗時の草稿保全、読込取消後の遅延応答無視を検証する | SP-024 |
 | TC-218 | unit+integration | 未知・developer key 保持、重複キー拒否、他 writer の変更、削除、不正 JSON、lock/write failure、replace 後 sync failure の rollback、worker disconnect/shutdown を検証し、失敗時に草稿・既存 bytes を保つ | SP-024 |
+
+| TC-219 | unit | 99/100/101行、500行追加、5,000行と1 MiB、無改行、CRLF、UTF-8/UTF-16/legacy文字境界とASCII接頭部後の日本語、late binary/復号失敗、cancel、置換時に確定済み本文を保つ | SP-025 |
+| TC-220 | unit+integration | 実行中1件・最新待機1件、A→B→C選択、tab切替/復元、背景での追加失敗時の本文保持とタブごとのエラー、古い応答・cancel・失敗のroutingとbusyが終端し、on-demandとidentity変更を追加時にも再確認する。resident 32 MiB、回収 40 MiB、worker入力と構築/応答・描画を含む計上 96 MiB の境界、満杯時の単一保留と空き後の収束を直接検証する | SP-025 |
+| TC-221 | unit+GUI+manual | 本文と行番号の分離、選択コピーの純本文（省略marker除外を含む）、4,096文字省略、可視行だけの描画、追加中の本文維持、追加/再読込のfocus操作、サイズ・日時・属性・link情報を検証する | SP-025 |
+| TC-222 | unit+GUI+TUI | 承認済み13言語群の分類とC/C++/HTML専用例、ページ境界の複数行状態、span上限時のプレーン表示、色ON/OFFで本文不変、TUI20行/64 KiBとフォルダ上限の維持を検証する | SP-025 |

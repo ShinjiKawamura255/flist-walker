@@ -95,13 +95,18 @@ pub(in crate::app) struct PreviewRequest {
     pub(in crate::app) request_id: u64,
     pub(in crate::app) path: PathBuf,
     pub(in crate::app) is_dir: bool,
+    pub(in crate::app) document: Option<Arc<crate::ui_model::PagedTextPreview>>,
 }
 
+#[derive(Clone)]
 pub(in crate::app) struct PreviewResponse {
     pub(in crate::app) canceled: bool,
     pub(in crate::app) request_id: u64,
     pub(in crate::app) path: PathBuf,
     pub(in crate::app) preview: String,
+    pub(in crate::app) document: Option<Arc<crate::ui_model::PagedTextPreview>>,
+    pub(in crate::app) page_error: Option<crate::ui_model::PreviewPageError>,
+    pub(in crate::app) is_more: bool,
 }
 
 pub(in crate::app) struct ActionRequest {

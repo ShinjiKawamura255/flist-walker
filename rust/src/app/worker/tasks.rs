@@ -25,11 +25,14 @@ use crate::indexer::{
 use crate::path_utils::{normalize_windows_path_buf, path_key};
 use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRunOutcome};
 use crate::search_catalog::{load_search_catalog, search_catalog_file_path, update_search_catalog};
-use crate::ui_model::{build_preview_text_with_kind_cancellable, normalize_path_for_display};
+use crate::ui_model::{
+    build_preview_text_with_kind_cancellable, normalize_path_for_display, PagedTextPreview,
+    PreviewPageError,
+};
 use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -223,14 +226,57 @@ pub(in crate::app) fn spawn_search_worker(
 
 pub(in crate::app) fn spawn_preview_worker(
     shutdown: Arc<AtomicBool>,
+    freshness: Arc<AtomicU64>,
 ) -> (
     Sender<PreviewRequest>,
     Receiver<PreviewResponse>,
     thread::JoinHandle<()>,
 ) {
-    spawn_preview_worker_with(shutdown, |path, is_dir, canceled| {
-        build_preview_text_with_kind_cancellable(path, is_dir, canceled)
+    spawn_preview_worker_core(shutdown, Some(freshness), |request, canceled| {
+        if request.is_dir {
+            return build_preview_text_with_kind_cancellable(&request.path, true, canceled)
+                .map(PreviewBuild::text);
+        }
+        let is_more = request.document.is_some();
+        let result = if let Some(document) = &request.document {
+            document.read_more(&request.path, canceled)
+        } else {
+            PagedTextPreview::initial(&request.path, canceled)
+        };
+        match result {
+            Ok(document) => Some(PreviewBuild {
+                preview: String::new(),
+                document: Some(Arc::new(document)),
+                page_error: None,
+                is_more,
+            }),
+            Err(PreviewPageError::Canceled) => None,
+            Err(error) => Some(PreviewBuild {
+                preview: String::new(),
+                document: None,
+                page_error: Some(error),
+                is_more,
+            }),
+        }
     })
+}
+
+struct PreviewBuild {
+    preview: String,
+    document: Option<Arc<PagedTextPreview>>,
+    page_error: Option<PreviewPageError>,
+    is_more: bool,
+}
+
+impl PreviewBuild {
+    fn text(preview: String) -> Self {
+        Self {
+            preview,
+            document: None,
+            page_error: None,
+            is_more: false,
+        }
+    }
 }
 
 fn canceled_preview_response(request: PreviewRequest) -> PreviewResponse {
@@ -239,12 +285,30 @@ fn canceled_preview_response(request: PreviewRequest) -> PreviewResponse {
         path: request.path,
         preview: String::new(),
         canceled: true,
+        document: None,
+        page_error: None,
+        is_more: request.document.is_some(),
     }
 }
 
+#[cfg(test)]
 fn spawn_preview_worker_with(
     shutdown: Arc<AtomicBool>,
     build: impl Fn(&Path, bool, &dyn Fn() -> bool) -> Option<String> + Send + 'static,
+) -> (
+    Sender<PreviewRequest>,
+    Receiver<PreviewResponse>,
+    thread::JoinHandle<()>,
+) {
+    spawn_preview_worker_core(shutdown, None, move |request, canceled| {
+        build(&request.path, request.is_dir, canceled).map(PreviewBuild::text)
+    })
+}
+
+fn spawn_preview_worker_core(
+    shutdown: Arc<AtomicBool>,
+    freshness: Option<Arc<AtomicU64>>,
+    build: impl Fn(&PreviewRequest, &dyn Fn() -> bool) -> Option<PreviewBuild> + Send + 'static,
 ) -> (
     Sender<PreviewRequest>,
     Receiver<PreviewResponse>,
@@ -275,6 +339,12 @@ fn spawn_preview_worker_with(
                 if shutdown.load(Ordering::Acquire) {
                     return true;
                 }
+                if freshness
+                    .as_ref()
+                    .is_some_and(|latest| latest.load(Ordering::Acquire) != req.request_id)
+                {
+                    return true;
+                }
                 if newer.borrow().is_some() {
                     return true;
                 }
@@ -285,7 +355,7 @@ fn spawn_preview_worker_with(
                 false
             };
             trace_worker_started("preview", req.request_id);
-            let preview = build(&req.path, req.is_dir, &canceled);
+            let preview = build(&req, &canceled);
             let was_canceled = canceled();
             next = newer.into_inner();
             if was_canceled || preview.is_none() {
@@ -302,18 +372,26 @@ fn spawn_preview_worker_with(
             }
             let preview = preview.expect("checked preview");
             info!(flow = "preview", event = "finished", request_id = req.request_id,
-                path = %req.path.display(), preview_chars = preview.chars().count(),
+                path = %req.path.display(), preview_chars = preview.preview.chars().count(),
                 "worker request finished");
+            let request_id = req.request_id;
+            let path = req.path;
+            // Release the continuation input on the worker before its response
+            // can be observed and the next request dispatched by the UI.
+            drop(req.document);
             if tx_res
                 .send(PreviewResponse {
                     canceled: false,
-                    request_id: req.request_id,
-                    path: req.path,
-                    preview,
+                    request_id,
+                    path,
+                    preview: preview.preview,
+                    document: preview.document,
+                    page_error: preview.page_error,
+                    is_more: preview.is_more,
                 })
                 .is_err()
             {
-                trace_worker_receiver_closed("preview", req.request_id);
+                trace_worker_receiver_closed("preview", request_id);
                 break;
             }
         }
@@ -1557,6 +1635,7 @@ mod preview_cancellation_tests {
             request_id: 1,
             path: "slow".into(),
             is_dir: true,
+            document: None,
         })
         .unwrap();
         entered_rx.recv_timeout(Duration::from_secs(1)).unwrap();
@@ -1564,12 +1643,14 @@ mod preview_cancellation_tests {
             request_id: 2,
             path: "latest".into(),
             is_dir: true,
+            document: None,
         })
         .unwrap();
         tx.send(PreviewRequest {
             request_id: 3,
             path: "latest".into(),
             is_dir: true,
+            document: None,
         })
         .unwrap();
         release_tx.send(()).unwrap();

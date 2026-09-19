@@ -7,6 +7,7 @@ use super::protocol::{
 };
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
 
@@ -78,6 +79,10 @@ pub(in crate::app) struct PreviewWorkerBus {
     pub(in crate::app) next_request_id: u64,
     pub(in crate::app) pending_request_id: Option<u64>,
     pub(in crate::app) in_progress: bool,
+    pub(in crate::app) freshness: Arc<AtomicU64>,
+    pub(in crate::app) worker_inflight_request_id: Option<u64>,
+    pub(in crate::app) worker_input_document_bytes: usize,
+    pub(in crate::app) latest_request: Option<PreviewRequest>,
 }
 
 impl PreviewWorkerBus {
@@ -91,6 +96,47 @@ impl PreviewWorkerBus {
 
     pub(in crate::app) fn clear_request(&mut self) {
         clear_request(&mut self.pending_request_id, &mut self.in_progress);
+    }
+
+    pub(in crate::app) fn queue_request(
+        &mut self,
+        request: PreviewRequest,
+    ) -> Result<Option<PreviewRequest>, PreviewRequest> {
+        self.freshness.store(request.request_id, Ordering::Release);
+        if self.worker_inflight_request_id.is_some() {
+            return Ok(self.latest_request.replace(request));
+        }
+        let request_id = request.request_id;
+        let input_bytes = request
+            .document
+            .as_ref()
+            .map_or(0, |document| document.capacity_bytes());
+        self.tx.send(request).map_err(|error| error.0)?;
+        self.worker_inflight_request_id = Some(request_id);
+        self.worker_input_document_bytes = input_bytes;
+        Ok(None)
+    }
+
+    pub(in crate::app) fn settle_response(
+        &mut self,
+        request_id: u64,
+    ) -> Result<(), PreviewRequest> {
+        if self.worker_inflight_request_id != Some(request_id) {
+            return Ok(());
+        }
+        self.worker_inflight_request_id = None;
+        self.worker_input_document_bytes = 0;
+        if let Some(request) = self.latest_request.take() {
+            let next_id = request.request_id;
+            let input_bytes = request
+                .document
+                .as_ref()
+                .map_or(0, |document| document.capacity_bytes());
+            self.tx.send(request).map_err(|error| error.0)?;
+            self.worker_inflight_request_id = Some(next_id);
+            self.worker_input_document_bytes = input_bytes;
+        }
+        Ok(())
     }
 }
 

@@ -18,7 +18,7 @@
 - File / Folder の高速インデックスと検索
 - 検索演算子: `'`（完全一致）, `!`（除外）, `^`（先頭）, `$`（末尾）
 - 結果ハイライト、非一致非表示、ピン留め複数選択
-- プレビュー（オンデマンドファイルは自動スキップ）
+- プレビュー（オンデマンドファイルは自動スキップ）。テキストは行番号付きで段階的に表示し、本文だけを選択・コピーできます。`Load more` で追加、`Reload preview` で先頭から再読込、`Color: on/off` で当該GUIセッションの色分けを切り替えます。Rust、Python、JavaScript、TypeScript、JSON、TOML、YAML、Markdown、shell、PowerShell、C、C++、HTMLに対応します。
 - Root の保存、既定 root 設定
 - 検索履歴（全タブ共通）
 - `Create File List` で現在Rootから `FileList.txt` を生成

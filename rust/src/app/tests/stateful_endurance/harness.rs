@@ -73,6 +73,7 @@ impl StatefulHarness {
         let (preview_tx, preview_requests) = mpsc::channel::<PreviewRequest>();
         let (preview_responses, preview_rx) = mpsc::channel::<PreviewResponse>();
         app.shell.worker_bus.preview.tx = preview_tx;
+        app.shell.worker_bus.preview.worker_inflight_request_id = None;
         app.shell.worker_bus.preview.rx = preview_rx;
         app.shell.worker_bus.preview.clear_request();
 
@@ -601,6 +602,9 @@ impl StatefulHarness {
                 request_id: request.request_id,
                 path: request.path,
                 preview: preview.to_string(),
+                document: None,
+                page_error: None,
+                is_more: false,
             })
             .expect("send preview response");
         self.app.poll_preview_response();

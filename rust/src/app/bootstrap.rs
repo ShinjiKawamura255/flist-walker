@@ -236,8 +236,9 @@ impl FlistWalkerApp {
         let (search_tx, search_rx, search_handle) =
             spawn_search_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("search", search_handle);
+        let preview_freshness = Arc::new(std::sync::atomic::AtomicU64::new(0));
         let (preview_tx, preview_rx, preview_handle) =
-            spawn_preview_worker(Arc::clone(&worker_shutdown));
+            spawn_preview_worker(Arc::clone(&worker_shutdown), Arc::clone(&preview_freshness));
         worker_runtime.push("preview", preview_handle);
         let (action_tx, action_rx, action_handles, action_freshness) =
             spawn_action_worker(Arc::clone(&worker_shutdown));
@@ -289,6 +290,10 @@ impl FlistWalkerApp {
                     next_request_id: 1,
                     pending_request_id: None,
                     in_progress: false,
+                    freshness: preview_freshness,
+                    worker_inflight_request_id: None,
+                    worker_input_document_bytes: 0,
+                    latest_request: None,
                 },
                 action: ActionWorkerBus {
                     tx: action_tx,
@@ -426,8 +431,14 @@ impl FlistWalkerApp {
         let emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
         let ctrl_w_deletes_word_in_query = runtime_config.ctrl_w_deletes_word_in_query;
         let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
+        let preview_retirement = tab_resource_reclaimer.preview_handle();
         let mut app = Self {
             settings_dialog: Default::default(),
+            paged_preview_view: Default::default(),
+            deferred_preview_response: None,
+            parked_preview_request: None,
+            deferred_latest_preview_request: None,
+            deferred_more_intent: None,
             shell: AppShellState {
                 runtime: AppRuntimeState::new(
                     root,
@@ -479,6 +490,9 @@ impl FlistWalkerApp {
             #[cfg(test)]
             test_settings_paths: launch.test_settings_paths.clone(),
         };
+        app.shell
+            .runtime
+            .install_preview_retirement(preview_retirement);
         Self::append_window_trace(
             "launch_query_initialized",
             &Self::query_trace_summary(&app.shell.runtime.query_state.query),

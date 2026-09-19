@@ -71,6 +71,7 @@ mod action_commands;
 mod app_core;
 mod cache_tests;
 mod index_pipeline;
+mod paged_preview;
 mod pipeline_tests;
 mod preset_picker;
 mod query_history;

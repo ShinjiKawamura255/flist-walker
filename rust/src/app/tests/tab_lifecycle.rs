@@ -1839,6 +1839,7 @@ fn regression_new_tab_initializes_preview_and_all_shown_kinds_without_input() {
     app.shell.worker_bus.kind.rx = kind_response_rx;
     let (preview_tx, preview_rx) = mpsc::channel();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     let (preview_response_tx, preview_response_rx) = mpsc::channel();
     app.shell.worker_bus.preview.rx = preview_response_rx;
     app.create_new_tab();
@@ -1879,6 +1880,9 @@ fn regression_new_tab_initializes_preview_and_all_shown_kinds_without_input() {
             request_id: preview.request_id,
             path: first,
             preview: "initial preview body".to_string(),
+            document: None,
+            page_error: None,
+            is_more: false,
         })
         .unwrap();
     app.poll_preview_response();
@@ -1904,6 +1908,7 @@ fn regression_new_tab_empty_or_preview_disabled_does_not_request_preview() {
         app.shell.ui.show_preview = !populated;
         let (tx, rx) = mpsc::channel();
         app.shell.worker_bus.preview.tx = tx;
+        app.shell.worker_bus.preview.worker_inflight_request_id = None;
         app.create_new_tab();
         assert!(rx.try_recv().is_err());
         assert!(app.shell.runtime.preview.is_empty());
@@ -2488,11 +2493,22 @@ fn restoring_closed_tab_reloads_preview_after_request_ownership_is_cleared() {
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.request_preview_for_current();
     let interrupted = preview_rx.try_recv().expect("interrupted preview request");
 
     app.close_active_tab();
     app.restore_recently_closed_tab();
+
+    app.apply_background_preview_response(PreviewResponse {
+        request_id: interrupted.request_id,
+        path: selected.clone(),
+        preview: String::new(),
+        canceled: true,
+        document: None,
+        page_error: None,
+        is_more: false,
+    });
 
     let replacement = preview_rx
         .try_recv()
@@ -2584,6 +2600,7 @@ fn restoring_closed_tab_reloads_trimmed_completed_preview() {
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
 
     app.close_active_tab();
     app.restore_recently_closed_tab();

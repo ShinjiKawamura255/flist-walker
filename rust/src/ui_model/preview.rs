@@ -1,11 +1,15 @@
-use std::fs::{File, Metadata};
+#[cfg(test)]
+use std::fs::File;
+use std::fs::Metadata;
+#[cfg(test)]
 use std::io::Read;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(test)]
 use encoding_rs::{EUC_JP, SHIFT_JIS, UTF_16BE, UTF_16LE, WINDOWS_1252};
 
-use super::{normalize_path_for_display, should_skip_preview};
+use super::{normalize_path_for_display, should_skip_preview, PagedTextPreview, PreviewPageError};
 pub fn build_preview_text(path: &Path) -> String {
     build_preview_text_with_kind(path, path.is_dir())
 }
@@ -21,8 +25,6 @@ pub fn build_preview_text_with_kind_cancellable(
     is_dir: bool,
     canceled: &(impl Fn() -> bool + ?Sized),
 ) -> Option<String> {
-    const PREVIEW_MAX_LINES: usize = 20;
-    const PREVIEW_MAX_BYTES: usize = 64 * 1024;
     if canceled() {
         return None;
     }
@@ -62,15 +64,39 @@ pub fn build_preview_text_with_kind_cancellable(
     if canceled() {
         return None;
     }
-    let text = match read_preview_lines(path, PREVIEW_MAX_LINES, PREVIEW_MAX_BYTES) {
-        Ok(preview) if preview.is_empty() => format!("{head}\n<empty file>"),
-        Ok(preview) => format!("{head}\n{}", preview.join("\n")),
-        Err(_) => format!("{head}\n<binary or unreadable file>"),
+    let text = match PagedTextPreview::tui_head(path, &|| canceled()) {
+        Ok(preview) => {
+            let lines = (0..preview.line_count())
+                .filter_map(|index| preview.line(index))
+                .collect::<Vec<_>>();
+            format!("{head}\n{}", lines.join("\n"))
+        }
+        Err(PreviewPageError::Empty) => format!("{head}\n<empty file>"),
+        Err(PreviewPageError::Canceled) => return None,
+        Err(error) => format!(
+            "{head}\n<binary or unreadable file>\nReason: {}",
+            tui_page_error_label(error)
+        ),
     };
     (!canceled()).then_some(text)
 }
 
-fn format_file_size(bytes: u64) -> String {
+fn tui_page_error_label(error: PreviewPageError) -> &'static str {
+    match error {
+        PreviewPageError::Empty => "empty file",
+        PreviewPageError::Binary => "binary file",
+        PreviewPageError::DecodeFailed => "text decoding failed",
+        PreviewPageError::PermissionDenied => "permission denied",
+        PreviewPageError::NotFound => "file not found",
+        PreviewPageError::OnDemandSkipped => "on-demand file: preview skipped",
+        PreviewPageError::ReadFailed => "read failed",
+        PreviewPageError::Changed => "file changed",
+        PreviewPageError::LimitReached => "display limit reached",
+        PreviewPageError::Canceled => "canceled",
+    }
+}
+
+pub(crate) fn format_file_size(bytes: u64) -> String {
     const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
     let mut value = bytes as f64;
     let mut unit = 0usize;
@@ -85,6 +111,7 @@ fn format_file_size(bytes: u64) -> String {
     }
 }
 
+#[cfg(test)]
 fn read_preview_lines(
     path: &Path,
     max_lines: usize,
@@ -103,6 +130,7 @@ fn read_preview_lines(
     })
 }
 
+#[cfg(test)]
 fn decode_preview_lines(
     bytes: &[u8],
     max_lines: usize,
@@ -126,6 +154,7 @@ fn decode_preview_lines(
         .next()
 }
 
+#[cfg(test)]
 fn preview_decoding_candidates(bytes: &[u8], boundary_lookahead: &[u8]) -> Vec<Option<String>> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         return vec![decode_utf8_preview(&bytes[3..], boundary_lookahead)];
@@ -139,6 +168,7 @@ fn preview_decoding_candidates(bytes: &[u8], boundary_lookahead: &[u8]) -> Vec<O
     Vec::new()
 }
 
+#[cfg(test)]
 fn preview_fallback_decoders(bytes: &[u8]) -> Vec<Option<String>> {
     #[cfg(windows)]
     {
@@ -158,6 +188,7 @@ fn preview_fallback_decoders(bytes: &[u8]) -> Vec<Option<String>> {
     }
 }
 
+#[cfg(test)]
 fn decode_utf8_preview(bytes: &[u8], boundary_lookahead: &[u8]) -> Option<String> {
     match std::str::from_utf8(bytes) {
         Ok(text) => Some(text.to_string()),
@@ -174,6 +205,7 @@ fn decode_utf8_preview(bytes: &[u8], boundary_lookahead: &[u8]) -> Option<String
     }
 }
 
+#[cfg(test)]
 fn valid_utf8_boundary_prefix_len(
     bytes: &[u8],
     boundary_lookahead: &[u8],
@@ -202,6 +234,7 @@ fn valid_utf8_boundary_prefix_len(
     Some(valid_up_to)
 }
 
+#[cfg(test)]
 fn decode_with_encoding(bytes: &[u8], encoding: &'static encoding_rs::Encoding) -> Option<String> {
     let (decoded, _used_encoding, had_errors) = encoding.decode(bytes);
     if had_errors {
@@ -214,6 +247,7 @@ fn decode_with_encoding(bytes: &[u8], encoding: &'static encoding_rs::Encoding) 
     Some(text)
 }
 
+#[cfg(test)]
 fn split_preview_lines(decoded: &str, max_lines: usize) -> Vec<String> {
     decoded
         .lines()
@@ -222,14 +256,17 @@ fn split_preview_lines(decoded: &str, max_lines: usize) -> Vec<String> {
         .collect()
 }
 
+#[cfg(test)]
 fn looks_like_binary(bytes: &[u8]) -> bool {
     bytes.contains(&0) && !has_utf16_bom(bytes)
 }
 
+#[cfg(test)]
 fn has_utf16_bom(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0xFF, 0xFE]) || bytes.starts_with(&[0xFE, 0xFF])
 }
 
+#[cfg(test)]
 fn contains_too_many_control_chars(text: &str) -> bool {
     let mut suspicious = 0usize;
     let mut total = 0usize;
@@ -409,7 +446,7 @@ fn build_entry_header(
     lines.join("\n")
 }
 
-fn metadata_attributes(metadata: &Metadata) -> Vec<&'static str> {
+pub(crate) fn metadata_attributes(metadata: &Metadata) -> Vec<&'static str> {
     let mut attributes = Vec::new();
     if metadata.permissions().readonly() {
         attributes.push("Read-only");
@@ -426,7 +463,7 @@ fn metadata_attributes(metadata: &Metadata) -> Vec<&'static str> {
     attributes
 }
 
-fn format_system_time(time: SystemTime) -> Option<String> {
+pub(crate) fn format_system_time(time: SystemTime) -> Option<String> {
     let seconds = match time.duration_since(UNIX_EPOCH) {
         Ok(duration) => i64::try_from(duration.as_secs()).ok()?,
         Err(error) => {

@@ -11,3 +11,5 @@ terminal-settlement	tc_153_	10	10	-
 tab-ownership	tc_154_	5	4	perf_tc_154_tab_transition_coordinator_p95_stays_below_hard_ceiling
 background-routing	tab_background_responses	9	9	-
 stale-routing	stale	9	9	-
+paged-preview	paged_preview	24	24	-
+settings-dialog	settings_dialog	8	8	-
