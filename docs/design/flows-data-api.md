@@ -74,3 +74,8 @@
 - batch indexing は `build_index_with_metadata_cancellable_and_max_depth` の `Entry` を直接 filter/search へ渡す。一回検索用 `rank_search_results_uncached` は共有 ranking evaluator を使い、prefix cache の lookup/store と cache population 用の clone/full-sort だけを省く。
 - updater asset resolver は `BinaryVariant` を platform target へ明示し、binary stem だけを `FlistWalker-*` / `fw-*` に分ける。remote sidecar stem と署名済み checksum は共有し、対象 variant asset の欠落を別 variant で補完しない。transaction marker は実行ファイル名から推測せず CLI variant に `fw.` sidecar prefix を記録し、version 付き/rename 済み executable と helper process をまたいで universal sidecar と競合しないローカル target を復元する。旧 marker は prefix 欠落を universal として読む。
 - build/resource/release scripts は両 executable を生成する。既存 archive と `.app` は universal のみ、`fw` は standalone のみとし、release bundle validator が 28 asset / 26 checksum entry を fail closed で確認する。
+## DES-025 GUI settings persistence boundary
+
+- `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
+- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、6つの利用者キーだけを patch して atomic replace する。未知キーは残し、実効 process config は変更しない。
+- `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知、失敗は草稿を保持して再試行を許す。

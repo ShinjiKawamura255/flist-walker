@@ -91,6 +91,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 ## Runtime Configuration
 
+- In the GUI, click the gear in the tab bar to edit common settings. Save applies them on the next launch; Cancel leaves the JSON unchanged. The dialog can still open the JSON file for advanced edits and reload it after an external change.
 - On Windows, runtime settings files are stored under `%LocalAppData%\flistwalker\`. On Linux/macOS, they are stored under `~/.flistwalker/`.
 - The runtime config file is created from the current `FLISTWALKER_*` environment values on first launch if it does not exist yet.
 - Only values that are actually set by environment variables are written on first launch; unset options are omitted and fall back to built-in defaults when loaded.

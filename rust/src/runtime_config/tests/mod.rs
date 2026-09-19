@@ -37,6 +37,156 @@ fn test_home(name: &str) -> PathBuf {
     env::temp_dir().join(format!("fff-rs-runtime-config-{name}-{nonce}"))
 }
 
+#[test]
+fn editable_settings_save_preserves_unknown_json_and_defers_effective_config() {
+    let base = test_home("editable-preserve");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(
+        &path,
+        r#"{"restore_tabs_enabled":false,"walker_max_entries":500000,"developer":{"walker_metrics":true,"future_option":"keep"},"future_root":{"nested":[1,2,3]}}"#,
+    )
+    .expect("write fixture");
+    let effective_before = current_runtime_config();
+    let original = read_editable_settings(&path).expect("read draft");
+    assert!(!original.values.restore_tabs_enabled);
+    let mut updated = original.values.clone();
+    updated.restore_tabs_enabled = true;
+    updated.history_persist_disabled = true;
+    updated.walker_max_entries = 17;
+    let saved = save_editable_settings(&path, &original, &updated).expect("save draft");
+    assert_eq!(saved.values, updated);
+    let json: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).expect("saved bytes")).expect("saved JSON");
+    assert_eq!(json["future_root"]["nested"], serde_json::json!([1, 2, 3]));
+    assert_eq!(json["developer"]["future_option"], "keep");
+    assert_eq!(json["developer"]["walker_metrics"], true);
+    assert_eq!(json["restore_tabs_enabled"], true);
+    assert_eq!(json["history_persist_disabled"], true);
+    assert_eq!(json["walker_max_entries"], 17);
+    assert_eq!(current_runtime_config(), effective_before);
+    let next_launch = load_runtime_config_from_path(&path).expect("next launch config");
+    assert!(next_launch.restore_tabs_enabled);
+    assert!(next_launch.history_persist_disabled);
+    assert_eq!(next_launch.walker_max_entries, 17);
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_detects_external_change_without_overwriting_it() {
+    let base = test_home("editable-conflict");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(&path, r#"{"restore_tabs_enabled":false}"#).expect("write fixture");
+    let original = read_editable_settings(&path).expect("read draft");
+    let external = r#"{"restore_tabs_enabled":false,"external":"new"}"#;
+    fs::write(&path, external).expect("external edit");
+    let mut updated = original.values.clone();
+    updated.restore_tabs_enabled = true;
+    assert!(save_editable_settings(&path, &original, &updated).is_err());
+    assert_eq!(
+        fs::read_to_string(&path).expect("read after conflict"),
+        external
+    );
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_rejects_invalid_json_and_zero_limit() {
+    let base = test_home("editable-invalid");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(&path, "{").expect("write invalid fixture");
+    assert!(read_editable_settings(&path).is_err());
+    assert_eq!(fs::read_to_string(&path).expect("still invalid"), "{");
+    fs::write(&path, "{}").expect("write valid fixture");
+    let original = read_editable_settings(&path).expect("read draft");
+    let mut invalid = original.values.clone();
+    invalid.walker_max_entries = 0;
+    assert!(save_editable_settings(&path, &original, &invalid).is_err());
+    assert_eq!(fs::read_to_string(&path).expect("unchanged"), "{}");
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_stale_snapshot_cannot_replace_another_save_or_deleted_file() {
+    let base = test_home("editable-stale");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(&path, "{}").expect("write fixture");
+    let first = read_editable_settings(&path).expect("first snapshot");
+    let stale = read_editable_settings(&path).expect("second snapshot");
+    let mut first_draft = first.values.clone();
+    first_draft.restore_tabs_enabled = true;
+    save_editable_settings(&path, &first, &first_draft).expect("first save");
+    let mut stale_draft = stale.values.clone();
+    stale_draft.history_persist_disabled = true;
+    assert!(save_editable_settings(&path, &stale, &stale_draft).is_err());
+    assert_eq!(
+        read_editable_settings(&path).expect("read current").values,
+        first_draft
+    );
+    fs::remove_file(&path).expect("delete fixture");
+    assert!(save_editable_settings(&path, &stale, &stale_draft).is_err());
+    assert!(!path.exists());
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_rejects_duplicate_known_keys_like_normal_bootstrap() {
+    let base = test_home("editable-duplicate");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(
+        &path,
+        r#"{"restore_tabs_enabled":false,"restore_tabs_enabled":true}"#,
+    )
+    .expect("write fixture");
+    assert!(read_editable_settings(&path).is_err());
+    assert!(load_runtime_config_from_path(&path).is_none());
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_restores_original_after_post_replace_sync_failure() {
+    let base = test_home("editable-durability");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    let original = br#"{"restore_tabs_enabled":false,"unknown":{"keep":1}}"#;
+    fs::write(&path, original).expect("write fixture");
+    let baseline = read_editable_settings(&path).expect("read snapshot");
+    let mut draft = baseline.values.clone();
+    draft.restore_tabs_enabled = true;
+    let failure = save_editable_settings_with_writer(&path, &baseline, &draft, |path, bytes, _| {
+        crate::fs_atomic::write_bytes_atomic_with_sync_for_test(path, bytes, |_| {
+            Err(std::io::Error::other("injected directory sync failure"))
+        })
+    });
+    assert!(failure.is_err());
+    assert_eq!(fs::read(&path).expect("rolled back bytes"), original);
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_pre_replace_permission_failure_preserves_original() {
+    let base = test_home("editable-permission");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(&path, "{}").expect("write fixture");
+    let baseline = read_editable_settings(&path).expect("read snapshot");
+    let mut draft = baseline.values.clone();
+    draft.restore_tabs_enabled = true;
+    let failure = save_editable_settings_with_writer(&path, &baseline, &draft, |_, _, _| {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "injected permission failure",
+        ))
+    });
+    assert!(failure.is_err());
+    assert_eq!(fs::read_to_string(&path).expect("original remains"), "{}");
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
 fn locked_env() -> MutexGuard<'static, ()> {
     env_var_test_lock().lock().expect("env lock")
 }

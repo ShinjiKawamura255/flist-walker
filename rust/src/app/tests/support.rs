@@ -28,6 +28,10 @@ impl TestSettingsScope {
     pub(crate) fn saved_roots_path(&self) -> PathBuf {
         FlistWalkerApp::saved_roots_file_path_in(&self.base)
     }
+
+    pub(crate) fn runtime_config_path(&self) -> PathBuf {
+        crate::runtime_config::runtime_config_file_path_in(&self.base)
+    }
 }
 
 impl Drop for TestSettingsScope {

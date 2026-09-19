@@ -100,6 +100,7 @@ pub(super) enum RenderTabBarCommand {
 #[derive(Clone, Copy)]
 pub(super) enum RenderCommand {
     TopAction(RenderTopActionCommand),
+    OpenSettingsDialog,
     OpenRuntimeConfig,
     HelpDialog(RenderHelpDialogCommand),
     PresetPicker(RenderPresetPickerCommand),
@@ -415,6 +416,7 @@ impl FlistWalkerApp {
             || self.shell.features.update.state.in_progress
             || self.shell.worker_bus.catalog.in_progress
             || self.shell.worker_bus.config_open.in_progress()
+            || self.shell.worker_bus.config_settings.in_progress()
             || self.settings_commit_in_progress()
             || self.any_tab_async_in_progress()
         {
@@ -440,6 +442,7 @@ impl FlistWalkerApp {
             self.shell.features.update.state.install_failure.is_some();
         render_dialogs::render_previous_update_failure_dialog(self, &ctx);
         if !previous_update_failure_visible {
+            render_dialogs::render_settings_dialog(self, &ctx);
             render_dialogs::render_update_check_failure_dialog(self, &ctx);
             render_dialogs::render_update_install_failure_dialog(self, &ctx);
             render_dialogs::render_help_dialog(self, &ctx);
@@ -491,6 +494,10 @@ impl FlistWalkerApp {
         let commands = std::mem::take(&mut self.shell.ui.pending_render_commands);
         for command in commands {
             match command {
+                RenderCommand::OpenSettingsDialog => {
+                    self.open_settings_dialog();
+                    ctx.request_repaint();
+                }
                 RenderCommand::OpenRuntimeConfig => {
                     self.open_runtime_config_file();
                 }

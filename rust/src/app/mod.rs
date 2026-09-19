@@ -45,6 +45,7 @@ mod result_reducer;
 mod root_browser;
 mod search_coordinator;
 mod session;
+mod settings_dialog;
 mod state;
 mod tab_resources;
 mod tab_state;
@@ -190,6 +191,7 @@ impl TabAccentColor {
 /// eframe/egui の UI フレームと各種ワーカーを結線する coordinator。
 pub struct FlistWalkerApp {
     shell: AppShellState,
+    settings_dialog: settings_dialog::SettingsDialogState,
     #[cfg(test)]
     test_settings_paths: Option<TestSettingsPaths>,
 }

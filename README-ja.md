@@ -129,6 +129,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 ### runtime config
 
+- GUI ではタブバーの歯車から主な設定を編集できます。保存した変更は次回起動から反映され、キャンセルでは JSON を変更しません。設定画面から従来どおり JSON を開け、外部で編集した後は明示的に再読み込みできます。
 - runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` とその関連ファイルに保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
 - 初回生成時は、一般利用者向けの既定項目を書き込み、詳細項目は実際に環境変数で設定されている値だけを書き込みます。

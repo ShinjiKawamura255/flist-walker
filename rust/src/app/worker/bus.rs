@@ -229,6 +229,7 @@ impl CatalogWorkerBus {
 
 pub(in crate::app) struct WorkerBus {
     pub(in crate::app) config_open: super::config_open::ConfigOpenService,
+    pub(in crate::app) config_settings: super::config_settings::ConfigSettingsService,
     pub(in crate::app) preview: PreviewWorkerBus,
     pub(in crate::app) action: ActionWorkerBus,
     pub(in crate::app) sort: SortWorkerBus,

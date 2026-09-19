@@ -228,6 +228,11 @@ impl FlistWalkerApp {
                 Self::prepare_and_open_runtime_config,
             );
         worker_runtime.push("config-open", config_open_handle);
+        let (config_settings, config_settings_handle) =
+            crate::app::worker::config_settings::ConfigSettingsService::spawn(Arc::clone(
+                &worker_shutdown,
+            ));
+        worker_runtime.push("config-settings", config_settings_handle);
         let (search_tx, search_rx, search_handle) =
             spawn_search_worker(Arc::clone(&worker_shutdown));
         worker_runtime.push("search", search_handle);
@@ -277,6 +282,7 @@ impl FlistWalkerApp {
             search_rx,
             worker_bus: WorkerBus {
                 config_open,
+                config_settings,
                 preview: PreviewWorkerBus {
                     tx: preview_tx,
                     rx: preview_rx,
@@ -421,6 +427,7 @@ impl FlistWalkerApp {
         let ctrl_w_deletes_word_in_query = runtime_config.ctrl_w_deletes_word_in_query;
         let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
         let mut app = Self {
+            settings_dialog: Default::default(),
             shell: AppShellState {
                 runtime: AppRuntimeState::new(
                     root,
