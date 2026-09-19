@@ -2,6 +2,8 @@ use super::{
     result_reducer, ActionResponse, FlistWalkerApp, PreviewRequest, PreviewResponse,
     SortMetadataResponse,
 };
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::TryRecvError;
 
 impl FlistWalkerApp {
     pub(super) fn bind_preview_request_to_tab(&mut self, request_id: u64, tab_id: u64) {
@@ -272,21 +274,85 @@ impl FlistWalkerApp {
                 return;
             }
         }
-        while let Ok(response) = self.shell.worker_bus.preview.rx.try_recv() {
-            if !self.apply_active_preview_response(&response) {
-                self.apply_background_preview_response(response);
-            }
-            if self.deferred_preview_response.is_some() {
-                break;
+        loop {
+            match self.shell.worker_bus.preview.rx.try_recv() {
+                Ok(response) => {
+                    if !self.apply_active_preview_response(&response) {
+                        self.apply_background_preview_response(response);
+                    }
+                    if self.deferred_preview_response.is_some() {
+                        break;
+                    }
+                }
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.fail_preview_worker();
+                    break;
+                }
             }
         }
+    }
+
+    pub(super) fn fail_preview_worker(&mut self) {
+        let had_pending = self.shell.worker_bus.preview.in_progress
+            || self
+                .shell
+                .worker_bus
+                .preview
+                .worker_inflight_request_id
+                .is_some()
+            || self.shell.worker_bus.preview.latest_request.is_some()
+            || self.paged_preview_view.busy
+            || self.shell.tabs.iter().any(|tab| tab.preview_in_progress);
+        if !had_pending {
+            return;
+        }
+        let has_committed_document = self.paged_preview_for_current().is_some();
+        self.shell
+            .worker_bus
+            .preview
+            .freshness
+            .store(u64::MAX, Ordering::Release);
+        if let Some(request) = self.shell.worker_bus.preview.latest_request.take() {
+            self.retire_superseded_preview_request(request);
+        }
+        if let Some(request) = self.deferred_latest_preview_request.take() {
+            self.retire_superseded_preview_request(request);
+        }
+        self.shell.worker_bus.preview.worker_inflight_request_id = None;
+        self.shell.worker_bus.preview.worker_input_document_bytes = 0;
+        self.shell.worker_bus.preview.clear_request();
+        self.deferred_more_intent = None;
+        let tab_ids = self.shell.tabs.iter().map(|tab| tab.id).collect::<Vec<_>>();
+        for tab in self.shell.tabs.iter_mut() {
+            if tab.pending_preview_request_id.is_some() {
+                tab.clear_preview_request_state();
+                tab.mark_preview_reload_pending();
+                tab.notice = "Preview worker is unavailable".into();
+            }
+        }
+        for tab_id in tab_ids {
+            self.shell
+                .tabs
+                .clear_preview_response_routing_for_tab(tab_id);
+        }
+        self.clear_paged_preview();
+        if !has_committed_document {
+            self.shell
+                .runtime
+                .set_preview("<preview unavailable>".into());
+        }
+        self.paged_preview_view.error = Some(crate::ui_model::PreviewPageError::ReadFailed);
+        self.shell
+            .runtime
+            .set_preview_page_error(self.paged_preview_view.error);
+        self.set_notice("Preview worker is unavailable");
     }
 
     fn settle_preview_worker_response(&mut self, request_id: u64) {
         if let Err(request) = self.shell.worker_bus.preview.settle_response(request_id) {
             self.retire_superseded_preview_request(request);
-            self.shell.worker_bus.preview.clear_request();
-            self.set_notice("Preview worker is unavailable");
+            self.fail_preview_worker();
         }
     }
 

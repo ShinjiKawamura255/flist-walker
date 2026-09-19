@@ -604,3 +604,61 @@ fn repeated_more_across_tabs_while_reclaimer_is_full_keeps_one_parked_document()
     );
     fs::remove_dir_all(root).expect("cleanup root");
 }
+
+#[test]
+fn gui_preview_worker_disconnect_settles_latest_and_future_requests() {
+    let root = test_root("paged-preview-worker-disconnect");
+    fs::create_dir_all(&root).expect("create root");
+    let paths = [root.join("first.txt"), root.join("latest.txt")];
+    for path in &paths {
+        fs::write(path, "content\n").expect("write fixture");
+    }
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results =
+        paths.iter().cloned().map(|path| (path, 0.0)).collect();
+    for path in &paths {
+        app.set_entry_kind(path, EntryKind::file());
+    }
+    let (request_tx, request_rx) = std::sync::mpsc::channel::<PreviewRequest>();
+    let (response_tx, response_rx) = std::sync::mpsc::channel::<PreviewResponse>();
+    app.shell.worker_bus.preview.tx = request_tx;
+    app.shell.worker_bus.preview.rx = response_rx;
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.request_preview_for_current();
+    let first = request_rx.try_recv().expect("first request dispatched");
+    app.shell.runtime.committed_for_test_mut().current_row = Some(1);
+    app.request_preview_for_current();
+    let latest = app
+        .shell
+        .worker_bus
+        .preview
+        .latest_request
+        .as_ref()
+        .expect("latest request queued")
+        .request_id;
+    assert!(app.paged_preview_view.busy);
+
+    drop(response_tx);
+    app.poll_preview_response();
+    assert!(!app.shell.worker_bus.preview.in_progress);
+    assert_eq!(
+        app.shell.worker_bus.preview.worker_inflight_request_id,
+        None
+    );
+    assert!(app.shell.worker_bus.preview.latest_request.is_none());
+    assert!(!app.paged_preview_view.busy);
+    assert_eq!(app.preview_request_tab(first.request_id), None);
+    assert_eq!(app.preview_request_tab(latest), None);
+    assert!(app
+        .shell
+        .runtime
+        .notice
+        .contains("Preview worker is unavailable"));
+
+    drop(request_rx);
+    app.request_preview_for_current();
+    assert!(!app.shell.worker_bus.preview.in_progress);
+    assert!(!app.paged_preview_view.busy);
+    fs::remove_dir_all(root).expect("cleanup root");
+}

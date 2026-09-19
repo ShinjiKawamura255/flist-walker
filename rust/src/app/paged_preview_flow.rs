@@ -219,11 +219,7 @@ impl FlistWalkerApp {
             document: Some(document),
         };
         if !self.queue_preview_request(request) {
-            self.shell.worker_bus.preview.clear_request();
-            self.paged_preview_view.error = Some(PreviewPageError::ReadFailed);
-            self.shell
-                .runtime
-                .set_preview_page_error(self.paged_preview_view.error);
+            self.fail_preview_worker();
             return;
         }
         self.paged_preview_view.busy = true;

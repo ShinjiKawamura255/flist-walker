@@ -179,10 +179,7 @@ impl FlistWalkerApp {
                     document: None,
                 };
                 if !self.queue_preview_request(req) {
-                    self.shell.worker_bus.preview.clear_request();
-                    self.shell
-                        .runtime
-                        .set_preview("<preview unavailable>".to_string());
+                    self.fail_preview_worker();
                 }
                 return;
             }
