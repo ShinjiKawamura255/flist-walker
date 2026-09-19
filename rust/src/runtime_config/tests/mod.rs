@@ -73,6 +73,73 @@ fn editable_settings_save_preserves_unknown_json_and_defers_effective_config() {
 }
 
 #[test]
+fn editable_settings_rejects_oversized_valid_json_without_changing_it() {
+    let base = test_home("editable-oversized");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    let prefix = r#"{"future_blob":""#;
+    let suffix = r#""}"#;
+    let bytes = format!(
+        "{prefix}{}{suffix}",
+        "x".repeat(64 * 1024 + 1 - prefix.len() - suffix.len())
+    )
+    .into_bytes();
+    assert_eq!(bytes.len(), 64 * 1024 + 1);
+    fs::write(&path, &bytes).expect("write oversized valid JSON");
+    let Err(error) = read_editable_settings(&path) else {
+        panic!("GUI editor must reject oversized JSON");
+    };
+    assert!(error.to_string().contains("64 KiB"), "{error:#}");
+    assert_eq!(fs::read(&path).expect("original bytes"), bytes);
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn editable_settings_near_limit_keeps_unknown_key_and_rejects_oversized_save() {
+    let base = test_home("editable-size-boundary");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    let prefix = r#"{"future_blob":""#;
+    let suffix = r#""}"#;
+    let bytes = format!(
+        "{prefix}{}{suffix}",
+        "x".repeat(64 * 1024 - 512 - prefix.len() - suffix.len())
+    )
+    .into_bytes();
+    fs::write(&path, &bytes).expect("write near-limit JSON");
+    let baseline = read_editable_settings(&path).expect("near-limit JSON is accepted");
+    let mut draft = baseline.values.clone();
+    draft.restore_tabs_enabled = true;
+    let saved = save_editable_settings(&path, &baseline, &draft)
+        .expect("save near-limit JSON with unknown key");
+    assert_eq!(saved.values, draft);
+    let current: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).expect("saved JSON")).expect("valid JSON");
+    assert_eq!(
+        current["future_blob"].as_str().unwrap().len(),
+        64 * 1024 - 512 - prefix.len() - suffix.len()
+    );
+    assert_eq!(current["restore_tabs_enabled"], true);
+
+    let exact_cap = format!(
+        "{prefix}{}{suffix}",
+        "y".repeat(64 * 1024 - prefix.len() - suffix.len())
+    )
+    .into_bytes();
+    assert_eq!(exact_cap.len(), 64 * 1024);
+    fs::write(&path, &exact_cap).expect("write exact-limit JSON");
+    let baseline = read_editable_settings(&path).expect("exact-limit JSON is accepted for reading");
+    let mut draft = baseline.values.clone();
+    draft.restore_tabs_enabled = true;
+    let Err(error) = save_editable_settings(&path, &baseline, &draft) else {
+        panic!("expanded JSON must not exceed GUI editor limit");
+    };
+    assert!(error.to_string().contains("64 KiB"), "{error:#}");
+    assert_eq!(fs::read(&path).expect("original bytes"), exact_cap);
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
 fn editable_settings_detects_external_change_without_overwriting_it() {
     let base = test_home("editable-conflict");
     fs::create_dir_all(&base).expect("create fixture directory");

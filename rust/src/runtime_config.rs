@@ -6,6 +6,7 @@ use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
@@ -21,6 +22,7 @@ const WINDOWS_SETTINGS_DIR_NAME: &str = "flistwalker";
 const UNIX_SETTINGS_DIR_NAME: &str = ".flistwalker";
 const SEARCH_PARALLEL_THRESHOLD_DEFAULT: usize = 25_000;
 const WALKER_MAX_ENTRIES_DEFAULT: usize = 500_000;
+const GUI_EDITABLE_SETTINGS_MAX_BYTES: usize = 64 * 1024;
 const WINDOW_TRACE_LOG_NAME: &str = ".flistwalker_window_trace.log";
 
 const SEARCH_PARALLEL_THRESHOLD_ENV: &str = "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD";
@@ -97,8 +99,21 @@ pub struct EditableSettingsSnapshot {
     original_bytes: Vec<u8>,
 }
 
+fn read_editable_settings_bytes(path: &Path) -> Result<Vec<u8>> {
+    let mut bytes = Vec::new();
+    fs::File::open(path)
+        .with_context(|| format!("failed to read {}", path.display()))?
+        .take((GUI_EDITABLE_SETTINGS_MAX_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
+        .with_context(|| format!("failed to read {}", path.display()))?;
+    if bytes.len() > GUI_EDITABLE_SETTINGS_MAX_BYTES {
+        bail!("GUI settings JSON exceeds the 64 KiB editor limit");
+    }
+    Ok(bytes)
+}
+
 pub fn read_editable_settings(path: &Path) -> Result<EditableSettingsSnapshot> {
-    let bytes = fs::read(path).with_context(|| format!("failed to read {}", path.display()))?;
+    let bytes = read_editable_settings_bytes(path)?;
     let value: serde_json::Value = serde_json::from_slice(&bytes)
         .with_context(|| format!("invalid JSON in {}", path.display()))?;
     if !value.is_object() {
@@ -131,7 +146,8 @@ fn save_editable_settings_with_writer(
     }
     let _lock = acquire_sidecar_lock(path, Duration::from_secs(5))
         .with_context(|| format!("failed to lock {}", path.display()))?;
-    let latest = fs::read(path).with_context(|| format!("failed to reread {}", path.display()))?;
+    let latest = read_editable_settings_bytes(path)
+        .with_context(|| format!("failed to reread {}", path.display()))?;
     if latest != baseline.original_bytes {
         bail!("runtime config changed outside the settings dialog");
     }
@@ -164,10 +180,13 @@ fn save_editable_settings_with_writer(
         serde_json::json!(draft.walker_max_entries),
     );
     let bytes = serde_json::to_vec_pretty(&value)?;
+    if bytes.len() > GUI_EDITABLE_SETTINGS_MAX_BYTES {
+        bail!("saved settings JSON exceeds the 64 KiB editor limit");
+    }
     let permissions = fs::metadata(path)?.permissions();
     // A non-cooperating editor can change the file while we hold our sidecar
     // lock. Check again immediately before replacement to narrow that window.
-    if fs::read(path)? != latest {
+    if read_editable_settings_bytes(path)? != latest {
         bail!("runtime config changed outside the settings dialog");
     }
     if let Err(error) = write(
@@ -179,7 +198,7 @@ fn save_editable_settings_with_writer(
         },
     ) {
         if atomic_write_replaced_destination(&error) {
-            match fs::read(path) {
+            match read_editable_settings_bytes(path) {
                 Ok(current) if current == bytes => {
                     if let Err(rollback_error) = write_bytes_atomic_with_metadata(
                         path,
