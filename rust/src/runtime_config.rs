@@ -555,10 +555,21 @@ fn remove_file_best_effort(path: &Path) -> std::io::Result<()> {
     }
 }
 
-pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
+fn read_runtime_config_from_path(path: &Path) -> Option<(String, RuntimeConfig)> {
     let text = fs::read_to_string(path).ok()?;
     let config = serde_json::from_str::<RuntimeConfig>(&text).ok()?;
+    Some((text, config))
+}
+
+pub fn load_runtime_config_from_path(path: &Path) -> Option<RuntimeConfig> {
+    let (text, config) = read_runtime_config_from_path(path)?;
     normalize_runtime_config_file(path, &text, &config);
+    Some(config)
+}
+
+fn load_runtime_config_from_path_locked(path: &Path) -> Option<RuntimeConfig> {
+    let (text, config) = read_runtime_config_from_path(path)?;
+    normalize_runtime_config_file_locked(path, &text, &config);
     Some(config)
 }
 
@@ -575,7 +586,7 @@ fn save_seeded_runtime_config_to_path(path: &Path, seed: &RuntimeConfigSeed) -> 
 }
 
 fn load_migrate_or_seed_runtime_config_locked(current_path: &Path) -> RuntimeConfig {
-    if let Some(config) = load_runtime_config_from_path(current_path) {
+    if let Some(config) = load_runtime_config_from_path_locked(current_path) {
         return config;
     }
     let legacy_paths = legacy_runtime_config_file_paths(current_path);
@@ -609,15 +620,15 @@ fn try_load_or_migrate_runtime_config_locked(
     }
     for legacy_path in legacy_paths {
         if migrate_file_if_needed_locked(current_path, legacy_path) {
-            return load_runtime_config_from_path(current_path);
+            return load_runtime_config_from_path_locked(current_path);
         }
-        if let Some(config) = load_runtime_config_from_path(current_path) {
+        if let Some(config) = load_runtime_config_from_path_locked(current_path) {
             return Some(config);
         }
     }
     for legacy_path in legacy_paths {
         if legacy_path.exists() {
-            return load_runtime_config_from_path(legacy_path);
+            return read_runtime_config_from_path(legacy_path).map(|(_, config)| config);
         }
     }
     None
@@ -762,6 +773,28 @@ impl RuntimeConfig {
 }
 
 fn normalize_runtime_config_file(path: &Path, text: &str, config: &RuntimeConfig) {
+    let _lock = match acquire_sidecar_lock(path, Duration::from_secs(5)) {
+        Ok(lock) => lock,
+        Err(error) => {
+            warn!(
+                "failed to lock runtime config for normalization at {}: {}",
+                path.display(),
+                error
+            );
+            return;
+        }
+    };
+    let Ok(current_text) = fs::read_to_string(path) else {
+        return;
+    };
+    if current_text == text {
+        normalize_runtime_config_file_locked(path, text, config);
+    } else if let Ok(current_config) = serde_json::from_str::<RuntimeConfig>(&current_text) {
+        normalize_runtime_config_file_locked(path, &current_text, &current_config);
+    }
+}
+
+fn normalize_runtime_config_file_locked(path: &Path, text: &str, config: &RuntimeConfig) {
     let Ok(mut value) = serde_json::from_str::<serde_json::Value>(text) else {
         return;
     };
@@ -814,6 +847,11 @@ fn normalize_runtime_config_file(path: &Path, text: &str, config: &RuntimeConfig
         let Ok(cleaned) = serde_json::to_string_pretty(&value) else {
             return;
         };
+        // Editors outside the sidecar-lock protocol can still replace the file.
+        // Do not normalize bytes that are no longer the bytes we parsed.
+        if fs::read_to_string(path).ok().as_deref() != Some(text) {
+            return;
+        }
         if let Err(err) = write_text_atomic(path, &cleaned) {
             warn!(
                 "failed to normalize runtime config at {}: {}",

@@ -919,3 +919,34 @@ fn load_runtime_config_removes_deprecated_walker_options_from_existing_file() {
 
     let _ = fs::remove_dir_all(&home);
 }
+
+#[test]
+fn startup_normalization_keeps_successful_concurrent_settings_save() {
+    let base = test_home("normalization-save-race");
+    fs::create_dir_all(&base).expect("create fixture directory");
+    let path = base.join("settings.json");
+    fs::write(
+        &path,
+        r#"{"walker_threads":2,"restore_tabs_enabled":false,"walker_max_entries":500000,"future_option":"keep"}"#,
+    )
+    .expect("write legacy fixture");
+
+    // Reproduce startup reading a pre-save snapshot before normalization writes.
+    let stale_text = fs::read_to_string(&path).expect("startup snapshot");
+    let stale_config = serde_json::from_str::<RuntimeConfig>(&stale_text).expect("parse snapshot");
+    let baseline = read_editable_settings(&path).expect("settings baseline");
+    let mut draft = baseline.values.clone();
+    draft.restore_tabs_enabled = true;
+    draft.walker_max_entries = 17;
+    save_editable_settings(&path, &baseline, &draft).expect("successful GUI save");
+
+    normalize_runtime_config_file(&path, &stale_text, &stale_config);
+    let json: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).expect("read final settings"))
+            .expect("parse final settings");
+    assert_eq!(json["restore_tabs_enabled"], true);
+    assert_eq!(json["walker_max_entries"], 17);
+    assert_eq!(json["future_option"], "keep");
+    assert!(json.get("walker_threads").is_none());
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
