@@ -27,6 +27,7 @@ mod index_response_arbitration;
 mod index_response_effects;
 pub(crate) mod index_worker;
 mod input;
+mod paged_preview_flow;
 mod pipeline;
 mod pipeline_owner;
 mod preset_picker;
@@ -192,6 +193,11 @@ impl TabAccentColor {
 pub struct FlistWalkerApp {
     shell: AppShellState,
     settings_dialog: settings_dialog::SettingsDialogState,
+    paged_preview_view: paged_preview_flow::PagedPreviewView,
+    deferred_preview_response: Option<PreviewResponse>,
+    parked_preview_request: Option<PreviewRequest>,
+    deferred_latest_preview_request: Option<PreviewRequest>,
+    deferred_more_intent: Option<(u64, PathBuf)>,
     #[cfg(test)]
     test_settings_paths: Option<TestSettingsPaths>,
 }

@@ -718,6 +718,7 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
     let (preview_tx_req, preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
     app.shell.worker_bus.preview.tx = preview_tx_req;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.shell.worker_bus.preview.rx = preview_rx_res;
     let (kind_tx_req, kind_rx_req) = bounded_request_channel::<KindResolveRequest>(4);
     let (kind_tx_res, kind_rx_res) = mpsc::channel::<KindResolveResponse>();
@@ -760,6 +761,9 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
             request_id: preview_request_id,
             path: indexed_file.clone(),
             preview: "preview-body".to_string(),
+            document: None,
+            page_error: None,
+            is_more: false,
         })
         .expect("send background preview response");
     index_res_tx
@@ -847,6 +851,9 @@ fn background_tab_activation_consumes_dormant_lifecycle_once() {
             request_id: reload_request.request_id,
             path: indexed_file.clone(),
             preview: "preview-body".to_string(),
+            document: None,
+            page_error: None,
+            is_more: false,
         })
         .expect("send activation preview response");
     app.poll_preview_response();

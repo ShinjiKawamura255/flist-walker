@@ -52,7 +52,7 @@ For documentation-only restructuring, apply VM-001:
 - Apply VM-002 with focused tab owner tests; use both non-sparse and deliberately sparse fixtures for pointer/capacity identity, retain computed results across activation, and run the release-mode tab-transition latency fixture when the activation hot path changes.
 
 ## GUI Evidence Axes
-- `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..011. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
+- `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..012. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
 - `scripts/gui-deterministic-scenarios.tsv` is the canonical nonzero owner-test inventory used by both platform wrappers.
 - Headful smoke MUST launch only a fresh BaseDir-owned staged executable with isolated settings, the exact binary/ignore/sample allowlist, and no `.flistwalker-update*` artifact. External actions, clipboard mutation, network update checks, and live updater activation are not validation defaults.
 - Windows `-ScriptedQueryProbe` extends the staged headful smoke with PID-bound visible-window responsiveness, Unicode query initialization, and isolated trace verification. It is not physical input focus, IME composition, Copy Path, Open/Reveal, or multi-display evidence.
@@ -108,3 +108,4 @@ For documentation-only restructuring, apply VM-001:
 - TC-213 -> SP-002 -> DES-002 -> FR-042
 - TC-214 -> SP-010 -> DES-009 -> FR-043
 - TC-216, TC-217, TC-218 -> SP-024 -> DES-025 -> FR-028, FR-044
+- TC-219, TC-220, TC-221, TC-222 -> SP-025 -> DES-026 -> FR-045, NFR-008

@@ -1252,6 +1252,9 @@ fn tc_154_stale_background_routes_never_mutate_active_scratch() {
         request_id: 2202,
         path: stale_path.clone(),
         preview: "stale preview".to_string(),
+        document: None,
+        page_error: None,
+        is_more: false,
     });
 
     app.bind_action_request_to_tab(2203, active_id);

@@ -230,6 +230,7 @@ fn background_tab_search_and_preview_responses_are_retained() {
     let (preview_tx_req, _preview_rx_req) = mpsc::channel::<PreviewRequest>();
     let (preview_tx_res, preview_rx_res) = mpsc::channel::<PreviewResponse>();
     app.shell.worker_bus.preview.tx = preview_tx_req;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.shell.worker_bus.preview.rx = preview_rx_res;
     app.request_preview_for_current();
     let preview_request_id = app
@@ -258,6 +259,9 @@ fn background_tab_search_and_preview_responses_are_retained() {
             request_id: preview_request_id,
             path: selected.clone(),
             preview: "preview-body".to_string(),
+            document: None,
+            page_error: None,
+            is_more: false,
         })
         .expect("send preview response");
     app.poll_search_response();
@@ -300,6 +304,7 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
     app.set_entry_kind(&new_path, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.request_preview_for_current();
     let old_request = preview_rx.try_recv().expect("old preview request");
     let background_tab_id = app.current_tab_id().expect("background tab id");
@@ -328,6 +333,9 @@ fn background_search_selection_change_invalidates_old_preview_and_reloads_on_act
         request_id: old_request.request_id,
         path: old_path,
         preview: "late old preview".to_string(),
+        document: None,
+        page_error: None,
+        is_more: false,
     });
     app.shell
         .tabs
@@ -380,6 +388,7 @@ fn tab_activation_without_background_selection_change_does_not_request_preview_r
     app.shell.search.set_in_progress(true);
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
 
     app.create_new_tab();
     let create_requests = preview_rx
@@ -430,6 +439,7 @@ fn sizedesc_inactive_completed_preview_roundtrips_via_explicit_reload_regression
     app.set_entry_kind(&selected, EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
 
     app.create_new_tab();
     let background = app.shell.tabs.get(0).expect("background tab");
@@ -500,6 +510,9 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
         request_id: 711,
         path: selected.clone(),
         preview: "late preview".to_string(),
+        document: None,
+        page_error: None,
+        is_more: false,
     });
     assert!(app
         .shell
@@ -521,6 +534,7 @@ fn background_none_to_some_selection_rejects_late_preview_and_reloads_regression
         .set(selected.clone(), EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.switch_to_tab_index(0);
     assert_eq!(
         preview_rx
@@ -597,6 +611,7 @@ fn background_sort_reorder_invalidates_old_preview_request_regression() {
         .set(new_path.clone(), EntryKind::file());
     let (preview_tx, preview_rx) = mpsc::channel::<PreviewRequest>();
     app.shell.worker_bus.preview.tx = preview_tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.switch_to_tab_index(0);
     assert_eq!(
         preview_rx.try_recv().expect("sort activation preview").path,
@@ -3619,10 +3634,11 @@ fn canceled_background_preview_settles_and_reloads_on_activation() {
     app.set_entry_kind(&path, EntryKind::file());
     let (tx, rx) = mpsc::channel();
     app.shell.worker_bus.preview.tx = tx;
+    app.shell.worker_bus.preview.worker_inflight_request_id = None;
     app.request_preview_for_current();
     let obsolete = rx.try_recv().unwrap();
     app.request_preview_for_current();
-    let request = rx.try_recv().unwrap();
+    assert!(rx.try_recv().is_err(), "only one request may be in flight");
     app.create_new_tab();
     while rx.try_recv().is_ok() {}
     app.apply_background_preview_response(PreviewResponse {
@@ -3630,7 +3646,13 @@ fn canceled_background_preview_settles_and_reloads_on_activation() {
         path: path.clone(),
         preview: String::new(),
         canceled: true,
+        document: None,
+        page_error: None,
+        is_more: false,
     });
+    let request = rx
+        .try_recv()
+        .expect("queued latest preview is dispatched after cancellation");
     assert_eq!(
         app.shell.tabs.get(0).unwrap().pending_preview_request_id,
         Some(request.request_id)
@@ -3640,6 +3662,9 @@ fn canceled_background_preview_settles_and_reloads_on_activation() {
         path: path.clone(),
         preview: String::new(),
         canceled: true,
+        document: None,
+        page_error: None,
+        is_more: false,
     });
     let tab = app.shell.tabs.get(0).unwrap();
     assert!(!tab.preview_in_progress);

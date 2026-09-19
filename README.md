@@ -21,7 +21,7 @@ Language docs:
 - Fast file and folder indexing plus search
 - FZF-compatible query operators: exact match (`'`), exclusion (`!`), prefix (`^`), suffix (`$`)
 - Highlighted matches, hide-non-matches mode, and pinned multi-selection
-- Preview panel with on-demand file skipping
+- Preview panel with on-demand file skipping, paged selectable text and line numbers, plus session-only syntax colors for Rust, Python, JavaScript, TypeScript, JSON, TOML, YAML, Markdown, shell, PowerShell, C, C++, and HTML. Use `Load more` to read another page, `Reload preview` to start over, and `Color: on/off` to change the display without changing copied text.
 - Saved roots and default root support
 - Shared search history across tabs
 - `Create File List` generation from the current root

@@ -379,6 +379,10 @@ impl FlistWalkerApp {
             self.restore_results_from_compacted_tab(results_compacted);
         }
         self.ensure_results_cursor_visible();
+        self.clear_paged_preview();
+        if !preview_reload_pending {
+            self.paged_preview_view.error = self.shell.runtime.preview_page_error;
+        }
         if trigger_restore_refresh {
             // Regression guard: restore refresh resets preview request ownership.
             // Schedule it before consuming a tab-scoped reload flag so the new
@@ -388,6 +392,7 @@ impl FlistWalkerApp {
         if preview_reload_pending {
             self.request_preview_for_current();
         }
+        self.restore_paged_preview_view_for_active();
         if request_focus {
             self.request_focus_query();
             self.clear_unfocus_query_request();
@@ -698,7 +703,7 @@ impl FlistWalkerApp {
                         previous.restore_visible_result_snapshot(retained_results);
                     }
                     let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
-                    tab.restore_committed_resources(previous);
+                    tab.restore_committed_resources(*previous);
                     tab.notice = "Waiting for background tab resource reclamation".to_string();
                     return effect;
                 }

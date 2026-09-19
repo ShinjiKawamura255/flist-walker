@@ -119,6 +119,7 @@ impl FlistWalkerApp {
 
     pub(super) fn request_preview_for_current(&mut self) {
         if !self.shell.ui.show_preview {
+            self.clear_paged_preview();
             self.shell.runtime.clear_preview();
             self.shell.worker_bus.preview.clear_request();
             return;
@@ -129,11 +130,13 @@ impl FlistWalkerApp {
                 if let Some(cached) = self.shell.cache.preview.get(path) {
                     self.shell.runtime.set_preview(cached.to_string());
                     self.shell.worker_bus.preview.clear_request();
+                    self.clear_paged_preview();
                     return;
                 }
                 let path = path.clone();
 
                 let Some(kind) = self.current_result_kind() else {
+                    self.clear_paged_preview();
                     self.shell
                         .runtime
                         .set_preview("Resolving entry type...".to_string());
@@ -143,6 +146,7 @@ impl FlistWalkerApp {
                     return;
                 };
                 let Some(is_dir) = kind.is_dir else {
+                    self.clear_paged_preview();
                     if kind.needs_resolution() {
                         self.shell
                             .runtime
@@ -157,17 +161,24 @@ impl FlistWalkerApp {
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 };
+                if is_dir {
+                    self.clear_paged_preview();
+                }
                 self.shell
                     .runtime
                     .set_preview("Loading preview...".to_string());
                 let request_id = self.shell.worker_bus.preview.begin_request();
                 self.bind_preview_request_to_current_tab(request_id);
+                if !is_dir {
+                    self.prepare_paged_preview_initial(&path, request_id);
+                }
                 let req = PreviewRequest {
                     request_id,
                     path,
                     is_dir,
+                    document: None,
                 };
-                if self.shell.worker_bus.preview.tx.send(req).is_err() {
+                if !self.queue_preview_request(req) {
                     self.shell.worker_bus.preview.clear_request();
                     self.shell
                         .runtime
@@ -177,6 +188,7 @@ impl FlistWalkerApp {
             }
         }
         self.shell.runtime.clear_preview();
+        self.clear_paged_preview();
         self.shell.worker_bus.preview.clear_request();
     }
 }

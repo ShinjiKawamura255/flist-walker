@@ -5,7 +5,7 @@ use crate::app::index_coordinator::IndexCoordinator;
 use crate::app::query_state::QueryState;
 use crate::app::search_coordinator::SearchCoordinator;
 use crate::app::tab_resources::{
-    RetiredActiveResources, RetiredTabResources, TabResourceReclaimer,
+    PreviewRetirementHandle, RetiredActiveResources, RetiredTabResources, TabResourceReclaimer,
     TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD, TAB_RECENT_INACTIVE_GRACE,
     TAB_RESOURCE_CACHE_HARD_MAX_COUNT, TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT,
     TAB_RESOURCE_CACHE_MAX_COUNT, TAB_RESOURCE_CACHE_MAX_WEIGHT,
@@ -278,6 +278,7 @@ pub(super) struct AppRuntimeState {
     pub(super) include_files: bool,
     pub(super) include_dirs: bool,
     committed: TabCommittedPayload,
+    preview_retirement: Option<PreviewRetirementHandle>,
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) result_sort_scope: ResultSortScope,
     pub(super) pinned_paths: HashSet<PathBuf>,
@@ -316,6 +317,7 @@ impl AppRuntimeState {
             include_files: true,
             include_dirs: true,
             committed: TabCommittedPayload::default(),
+            preview_retirement: None,
             result_sort_mode: ResultSortMode::Score,
             result_sort_scope: ResultSortScope::ShownResults,
             pinned_paths,
@@ -375,12 +377,82 @@ impl AppRuntimeState {
         self.committed.current_row = row;
     }
 
+    pub(super) fn install_preview_retirement(&mut self, handle: PreviewRetirementHandle) {
+        self.preview_retirement = Some(handle);
+    }
+
+    pub(super) fn try_retire_preview_document(&mut self) -> bool {
+        let Some(document) = self.committed.preview_document.take() else {
+            self.committed.preview_stale = false;
+            return true;
+        };
+        let Some(handle) = self.preview_retirement.as_ref() else {
+            self.committed.preview_document = Some(document);
+            return false;
+        };
+        match handle.try_retire_preview(document) {
+            Ok(()) => {
+                self.committed.preview_stale = false;
+                true
+            }
+            Err(document) => {
+                self.committed.preview_document = Some(document);
+                false
+            }
+        }
+    }
+
+    pub(super) fn preview_retirement_bytes(&self) -> usize {
+        self.preview_retirement
+            .as_ref()
+            .map_or(0, PreviewRetirementHandle::preview_retirement_bytes)
+    }
+
+    pub(super) fn try_retire_external_preview_document(
+        &self,
+        document: Arc<crate::ui_model::PagedTextPreview>,
+    ) -> Result<(), Arc<crate::ui_model::PagedTextPreview>> {
+        match self.preview_retirement.as_ref() {
+            Some(handle) => handle.try_retire_preview(document),
+            None => Err(document),
+        }
+    }
+
+    pub(super) fn retire_stale_preview_document(&mut self) -> bool {
+        !self.committed.preview_stale || self.try_retire_preview_document()
+    }
+
     pub(super) fn set_preview(&mut self, preview: String) {
         self.committed.preview = preview;
+        self.committed.preview_stale = !self.try_retire_preview_document();
+        self.committed.preview_page_error = None;
     }
 
     pub(super) fn clear_preview(&mut self) {
         self.committed.preview.clear();
+        self.committed.preview_stale = !self.try_retire_preview_document();
+        self.committed.preview_page_error = None;
+    }
+
+    pub(super) fn set_preview_document(
+        &mut self,
+        document: Arc<crate::ui_model::PagedTextPreview>,
+    ) -> Result<(), Arc<crate::ui_model::PagedTextPreview>> {
+        if !self.try_retire_preview_document() {
+            return Err(document);
+        }
+        self.committed.preview.clear();
+        self.committed.preview_document = Some(document);
+        self.committed.preview_stale = false;
+        self.committed.preview_page_error = None;
+        Ok(())
+    }
+
+    pub(super) fn set_preview_page_error(
+        &mut self,
+        error: Option<crate::ui_model::PreviewPageError>,
+    ) {
+        self.committed.preview_page_error = error;
     }
 
     pub(super) fn preview_text_mut(&mut self) -> &mut String {
@@ -655,6 +727,20 @@ struct RecentInactiveTransition {
 struct StagedRecentEviction {
     tab_id: u64,
     resources: RetiredTabResources,
+}
+
+pub(super) const PREVIEW_RESIDENT_MAX_BYTES: usize = 32 * 1024 * 1024;
+
+fn preview_unique_bytes<'a>(
+    documents: impl IntoIterator<Item = &'a Arc<crate::ui_model::PagedTextPreview>>,
+) -> usize {
+    let mut unique = HashMap::new();
+    for document in documents {
+        unique
+            .entry(Arc::as_ptr(document) as usize)
+            .or_insert_with(|| document.capacity_bytes());
+    }
+    unique.values().copied().sum()
 }
 
 pub(crate) struct TabSessionState {
@@ -963,6 +1049,98 @@ impl TabSessionState {
         }
     }
 
+    pub(super) fn preview_resident_bytes(
+        &self,
+        active: Option<&Arc<crate::ui_model::PagedTextPreview>>,
+        incoming: Option<&Arc<crate::ui_model::PagedTextPreview>>,
+        parked: &[&Arc<crate::ui_model::PagedTextPreview>],
+    ) -> usize {
+        preview_unique_bytes(
+            active
+                .into_iter()
+                .chain(incoming)
+                .chain(parked.iter().copied())
+                .chain(
+                    self.tabs
+                        .iter()
+                        .filter_map(|tab| tab.result_state.committed.preview_document.as_ref()),
+                )
+                .chain(self.closed_tabs.iter().filter_map(|closed| {
+                    closed.tab.result_state.committed.preview_document.as_ref()
+                })),
+        )
+    }
+
+    pub(super) fn enforce_preview_resident_budget(
+        &mut self,
+        active: Option<&Arc<crate::ui_model::PagedTextPreview>>,
+        incoming: Option<&Arc<crate::ui_model::PagedTextPreview>>,
+        parked: &[&Arc<crate::ui_model::PagedTextPreview>],
+    ) -> bool {
+        let mut candidates = self.resource_lru.iter().copied().collect::<Vec<_>>();
+        candidates.extend(self.closed_tabs.iter().map(|closed| closed.tab.id));
+        candidates.extend(self.tabs.iter().map(|tab| tab.id));
+        let mut seen = HashSet::new();
+        candidates.retain(|id| seen.insert(*id));
+        let handle = self.resource_reclaimer.preview_handle();
+        while self.preview_resident_bytes(active, incoming, parked) > PREVIEW_RESIDENT_MAX_BYTES {
+            let Some(candidate) = candidates.iter().position(|id| {
+                self.tabs.iter().any(|tab| {
+                    tab.id == *id && tab.result_state.committed.preview_document.is_some()
+                }) || self.closed_tabs.iter().any(|closed| {
+                    closed.tab.id == *id
+                        && closed.tab.result_state.committed.preview_document.is_some()
+                })
+            }) else {
+                return false;
+            };
+            let tab_id = candidates.remove(candidate);
+            if let Some(tab) = self.tabs.iter_mut().find(|tab| tab.id == tab_id) {
+                let document = tab
+                    .result_state
+                    .committed
+                    .preview_document
+                    .take()
+                    .expect("preview candidate");
+                match handle.try_retire_preview(document) {
+                    Ok(()) => {
+                        tab.result_state.committed.preview.clear();
+                        tab.result_state.committed.preview_page_error = None;
+                        tab.mark_preview_reload_pending();
+                    }
+                    Err(document) => {
+                        tab.result_state.committed.preview_document = Some(document);
+                        return false;
+                    }
+                }
+            } else if let Some(closed) = self
+                .closed_tabs
+                .iter_mut()
+                .find(|closed| closed.tab.id == tab_id)
+            {
+                let document = closed
+                    .tab
+                    .result_state
+                    .committed
+                    .preview_document
+                    .take()
+                    .expect("closed preview candidate");
+                match handle.try_retire_preview(document) {
+                    Ok(()) => {
+                        closed.tab.result_state.committed.preview.clear();
+                        closed.tab.result_state.committed.preview_page_error = None;
+                        closed.activation_refresh_pending = true;
+                    }
+                    Err(document) => {
+                        closed.tab.result_state.committed.preview_document = Some(document);
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
     pub(super) fn enforce_resource_budget(
         &mut self,
         active_tab_id: Option<u64>,
@@ -1210,7 +1388,7 @@ impl TabSessionState {
     pub(super) fn try_retire_active_resources(
         &self,
         resources: RetiredActiveResources,
-    ) -> Result<(), RetiredActiveResources> {
+    ) -> Result<(), Box<RetiredActiveResources>> {
         self.resource_reclaimer.try_retire_active(resources)
     }
 
@@ -1333,7 +1511,6 @@ impl TabSessionState {
         self.request_tab_routing.take_preview(request_id)
     }
 
-    #[cfg(test)]
     pub(super) fn preview_request_tab(&self, request_id: u64) -> Option<u64> {
         self.request_tab_routing.preview.get(&request_id).copied()
     }

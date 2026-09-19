@@ -417,6 +417,7 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.catalog.in_progress
             || self.shell.worker_bus.config_open.in_progress()
             || self.shell.worker_bus.config_settings.in_progress()
+            || self.paged_preview_view.busy
             || self.settings_commit_in_progress()
             || self.any_tab_async_in_progress()
         {

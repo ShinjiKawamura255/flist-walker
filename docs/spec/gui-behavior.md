@@ -193,3 +193,22 @@
 - MUST: quiescence phase は既知 request を terminal response へ進め、規定 step 以内に search/index/preview/action/sort/FileList の pending、routing、in-flight、progress state が解放されることを検証しなければならない。
 - MUST: required PR profile は固定 regression corpus と複数の固定 seed を通常の `cargo test` で3 OS継続実行し、失敗時に seed、step、event、state digest と再生コマンドを表示しなければならない。
 - SHOULD: non-required scheduled profile は大きな seed/event budget と一時 root 上の実 worker soak を実行し、ログを artifact として保持する。
+
+## SP-025 段階的テキストプレビューと色分け
+### Requirements
+- MUST: GUI のファイルプレビューは最初に100論理行または64 KiBの先着上限まで読み、利用者が `Load more` を選ぶたびに最大500追加行または256 KiBを読み込む。累計は5,000行または1 MiBの先着上限とし、終端と上限を区別する。全体行数の事前走査は行わない。
+- MUST: 本文、行番号、ファイル情報、追加操作を別の表示要素とする。本文は読み取り専用で選択可能とし、コピーに行番号・色分け・省略記号を含めない。長い行の画面表示は先頭4,096文字で省略を明示し、元データの表示範囲を誤認させない。
+- MUST: 更新中も確定済み本文を維持する。追加読込に失敗した場合は背景タブでも本文を変更せず、理由をそのタブだけに表示し、binary/復号失敗/ファイル変更/上限到達後の続行は停止する。明示的な再読込は先頭から開始する。空ファイル、権限不足、削除、on-demand、I/O失敗を区別する。
+- MUST: UTF-8、BOM付きUTF-16 LE/BE、Shift-JIS、EUC-JP、Windows-1252を既存の優先順位で扱い、後続ページで最初に選んだ復号方式を変更しない。文字・CRLF・行途中のページ境界で重複や欠落を生じさせない。
+- MUST: 追加要求は実行中1件と最新待機1件までとし、古い要求や別タブの応答を本文へ混入させない。ファイルの取得可能なID、size、mtimeの変化は `Changed` として拒否する。Windows の on-demand 判定は初回と追加時の両方で行う。
+- MUST: 拡張子に応じて Rust、Python、JavaScript、TypeScript、JSON、TOML、YAML、Markdown、shell、PowerShell、C、C++、HTML を色分けする。`.h` は C、正確な `.C` は C++ とする。未対応形式、分類上限超過、解析失敗ではプレーン本文を維持する。HTML を実行・資源取得しない。
+- MUST: 色分けは初期ONとし、プレビュー内の切替は全タブ共通の当該GUIセッションにだけ適用する。OFFでも本文、行番号、コピー結果を変えない。色だけを状態の唯一の手掛かりにしない。
+- MUST: TUIは20行/64 KiBの先頭表示と既存操作を維持し、GUIの追加ボタンを設けない。フォルダは従来の直接の子4096件と24行の表示上限を維持する。
+
+### Preconditions / Postconditions
+- Preconditions: GUIでファイルの結果行が選ばれ、プレビューが有効である。追加読込には続きのある確定済み文書が必要である。
+- Postconditions: 成功したページだけが既存本文の後ろへ一度だけ追加され、読み込んだ範囲と続行可否が表示される。
+
+### Edge / Error
+- 読込途中でファイルが置換・更新された場合は旧本文を保持して再読込を案内する。同一ID、同一size、同一mtimeを維持するin-place変更の完全検知は保証しない。
+- 長い1行、UTF-16 surrogate、マルチバイト文字、改行直前のbyte上限でも次ページに正しく継続する。外部コマンド・構文検査・リモート資源取得は行わない。

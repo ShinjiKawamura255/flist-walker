@@ -6,7 +6,8 @@ use std::time::{Duration, Instant};
 
 use super::protocol::{
     ActionRequest, CatalogRequest, FileListRequest, IndexRequest, KindResolveRequest,
-    PreviewRequest, RootValidationRequest, SearchRequest, SortMetadataRequest, UpdateRequest,
+    PreviewRequest, PreviewResponse, RootValidationRequest, SearchRequest, SortMetadataRequest,
+    UpdateRequest,
 };
 use crate::app::{process_shutdown_requested, FlistWalkerApp};
 use eframe::egui;
@@ -122,6 +123,16 @@ impl FlistWalkerApp {
         let pending_replace_all = self.shell.indexing.pending_replace_all.take();
         let index_mailboxes = self.shell.indexing.take_all_mailboxes_for_shutdown();
         let tab_resources = self.shell.tabs.take_all_heavy_resources_for_shutdown();
+        let parked_preview_request = self.parked_preview_request.take();
+        let deferred_latest_preview_request = self.deferred_latest_preview_request.take();
+        let deferred_preview_response = self.deferred_preview_response.take();
+        let latest_preview_request = self.shell.worker_bus.preview.latest_request.take();
+        let (_dummy_preview_response_tx, dummy_preview_response_rx) =
+            mpsc::channel::<PreviewResponse>();
+        let preview_response_rx = std::mem::replace(
+            &mut self.shell.worker_bus.preview.rx,
+            dummy_preview_response_rx,
+        );
 
         let handle = thread::Builder::new()
             .name("flistwalker-tab-shutdown-drain".to_string())
@@ -135,6 +146,11 @@ impl FlistWalkerApp {
                     pending_replace_all,
                     index_mailboxes,
                     tab_resources,
+                    parked_preview_request,
+                    deferred_latest_preview_request,
+                    deferred_preview_response,
+                    latest_preview_request,
+                    preview_response_rx,
                 ));
             })
             .expect("spawn tab shutdown drain");

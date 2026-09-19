@@ -123,6 +123,16 @@ fn tc_183_interleaved_worker_failures_converge() {
         Event::CompleteOldestFileList(TerminalOutcome::Failed),
     ]);
     harness.run(0x0183_fa11, &failure_events);
+    // A tab activation may schedule its latest preview after the prior request settles.
+    for _ in 0..4 {
+        if harness.pending_worker_request_counts().0 == 0 {
+            break;
+        }
+        harness.run(
+            0x0183_fa11,
+            &[Event::CompleteOldestPreview(WorkerOutcome::Failed)],
+        );
+    }
     harness.run(0x0183_fa11, &[Event::RequestFileList]);
     assert_eq!(harness.pending_worker_request_counts(), (0, 0, 0, 1));
     harness.run(

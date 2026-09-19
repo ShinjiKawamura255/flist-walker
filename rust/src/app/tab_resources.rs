@@ -5,10 +5,12 @@ use super::{
     AppTabState, BackgroundIndexFilterScratch, BackgroundIndexFinalizeScratch,
     BackgroundIndexState, FlistWalkerApp, IndexEntry, PendingBackgroundIndexFinalize,
 };
+use crate::ui_model::PagedTextPreview;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{self, SyncSender, TrySendError};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, TryLockError, Weak};
 use std::thread;
 use std::time::Duration;
 
@@ -84,6 +86,8 @@ pub(super) const TAB_RESOURCE_CACHE_HARD_MAX_WEIGHT: usize = 4_000_000;
 pub(super) const TAB_RECENT_INACTIVE_ENGAGEMENT_THRESHOLD: Duration = Duration::from_secs(2);
 pub(super) const TAB_RECENT_INACTIVE_GRACE: Duration = Duration::from_secs(30);
 pub(super) const TAB_RESOURCE_RECLAIMER_CAPACITY: usize = 4;
+pub(super) const PREVIEW_DOCUMENT_MAX_BYTES: usize = 8 * 1024 * 1024;
+pub(super) const PREVIEW_RETIREMENT_MAX_BYTES: usize = 40 * 1024 * 1024;
 
 #[derive(Debug)]
 pub(super) struct RetiredTabResources {
@@ -292,13 +296,138 @@ impl RetiredRoutingPayload {
 enum ReclaimPayload {
     Tab(Box<RetiredTabResources>),
     TabBatch(Vec<RetiredTabResources>),
-    Active(RetiredActiveResources),
+    Active(Box<RetiredActiveResources>),
     IndexBuild(Box<RetiredIndexBuildResources>),
+    Preview(Arc<PagedTextPreview>),
+}
+
+impl ReclaimPayload {
+    fn preview_allocations(&self) -> Vec<(usize, usize)> {
+        let mut allocations = Vec::new();
+        let mut count = |document: Option<&Arc<PagedTextPreview>>| {
+            if let Some(document) = document {
+                let identity = Arc::as_ptr(document) as usize;
+                if !allocations.iter().any(|(known, _)| *known == identity) {
+                    allocations.push((identity, document.capacity_bytes()));
+                }
+            }
+        };
+        match self {
+            Self::Tab(resources) => count(resources.committed.preview_document.as_ref()),
+            Self::TabBatch(resources) => {
+                for tab in resources {
+                    count(tab.committed.preview_document.as_ref());
+                }
+            }
+            Self::Active(resources) => count(resources.committed.preview_document.as_ref()),
+            Self::IndexBuild(_) => {}
+            Self::Preview(document) => count(Some(document)),
+        }
+        allocations
+    }
+}
+
+#[derive(Default)]
+struct PreviewRetirementLedger {
+    allocations: Mutex<HashMap<usize, (usize, usize)>>,
+    bytes: AtomicUsize,
+}
+
+impl PreviewRetirementLedger {
+    fn try_reserve(&self, resources: &ReclaimPayload) -> bool {
+        let mut allocations = match self.allocations.try_lock() {
+            Ok(guard) => guard,
+            Err(TryLockError::Poisoned(error)) => error.into_inner(),
+            Err(TryLockError::WouldBlock) => return false,
+        };
+        let payload_allocations = resources.preview_allocations();
+        let addition = payload_allocations
+            .iter()
+            .filter(|(identity, _)| !allocations.contains_key(identity))
+            .try_fold(0usize, |sum, (_, size)| sum.checked_add(*size));
+        let Some(next) =
+            addition.and_then(|addition| self.bytes.load(Ordering::Relaxed).checked_add(addition))
+        else {
+            return false;
+        };
+        if next > PREVIEW_RETIREMENT_MAX_BYTES {
+            return false;
+        }
+        for (identity, size) in payload_allocations {
+            let entry = allocations.entry(identity).or_insert((size, 0));
+            debug_assert_eq!(entry.0, size);
+            entry.1 += 1;
+        }
+        self.bytes.store(next, Ordering::Release);
+        true
+    }
+
+    fn release(&self, payload_allocations: &[(usize, usize)]) {
+        let mut allocations = self
+            .allocations
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut released = 0usize;
+        for &(identity, size) in payload_allocations {
+            let Some((known_size, count)) = allocations.get_mut(&identity) else {
+                unreachable!("preview retirement allocation missing");
+            };
+            debug_assert_eq!(*known_size, size);
+            *count -= 1;
+            if *count == 0 {
+                allocations.remove(&identity);
+                released += size;
+            }
+        }
+        let remaining = self.bytes.load(Ordering::Relaxed) - released;
+        self.bytes.store(remaining, Ordering::Release);
+    }
+
+    fn bytes(&self) -> usize {
+        self.bytes.load(Ordering::Acquire)
+    }
+}
+
+fn try_acquire_reclaimer_slot(available_slots: &AtomicUsize) -> bool {
+    let mut available = available_slots.load(Ordering::Acquire);
+    loop {
+        if available == 0 {
+            return false;
+        }
+        match available_slots.compare_exchange_weak(
+            available,
+            available - 1,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        ) {
+            Ok(_) => return true,
+            Err(current) => available = current,
+        }
+    }
 }
 
 fn release_reclaimer_slot(available_slots: &AtomicUsize) {
     let previous = available_slots.fetch_add(1, Ordering::AcqRel);
     debug_assert!(previous < TAB_RESOURCE_RECLAIMER_CAPACITY);
+}
+
+fn reclaim_received(
+    resources: ReclaimPayload,
+    available_slots: &AtomicUsize,
+    preview_ledger: &PreviewRetirementLedger,
+    pending: &AtomicUsize,
+) {
+    release_reclaimer_slot(available_slots);
+    let preview_allocations = resources.preview_allocations();
+    match resources {
+        ReclaimPayload::Tab(resources) => drop(resources),
+        ReclaimPayload::TabBatch(resources) => drop(resources),
+        ReclaimPayload::Active(resources) => drop(resources),
+        ReclaimPayload::IndexBuild(resources) => drop(resources),
+        ReclaimPayload::Preview(document) => drop(document),
+    }
+    preview_ledger.release(&preview_allocations);
+    pending.fetch_sub(1, Ordering::AcqRel);
 }
 
 impl FlistWalkerApp {
@@ -638,10 +767,51 @@ impl AppTabState {
     }
 }
 
-pub(super) struct TabResourceReclaimer {
-    tx: Option<SyncSender<ReclaimPayload>>,
+#[derive(Clone)]
+pub(super) struct PreviewRetirementHandle {
+    tx: Weak<SyncSender<ReclaimPayload>>,
     pending: Arc<AtomicUsize>,
     available_slots: Arc<AtomicUsize>,
+    preview_ledger: Arc<PreviewRetirementLedger>,
+}
+
+impl PreviewRetirementHandle {
+    pub(super) fn try_retire_preview(
+        &self,
+        document: Arc<PagedTextPreview>,
+    ) -> Result<(), Arc<PagedTextPreview>> {
+        if document.capacity_bytes() > PREVIEW_DOCUMENT_MAX_BYTES {
+            return Err(document);
+        }
+        let Some(tx) = self.tx.upgrade() else {
+            return Err(document);
+        };
+        if !try_acquire_reclaimer_slot(&self.available_slots) {
+            return Err(document);
+        }
+        match TabResourceReclaimer::try_send_with_acquired_slot_shared(
+            Some(tx.as_ref()),
+            &self.pending,
+            &self.available_slots,
+            &self.preview_ledger,
+            ReclaimPayload::Preview(document),
+        ) {
+            Ok(()) => Ok(()),
+            Err(ReclaimPayload::Preview(document)) => Err(document),
+            Err(_) => unreachable!("preview payload changed variant"),
+        }
+    }
+
+    pub(super) fn preview_retirement_bytes(&self) -> usize {
+        self.preview_ledger.bytes()
+    }
+}
+
+pub(super) struct TabResourceReclaimer {
+    tx: Option<Arc<SyncSender<ReclaimPayload>>>,
+    pending: Arc<AtomicUsize>,
+    available_slots: Arc<AtomicUsize>,
+    preview_ledger: Arc<PreviewRetirementLedger>,
     handle: Option<thread::JoinHandle<()>>,
     #[cfg(test)]
     _paused_rx: Option<mpsc::Receiver<ReclaimPayload>>,
@@ -662,26 +832,27 @@ impl TabResourceReclaimer {
         let worker_pending = Arc::clone(&pending);
         let available_slots = Arc::new(AtomicUsize::new(TAB_RESOURCE_RECLAIMER_CAPACITY));
         let worker_available_slots = Arc::clone(&available_slots);
+        let preview_ledger = Arc::new(PreviewRetirementLedger::default());
+        let worker_preview_ledger = Arc::clone(&preview_ledger);
         let handle = thread::Builder::new()
             .name("flistwalker-tab-reclaimer".to_string())
             .spawn(move || {
                 while let Ok(resources) = rx.recv() {
-                    release_reclaimer_slot(&worker_available_slots);
-                    match resources {
-                        ReclaimPayload::Tab(resources) => drop(resources),
-                        ReclaimPayload::TabBatch(resources) => drop(resources),
-                        ReclaimPayload::Active(resources) => drop(resources),
-                        ReclaimPayload::IndexBuild(resources) => drop(resources),
-                    }
-                    worker_pending.fetch_sub(1, Ordering::AcqRel);
+                    reclaim_received(
+                        resources,
+                        &worker_available_slots,
+                        &worker_preview_ledger,
+                        &worker_pending,
+                    );
                 }
             })
             .expect("spawn tab resource reclaimer");
         (
             Self {
-                tx: Some(tx),
+                tx: Some(Arc::new(tx)),
                 pending,
                 available_slots,
+                preview_ledger,
                 handle: None,
                 #[cfg(test)]
                 _paused_rx: None,
@@ -698,12 +869,44 @@ impl TabResourceReclaimer {
     pub(super) fn paused_for_test() -> Self {
         let (tx, rx) = mpsc::sync_channel(TAB_RESOURCE_RECLAIMER_CAPACITY);
         Self {
-            tx: Some(tx),
+            tx: Some(Arc::new(tx)),
             pending: Arc::new(AtomicUsize::new(0)),
             available_slots: Arc::new(AtomicUsize::new(TAB_RESOURCE_RECLAIMER_CAPACITY)),
+            preview_ledger: Arc::new(PreviewRetirementLedger::default()),
             handle: None,
             _paused_rx: Some(rx),
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn drain_one_paused_for_test(&mut self) -> bool {
+        let Some(rx) = self._paused_rx.as_ref() else {
+            return false;
+        };
+        let Ok(resources) = rx.try_recv() else {
+            return false;
+        };
+        reclaim_received(
+            resources,
+            &self.available_slots,
+            &self.preview_ledger,
+            &self.pending,
+        );
+        true
+    }
+
+    pub(super) fn preview_handle(&self) -> PreviewRetirementHandle {
+        PreviewRetirementHandle {
+            tx: self.tx.as_ref().map_or_else(Weak::new, Arc::downgrade),
+            pending: Arc::clone(&self.pending),
+            available_slots: Arc::clone(&self.available_slots),
+            preview_ledger: Arc::clone(&self.preview_ledger),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn preview_retirement_bytes(&self) -> usize {
+        self.preview_ledger.bytes()
     }
 
     pub(super) fn try_retire(
@@ -718,7 +921,8 @@ impl TabResourceReclaimer {
             Err(ReclaimPayload::Tab(resources)) => Err(resources),
             Err(ReclaimPayload::TabBatch(_))
             | Err(ReclaimPayload::Active(_))
-            | Err(ReclaimPayload::IndexBuild(_)) => unreachable!("tab payload changed variant"),
+            | Err(ReclaimPayload::IndexBuild(_))
+            | Err(ReclaimPayload::Preview(_)) => unreachable!("tab payload changed variant"),
         }
     }
 
@@ -743,7 +947,8 @@ impl TabResourceReclaimer {
             Err(ReclaimPayload::TabBatch(resources)) => Err(resources),
             Err(ReclaimPayload::Tab(_))
             | Err(ReclaimPayload::Active(_))
-            | Err(ReclaimPayload::IndexBuild(_)) => {
+            | Err(ReclaimPayload::IndexBuild(_))
+            | Err(ReclaimPayload::Preview(_)) => {
                 unreachable!("tab batch payload changed variant")
             }
         }
@@ -752,14 +957,14 @@ impl TabResourceReclaimer {
     pub(super) fn try_retire_active(
         &self,
         resources: RetiredActiveResources,
-    ) -> Result<(), RetiredActiveResources> {
-        match self.try_send(ReclaimPayload::Active(resources)) {
+    ) -> Result<(), Box<RetiredActiveResources>> {
+        match self.try_send(ReclaimPayload::Active(Box::new(resources))) {
             Ok(()) => Ok(()),
             Err(ReclaimPayload::Active(resources)) => Err(resources),
             Err(ReclaimPayload::Tab(_) | ReclaimPayload::TabBatch(_)) => {
                 unreachable!("active payload changed variant")
             }
-            Err(ReclaimPayload::IndexBuild(_)) => {
+            Err(ReclaimPayload::IndexBuild(_) | ReclaimPayload::Preview(_)) => {
                 unreachable!("active payload changed variant")
             }
         }
@@ -776,7 +981,10 @@ impl TabResourceReclaimer {
             Ok(()) => Ok(()),
             Err(ReclaimPayload::IndexBuild(resources)) => Err(resources),
             Err(
-                ReclaimPayload::Tab(_) | ReclaimPayload::TabBatch(_) | ReclaimPayload::Active(_),
+                ReclaimPayload::Tab(_)
+                | ReclaimPayload::TabBatch(_)
+                | ReclaimPayload::Active(_)
+                | ReclaimPayload::Preview(_),
             ) => {
                 unreachable!("index build payload changed variant")
             }
@@ -791,34 +999,41 @@ impl TabResourceReclaimer {
     }
 
     fn try_acquire_slot(&self) -> bool {
-        let mut available = self.available_slots.load(Ordering::Acquire);
-        loop {
-            if available == 0 {
-                return false;
-            }
-            match self.available_slots.compare_exchange_weak(
-                available,
-                available - 1,
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            ) {
-                Ok(_) => return true,
-                Err(current) => available = current,
-            }
-        }
+        try_acquire_reclaimer_slot(&self.available_slots)
     }
 
     fn try_send_with_acquired_slot(&self, resources: ReclaimPayload) -> Result<(), ReclaimPayload> {
-        let Some(tx) = self.tx.as_ref() else {
-            release_reclaimer_slot(&self.available_slots);
+        Self::try_send_with_acquired_slot_shared(
+            self.tx.as_deref(),
+            &self.pending,
+            &self.available_slots,
+            &self.preview_ledger,
+            resources,
+        )
+    }
+
+    fn try_send_with_acquired_slot_shared(
+        tx: Option<&SyncSender<ReclaimPayload>>,
+        pending: &AtomicUsize,
+        available_slots: &AtomicUsize,
+        preview_ledger: &PreviewRetirementLedger,
+        resources: ReclaimPayload,
+    ) -> Result<(), ReclaimPayload> {
+        let Some(tx) = tx else {
+            release_reclaimer_slot(available_slots);
             return Err(resources);
         };
-        self.pending.fetch_add(1, Ordering::AcqRel);
+        if !preview_ledger.try_reserve(&resources) {
+            release_reclaimer_slot(available_slots);
+            return Err(resources);
+        }
+        pending.fetch_add(1, Ordering::AcqRel);
         match tx.try_send(resources) {
             Ok(()) => Ok(()),
             Err(TrySendError::Full(resources) | TrySendError::Disconnected(resources)) => {
-                self.pending.fetch_sub(1, Ordering::AcqRel);
-                release_reclaimer_slot(&self.available_slots);
+                pending.fetch_sub(1, Ordering::AcqRel);
+                preview_ledger.release(&resources.preview_allocations());
+                release_reclaimer_slot(available_slots);
                 Err(resources)
             }
         }
@@ -842,6 +1057,97 @@ impl Drop for TabResourceReclaimer {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc_220_preview_retirement_handle_is_bounded_and_returns_ownership_on_backpressure() {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-preview-retirement-{}-{:?}",
+            std::process::id(),
+            thread::current().id()
+        ));
+        std::fs::create_dir_all(&root).expect("create fixture directory");
+        let path = root.join("preview.txt");
+        std::fs::write(&path, "preview\n").expect("write fixture");
+        let document = Arc::new(
+            crate::ui_model::PagedTextPreview::initial(&path, &|| false).expect("build preview"),
+        );
+        let bytes = document.capacity_bytes();
+        let reclaimer = TabResourceReclaimer::paused_for_test();
+        let handle = reclaimer.preview_handle();
+        for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+            handle
+                .try_retire_preview(Arc::clone(&document))
+                .expect("slot available");
+        }
+        assert_eq!(reclaimer.preview_retirement_bytes(), bytes);
+        assert_eq!(reclaimer.pending(), TAB_RESOURCE_RECLAIMER_CAPACITY);
+        let returned = handle
+            .try_retire_preview(Arc::clone(&document))
+            .expect_err("queue full returns ownership");
+        assert!(Arc::ptr_eq(&returned, &document));
+        assert_eq!(reclaimer.preview_retirement_bytes(), bytes);
+        drop(returned);
+        let receiver = reclaimer._paused_rx.as_ref().expect("paused receiver");
+        for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+            let payload = receiver.try_recv().expect("queued preview");
+            reclaim_received(
+                payload,
+                &reclaimer.available_slots,
+                &reclaimer.preview_ledger,
+                &reclaimer.pending,
+            );
+        }
+        assert_eq!(handle.preview_retirement_bytes(), 0);
+        assert_eq!(reclaimer.pending(), 0);
+        drop(handle);
+        drop(reclaimer);
+        std::fs::remove_dir_all(root).expect("cleanup fixture");
+    }
+
+    #[test]
+    fn tc_220_preview_embedded_in_tab_payload_uses_same_retirement_ledger() {
+        let root = std::env::temp_dir().join(format!(
+            "flistwalker-preview-tab-retirement-{}-{:?}",
+            std::process::id(),
+            thread::current().id()
+        ));
+        std::fs::create_dir_all(&root).expect("create fixture directory");
+        let path = root.join("preview.txt");
+        std::fs::write(&path, "preview\n").expect("write fixture");
+        let document =
+            Arc::new(PagedTextPreview::initial(&path, &|| false).expect("build preview"));
+        let bytes = document.capacity_bytes();
+        let weak = Arc::downgrade(&document);
+        let reclaimer = TabResourceReclaimer::paused_for_test();
+        let committed = TabCommittedPayload {
+            preview_document: Some(document),
+            ..Default::default()
+        };
+        assert!(
+            reclaimer
+                .try_retire_active(RetiredActiveResources { committed })
+                .is_ok(),
+            "retire tab payload"
+        );
+        assert_eq!(reclaimer.preview_retirement_bytes(), bytes);
+        let payload = reclaimer
+            ._paused_rx
+            .as_ref()
+            .expect("paused receiver")
+            .try_recv()
+            .expect("queued tab payload");
+        reclaim_received(
+            payload,
+            &reclaimer.available_slots,
+            &reclaimer.preview_ledger,
+            &reclaimer.pending,
+        );
+        assert_eq!(reclaimer.preview_retirement_bytes(), 0);
+        assert_eq!(reclaimer.pending(), 0);
+        assert!(weak.upgrade().is_none());
+        drop(reclaimer);
+        std::fs::remove_dir_all(root).expect("cleanup fixture");
+    }
 
     #[test]
     fn tc_207_drop_observer_ignores_payloads_captured_by_parallel_test_threads() {

@@ -1,5 +1,6 @@
 use super::{
-    result_reducer, ActionResponse, FlistWalkerApp, PreviewResponse, SortMetadataResponse,
+    result_reducer, ActionResponse, FlistWalkerApp, PreviewRequest, PreviewResponse,
+    SortMetadataResponse,
 };
 
 impl FlistWalkerApp {
@@ -16,6 +17,82 @@ impl FlistWalkerApp {
 
     pub(super) fn take_preview_request_tab(&mut self, request_id: u64) -> Option<u64> {
         self.shell.tabs.take_preview_request_tab(request_id)
+    }
+
+    pub(super) fn queue_preview_request(&mut self, request: PreviewRequest) -> bool {
+        self.flush_parked_preview_requests();
+        if self.parked_preview_request.is_some() {
+            assert!(
+                request.document.is_none(),
+                "More admission must wait for preview retirement"
+            );
+            self.shell
+                .worker_bus
+                .preview
+                .freshness
+                .store(request.request_id, std::sync::atomic::Ordering::Release);
+            if let Some(superseded) = self.deferred_latest_preview_request.replace(request) {
+                self.retire_superseded_preview_request(superseded);
+            }
+            return true;
+        }
+        match self.shell.worker_bus.preview.queue_request(request) {
+            Ok(Some(superseded)) => {
+                self.retire_superseded_preview_request(superseded);
+                true
+            }
+            Ok(None) => true,
+            Err(request) => {
+                self.retire_superseded_preview_request(request);
+                false
+            }
+        }
+    }
+
+    fn retire_superseded_preview_request(&mut self, mut request: PreviewRequest) {
+        if let Some(tab_id) = self.take_preview_request_tab(request.request_id) {
+            if let Some(index) = self.find_tab_index_by_id(tab_id) {
+                if let Some(tab) = self.shell.tabs.get_mut(index) {
+                    if tab.pending_preview_request_id == Some(request.request_id) {
+                        tab.clear_preview_request_state();
+                        tab.mark_preview_reload_pending();
+                    }
+                }
+            }
+        }
+        if let Some(document) = request.document.take() {
+            if let Err(document) = self
+                .shell
+                .runtime
+                .try_retire_external_preview_document(document)
+            {
+                request.document = Some(document);
+                assert!(
+                    self.parked_preview_request.is_none(),
+                    "only one preview retirement may park"
+                );
+                self.parked_preview_request = Some(request);
+            }
+        }
+    }
+
+    fn flush_parked_preview_requests(&mut self) {
+        if let Some(mut request) = self.parked_preview_request.take() {
+            if let Some(document) = request.document.take() {
+                if let Err(document) = self
+                    .shell
+                    .runtime
+                    .try_retire_external_preview_document(document)
+                {
+                    request.document = Some(document);
+                    self.parked_preview_request = Some(request);
+                    return;
+                }
+            }
+        }
+        if let Some(request) = self.deferred_latest_preview_request.take() {
+            let _ = self.queue_preview_request(request);
+        }
     }
 
     pub(super) fn clear_response_routing_for_tab(&mut self, tab_id: u64) {
@@ -173,19 +250,139 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_preview_response(&mut self) {
-        while let Ok(response) = self.shell.worker_bus.preview.rx.try_recv() {
-            if self.apply_active_preview_response(&response) {
-                continue;
+        self.shell.runtime.retire_stale_preview_document();
+        self.flush_parked_preview_requests();
+        if self.parked_preview_request.is_none() && self.deferred_preview_response.is_none() {
+            if let Some((tab_id, path)) = self.deferred_more_intent.take() {
+                if self.current_tab_id() == Some(tab_id)
+                    && self
+                        .paged_preview_for_current()
+                        .is_some_and(|document| document.header.path == path)
+                {
+                    self.paged_preview_view.busy = false;
+                    self.request_paged_preview_more();
+                }
             }
-            self.apply_background_preview_response(response);
+        }
+        if let Some(response) = self.deferred_preview_response.take() {
+            if !self.apply_active_preview_response(&response) {
+                self.apply_background_preview_response(response);
+            }
+            if self.deferred_preview_response.is_some() {
+                return;
+            }
+        }
+        while let Ok(response) = self.shell.worker_bus.preview.rx.try_recv() {
+            if !self.apply_active_preview_response(&response) {
+                self.apply_background_preview_response(response);
+            }
+            if self.deferred_preview_response.is_some() {
+                break;
+            }
         }
     }
 
-    pub(super) fn apply_background_preview_response(&mut self, response: PreviewResponse) {
+    fn settle_preview_worker_response(&mut self, request_id: u64) {
+        if let Err(request) = self.shell.worker_bus.preview.settle_response(request_id) {
+            self.retire_superseded_preview_request(request);
+            self.shell.worker_bus.preview.clear_request();
+            self.set_notice("Preview worker is unavailable");
+        }
+    }
+
+    pub(super) fn apply_background_preview_response(&mut self, mut response: PreviewResponse) {
+        let target_index = self
+            .shell
+            .tabs
+            .preview_request_tab(response.request_id)
+            .and_then(|tab_id| self.find_tab_index_by_id(tab_id))
+            .filter(|index| *index != self.shell.tabs.active_tab_index())
+            .filter(|index| {
+                self.shell.tabs.get(*index).is_some_and(|tab| {
+                    tab.pending_preview_request_id == Some(response.request_id)
+                        && tab.result_state.committed.current_row.and_then(|row| {
+                            let results = if tab.result_state.results_compacted {
+                                &tab.result_state.committed.base_results
+                            } else {
+                                &tab.result_state.committed.results
+                            };
+                            results.get(row).map(|(path, _)| path)
+                        }) == Some(&response.path)
+                })
+            });
+        if let Some(document) = response.document.as_ref() {
+            if !self.enforce_preview_payload_budget(Some(document), false) {
+                self.deferred_preview_response = Some(response);
+                return;
+            }
+        }
+        let replaces_document = !response.canceled
+            && (response.document.is_some()
+                || response.page_error.is_some() && !response.is_more
+                || response.page_error.is_none());
+        if let Some(index) = target_index.filter(|_| replaces_document) {
+            let old = self
+                .shell
+                .tabs
+                .get_mut(index)
+                .and_then(|tab| tab.result_state.committed.preview_document.take());
+            if let Some(old) = old {
+                if let Err(old) = self.shell.runtime.try_retire_external_preview_document(old) {
+                    self.shell
+                        .tabs
+                        .get_mut(index)
+                        .unwrap()
+                        .result_state
+                        .committed
+                        .preview_document = Some(old);
+                    self.deferred_preview_response = Some(response);
+                    return;
+                }
+            }
+        } else if let Some(document) = response.document.take() {
+            if let Err(document) = self
+                .shell
+                .runtime
+                .try_retire_external_preview_document(document)
+            {
+                response.document = Some(document);
+                self.deferred_preview_response = Some(response);
+                return;
+            }
+        }
+        let request_id = response.request_id;
         result_reducer::apply_background_preview_response(self, response);
+        if self.shell.worker_bus.preview.pending_request_id == Some(request_id) {
+            self.shell.worker_bus.preview.clear_request();
+            self.clear_paged_preview();
+            self.request_preview_for_current();
+        }
+        self.settle_preview_worker_response(request_id);
     }
 
     pub(super) fn apply_active_preview_response(&mut self, response: &PreviewResponse) -> bool {
-        result_reducer::apply_active_preview_response(self, response)
+        if self.shell.worker_bus.preview.pending_request_id == Some(response.request_id) {
+            if response.document.is_some() || response.page_error.is_some() {
+                if !self.paged_preview_response_matches_active(response) {
+                    self.restore_paged_preview_view_for_active();
+                }
+                if !self.paged_preview_response_matches_active(response) {
+                    return false;
+                }
+            }
+            if let Some(document) = response.document.as_ref() {
+                if !self.enforce_preview_payload_budget(Some(document), true)
+                    || !self.shell.runtime.try_retire_preview_document()
+                {
+                    self.deferred_preview_response = Some(response.clone());
+                    return true;
+                }
+            }
+        }
+        let applied = result_reducer::apply_active_preview_response(self, response);
+        if applied {
+            self.settle_preview_worker_response(response.request_id);
+        }
+        applied
     }
 }

@@ -78,4 +78,13 @@
 
 - `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
 - `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、6つの利用者キーだけを patch して atomic replace する。未知キーは残し、実効 process config は変更しない。
-- `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知、失敗は草稿を保持して再試行を許す。
+- `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
+
+## DES-026 段階的プレビューの所有権と色分け
+- `ui_model::paged_preview` は確定済み本文、行範囲、固定復号方式、raw offset、最大4 KiBの先読みbuffer、行途中状態、取得可能なファイルID・size・mtimeを文書として所有する。追加ページは旧文書を複製したworker内の暫定文書へ構築し、復号・binary・identity確認後だけ新しい `Arc` を公開する。失敗ページの本文とcursorは採用しない。
+- `PreviewWorkerBus` は全タブ共通で実行中1件と最新待機1件を所有し、より新しいrequest IDをatomic freshnessとしてworkerへ伝える。UI dispatchは待機要求を置き換え、前の待機要求のroutingを解放する。terminal受信後に次の待機要求を送る。UI threadはファイルI/Oを行わない。
+- active文書はcommitted tab payloadへ格納し、background応答はrequest-tab routingと選択pathを照合する。既存のinactive/closed heavy snapshot LRUは文書容量もweightへ算入する。選択変更、再読込、tab restoreでは旧requestの本文を採用しない。
+- `ui_model::syntax_preview` は対応拡張子を限定した軽量字句分類器とページ継続状態を持つ。workerが増分でspanを作り、65,536 span/1 MiBを超えたらspanを破棄しプレーン表示へ戻す。元の本文を変更しない。GUIは可視行だけ `LayoutJob` を構築し、行番号を選択できない独立ラベルにする。
+- 旧文書の退役は既存のbounded tab reclaimerへ渡し、満杯時は旧所有者または単一保留応答に保持して新規採用を遅延する。active/inactive/closed/待機参照の共有 `Arc` は一意に計上し、resident 32 MiBを越える際は非active文書をLRU順で退役する。worker構築8 MiB、応答8 MiB、退役40 MiB、描画一時8 MiBと合わせたaccounted上限は96 MiBとする。背景追加失敗の理由はタブ単位で保持し、本文を残す。
+- raw本文は1 MiB、復号後本文は4 MiB、行表は5,000件、単一文書のcapacity合計は8 MiB以内とする。UIの色切替はセッション状態であり設定JSONへ保存しない。追加依存・grammar assetは用いない。
+- TUIは共有readerの20行head policyを利用し、従来のmetadata表示とエラー表示を維持する。rollbackはGUIの新reader/highlighter接続を戻し、永続形式は変更しない。
