@@ -1,4 +1,4 @@
-use crate::app::render::RenderCommand;
+use crate::app::render::{EmacsSinglelineOptions, RenderCommand};
 use crate::app::settings_dialog::SettingsView;
 use crate::app::FlistWalkerApp;
 use crate::runtime_config::EditableSettings;
@@ -18,6 +18,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         return;
     }
     let can_open_json = !app.shell.worker_bus.config_open.in_progress();
+    let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
+    let ime_composition_active = app.shell.ui.ime_composition_active;
     let mut action = None;
     egui::Modal::new(egui::Id::new("gui-settings-modal")).show(ctx, |ui| {
         ui.set_min_width(540.0);
@@ -87,7 +89,18 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     ui.heading("Search");
                     ui.horizontal(|ui| {
                         ui.label("Walker entry limit");
-                        ui.add(egui::TextEdit::singleline(limit_text).desired_width(120.0));
+                        FlistWalkerApp::emacs_singleline_text_edit(
+                            ui,
+                            limit_text,
+                            &mut app.shell.runtime.query_state.kill_buffer,
+                            emacs_enabled,
+                            ime_composition_active,
+                            EmacsSinglelineOptions::new(
+                                Some(egui::Id::new("settings-walker-entry-limit")),
+                                120.0,
+                                None,
+                            ),
+                        );
                     });
                     ui.label("Maximum candidates collected by Walker, not the number of results shown.");
                     if let Some(message) = error {

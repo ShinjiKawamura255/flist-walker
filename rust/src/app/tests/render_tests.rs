@@ -32,11 +32,14 @@ use crate::updater::AutoUpdateAssets;
 fn regression_modal_singleline_fields_cannot_bypass_the_shared_emacs_adapter() {
     let preset_picker = include_str!("../render_dialogs/preset_picker.rs");
     let root_list = include_str!("../render_dialogs/root_list.rs");
+    let settings = include_str!("../render_dialogs/settings.rs");
 
     assert!(!preset_picker.contains("TextEdit::singleline"));
     assert!(!root_list.contains("TextEdit::singleline"));
+    assert!(!settings.contains("TextEdit::singleline"));
     assert!(!preset_picker.contains("EmacsSinglelineOptions::new(None"));
     assert!(!root_list.contains("EmacsSinglelineOptions::new(None"));
+    assert!(!settings.contains("EmacsSinglelineOptions::new(None"));
 }
 
 #[cfg(not(target_os = "macos"))]

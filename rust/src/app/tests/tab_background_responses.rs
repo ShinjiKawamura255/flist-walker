@@ -20,6 +20,49 @@ fn collect_drop_threads_until(
     threads
 }
 
+fn poll_background_index_until(
+    app: &mut FlistWalkerApp,
+    description: &str,
+    mut settled: impl FnMut(&FlistWalkerApp) -> bool,
+) {
+    const MAX_FRAMES: usize = 4_096;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    for _ in 0..MAX_FRAMES {
+        if settled(app) {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "background index did not reach {description} within five seconds"
+        );
+        app.poll_index_response();
+        thread::yield_now();
+    }
+    assert!(
+        settled(app),
+        "background index did not reach {description} within {MAX_FRAMES} frames"
+    );
+}
+
+fn receive_after_background_index_progress<T>(
+    app: &mut FlistWalkerApp,
+    receiver: &mpsc::Receiver<T>,
+    description: &str,
+) -> T {
+    let mut received = None;
+    poll_background_index_until(app, description, |_| match receiver.try_recv() {
+        Ok(request) => {
+            received = Some(request);
+            true
+        }
+        Err(mpsc::TryRecvError::Empty) => false,
+        Err(mpsc::TryRecvError::Disconnected) => {
+            panic!("{description}: request channel disconnected")
+        }
+    });
+    received.expect("background index request was received")
+}
+
 const BACKGROUND_FINALIZATION_FRAME_LIMIT: usize = 2_000;
 const BACKGROUND_FINALIZATION_STALL_LIMIT: usize = 32;
 
@@ -771,8 +814,8 @@ fn tc_110_background_index_finish_preserves_sort_and_rejects_stale_sort_response
             source: IndexSource::Walker,
         })
         .expect("send finish");
-    app.poll_index_response();
-    let replacement_sort_req = sort_req_rx.try_recv().expect("replacement sort request");
+    let replacement_sort_req =
+        receive_after_background_index_progress(&mut app, &sort_req_rx, "replacement sort request");
     assert_ne!(replacement_sort_req.request_id, sort_req.request_id);
     assert_eq!(replacement_sort_req.mode, ResultSortMode::SizeDesc);
 
@@ -978,9 +1021,11 @@ fn tc_110_background_non_empty_refresh_keeps_last_good_until_sorted_search_respo
             source: IndexSource::Walker,
         })
         .expect("send background terminal");
-    app.poll_index_response();
-
-    let search_request = search_req_rx.try_recv().expect("background search request");
+    let search_request = receive_after_background_index_progress(
+        &mut app,
+        &search_req_rx,
+        "background search request",
+    );
     assert_eq!(search_request.sort_mode, ResultSortMode::NameAsc);
     assert_eq!(search_request.sort_scope, ResultSortScope::AllMatches);
     let background = app.shell.tabs.get(0).expect("background tab");
@@ -1090,9 +1135,11 @@ fn tc_110_background_empty_all_matches_refresh_sorts_full_replacement_before_lim
             source: IndexSource::Walker,
         })
         .expect("send background terminal");
-    app.poll_index_response();
-
-    let search_request = search_req_rx.try_recv().expect("background search request");
+    let search_request = receive_after_background_index_progress(
+        &mut app,
+        &search_req_rx,
+        "background search request",
+    );
     assert!(search_request.query.is_empty());
     assert_eq!(search_request.limit, 1);
     assert_eq!(search_request.entries.len(), 3);
@@ -1171,7 +1218,11 @@ fn tc_110_background_empty_all_matches_metadata_worker_failure_keeps_last_good()
             source: IndexSource::Walker,
         })
         .expect("send background terminal");
-    app.poll_index_response();
+    poll_background_index_until(&mut app, "failed background search settlement", |app| {
+        app.shell.tabs.get(0).is_some_and(|tab| {
+            tab.notice == "Search worker is unavailable" && !tab.search_in_progress
+        })
+    });
 
     let background = app.shell.tabs.get(0).expect("background tab");
     assert_eq!(background.result_state.committed.results, vec![(old, 1.0)]);
@@ -1318,7 +1369,12 @@ fn background_replace_all_after_active_handoff_discards_prior_partial_index() {
         })
         .expect("send finished");
 
-    app.poll_index_response();
+    poll_background_index_until(&mut app, "background replacement index finish", |app| {
+        app.shell.tabs.get(0).is_some_and(|tab| {
+            tab.index_state.pending_index_request_id.is_none()
+                && tab.index_state.pending_index_finish.is_none()
+        })
+    });
     app.switch_to_tab_index(0);
 
     assert_eq!(app.shell.runtime.entries.len(), 1);
@@ -1405,7 +1461,13 @@ fn background_empty_query_index_finish_updates_total_match_count() {
         })
         .expect("send background finished");
 
-    app.poll_index_response();
+    poll_background_index_until(&mut app, "background total-match count update", |app| {
+        app.shell.tabs.get(0).is_some_and(|tab| {
+            tab.index_state.pending_index_request_id.is_none()
+                && tab.index_state.pending_index_finish.is_none()
+                && tab.result_state.committed.total_match_count == 2
+        })
+    });
 
     let background_tab = app.shell.tabs.get(0).expect("tab 0");
     assert_eq!(background_tab.result_state.committed.results.len(), 1);

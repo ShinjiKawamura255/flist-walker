@@ -207,7 +207,7 @@ Back to the [Validation Matrix](validation-matrix.md).
 - Scenario: the 64 KiB preview cap splits the last UTF-8 code point, causing the entire valid prefix to be decoded as a legacy encoding and displayed as mojibake.
 - Expected Behavior: a genuinely truncated UTF-8 tail is removed at the final valid boundary while the preceding UTF-8 text remains intact; a complete code point at the exact limit is preserved.
 - Non-goals: preview byte/line limit changes, encoding detection redesign, or streaming preview beyond the cap.
-- Related Tests: `regression_truncated_utf8_preview_keeps_the_valid_prefix_encoding`, `regression_utf8_boundary_accepts_one_to_three_missing_bytes`, `regression_utf8_boundary_requires_a_valid_continuation`, `regression_exact_limit_utf8_preview_keeps_complete_final_codepoint`.
+- Related Tests: `invalid_utf8_continuation_after_sample_uses_legacy_encoding_for_gui_and_tui`, `valid_utf8_scalar_across_sample_boundary_keeps_utf8_for_gui_and_tui`, `regression_truncated_utf8_preview_keeps_the_valid_prefix_encoding`, `regression_exact_limit_utf8_preview_keeps_complete_final_codepoint`. The two legacy decoder-only boundary tests remain historical and are not the production guard.
 - Notes for Future Changes: retain up to three lookahead bytes and accept an incomplete UTF-8 tail only when those bytes actually complete the split Unicode scalar; file length alone is insufficient.
 
 ### Regression Guard: incremental search snapshot performs one owned copy

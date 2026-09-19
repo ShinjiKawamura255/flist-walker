@@ -196,28 +196,35 @@ impl PagedTextPreview {
                 .map(|target| normalize_path_for_display(&target))
                 .unwrap_or_else(|_| "<unavailable>".to_string())
         });
-        let sample_size = metadata.len().min(INITIAL_BYTE_LIMIT as u64) as usize;
+        // Keep the page budget at 64 KiB while probing at most the remainder of
+        // one UTF-8 scalar beyond the encoding sample.
+        let sample_size = metadata.len().min((INITIAL_BYTE_LIMIT + 3) as u64) as usize;
         let mut sample = vec![0u8; sample_size];
         file.read_exact(&mut sample).map_err(classify_io_error)?;
         if sample.is_empty() {
             return Err(PreviewPageError::Empty);
         }
-        let sample_boundary = sample
+        let sample_cap = sample.len().min(INITIAL_BYTE_LIMIT);
+        let sample_window = &sample[..sample_cap];
+        let sample_boundary = sample_window
             .iter()
             .enumerate()
             .filter(|(_, byte)| **byte == b'\n')
             .nth(max_lines.saturating_sub(1))
-            .map_or(sample.len(), |(index, _)| index + 1);
-        let (mut encoding, bom_len) = detect_encoding(&sample[..sample_boundary])?;
+            .map_or(sample_cap, |(index, _)| index + 1);
+        let (mut encoding, bom_len) = detect_encoding(
+            &sample_window[..sample_boundary],
+            &sample[sample_boundary..],
+        )?;
         if encoding == PreviewEncoding::Utf8
-            && sample[..sample_boundary].iter().all(u8::is_ascii)
-            && sample_boundary < sample.len()
+            && sample_window[..sample_boundary].iter().all(u8::is_ascii)
+            && sample_boundary < sample_cap
         {
             // ASCII is shared by UTF-8 and the legacy codecs. A bounded probe may
             // identify Japanese text on the next page without accepting late NULs
             // or treating an isolated invalid byte as Windows-1252.
             if let Ok((candidate @ (PreviewEncoding::ShiftJis | PreviewEncoding::EucJp), _)) =
-                detect_encoding(&sample)
+                detect_encoding(sample_window, &sample[sample_cap..])
             {
                 encoding = candidate;
             }
@@ -583,7 +590,10 @@ fn classify_io_error(error: std::io::Error) -> PreviewPageError {
     }
 }
 
-fn detect_encoding(bytes: &[u8]) -> Result<(PreviewEncoding, usize), PreviewPageError> {
+fn detect_encoding(
+    bytes: &[u8],
+    boundary_lookahead: &[u8],
+) -> Result<(PreviewEncoding, usize), PreviewPageError> {
     if bytes.starts_with(&[0xEF, 0xBB, 0xBF]) {
         return Ok((PreviewEncoding::Utf8, 3));
     }
@@ -598,7 +608,9 @@ fn detect_encoding(bytes: &[u8]) -> Result<(PreviewEncoding, usize), PreviewPage
     }
     match std::str::from_utf8(bytes) {
         Ok(_) => return Ok((PreviewEncoding::Utf8, 0)),
-        Err(error) if error.error_len().is_none() => return Ok((PreviewEncoding::Utf8, 0)),
+        Err(error) if valid_utf8_boundary(bytes, boundary_lookahead, &error) => {
+            return Ok((PreviewEncoding::Utf8, 0));
+        }
         Err(_) => {}
     }
     for (encoding, codec) in [
@@ -616,6 +628,34 @@ fn detect_encoding(bytes: &[u8]) -> Result<(PreviewEncoding, usize), PreviewPage
         }
     }
     Err(PreviewPageError::DecodeFailed)
+}
+
+fn valid_utf8_boundary(bytes: &[u8], lookahead: &[u8], error: &std::str::Utf8Error) -> bool {
+    if error.error_len().is_some() {
+        return false;
+    }
+    let Some(partial) = bytes.get(error.valid_up_to()..) else {
+        return false;
+    };
+    let width: usize = match partial.first() {
+        Some(0xC2..=0xDF) => 2,
+        Some(0xE0..=0xEF) => 3,
+        Some(0xF0..=0xF4) => 4,
+        _ => return false,
+    };
+    let Some(missing) = width.checked_sub(partial.len()) else {
+        return false;
+    };
+    if missing == 0 {
+        return false;
+    }
+    let Some(completion) = lookahead.get(..missing) else {
+        return false;
+    };
+    let mut scalar = [0u8; 4];
+    scalar[..partial.len()].copy_from_slice(partial);
+    scalar[partial.len()..width].copy_from_slice(completion);
+    std::str::from_utf8(&scalar[..width]).is_ok()
 }
 
 fn scalar_width(encoding: PreviewEncoding, first: u8) -> Result<usize, PreviewPageError> {
@@ -734,6 +774,53 @@ mod tests {
         assert_eq!(next.body(), input);
         assert_eq!(next.line_count(), 2);
         fs::remove_file(path).expect("cleanup fixture");
+    }
+
+    #[test]
+    fn invalid_utf8_continuation_after_sample_uses_legacy_encoding_for_gui_and_tui() {
+        let mut input = vec![b'a'; INITIAL_BYTE_LIMIT - 1];
+        input.extend_from_slice(&[0xC2, b'A', b'\n']);
+        let path = fixture("invalid-utf8-sample-boundary", &input);
+
+        let gui = PagedTextPreview::initial(&path, &|| false).expect("GUI legacy preview");
+        let tui = PagedTextPreview::tui_head(&path, &|| false).expect("TUI legacy preview");
+        assert_eq!(gui.encoding(), PreviewEncoding::ShiftJis);
+        assert_eq!(tui.encoding(), PreviewEncoding::ShiftJis);
+        assert!(
+            gui.body().ends_with('ﾂ'),
+            "boundary byte must not be discarded"
+        );
+        assert!(
+            tui.body().ends_with('ﾂ'),
+            "boundary byte must not be discarded"
+        );
+        let complete = gui
+            .read_more(&path, &|| false)
+            .expect("legacy continuation");
+        assert!(complete.body().ends_with("ﾂA\n"));
+
+        fs::remove_file(path).expect("cleanup fixture");
+    }
+
+    #[test]
+    fn valid_utf8_scalar_across_sample_boundary_keeps_utf8_for_gui_and_tui() {
+        for scalar in ["¢", "日", "😀"] {
+            let input = format!("{}{}-suffix\n", "a".repeat(INITIAL_BYTE_LIMIT - 1), scalar);
+            let path = fixture("valid-utf8-sample-boundary", input.as_bytes());
+            let gui = PagedTextPreview::initial(&path, &|| false).expect("GUI UTF-8 preview");
+            let tui = PagedTextPreview::tui_head(&path, &|| false).expect("TUI UTF-8 preview");
+            assert_eq!(gui.encoding(), PreviewEncoding::Utf8);
+            assert_eq!(tui.encoding(), PreviewEncoding::Utf8);
+            assert_eq!(
+                gui.read_more(&path, &|| false).expect("GUI more").body(),
+                input
+            );
+            assert_eq!(
+                tui.read_more(&path, &|| false).expect("TUI more").body(),
+                input
+            );
+            fs::remove_file(path).expect("cleanup fixture");
+        }
     }
 
     #[test]
