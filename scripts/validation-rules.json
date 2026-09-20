@@ -139,6 +139,7 @@
         "rust/src/app/shell_support.rs",
         "rust/src/app/session.rs",
         "rust/src/app/session/**",
+        "rust/src/persistence/**",
         "rust/src/updater.rs"
       ]
     },

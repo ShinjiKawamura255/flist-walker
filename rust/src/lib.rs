@@ -9,13 +9,7 @@ pub mod ignore_list;
 pub mod indexer;
 pub mod launch_path;
 pub mod path_utils;
-pub mod persistence {
-    pub use crate::app::{
-        history_persistence_enabled, load_persisted_roots_and_history,
-        load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence,
-        PersistedRootsAndHistory,
-    };
-}
+pub mod persistence;
 pub mod process_entry;
 pub mod query;
 pub(crate) mod query_history;

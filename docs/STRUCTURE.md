@@ -26,6 +26,7 @@ Use this map to locate the relevant code, documentation, tooling, or configurati
 | `rust/src/cli_tui/` | Interactive terminal protocol, state, workers, FileList flow, input, rendering, terminal guard, and owner tests | `rust/src/cli_tui.rs`, then the concern-specific module |
 | `rust/src/app/` | GUI coordination, rendering, state, worker routing, tabs, sessions, update, and FileList UI flows | `rust/src/app/mod.rs`, then the owner module named in `docs/ARCHITECTURE.md` |
 | `rust/src/app/worker/` | GUI worker request/response contracts, bounded channels, bus state, worker bodies, and shutdown runtime | `rust/src/app/worker.rs`, then the concern-specific module |
+| `rust/src/persistence/` | Shared settings/history storage, complete persisted schema, paths/migration, and lock/merge/rollback worker | `rust/src/persistence/mod.rs`, then `schema.rs`, `paths.rs`, or `worker.rs` |
 | `rust/src/query_history.rs`, `rust/src/text_editing.rs` | UI-agnostic query-history and Emacs-style text-edit policy shared by GUI/TUI adapters | Read the relevant module directly |
 | `rust/src/app/render_dialogs/` | Private FileList, update, and root-list dialog rendering owners | `rust/src/app/render_dialogs.rs` facade |
 | `rust/src/app/render_panels/` | Private top-panel owner and shared pure paint widgets | `rust/src/app/render_panels.rs` facade/results owner |
