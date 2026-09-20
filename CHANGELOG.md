@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.28.0] - 2026-09-20
+### Added
+- GUI に設定ダイアログ、ページ単位のテキスト preview、bounded な syntax coloring、選択項目のページング表示を追加した。
+- 検索欄に field prefix の綴り補助、空の field 値に対する入力案内、選択・PIN 操作の明示的な UX を追加した。
+
+### Changed
+- GUI の検索、index、preview、設定保存、session 復元を bounded worker と request identity に揃え、background refresh、ignore 更新、sort、tab 切替で確定済み結果を安定して保持するようにした。
+- FileList／設定の atomic persistence、config normalization、durability failure の復旧境界を整理し、CI と repository contract の検証を強化した。
+
+### Fixed
+- search worker の channel 切断・要求送信失敗・stale response を終端処理へ統合し、query、Results、selection、PIN、current row を保持したまま再起動案内を表示するようにした。
+- 大きな text preview の UTF-8 境界、syntax coloring、preview failure、GUI の設定保存通知と tab-local state の競合を修正した。
+- FileList の crash recovery、atomic replace 後の durability failure、updater/config migration の rollback と失敗時の状態保持を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.27.1] - 2026-09-16
 ### Added
 - なし。
@@ -2065,7 +2092,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...HEAD
+[0.28.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...v0.27.0
 [0.26.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.25.1...v0.26.0
