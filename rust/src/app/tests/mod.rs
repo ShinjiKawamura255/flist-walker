@@ -76,6 +76,7 @@ mod pipeline_tests;
 mod preset_picker;
 mod query_history;
 mod render_tests;
+mod result_parity;
 mod root_list_manager;
 mod search_failure;
 mod session_restore;

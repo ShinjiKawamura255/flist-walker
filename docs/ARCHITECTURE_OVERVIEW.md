@@ -30,10 +30,12 @@ Primary docs:
 | Search/query | `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/rank.rs` | fzf-like token parsing, filtering, scoring, ranking |
 | GUI coordinator | `rust/src/app/mod.rs`, `rust/src/app/state.rs`, `rust/src/app/pipeline.rs`, `rust/src/app/pipeline_owner.rs` | Top-level egui orchestration, app state bundles, index/search lifecycle |
 | Rendering/input | `rust/src/app/render.rs`, `rust/src/app/render_panels.rs`, `rust/src/app/render_panels/`, `rust/src/app/render_dialogs.rs`, `rust/src/app/render_dialogs/`, `rust/src/app/input/mod.rs` | Frame rendering, private top-panel/dialog owners, command seams, shortcuts, text input |
-| Tabs/session | `rust/src/app/tabs.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/session.rs` | Tab snapshots, background response routing, persistence |
+| Tabs/session | `rust/src/app/tabs.rs`, `rust/src/app/tab_state.rs`, `rust/src/app/query_state.rs`, `rust/src/app/session.rs` | Tab snapshots, canonical live/background query payload, response routing, GUI restore/save adapters |
+| Persistence | `rust/src/persistence/` | GUI/CLI/TUI shared persisted schema, startup reads, paths, history merge, atomic storage and settings rollback |
+| Result policy | `rust/src/app/result_policy.rs` | Data-only publication/ranking/sort decisions shared by active and background adapters |
 | Workers | `rust/src/app/worker.rs`, `rust/src/app/worker/` | Private worker namespace, request/response types, bounded channels, bus state, worker bodies, shutdown |
 | Actions / OS integration | `rust/src/actions.rs`, `rust/src/path_utils.rs`, `rust/src/app/shell_support.rs` | Open/execute, path normalization, platform-local shell helpers |
-| Runtime config | `rust/src/runtime_config.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs` | Config file bootstrap, saved state paths, config opening |
+| Runtime config | `rust/src/runtime_config.rs`, `rust/src/persistence/paths.rs`, `rust/src/app/shell_support.rs` | Config file bootstrap, saved state paths, config opening |
 | Self-update / release | `rust/src/updater.rs`, `rust/src/updater/`, `rust/src/update_security.rs`, `scripts/prepare-release*`, `.github/workflows/` | Release discovery, signed update validation, staged apply, asset hygiene |
 
 ## Invariants To Preserve

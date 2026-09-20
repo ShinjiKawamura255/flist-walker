@@ -16,6 +16,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - native window bootstrap と CLI/GUI 共通 root resolution を担当する。
 - [lib.rs](../rust/src/lib.rs)
   - 共有モジュール公開面。
+- [persistence/mod.rs](../rust/src/persistence/mod.rs), [persistence/](../rust/src/persistence/)
+  - GUI/CLI/TUI 共通の保存 API。`schema.rs` は保存形式全体、`paths.rs` は保存先・移行・起動時読み込み、`worker.rs` は sidecar lock、JSON leaf merge、履歴、atomic write、設定の rollback を所有する。GUI 型や `FlistWalkerApp` に依存しない。
 - [entry.rs](../rust/src/entry.rs)
   - `Entry` / `EntryKind` を定義し、index/search/app 間の候補表現を統一する。
 - [indexer/mod.rs](../rust/src/indexer/mod.rs)
@@ -109,13 +111,13 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [bootstrap.rs](../rust/src/app/bootstrap.rs)
   - worker 起動と launch seed 構築。
 - [session.rs](../rust/src/app/session.rs)
-  - saved roots、UI state 永続化、window geometry restore、shutdown/persist owner。
+  - GUI の保存 snapshot 作成、launch/tab/window geometry restore、shutdown 時の保存要求を所有する。共通の読み込み・書き込み・保存形式は `persistence/` に委譲する。
 - [tabs.rs](../rust/src/app/tabs.rs)
   - tab lifecycle、snapshot capture/apply、activation 時の restore/refresh 入口、tab routing owner を担当する。background tab 向け search/index response apply は `response_flow.rs` へ委譲し、live 側の tab/session orchestration は `state.rs` の `TabSessionState` を介して保持する。`TabSessionState` は明示的な collection API と active tab / tab id / pending restore / request routing の owner API を持ち、Vec 全体への暗黙透過はしない。
 - [pipeline.rs](../rust/src/app/pipeline.rs)
   - index queue、index response poll、dispatcher を担当し、active path は `PipelineOwner`、background path は `tabs.rs` の background-flow helper 群へ橋渡しする thin coordinator として振る舞う。
 - [pipeline_owner.rs](../rust/src/app/pipeline_owner.rs)
-  - active tab 向け search/result refresh、entry filter 再適用、incremental search refresh を担当する dedicated owner surface。
+  - active tab 向け search/result refresh、entry filter 再適用、incremental search refresh を結線する app adapter。横断的な状態アクセスを持つため、独立した domain owner としては扱わない。表示結果の判断規則は `result_policy.rs` に置く。
 - [search_coordinator.rs](../rust/src/app/search_coordinator.rs)
   - search worker channel、request_id、tab routing に加え、active/background search request lifecycle helper を保持する。
 - [index_coordinator.rs](../rust/src/app/index_coordinator.rs)
@@ -141,11 +143,13 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [ui_state.rs](../rust/src/app/ui_state.rs)
   - runtime UI focus、scroll、preview panel、tab drag などの一時状態を保持する。
 - [query_state.rs](../rust/src/app/query_state.rs)
-  - query、history、history search、kill buffer をまとめる。
+  - `TabQueryState` は live/background 共通の query・history-navigation payload。`QueryState` はこれを保持し、app-global の history debounce と kill buffer を別に持つ。タブ切替では payload 全体を swap し、全体共有状態を移動しない。
 - [cache.rs](../rust/src/app/cache.rs)
   - preview/highlight/sort metadata cache state と bounded invalidation を担当する。
 - [result_reducer.rs](../rust/src/app/result_reducer.rs)
-  - result snapshot refresh、preview 応答反映、sort 応答反映の state transition を集約し、shell-facing flow modules から reducer boundary へ切り出す。
+  - result/preview/sort 応答を GUI 状態へ適用する adapter。request freshness、selection、preview retirement、scroll/status、worker dispatch を扱う。
+- [result_policy.rs](../rust/src/app/result_policy.rs)
+  - app や worker を受け取らず、前面・背景共通の検索結果公開、ranking membership、エラー、sort scope、並べ替えを判断する。local sort 待ちでは visible results とその件数を同時に保留し、AllMatches の empty query は limit 前に worker で評価する。
 - [result_flow.rs](../rust/src/app/result_flow.rs)
   - result sort の orchestration を担当しつつ、reducer boundary への thin wrapper として振る舞う。
 - [preview_flow.rs](../rust/src/app/preview_flow.rs)
@@ -170,6 +174,10 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - search/preview/action/sort/update/filelist/kind worker の spawn registry、use-case 本体、共有 action notice formatting を担当する。
 
 ## App Test Boundaries
+- `rust/tests/architecture_boundaries.rs`, `rust/src/app/tests/result_parity.rs`
+  - 共通保存層と結果判断の依存境界、前面・背景の検索結果・件数・エラー・metadata 待ちの一致を検証する。
+- `rust/src/persistence/worker/tests.rs`
+  - TC-167/168 の保存互換、未知フィールド、複数 writer、lock contention、設定 rollback と公開 API を GUI から独立して検証する。
 - `rust/src/app/tests/update_commands.rs`
   - update dialog / manager / worker-response lifecycle を command 境界で検証する。
 - `rust/src/app/tests/session_restore.rs`

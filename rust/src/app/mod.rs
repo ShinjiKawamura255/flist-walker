@@ -41,6 +41,7 @@ mod render_tabs;
 mod render_theme;
 mod response_flow;
 mod result_flow;
+mod result_policy;
 mod result_reducer;
 mod root_browser;
 mod search_assist;
@@ -65,7 +66,6 @@ use cache::{
     EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
     SortMetadataCacheState,
 };
-use coordinator::normalized_compare_key;
 use index_coordinator::IndexCoordinator;
 use index_finalization::{
     BackgroundIndexFilterScratch, BackgroundIndexFinalizeIdentity, BackgroundIndexFinalizeInputs,

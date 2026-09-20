@@ -50,6 +50,13 @@ For documentation-only restructuring, apply VM-001:
 ## Tab Ownership Transfer Verification
 - TC-154 retains the allocation-preserving active/inactive ownership transfer and release-mode transition ceiling. TC-203 through TC-211 define startup precedence, explicit lifecycle/last-good snapshots, Active+Warm scheduling, ordered bounded request mailboxes, common live/closed LRU, engagement-qualified Recent Inactive retention, bounded reclaimer, and repeated native switching coverage.
 - Apply VM-002 with focused tab owner tests; use both non-sparse and deliberately sparse fixtures for pointer/capacity identity, retain computed results across activation, and run the release-mode tab-transition latency fixture when the activation hot path changes.
+- `tab_contract::query_payload_swap_preserves_every_tab_field_and_allocation_but_keeps_global_state` checks the canonical query payload, including Unicode/history/error fields, while keeping debounce and kill buffer app-global. `result_parity` compares active/background rows, ranking, counts, selection, errors and pending metadata across both sort scopes. `rust/tests/architecture_boundaries.rs` guards shared persistence and result-policy dependencies.
+
+## Shared Persistence Verification
+
+- TC-167/168 storage tests live in `rust/src/persistence/worker/tests.rs`; GUI restore and dialog tests remain in `app/tests/`.
+- Preserve complete-document deserialization, malformed known-field fallback, unknown-field merge, public API round trips, test settings isolation, and the child-process writer's nonzero executed-test count when moving storage code.
+- Apply VM-008 to `rust/src/persistence/` changes and VM-002 when changing GUI save/restore adapters.
 
 ## GUI Evidence Axes
 - `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..012. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.

@@ -1,7 +1,4 @@
-use super::{
-    result_reducer, AppTabState, Entry, FlistWalkerApp, ResultSortMode, ResultSortScope,
-    SearchRequest,
-};
+use super::{result_reducer, AppTabState, Entry, FlistWalkerApp, ResultSortMode, SearchRequest};
 use crate::app::search_coordinator::SearchResponseRoute;
 use std::path::PathBuf;
 use std::sync::mpsc::TryRecvError;
@@ -105,9 +102,11 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn update_results(&mut self) {
-        if self.app.shell.runtime.query_state.query.trim().is_empty()
-            && !self.search_worker_needed_for_empty_query_sort()
-        {
+        if !super::result_policy::needs_search_worker(
+            &self.app.shell.runtime.query_state.query,
+            self.app.shell.runtime.result_sort_mode,
+            self.app.shell.runtime.result_sort_scope,
+        ) {
             self.app.shell.search.clear_active_request_state();
             let results = self
                 .app
@@ -213,7 +212,11 @@ impl<'a> PipelineOwner<'a> {
         self.app.shell.indexing.search_rerun_pending = false;
 
         if self.app.shell.runtime.query_state.query.trim().is_empty() {
-            if self.search_worker_needed_for_empty_query_sort() {
+            if super::result_policy::needs_search_worker(
+                "",
+                self.app.shell.runtime.result_sort_mode,
+                self.app.shell.runtime.result_sort_scope,
+            ) {
                 self.update_results();
                 return;
             }
@@ -359,11 +362,6 @@ impl<'a> PipelineOwner<'a> {
             sort_scope: self.app.shell.runtime.result_sort_scope,
             cancel,
         }
-    }
-
-    fn search_worker_needed_for_empty_query_sort(&self) -> bool {
-        self.app.shell.runtime.result_sort_scope == ResultSortScope::AllMatches
-            && self.app.shell.runtime.result_sort_mode != ResultSortMode::Score
     }
 
     fn filtered_entries(
