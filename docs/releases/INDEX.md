@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.28.0 Candidate Release Body](evidence/v0.28.0/RELEASE-BODY.md) | Reviewed single-version body for the pending candidate; publication record is added only after final release read-back |
 | [v0.27.1 Release Record](v0.27.1.md) | Tag, candidate and tagged workflows, assets, GUI validation, warnings, and final review evidence |
 | [v0.18.10 Release Record](v0.18.10.md) | Tag, CI, assets, native/GUI validation, warning decision, and review evidence |
 | [v0.18.9 Candidate Rejection](v0.18.9-candidate-rejection.md) | Rejection decision, validation result, reason, and remediation |
@@ -18,6 +19,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.28.0/` | Reviewed candidate release body; publication evidence pending |
 | `evidence/v0.27.1/` | Published release body and sanitized GUI validation evidence |
 | `evidence/v0.20.1/` | Historical release-body draft evidence retained for reference |
 | `evidence/v0.18.9/` | GUI reports, headful smoke evidence, logs, and release-body draft |
