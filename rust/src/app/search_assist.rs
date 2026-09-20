@@ -225,6 +225,9 @@ impl FlistWalkerApp {
         if !self.shell.runtime.results.is_empty() {
             return EmptyState::Hidden;
         }
+        if self.shell.search.worker_unavailable() {
+            return EmptyState::SearchFailed;
+        }
         if self.shell.ui.ime_composition_active {
             return EmptyState::Waiting;
         }
@@ -334,12 +337,19 @@ impl FlistWalkerApp {
 
     pub(super) fn render_query_assistance(&mut self, ui: &mut egui::Ui) {
         self.sync_search_assist(Instant::now());
+        if self.shell.search.worker_unavailable() {
+            ui.colored_label(
+                ui.visuals().error_fg_color,
+                "Search worker is unavailable. Restart FlistWalker to resume searching.",
+            );
+        }
         if self.shell.runtime.query_state.history_search_active
             || self.shell.ui.ime_composition_active
         {
             return;
         }
         let advice = self.shell.ui.search_assist.advice.clone();
+        let input_pending = matches!(advice, Some(QueryAdvice::Pending(_)));
         match advice {
             Some(QueryAdvice::Pending(field)) => {
                 ui.weak(format!("Enter a value after {field}:"));
@@ -352,12 +362,16 @@ impl FlistWalkerApp {
                     }
                 });
             }
-            None => {
-                if !self.shell.search.in_progress() {
-                    if let Some(error) = self.current_search_error() {
-                        ui.colored_label(ui.visuals().error_fg_color, error);
-                    }
-                }
+            None => {}
+        }
+        // An optional spelling suggestion must not hide another term's error or a
+        // worker failure. Empty known fields retain their non-error input prompt.
+        if !input_pending
+            && !self.shell.search.in_progress()
+            && !self.shell.search.worker_unavailable()
+        {
+            if let Some(error) = self.current_search_error() {
+                ui.colored_label(ui.visuals().error_fg_color, error);
             }
         }
         if let Some(undo) = &self.shell.ui.search_assist.undo {
@@ -595,7 +609,7 @@ mod tests {
     }
 
     #[test]
-    fn ux_undo_invalidated_by_manual_change_context_and_preset() {
+    fn ux_undo_invalidated_by_manual_change_and_context() {
         let scope = test_settings_scope("ux-undo-context");
         let mut app = scope.app(test_root("ux-undo-context"), 50, "report".into());
         app.shell.runtime.ignore_case = false;
@@ -609,6 +623,57 @@ mod tests {
         app.shell.runtime.root = test_root("new-context");
         app.sync_search_assist(Instant::now());
         assert!(app.shell.ui.search_assist.undo.is_none());
+    }
+
+    #[test]
+    fn ux_contract_same_value_preset_invalidates_filter_undo() {
+        use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource, SearchPreset};
+        let scope = test_settings_scope("ux-preset-undo");
+        let root = test_root("ux-preset-undo-root");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut app = scope.app(root.clone(), 50, "report".into());
+        app.shell.runtime.use_filelist = false;
+        app.shell.runtime.include_files = true;
+        app.shell.runtime.include_dirs = true;
+        app.shell.runtime.ignore_case = false;
+        app.relax_filter(FilterValue::Case(true));
+        assert!(app.shell.ui.search_assist.undo.is_some());
+        app.shell
+            .features
+            .presets
+            .catalog
+            .save_preset(SearchPreset {
+                name: "Same conditions".into(),
+                root_name: None,
+                root_path: root.clone(),
+                query: "report".into(),
+                entry_type: PresetEntryType::All,
+                source: PresetSource::Walker,
+                regex: app.shell.runtime.use_regex,
+                ignore_case: true,
+                ignore_enabled: app.shell.ui.ignore_list_enabled,
+                sort: PresetSortMode::Score,
+                max_depth: app.shell.runtime.max_depth,
+                follow_links: app.shell.runtime.follow_links,
+                extra: Default::default(),
+            })
+            .unwrap();
+        app.shell.features.presets.picker.open = true;
+        app.refresh_preset_picker_matches();
+        app.apply_selected_preset();
+        assert!(
+            !app.shell.features.presets.picker.open,
+            "preset actually applied"
+        );
+        assert!(app.shell.ui.search_assist.undo.is_none());
+        app.undo_filter_relaxation();
+        assert!(
+            app.shell.runtime.ignore_case,
+            "old undo must not revert the preset"
+        );
+        assert_eq!(app.shell.runtime.root, root);
+        assert_eq!(app.shell.runtime.query_state.query, "report");
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

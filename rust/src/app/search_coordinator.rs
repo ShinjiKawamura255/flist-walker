@@ -16,6 +16,7 @@ pub(super) struct SearchCoordinator {
     next_request_id: u64,
     pending_request_id: Option<u64>,
     in_progress: bool,
+    worker_unavailable: bool,
     request_tabs: HashMap<u64, u64>,
     request_cancellations: HashMap<u64, Arc<AtomicBool>>,
     latest_tab_requests: HashMap<u64, u64>,
@@ -29,6 +30,7 @@ impl SearchCoordinator {
             next_request_id: 1,
             pending_request_id: None,
             in_progress: false,
+            worker_unavailable: false,
             request_tabs: HashMap::new(),
             request_cancellations: HashMap::new(),
             latest_tab_requests: HashMap::new(),
@@ -66,6 +68,23 @@ impl SearchCoordinator {
 
     pub(super) fn in_progress(&self) -> bool {
         self.in_progress
+    }
+
+    pub(super) fn worker_unavailable(&self) -> bool {
+        self.worker_unavailable
+    }
+
+    /// A closed worker cannot complete any remaining request. Keep this health
+    /// state outside query/tab state so editing or activating a tab cannot hide it.
+    pub(super) fn mark_worker_unavailable(&mut self) {
+        self.worker_unavailable = true;
+        for (_, cancel) in self.request_cancellations.drain() {
+            cancel.store(true, Ordering::Release);
+        }
+        self.request_tabs.clear();
+        self.latest_tab_requests.clear();
+        self.pending_request_id = None;
+        self.in_progress = false;
     }
 
     pub(super) fn set_in_progress(&mut self, in_progress: bool) {

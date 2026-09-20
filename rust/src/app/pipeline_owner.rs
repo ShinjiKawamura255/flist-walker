@@ -4,6 +4,7 @@ use super::{
 };
 use crate::app::search_coordinator::SearchResponseRoute;
 use std::path::PathBuf;
+use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -43,18 +44,54 @@ impl<'a> PipelineOwner<'a> {
         self.app.refresh_status_line();
 
         let req = self.build_active_search_request(request_id, cancel);
-        if self.app.shell.search.tx.send(req).is_err() {
-            self.app.shell.search.clear_active_request_state();
+        if self.app.shell.search.worker_unavailable() || self.app.shell.search.tx.send(req).is_err()
+        {
+            self.poll_search_response();
+            self.fail_search_worker();
+        }
+    }
+
+    fn fail_search_worker(&mut self) {
+        let active_pending = self.app.shell.search.in_progress()
+            || self.app.shell.search.pending_request_id().is_some();
+        self.app.shell.search.mark_worker_unavailable();
+        if active_pending {
             self.app.shell.runtime.query_state.search_error = Some((
                 self.app.shell.runtime.query_state.query.clone(),
                 "Search worker is unavailable".into(),
             ));
             self.app.set_notice("Search worker is unavailable");
         }
+        let active_index = self.app.shell.tabs.active_tab_index();
+        for (index, tab) in self.app.shell.tabs.iter_mut().enumerate() {
+            if index != active_index && (tab.search_in_progress || tab.pending_request_id.is_some())
+            {
+                tab.query_state.search_error = Some((
+                    tab.query_state.query.clone(),
+                    "Search worker is unavailable".into(),
+                ));
+                tab.notice = "Search worker is unavailable".into();
+            }
+            // Clear the active tab's saved state too: it may contain an older
+            // request snapshot and must not resurrect it during a later swap.
+            tab.clear_search_request_state();
+        }
+        self.app.refresh_status_line();
     }
 
     pub(super) fn poll_search_response(&mut self) {
-        while let Ok(response) = self.app.shell.search.rx.try_recv() {
+        if self.app.shell.search.worker_unavailable() {
+            return;
+        }
+        loop {
+            let response = match self.app.shell.search.rx.try_recv() {
+                Ok(response) => response,
+                Err(TryRecvError::Empty) => break,
+                Err(TryRecvError::Disconnected) => {
+                    self.fail_search_worker();
+                    break;
+                }
+            };
             match self.app.shell.search.route_response(response.request_id) {
                 SearchResponseRoute::Active => {
                     result_reducer::apply_active_search_response(self.app, response);
@@ -358,7 +395,7 @@ impl<'a> PipelineOwner<'a> {
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {
         let limit = self.app.shell.runtime.limit;
-        let (request_id, req) = {
+        let req = {
             let shell = &mut self.app.shell;
             let (tabs, search) = (&mut shell.tabs, &mut shell.search);
             let Some(tab) = tabs.get_mut(tab_index) else {
@@ -366,26 +403,12 @@ impl<'a> PipelineOwner<'a> {
             };
             let (request_id, cancel) = search.begin_tab_request(tab);
             tab.query_state.search_error = None;
-            let req = Self::build_search_request_for_tab(tab, request_id, limit, cancel);
-            (request_id, req)
+            Self::build_search_request_for_tab(tab, request_id, limit, cancel)
         };
-        if self.app.shell.search.tx.send(req).is_err() {
-            let tab_id = self.app.shell.tabs.get(tab_index).map(|tab| tab.id);
-            if let Some(tab_id) = tab_id {
-                self.app.shell.search.clear_for_tab(tab_id);
-            }
-            let Some(tab) = self.app.shell.tabs.get_mut(tab_index) else {
-                return;
-            };
-            if Some(request_id) == tab.pending_request_id {
-                tab.pending_request_id = None;
-            }
-            tab.search_in_progress = false;
-            tab.query_state.search_error = Some((
-                tab.query_state.query.clone(),
-                "Search worker is unavailable".into(),
-            ));
-            tab.notice = "Search worker is unavailable".to_string();
+        if self.app.shell.search.worker_unavailable() || self.app.shell.search.tx.send(req).is_err()
+        {
+            self.poll_search_response();
+            self.fail_search_worker();
         }
     }
 }
