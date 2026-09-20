@@ -181,6 +181,7 @@
 - 役割補足: GUI の設定ボタンは render command 経由で `shell_support` の config open 処理を呼び、`runtime_config_file_path` を生成済みにしたうえで `actions` の既定アプリ open を試す。既定アプリが失敗した場合は、Windows では `notepad.exe`、macOS では `open -t`、Linux では `VISUAL` / `EDITOR` または一般的な GUI editor へフォールバックする。
 - 役割補足: build-time 公開鍵や release signing secret は runtime config file に含めず、既存の build / release / dev-test secret 経路に残す。
 - 役割補足: session persistence は read-only roots API と async history/UI-state/settings writer を分ける。worker は sidecar lock 下で latest-read delta merge と atomic write を行い、unknown JSON fields を保持する。saved-root/default-root の observed commit は path canonicalize と関連ファイル write を同 worker で実行し、request identity 付き結果を UI へ返す。GUI/TUI frame は enqueue と bounded response poll のみを行い、lock timeout/write failure の history generation は retry queue に残す。observed commit の失敗は live state を更新せず、途中まで変更した saved-roots file を可能な限り rollback して結果へ含める。
+- 役割補足: `persistence/worker.rs` の merge base 読込は `NotFound` だけ空 object とする。既存ファイルの read/UTF-8/JSON parse failure と non-object は write 前に拒否し、pending generation を保持する。settings commit でも同じ読込を saved-roots write より先に完了させる。read-only startup の型付き default fallback と、書込側のデータ保全判定は別契約である。
 
 - DES-018 Release Sample Ignore List
 - 役割: release asset と self-update helper が ignore list サンプルを同梱・配置し、初回利用時の導線を提供する。
