@@ -23,6 +23,41 @@ fn preset(name: &str, root: &Path, query: &str) -> SearchPreset {
     }
 }
 
+#[test]
+fn gui_metadata_sort_preset_preserves_explicit_tab_scope() {
+    for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
+        let root = test_root("metadata-preset-scope");
+        fs::create_dir_all(&root).unwrap();
+        let mut app = FlistWalkerApp::new(root.clone(), 2, "before".into());
+        reset_index_request_state_for_test(&mut app);
+        app.shell.runtime.use_filelist = false;
+        app.shell.runtime.include_files = true;
+        app.shell.runtime.include_dirs = false;
+        app.shell.runtime.result_sort_scope = scope;
+        let mut selected = preset("Metadata", &root, "item");
+        selected.sort = PresetSortMode::SizeDesc;
+        app.shell
+            .features
+            .presets
+            .catalog
+            .save_preset(selected)
+            .unwrap();
+        app.shell.features.presets.picker.open = true;
+        app.refresh_preset_picker_matches();
+        let (tx, rx) = mpsc::channel();
+        app.shell.search.tx = tx;
+
+        app.apply_selected_preset();
+
+        assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::SizeDesc);
+        assert_eq!(app.shell.runtime.result_sort_scope, scope);
+        let request = rx.try_recv().expect("preset search");
+        assert_eq!(request.sort_mode, ResultSortMode::SizeDesc);
+        assert_eq!(request.sort_scope, scope);
+        let _ = fs::remove_dir_all(root);
+    }
+}
+
 fn key_event(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
     egui::Event::Key {
         key,

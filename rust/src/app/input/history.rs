@@ -117,6 +117,8 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn mark_query_edited(&mut self) {
+        self.shell.ui.search_assist.note_query_edit();
+        self.shell.runtime.query_state.search_error = None;
         self.shell.tabs.mark_active_tab_meaningfully_engaged();
         self.reset_query_history_navigation();
         self.set_query_history_dirty_since(Some(Instant::now()));

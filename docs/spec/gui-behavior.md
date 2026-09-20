@@ -12,6 +12,11 @@
 - MUST: 表示中の Results が空なら current row は `None`、1件以上なら常に範囲内の `Some(row)` とする。検索・sort・filter・preset・tab/session restore・非同期応答による結果再適用では、従来の行番号を結果末尾へ丸め、従来行がなければ0行目を選択する。非active tabで結果配列をcompactionした間だけ、再表示用のbase resultsに対するselection保持を許す。
 - MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後も、上記 Results/current row invariantを次の描画までに満たす。
 - MUST: 複数選択と一括アクションを提供する。
+- MUST: Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を控えめに強調する。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
+- MUST: 検索欄直下に query に対応する検索エラーまたは入力補助を示す。`name:` / `path:` / `dir:` / `ext:` の値が空なら入力待ちとして示す。未知の接頭辞のうち既知フィールドに近い綴りは、単語先頭のコロンを契機に任意の修正候補を示す。入力、貼付け、編集で再評価し、IME 合成中は指摘・修正しない。修正は提案した接頭辞だけを置換し、他の検索語と演算子を維持し、検索欄へ focus を戻す。
+- MUST: 補助は query 解釈を変更せず、未知の接頭辞を通常語とする共通契約を維持する。drive path、URL、引用された通常語、regex 内のコロンを一律に誤記と見なしてはならない。補助解析は最大4096 byteの入力に限定し、それを超える入力でも検索自体は制限してはならない。
+- MUST: Results が0件のとき、進行中の index/search、入力待ち/検索失敗、index失敗、確定した一致なしを区別する。一致なしの表示と条件緩和は query 入力が300ms以上静止し、その query の検索・index・sortが完了した後にだけ表示する。stale response または別 tab の response のエラーを現在 query のエラーとして表示してはならない。
+- MUST: 一致なしの場合、有効な種別・深さ・case・regex・Ignore List 条件を示して個別に緩和できる。除外原因は断定しない。変更は通常controlと同じ適用範囲・保存・非同期再検索経路に従い、Esc/Ctrl+GでqueryとPINをクリアしても維持する。直近の緩和は結果の有無に関わらず明示的に取り消せるが、同じ設定への後続変更、root/tab切替、preset適用では古い取消を無効にする。取消は対象条件だけを戻し、queryや無関係な設定を巻き戻してはならない。
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
 - MUST: ファイルの本文プレビューには byte size を `Size:` として人間可読単位で表示する。サイズ取得を含む preview I/O は worker で実行し、UI thread をブロックしてはならない。フォルダサイズの再帰計算は行わない。
@@ -121,7 +126,7 @@
 - SHOULD: 入力デバウンスで連続打鍵時の再描画負荷を抑える。
 - MUST: 結果ペインは `Sort` セレクタを持ち、`Score` / `Name (A-Z)` / `Name (Z-A)` / `Path (A-Z)` / `Path (Z-A)` / `Modified (New)` / `Modified (Old)` / `Created (New)` / `Created (Old)` / `Size (Large)` / `Size (Small)` を選択できる。
 - MUST: 結果ペインは表示件数と limit 前の全マッチ件数を区別できる表示を持ち、limit により一部だけを表示している場合は `shown of total` 相当の情報を示す。
-- MUST: 結果ペインは sort scope として `Shown results` / `All matches` を選択でき、既定は `Shown results` とする。
+- MUST: 結果ペインは sort scope として `Shown results` / `All matches` を選択でき、初期の Score は `Shown results` とする。GUIで別のModified/Created/Sizeモードを選んだときは `All matches` を選び、limit前の全一致へ適用する。利用者はその後 `Shown results` を明示選択でき、表示中の件数内だけの並べ替えであることを結果欄へ明示する。preset/sessionの明示scopeとCLI/TUIの既存契約は維持する。
 
 ### Preconditions / Postconditions
 - Preconditions: GUI モードで起動しインデックス構築可能。
@@ -156,16 +161,16 @@
 - Postconditions: 回帰実施可否を判定できる記録が残る。
 ## SP-013 検索結果ソート
 ### Requirements
-- MUST: 既定の `Shown results` scope では、ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。
+- MUST: `Shown results` scope では、ソートは現在の検索結果スナップショットにのみ適用し、インデックス構築や FileList 解析の経路へ属性取得を追加してはならない。GUIで日時・サイズmodeを新しく選択した場合のscopeはSP-010に従う。
 - MUST: 検索応答は表示上限適用前の全マッチ件数を返し、GUI は表示中件数と全マッチ件数を区別して扱わなければならない。
 - MUST: `All matches` scope では、現在の query / File・Folder filter / Ignore List / regex / case-sensitivity 条件を満たす全マッチ集合から選択 sort key の上位 `limit` 件を作り直さなければならない。
-- MUST: GUI、batch CLI、TUI は `Path` を含む同じ sort mode vocabulary を使用し、non-score sort は full match set への sort を limit より先に適用しなければならない。score sort は既存 ranking/tie behavior を維持する。
+- MUST: GUI、batch CLI、TUI は `Path` を含む同じ sort mode vocabulary を使用し、batch CLI/TUIおよびGUIのAll matchesではnon-score sortをlimitより先に適用しなければならない。GUIの明示Shown resultsは表示中集合だけを対象とする。score sort は既存 ranking/tie behavior を維持する。
 - MUST: GUI の候補収集深度 control、tab-local ownership、preset 表示と適用後の持続性は SP-021 に従う。
 - MUST: `All matches` scope であっても、GUI は全マッチを一覧へ全件描画せず、表示対象は `limit` 件以内に抑えなければならない。
 - MUST: `Score` は検索エンジンが返した元の順位へ戻せる。All matchesの非Score結果から戻す場合も、全候補中のScore上位集合を復元する。mode/scope切替中の旧応答は破棄し、保留queryは最新設定で完了させる。
 - MUST: `Name` ソートはファイル/ディレクトリ名を主キー、正規化済みフルパスを副キーとして即時に並び替える。
 - MUST: `Path` ソートは separator と platform の case semantics を正規化した完全な path を主キーとして即時に並び替える。
-- MUST: `Modified` / `Created` / `Size` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。
+- MUST: `Shown results`の`Modified` / `Created` / `Size` ソートは結果スナップショットに含まれる path だけを対象に、別ワーカーで `metadata` を遅延取得して適用する。All matchesでは検索workerが全一致のsort keyを取得してlimit前に選ぶ。
 - MUST: `All matches` scope の非 `Score` ソートは UI thread ではなく worker で実行し、検索応答の request_id / tab routing により古い応答を破棄できなければならない。
 - MUST: `Modified` / `Created` / `Size` の取得中も UI 入力と一覧操作を維持する。
 - MUST: query が 1 文字でも変化した場合、適用済みソートと保留中ソート要求を破棄し、表示順を `Score` に戻す。

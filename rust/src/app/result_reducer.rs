@@ -129,6 +129,10 @@ pub(super) fn apply_background_search_response(
     };
     let previous_path = selected_tab_path(tab).cloned();
     tab.clear_search_request_state();
+    tab.query_state.search_error = response
+        .error
+        .clone()
+        .map(|error| (tab.query_state.query.clone(), error));
     let response_failed = response.error.is_some();
     tab.notice = response
         .error
@@ -214,6 +218,10 @@ pub(super) fn apply_active_search_response(
         return false;
     }
     app.shell.search.clear_active_request_state();
+    app.shell.runtime.query_state.search_error = response
+        .error
+        .clone()
+        .map(|error| (app.shell.runtime.query_state.query.clone(), error));
     let response_failed = response.error.is_some();
     if let Some(error) = response.error {
         app.set_notice(format!("Search failed: {error}"));

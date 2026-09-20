@@ -1,4 +1,5 @@
 use super::widgets::centered_top_panel_label;
+use crate::app::search_assist::FilterValue;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::text_editing::char_count;
 use crate::ui_model::normalize_path_for_display;
@@ -257,13 +258,16 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let use_filelist_changed =
                 centered_checkbox(ui, &mut app.shell.runtime.use_filelist, "Use FileList")
                     .changed();
+            if use_filelist_changed { app.invalidate_filter_undo(); }
             if centered_checkbox(ui, &mut app.shell.runtime.use_regex, "Regex").changed() {
+                app.manual_filter_changed(FilterValue::Regex(false));
                 app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
             if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed()
             {
+                app.manual_filter_changed(FilterValue::Case(true));
                 app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
@@ -283,6 +287,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ignore_list_changed
             };
             if ignore_list_changed {
+                app.manual_filter_changed(FilterValue::Ignore(false));
                 app.mark_ui_state_dirty();
                 app.persist_ui_state_now();
             }
@@ -371,6 +376,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     .unwrap_or_default();
                 egui::Popup::close_id(ui.ctx(), depth_popup_id);
                 if next_depth != app.shell.runtime.max_depth {
+                    app.manual_filter_changed(FilterValue::Depth(next_depth));
                     app.shell.tabs.mark_active_tab_meaningfully_engaged();
                     app.shell.runtime.max_depth = next_depth;
                     app.sync_active_tab_state();
@@ -392,6 +398,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
             ui.separator();
             centered_top_panel_label(ui, app.source_text());
+            if files_changed || dirs_changed { app.manual_filter_changed(FilterValue::Kind(true, true)); }
             app.maybe_reindex_from_filter_toggles(
                 use_filelist_changed,
                 files_changed,
@@ -534,10 +541,22 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
         }
         app.run_deferred_shortcuts(&ctx);
+        app.render_query_assistance(ui);
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             for label in app.top_action_labels() {
-                let mut response = ui.button(label);
+                let count = app.shell.runtime.pinned_paths.len();
+                let caption = match (label, count) {
+                    ("Open / Execute", n) if n > 0 => format!("Open selected ({n})"),
+                    ("Copy Path(s)", n) if n > 0 => format!("Copy selected ({n})"),
+                    _ => label.to_owned(),
+                };
+                let mut button = egui::Button::new(caption);
+                if label == "Clear Selected" && count > 0 {
+                    button = button.fill(super::super::render_theme::selected_fill(ui.visuals().dark_mode))
+                        .stroke(egui::Stroke::new(1.0, ui.visuals().selection.stroke.color));
+                }
+                let mut response = ui.add(button);
                 if label == "Presets..." {
                     response = response.on_hover_text(FlistWalkerApp::preset_top_action_tooltip());
                 }
@@ -548,6 +567,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     app.queue_render_command(crate::app::render::RenderCommand::TopAction(command));
                 }
             }
+            let count = app.shell.runtime.pinned_paths.len();
+            if count > 0 && !app.shell.runtime.query_state.history_search_active
+                && ui.button(format!("Selected ({count})...")).clicked() { app.open_selection_inspector(); }
         });
     });
 }

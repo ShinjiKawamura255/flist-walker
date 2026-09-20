@@ -194,6 +194,16 @@ impl FlistWalkerApp {
         result_reducer::set_result_sort_mode(self, mode);
     }
 
+    /// Apply a deliberate GUI sort choice without changing restoration policy.
+    pub(super) fn select_result_sort_mode(&mut self, mode: ResultSortMode) {
+        // Only a new user choice supplies the default scope. Re-selecting the
+        // current mode must preserve an explicit Shown results choice.
+        if self.shell.runtime.result_sort_mode != mode && mode.uses_metadata() {
+            self.shell.runtime.result_sort_scope = super::ResultSortScope::AllMatches;
+        }
+        self.set_result_sort_mode(mode);
+    }
+
     /// sort scope を切り替え、必要なら全マッチ検索を再実行する。
     pub(super) fn set_result_sort_scope(&mut self, scope: super::ResultSortScope) {
         result_reducer::set_result_sort_scope(self, scope);

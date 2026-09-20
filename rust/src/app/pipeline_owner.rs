@@ -36,6 +36,7 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn enqueue_search_request(&mut self) {
+        self.app.shell.runtime.query_state.search_error = None;
         self.app.commit_query_history_if_needed(false);
         let current_tab_id = self.app.current_tab_id();
         let (request_id, cancel) = self.app.shell.search.begin_active_request(current_tab_id);
@@ -44,6 +45,10 @@ impl<'a> PipelineOwner<'a> {
         let req = self.build_active_search_request(request_id, cancel);
         if self.app.shell.search.tx.send(req).is_err() {
             self.app.shell.search.clear_active_request_state();
+            self.app.shell.runtime.query_state.search_error = Some((
+                self.app.shell.runtime.query_state.query.clone(),
+                "Search worker is unavailable".into(),
+            ));
             self.app.set_notice("Search worker is unavailable");
         }
     }
@@ -360,6 +365,7 @@ impl<'a> PipelineOwner<'a> {
                 return;
             };
             let (request_id, cancel) = search.begin_tab_request(tab);
+            tab.query_state.search_error = None;
             let req = Self::build_search_request_for_tab(tab, request_id, limit, cancel);
             (request_id, req)
         };
@@ -375,6 +381,10 @@ impl<'a> PipelineOwner<'a> {
                 tab.pending_request_id = None;
             }
             tab.search_in_progress = false;
+            tab.query_state.search_error = Some((
+                tab.query_state.query.clone(),
+                "Search worker is unavailable".into(),
+            ));
             tab.notice = "Search worker is unavailable".to_string();
         }
     }

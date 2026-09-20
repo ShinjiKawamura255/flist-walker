@@ -88,3 +88,10 @@
 - 旧文書の退役は既存のbounded tab reclaimerへ渡し、満杯時は旧所有者または単一保留応答に保持して新規採用を遅延する。active/inactive/closed/待機参照の共有 `Arc` は一意に計上し、resident 32 MiBを越える際は非active文書をLRU順で退役する。worker構築8 MiB、応答8 MiB、退役40 MiB、描画一時8 MiBと合わせたaccounted上限は96 MiBとする。背景追加失敗の理由はタブ単位で保持し、本文を残す。
 - raw本文は1 MiB、復号後本文は4 MiB、行表は5,000件、単一文書のcapacity合計は8 MiB以内とする。UIの色切替はセッション状態であり設定JSONへ保存しない。追加依存・grammar assetは用いない。
 - TUIは共有readerの20行head policyを利用し、従来のmetadata表示とエラー表示を維持する。rollbackはGUIの新reader/highlighter接続を戻し、永続形式は変更しない。
+
+## DES-027 GUI action scope and search assistance
+- Results activation supplies exactly the clicked row to the existing validated action dispatch; keyboard/top actions retain the PIN-first batch selector. Ordered PIN storage supports bounded cursor pages and individual removal without a full display snapshot.
+- GUI metadata-sort selection sets AllMatches before the search request; restoration/programmatic sort assignment retains explicit scope. A shown-scope description makes local subset sorting visible.
+- GUI query advice is a bounded lexical layer; it never changes shared parsing or compiles regex on the UI thread. Worker search errors remain correlated with the tab/query. Known empty fields are input-pending and near-known prefixes offer explicit byte-range replacement, preserving Unicode outside that range.
+- Empty-result guidance waits for idle input and settled workers. Relaxation delegates to ordinary filter transitions; a context-bound single undo stores only the affected condition. Esc keeps filter state; subsequent edits of that condition and root/tab/preset changes invalidate undo. No filesystem probes run during rendering.
+- Trace: FR-046/047 → SP-010/SP-013 → DES-027 → TC-223/224/225.

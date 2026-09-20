@@ -1,6 +1,8 @@
 ﻿# Requirements Traceability
 
 ## Traceability (excerpt)
+- FR-046 -> SP-010, SP-013 -> DES-027 -> TC-223, TC-224
+- FR-047 -> SP-010 -> DES-027 -> TC-225
 - FR-001 -> SP-001 -> DES-001 -> TC-001
 - FR-002 -> SP-002 -> DES-002 -> TC-002
 - FR-003 -> SP-003 -> DES-003 -> TC-003, TC-155

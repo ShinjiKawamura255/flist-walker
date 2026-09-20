@@ -582,6 +582,109 @@ fn sort_transition_response(request: &SearchRequest) -> SearchResponse {
 }
 
 #[test]
+fn gui_metadata_sort_selection_defaults_to_all_matches() {
+    for mode in [
+        ResultSortMode::ModifiedDesc,
+        ResultSortMode::ModifiedAsc,
+        ResultSortMode::CreatedDesc,
+        ResultSortMode::CreatedAsc,
+        ResultSortMode::SizeDesc,
+        ResultSortMode::SizeAsc,
+    ] {
+        let mut app = FlistWalkerApp::new(test_root("gui-metadata-scope"), 2, "item".into());
+        let (tx, rx) = mpsc::channel();
+        app.shell.search.tx = tx;
+        app.select_result_sort_mode(mode);
+        assert_eq!(
+            app.shell.runtime.result_sort_scope,
+            ResultSortScope::AllMatches
+        );
+        let request = rx.try_recv().expect("all-match metadata search");
+        assert_eq!(request.sort_mode, mode);
+        assert_eq!(request.sort_scope, ResultSortScope::AllMatches);
+        assert!(rx.try_recv().is_err(), "one choice queues one request");
+    }
+}
+
+#[test]
+fn gui_metadata_sort_explicit_shown_scope_lasts_until_new_metadata_choice() {
+    let mut app = FlistWalkerApp::new(test_root("gui-explicit-shown"), 2, "item".into());
+    let (tx, _rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.select_result_sort_mode(ResultSortMode::SizeDesc);
+    app.set_result_sort_scope(ResultSortScope::ShownResults);
+    app.select_result_sort_mode(ResultSortMode::SizeDesc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
+    app.select_result_sort_mode(ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
+    app.select_result_sort_mode(ResultSortMode::SizeAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::AllMatches
+    );
+}
+
+#[test]
+fn gui_metadata_sort_finds_largest_match_outside_the_display_limit() {
+    let root = test_root("gui-metadata-before-limit");
+    fs::create_dir_all(&root).unwrap();
+    let small = root.join("item.txt");
+    let large = root.join("item-long-name.txt");
+    fs::write(&small, b"x").unwrap();
+    fs::write(&large, b"much larger file").unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 1, "item".into());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.committed_for_test_mut().entries =
+        Arc::new(vec![file_entry(small.clone()), file_entry(large.clone())]);
+    let (tx, rx) = mpsc::channel();
+    app.shell.search.tx = tx;
+    app.enqueue_search_request();
+    let score = sort_transition_response(&rx.try_recv().unwrap());
+    assert_eq!(
+        score.results[0].0, small,
+        "fixture starts with the smaller file"
+    );
+    assert!(crate::app::result_reducer::apply_active_search_response(
+        &mut app, score
+    ));
+    app.select_result_sort_mode(ResultSortMode::SizeDesc);
+    let sorted = sort_transition_response(&rx.try_recv().expect("full-match size request"));
+    assert_eq!(sorted.total_match_count, 2);
+    assert_eq!(sorted.results.len(), 1);
+    assert_eq!(sorted.results[0].0, large);
+    assert!(crate::app::result_reducer::apply_active_search_response(
+        &mut app, sorted
+    ));
+    assert_eq!(app.shell.runtime.results[0].0, large);
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn gui_metadata_sort_tab_restore_preserves_explicit_scope() {
+    for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
+        let mut app = FlistWalkerApp::new(test_root("gui-sort-restore"), 2, "item".into());
+        app.shell.runtime.result_sort_mode = ResultSortMode::ModifiedDesc;
+        app.shell.runtime.result_sort_scope = scope;
+        let tab_id = app.current_tab_id().unwrap();
+        let snapshot = app.capture_active_tab_state(tab_id);
+        app.shell.runtime.result_sort_mode = ResultSortMode::Score;
+        app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+        app.apply_tab_state(&snapshot);
+        assert_eq!(
+            app.shell.runtime.result_sort_mode,
+            ResultSortMode::ModifiedDesc
+        );
+        assert_eq!(app.shell.runtime.result_sort_scope, scope);
+    }
+}
+
+#[test]
 fn regression_gui_sort_all_matches_score_restores_full_candidate_ranking() {
     for via_shown in [false, true] {
         let root = test_root("sort-full-score-restore");

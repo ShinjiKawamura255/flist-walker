@@ -3,6 +3,7 @@ use std::time::Instant;
 
 #[derive(Clone, Debug)]
 pub(super) struct QueryState {
+    pub(super) search_error: Option<(String, String)>,
     pub(super) query: String,
     pub(super) query_history: VecDeque<String>,
     pub(super) query_history_cursor: Option<usize>,
@@ -19,6 +20,7 @@ pub(super) struct QueryState {
 impl QueryState {
     pub(super) fn new(query: String, query_history: VecDeque<String>) -> Self {
         Self {
+            search_error: None,
             query,
             query_history,
             query_history_cursor: None,

@@ -800,6 +800,7 @@ impl FlistWalkerApp {
     }
 
     fn apply_preset_runtime_transition(&mut self, preset: &SearchPreset, new_root: PathBuf) {
+        self.invalidate_filter_undo();
         let (include_files, include_dirs) = preset.entry_type.include_flags();
         let use_filelist = !matches!(preset.source, PresetSource::Walker);
         let root_changed = path_key(&new_root) != path_key(&self.shell.runtime.root);

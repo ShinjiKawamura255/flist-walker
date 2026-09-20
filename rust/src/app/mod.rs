@@ -11,7 +11,6 @@ use crate::updater::{
     UpdateSupport,
 };
 use eframe::egui;
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
@@ -44,7 +43,9 @@ mod response_flow;
 mod result_flow;
 mod result_reducer;
 mod root_browser;
+mod search_assist;
 mod search_coordinator;
+mod selection_ux;
 mod session;
 mod settings_dialog;
 mod state;

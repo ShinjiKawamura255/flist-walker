@@ -14,6 +14,9 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        if self.handle_selection_inspector_shortcuts(ctx) {
+            return;
+        }
         if self.settings_dialog.is_open() {
             if self.consume_gui_cancel(ctx) {
                 self.close_settings_dialog();

@@ -22,7 +22,7 @@ pub(super) use crate::search::{
 use crate::search_catalog::{PresetEntryType, PresetSortMode, PresetSource, SearchCatalog};
 use crate::updater::UpdateCandidate;
 use eframe::egui;
-use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::Receiver;
@@ -281,7 +281,7 @@ pub(super) struct AppRuntimeState {
     preview_retirement: Option<PreviewRetirementHandle>,
     pub(super) result_sort_mode: ResultSortMode,
     pub(super) result_sort_scope: ResultSortScope,
-    pub(super) pinned_paths: HashSet<PathBuf>,
+    pub(super) pinned_paths: BTreeSet<PathBuf>,
     pub(super) evicted_selected_path: Option<PathBuf>,
     pub(super) emacs_keybindings_enabled: bool,
     pub(super) ctrl_w_deletes_word_in_query: bool,
@@ -299,7 +299,7 @@ impl AppRuntimeState {
         follow_links: bool,
         query_state: QueryState,
         ignore_list_terms: Arc<Vec<String>>,
-        pinned_paths: HashSet<PathBuf>,
+        pinned_paths: BTreeSet<PathBuf>,
         emacs_keybindings_enabled: bool,
         ctrl_w_deletes_word_in_query: bool,
         tab_pin_moves_to_next_row: bool,

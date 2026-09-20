@@ -5,7 +5,7 @@ use super::{
 use crate::app::worker::protocol::IndexEntry;
 use crate::entry::{Entry, EntryKind};
 use crate::indexer::{IndexBuildResult, IndexSource};
-use std::collections::{HashSet, VecDeque};
+use std::collections::{BTreeSet, HashSet, VecDeque};
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -103,6 +103,7 @@ impl TabResourceState {
 
 #[derive(Clone, Debug)]
 pub(super) struct TabQueryState {
+    pub(super) search_error: Option<(String, String)>,
     pub(super) query: String,
     pub(super) query_history: VecDeque<String>,
     pub(super) query_history_cursor: Option<usize>,
@@ -277,7 +278,7 @@ pub(super) struct TabResultState {
     pub(super) pending_sort_request_id: Option<u64>,
     pub(super) sort_in_progress: bool,
     pub(super) pending_sorted_total_match_count: Option<usize>,
-    pub(super) pinned_paths: HashSet<PathBuf>,
+    pub(super) pinned_paths: BTreeSet<PathBuf>,
     pub(super) evicted_selected_path: Option<PathBuf>,
     pub(super) results_compacted: bool,
 }
@@ -482,6 +483,7 @@ impl TabQueryState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
         Self {
+            search_error: shell.shell.runtime.query_state.search_error.clone(),
             query: shell.shell.runtime.query_state.query.clone(),
             query_history: shell.shell.runtime.query_state.query_history.clone(),
             query_history_cursor: shell.shell.runtime.query_state.query_history_cursor,
@@ -507,6 +509,7 @@ impl TabQueryState {
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
         shell.shell.runtime.query_state.query = self.query.clone();
+        shell.shell.runtime.query_state.search_error = self.search_error.clone();
         shell.shell.runtime.query_state.query_history = self.query_history.clone();
         shell.shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
         shell.shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
@@ -524,6 +527,7 @@ impl TabQueryState {
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
         let query_state = &mut shell.shell.runtime.query_state;
+        mem::swap(&mut self.search_error, &mut query_state.search_error);
         mem::swap(&mut self.query, &mut query_state.query);
         mem::swap(&mut self.query_history, &mut query_state.query_history);
         mem::swap(
@@ -722,6 +726,7 @@ impl AppTabState {
                 search_rerun_pending: false,
             },
             query_state: TabQueryState {
+                search_error: None,
                 query: saved.query.clone(),
                 query_history: shell.shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
@@ -739,7 +744,7 @@ impl AppTabState {
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pending_sorted_total_match_count: None,
-                pinned_paths: HashSet::new(),
+                pinned_paths: BTreeSet::new(),
                 evicted_selected_path: None,
                 results_compacted: false,
             },
@@ -813,6 +818,7 @@ impl AppTabState {
                 search_rerun_pending: false,
             },
             query_state: TabQueryState {
+                search_error: None,
                 query: String::new(),
                 query_history: shell.shell.runtime.query_state.query_history.clone(),
                 query_history_cursor: None,
@@ -838,7 +844,7 @@ impl AppTabState {
                 pending_sort_request_id: None,
                 sort_in_progress: false,
                 pending_sorted_total_match_count: None,
-                pinned_paths: HashSet::new(),
+                pinned_paths: BTreeSet::new(),
                 evicted_selected_path: None,
                 results_compacted: false,
             },
