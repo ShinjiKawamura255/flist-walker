@@ -35,6 +35,14 @@ If a report would require sharing secrets, private paths, or sensitive repositor
 
 If startup or update reports an ambiguous or recovery-required installation state, stop repeated update attempts and follow [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md). Preserve the affected installation directory and updater artifacts; do not delete, rename, or overwrite them as a generic fix. Before sharing any file list, hash record, screenshot, or diagnostic text, redact private paths, user names, repository names, tokens, and secrets.
 
+## UI-State Persistence Recovery
+
+If saving roots or query history reports an unreadable or invalid UI-state document, preserve `.flistwalker_ui_state.json` and `.flistwalker_roots.txt` before attempting repair. The writer refuses to replace an existing unreadable, invalid-UTF-8, malformed, or non-object JSON document; startup may still use default values. A missing file is initialized normally.
+
+Close all FlistWalker and `fw` instances normally before manual repair, then make a private copy of the affected files. Pending, unflushed history is not guaranteed to survive process exit. Restore a known-good copy or repair the UI-state file as a UTF-8 JSON object while retaining its settings, history and unknown fields. Do not replace it with an empty object as a generic fix, and do not delete the sidecar lock file to bypass another running writer. If the error is an access or storage failure, resolve that condition before retrying.
+
+Restart with the same settings location, retry the failed save, and verify the saved values after another restart. Preserve the original copy until verification succeeds. A rollback-failure message means restoration was incomplete; keep both files and the full redacted error for maintainer assessment instead of assuming the save was undone. This procedure is a manual recovery path; automated tests exercise isolated fixtures, not repairs to user data.
+
 ## Maintainer Triage Checklist
 
 - Confirm the report includes version, OS, launch mode, and reproduction steps.

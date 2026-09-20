@@ -405,11 +405,34 @@ fn build_ui_state_document(
     extra_patch: Option<&UiStatePatch>,
     history_persist_disabled: bool,
 ) -> std::io::Result<Value> {
-    let mut document = fs::read_to_string(path)
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .filter(Value::is_object)
-        .unwrap_or_else(|| Value::Object(Default::default()));
+    // Startup may fall back to defaults, but a writer must not turn a failed
+    // read into permission to replace existing data. Only absence permits seed.
+    let mut document = match fs::read_to_string(path) {
+        Ok(text) => {
+            let document = serde_json::from_str::<Value>(&text).map_err(|error| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!("UI-state JSON is invalid; existing file was not changed: {error}"),
+                )
+            })?;
+            if !document.is_object() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "UI-state JSON must be an object; existing file was not changed",
+                ));
+            }
+            document
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            Value::Object(Default::default())
+        }
+        Err(error) => {
+            return Err(std::io::Error::new(
+                error.kind(),
+                format!("UI-state read failed; existing file was not changed: {error}"),
+            ));
+        }
+    };
     for write in pending {
         merge_json_leaves(&mut document, &write.patch.0);
     }

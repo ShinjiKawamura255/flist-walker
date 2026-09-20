@@ -56,6 +56,7 @@ For documentation-only restructuring, apply VM-001:
 
 - TC-167/168 storage tests live in `rust/src/persistence/worker/tests.rs`; GUI restore and dialog tests remain in `app/tests/`.
 - Preserve complete-document deserialization, malformed known-field fallback, unknown-field merge, public API round trips, test settings isolation, and the child-process writer's nonzero executed-test count when moving storage code.
+- TC-167 also rejects unreadable/invalid/non-object merge bases before either settings file is written, retains queued history until repair, and verifies actual rollback after an earlier write succeeds. Fault tests cover failure before replacement and after replacement, including failure of both restore attempts with all original/rollback errors retained.
 - Apply VM-008 to `rust/src/persistence/` changes and VM-002 when changing GUI save/restore adapters.
 
 ## GUI Evidence Axes

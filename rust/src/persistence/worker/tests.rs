@@ -507,31 +507,192 @@ fn tc_167_observed_settings_commit_reports_saved_root_failure_without_changing_u
 #[test]
 fn tc_167_observed_settings_commit_rolls_back_saved_roots_when_ui_state_write_fails() {
     let base = temp_dir("observed-settings-rollback");
-    let ui_state_path = base.join("ui-state-as-directory");
+    let ui_state_path = base.join("ui-state.json");
     let roots_path = base.join("roots.txt");
-    fs::create_dir_all(&ui_state_path).expect("create invalid UI-state target directory");
+    fs::create_dir_all(&base).expect("create base");
+    fs::write(&ui_state_path, "{\"unknown\":true}").expect("seed UI state");
     fs::write(&roots_path, "old-root\n").expect("seed roots");
+    let mut writes = Vec::new();
 
-    let response = enqueue_settings_commit(
-        ui_state_path,
+    let result = commit_settings_with_writer(
+        &ui_state_path,
+        &[],
         false,
+        Duration::from_secs(1),
         SettingsCommitRequest {
             request_id: 42,
             patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
             saved_roots: Some((roots_path.clone(), "new-root\n".to_string())),
         },
-    )
-    .expect("enqueue settings commit")
-    .recv_timeout(Duration::from_secs(1))
-    .expect("settings response");
+        |path, bytes| {
+            writes.push(path.to_path_buf());
+            if path == ui_state_path {
+                assert_eq!(fs::read_to_string(&roots_path).unwrap(), "new-root\n");
+                Err(std::io::Error::other("injected UI-state write failure"))
+            } else {
+                write_bytes_atomic(path, bytes)
+            }
+        },
+    );
 
-    assert_eq!(response.request_id, 42);
-    assert!(response.result.is_err());
+    assert!(result
+        .err()
+        .unwrap()
+        .to_string()
+        .contains("injected UI-state write failure"));
+    assert_eq!(
+        writes,
+        vec![
+            roots_path.clone(),
+            ui_state_path.clone(),
+            roots_path.clone()
+        ]
+    );
+    assert_eq!(
+        fs::read_to_string(&ui_state_path).unwrap(),
+        "{\"unknown\":true}"
+    );
     assert_eq!(
         fs::read_to_string(&roots_path).expect("read rolled-back roots"),
         "old-root\n"
     );
     let _ = fs::remove_dir_all(&base);
+}
+
+#[test]
+fn tc_167_unreadable_existing_document_is_not_an_empty_merge_base() {
+    let base = temp_dir("unreadable-merge-base");
+    let path = base.join("ui-state.json");
+    fs::create_dir_all(&path).unwrap();
+    let error = build_ui_state_document(&path, &[], None, false)
+        .expect_err("existing unreadable targets must fail before preparing a replacement");
+    assert_ne!(error.kind(), std::io::ErrorKind::NotFound);
+    assert!(path.is_dir());
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_167_invalid_document_blocks_settings_commit_before_any_write() {
+    for bytes in [b"{\"unknown\":".as_slice(), b"", b"null", b"[]", b"\xff"] {
+        let base = temp_dir("invalid-settings-document");
+        fs::create_dir_all(&base).unwrap();
+        let path = base.join("ui-state.json");
+        let roots = base.join("roots.txt");
+        fs::write(&path, bytes).unwrap();
+        fs::write(&roots, "old-root\n").unwrap();
+        let mut writes = 0;
+        let result = commit_settings_with_writer(
+            &path,
+            &[],
+            false,
+            Duration::from_secs(1),
+            SettingsCommitRequest {
+                request_id: 45,
+                patch: UiStatePatch::from_json(json!({"show_preview": false})),
+                saved_roots: Some((roots.clone(), "new-root\n".into())),
+            },
+            |target, bytes| {
+                writes += 1;
+                write_bytes_atomic(target, bytes)
+            },
+        );
+        assert!(
+            result.is_err(),
+            "invalid existing bytes must be preserved: {bytes:?}"
+        );
+        assert_eq!(writes, 0);
+        assert_eq!(fs::read(&path).unwrap(), bytes);
+        assert_eq!(fs::read_to_string(&roots).unwrap(), "old-root\n");
+        fs::remove_dir_all(base).unwrap();
+    }
+}
+
+#[test]
+fn tc_167_invalid_document_retry_preserves_history_until_external_repair() {
+    let base = temp_dir("invalid-history-document");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("ui-state.json");
+    let original = b"{\"query_history\":[\"old\"],\"unknown\":";
+    fs::write(&path, original).unwrap();
+    let writer = AsyncHistoryPersistence::new(path.clone(), false);
+    writer.enqueue_history(vec![" A ".into()]).unwrap();
+    let error = writer
+        .flush(Duration::from_secs(2))
+        .expect_err("invalid JSON must fail");
+    assert!(error.contains("UI-state"), "{error}");
+    assert_eq!(fs::read(&path).unwrap(), original);
+    writer
+        .enqueue_history(vec!["B".into(), "A".into()])
+        .unwrap();
+    {
+        let _lock = acquire_sidecar_lock(&path, Duration::from_secs(2)).unwrap();
+        fs::write(
+            &path,
+            r#"{"query_history":["old"],"unknown":{"keep":true}}"#,
+        )
+        .unwrap();
+    }
+    writer.flush(Duration::from_secs(2)).unwrap();
+    writer.shutdown(Duration::from_secs(2)).unwrap();
+    let document: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(document["query_history"], json!(["old", "B", "A"]));
+    assert_eq!(document["unknown"]["keep"], true);
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_167_settings_rollback_failures_preserve_original_and_both_restore_errors() {
+    let base = temp_dir("settings-rollback-errors");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("ui-state.json");
+    let roots = base.join("roots.txt");
+    fs::write(&path, "{\"show_preview\":true}").unwrap();
+    fs::write(&roots, "old-root\n").unwrap();
+    let mut writes = Vec::new();
+    let result = commit_settings_with_writer(
+        &path,
+        &[],
+        false,
+        Duration::from_secs(1),
+        SettingsCommitRequest {
+            request_id: 46,
+            patch: UiStatePatch::from_json(json!({"show_preview": false})),
+            saved_roots: Some((roots.clone(), "new-root\n".into())),
+        },
+        |target, bytes| {
+            writes.push(target.to_path_buf());
+            match writes.len() {
+                1 => write_bytes_atomic(target, bytes),
+                2 => crate::fs_atomic::write_bytes_atomic_with_sync_for_test(target, bytes, |_| {
+                    Err(std::io::Error::other("injected durability failure"))
+                }),
+                3 => Err(std::io::Error::other("injected UI restore failure")),
+                4 => Err(std::io::Error::other("injected roots restore failure")),
+                _ => panic!("unexpected write"),
+            }
+        },
+    );
+    let error = result
+        .err()
+        .expect("rollback failures must not report success")
+        .to_string();
+    for message in [
+        "injected durability failure",
+        "UI-state rollback failed",
+        "injected UI restore failure",
+        "saved-roots rollback failed",
+        "injected roots restore failure",
+    ] {
+        assert!(error.contains(message), "missing {message}: {error}");
+    }
+    assert_eq!(
+        writes,
+        vec![roots.clone(), path.clone(), path.clone(), roots.clone()]
+    );
+    let document: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(document["show_preview"], false);
+    assert_eq!(fs::read_to_string(&roots).unwrap(), "new-root\n");
+    fs::remove_dir_all(base).unwrap();
 }
 
 #[test]
