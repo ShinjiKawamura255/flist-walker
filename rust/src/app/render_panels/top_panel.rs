@@ -553,8 +553,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 };
                 let mut button = egui::Button::new(caption);
                 if label == "Clear Selected" && count > 0 {
-                    button = button.fill(super::super::render_theme::selected_fill(ui.visuals().dark_mode))
-                        .stroke(egui::Stroke::new(1.0, ui.visuals().selection.stroke.color));
+                    button = button.fill(super::super::render_theme::selected_fill(ui.visuals().dark_mode));
                 }
                 let mut response = ui.add(button);
                 if label == "Presets..." {
