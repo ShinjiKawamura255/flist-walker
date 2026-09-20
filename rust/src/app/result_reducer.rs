@@ -129,30 +129,29 @@ pub(super) fn apply_background_search_response(
     };
     let previous_path = selected_tab_path(tab).cloned();
     tab.clear_search_request_state();
-    tab.query_state.search_error = response
-        .error
-        .clone()
-        .map(|error| (tab.query_state.query.clone(), error));
-    let response_failed = response.error.is_some();
-    tab.notice = response
-        .error
-        .map(|error| format!("Search failed: {error}"))
-        .unwrap_or_default();
-    let response_total_match_count = response.total_match_count;
-    let local_sort = response.sort_scope == super::ResultSortScope::ShownResults
-        && response.sort_mode != ResultSortMode::Score;
+    let update = super::result_policy::SearchResultUpdate::prepare(
+        &tab.query_state.query,
+        response.results,
+        response.total_match_count,
+        response.sort_mode,
+        response.sort_scope,
+        response.error,
+    );
+    tab.query_state.search_error = update.search_error;
+    let response_failed = update.failed;
+    tab.notice = update.notice;
+    let response_total_match_count = update.total_match_count;
+    let local_sort = update.visible_results.is_none();
     let preserve_visible_until_local_sort = local_sort;
-    tab.result_state.committed.base_results_are_score_ranked = !response
-        .sort_scope
-        .sorts_all_matches_before_limit(response.sort_mode);
-    tab.result_state.committed.base_results = response.results.clone();
-    if !preserve_visible_until_local_sort {
-        tab.result_state.committed.results = response.results;
+    tab.result_state.committed.base_results_are_score_ranked = update.base_results_are_score_ranked;
+    tab.result_state.committed.base_results = update.base_results;
+    if let Some(results) = update.visible_results {
+        tab.result_state.committed.results = results;
         tab.result_state.committed.total_match_count = response_total_match_count;
     }
     tab.result_state.results_compacted = false;
-    tab.result_state.result_sort_mode = response.sort_mode;
-    tab.result_state.result_sort_scope = response.sort_scope;
+    tab.result_state.result_sort_mode = update.sort_mode;
+    tab.result_state.result_sort_scope = update.sort_scope;
     tab.result_state.clear_sort_request_state();
     let missing_paths = if local_sort && response.sort_mode.uses_metadata() {
         tab.result_state
@@ -218,43 +217,32 @@ pub(super) fn apply_active_search_response(
         return false;
     }
     app.shell.search.clear_active_request_state();
-    app.shell.runtime.query_state.search_error = response
-        .error
-        .clone()
-        .map(|error| (app.shell.runtime.query_state.query.clone(), error));
-    let response_failed = response.error.is_some();
-    if let Some(error) = response.error {
-        app.set_notice(format!("Search failed: {error}"));
-    } else {
-        app.clear_notice();
-    }
-    let response_total_match_count = response.total_match_count;
-    app.shell.runtime.result_sort_mode = response.sort_mode;
-    app.shell.runtime.result_sort_scope = response.sort_scope;
-    let base_results_are_score_ranked = !response
-        .sort_scope
-        .sorts_all_matches_before_limit(response.sort_mode);
-    let preserve_visible_until_local_sort = response.sort_scope
-        == super::ResultSortScope::ShownResults
-        && response.sort_mode != ResultSortMode::Score;
-    if preserve_visible_until_local_sort {
-        app.shell
-            .runtime
-            .replace_base_results(response.results, base_results_are_score_ranked);
-    } else {
+    let update = super::result_policy::SearchResultUpdate::prepare(
+        &app.shell.runtime.query_state.query,
+        response.results,
+        response.total_match_count,
+        response.sort_mode,
+        response.sort_scope,
+        response.error,
+    );
+    app.shell.runtime.query_state.search_error = update.search_error;
+    let response_failed = update.failed;
+    app.set_notice(update.notice);
+    let response_total_match_count = update.total_match_count;
+    app.shell.runtime.result_sort_mode = update.sort_mode;
+    app.shell.runtime.result_sort_scope = update.sort_scope;
+    let preserve_visible_until_local_sort = update.visible_results.is_none();
+    app.shell
+        .runtime
+        .replace_base_results(update.base_results, update.base_results_are_score_ranked);
+    if let Some(results) = update.visible_results {
         app.shell
             .runtime
             .set_total_match_count(response_total_match_count);
-        replace_results_snapshot_with_ranking(
-            app,
-            response.results,
-            false,
-            base_results_are_score_ranked,
-        );
+        app.shell.worker_bus.sort.clear_request();
+        apply_results_with_selection_policy(app, results, false, false);
     }
-    if response.sort_scope == super::ResultSortScope::ShownResults
-        && response.sort_mode != ResultSortMode::Score
-    {
+    if preserve_visible_until_local_sort {
         let sort_outcome =
             if preserve_visible_until_local_sort && app.shell.runtime.base_results.is_empty() {
                 apply_results_with_selection_policy(app, Vec::new(), false, false);

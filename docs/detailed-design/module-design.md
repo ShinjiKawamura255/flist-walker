@@ -129,7 +129,11 @@ Rationale: the shell makes ownership explicit. Active-tab live state is separate
 
 ### 6.7 Tab and Session Design
 
-Responsibility: [app/tab_state.rs](../../rust/src/app/tab_state.rs), [app/tabs.rs](../../rust/src/app/tabs.rs), and [app/session.rs](../../rust/src/app/session.rs) own tab snapshots, tab lifecycle, and persisted UI state.
+Responsibility: [app/tab_state.rs](../../rust/src/app/tab_state.rs) and [app/tabs.rs](../../rust/src/app/tabs.rs) own tab snapshots and lifecycle. [app/session.rs](../../rust/src/app/session.rs) adapts GUI snapshots and restore policy to [persistence/](../../rust/src/persistence/mod.rs), which owns the complete persisted schema, startup reads, migration, and storage worker for all frontends.
+
+The complete stored schema is deserialized before projecting roots/history, preserving default fallback when a known field is invalid. Unknown JSON fields survive storage merges. Reads seed the shared history baseline, and writes retain the sidecar-lock/read/merge/atomic-replace sequence and settings rollback. TC-167/168 live under `persistence/worker/tests.rs`.
+
+Live and inactive tabs share `query_state::TabQueryState`; activation swaps the whole payload while history debounce and kill buffer remain app-global. `result_policy.rs` prepares the same publication/ranking/error decision for both result adapters and owns pure sorting. Active preview/scroll/status effects and background preview invalidation remain explicit adapter differences. `result_parity.rs` covers published and pending snapshots, empty/error outcomes, metadata availability and both sort scopes; tab ownership tests retain allocation and lifecycle coverage.
 
 Persisted state includes:
 

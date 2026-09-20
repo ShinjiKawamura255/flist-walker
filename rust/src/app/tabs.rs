@@ -789,11 +789,11 @@ impl FlistWalkerApp {
             ));
             features.filelist.workflow.pending_after_index = None;
         }
-        let empty_query = tab.query_state.query.trim().is_empty();
-        let requires_all_matches_sort = empty_query
-            && tab.result_state.result_sort_mode != ResultSortMode::Score
-            && tab.result_state.result_sort_scope == ResultSortScope::AllMatches;
-        if empty_query && !requires_all_matches_sort {
+        if !super::result_policy::needs_search_worker(
+            &tab.query_state.query,
+            tab.result_state.result_sort_mode,
+            tab.result_state.result_sort_scope,
+        ) {
             let preserve_sort = tab.result_state.result_sort_mode != ResultSortMode::Score;
             let total_match_count = tab.result_state.committed.entries.len();
             let results = tab

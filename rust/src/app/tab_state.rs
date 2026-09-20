@@ -1,3 +1,4 @@
+pub(super) use super::query_state::TabQueryState;
 use super::{
     normalize_windows_path_buf, EntryKindCacheState, FlistWalkerApp, PendingActiveIndexFinish,
     PendingIndexRefreshMode, ResultSortMode, ResultSortScope, SavedTabState, TabAccentColor,
@@ -99,20 +100,6 @@ impl TabResourceState {
     pub(super) const fn committed_snapshot_present(self) -> bool {
         self.committed_snapshot_present
     }
-}
-
-#[derive(Clone, Debug)]
-pub(super) struct TabQueryState {
-    pub(super) search_error: Option<(String, String)>,
-    pub(super) query: String,
-    pub(super) query_history: VecDeque<String>,
-    pub(super) query_history_cursor: Option<usize>,
-    pub(super) query_history_draft: Option<String>,
-    pub(super) history_search_active: bool,
-    pub(super) history_search_query: String,
-    pub(super) history_search_original_query: String,
-    pub(super) history_search_results: Vec<String>,
-    pub(super) history_search_current: Option<usize>,
 }
 
 #[derive(Debug)]
@@ -482,82 +469,16 @@ impl TabIndexState {
 impl TabQueryState {
     #[cfg(test)]
     pub(super) fn from_shell(shell: &FlistWalkerApp) -> Self {
-        Self {
-            search_error: shell.shell.runtime.query_state.search_error.clone(),
-            query: shell.shell.runtime.query_state.query.clone(),
-            query_history: shell.shell.runtime.query_state.query_history.clone(),
-            query_history_cursor: shell.shell.runtime.query_state.query_history_cursor,
-            query_history_draft: shell.shell.runtime.query_state.query_history_draft.clone(),
-            history_search_active: shell.shell.runtime.query_state.history_search_active,
-            history_search_query: shell.shell.runtime.query_state.history_search_query.clone(),
-            history_search_original_query: shell
-                .shell
-                .runtime
-                .query_state
-                .history_search_original_query
-                .clone(),
-            history_search_results: shell
-                .shell
-                .runtime
-                .query_state
-                .history_search_results
-                .clone(),
-            history_search_current: shell.shell.runtime.query_state.history_search_current,
-        }
+        shell.shell.runtime.query_state.tab.clone()
     }
 
     #[cfg(test)]
     pub(super) fn apply_shell(&self, shell: &mut FlistWalkerApp) {
-        shell.shell.runtime.query_state.query = self.query.clone();
-        shell.shell.runtime.query_state.search_error = self.search_error.clone();
-        shell.shell.runtime.query_state.query_history = self.query_history.clone();
-        shell.shell.runtime.query_state.query_history_cursor = self.query_history_cursor;
-        shell.shell.runtime.query_state.query_history_draft = self.query_history_draft.clone();
-        shell.shell.runtime.query_state.history_search_active = self.history_search_active;
-        shell.shell.runtime.query_state.history_search_query = self.history_search_query.clone();
-        shell
-            .shell
-            .runtime
-            .query_state
-            .history_search_original_query = self.history_search_original_query.clone();
-        shell.shell.runtime.query_state.history_search_results =
-            self.history_search_results.clone();
-        shell.shell.runtime.query_state.history_search_current = self.history_search_current;
+        shell.shell.runtime.query_state.tab = self.clone();
     }
 
     pub(super) fn swap_shell(&mut self, shell: &mut FlistWalkerApp) {
-        let query_state = &mut shell.shell.runtime.query_state;
-        mem::swap(&mut self.search_error, &mut query_state.search_error);
-        mem::swap(&mut self.query, &mut query_state.query);
-        mem::swap(&mut self.query_history, &mut query_state.query_history);
-        mem::swap(
-            &mut self.query_history_cursor,
-            &mut query_state.query_history_cursor,
-        );
-        mem::swap(
-            &mut self.query_history_draft,
-            &mut query_state.query_history_draft,
-        );
-        mem::swap(
-            &mut self.history_search_active,
-            &mut query_state.history_search_active,
-        );
-        mem::swap(
-            &mut self.history_search_query,
-            &mut query_state.history_search_query,
-        );
-        mem::swap(
-            &mut self.history_search_original_query,
-            &mut query_state.history_search_original_query,
-        );
-        mem::swap(
-            &mut self.history_search_results,
-            &mut query_state.history_search_results,
-        );
-        mem::swap(
-            &mut self.history_search_current,
-            &mut query_state.history_search_current,
-        );
+        mem::swap(self, &mut shell.shell.runtime.query_state.tab);
     }
 }
 
@@ -725,18 +646,10 @@ impl AppTabState {
                 search_resume_pending: false,
                 search_rerun_pending: false,
             },
-            query_state: TabQueryState {
-                search_error: None,
-                query: saved.query.clone(),
-                query_history: shell.shell.runtime.query_state.query_history.clone(),
-                query_history_cursor: None,
-                query_history_draft: None,
-                history_search_active: false,
-                history_search_query: String::new(),
-                history_search_original_query: String::new(),
-                history_search_results: Vec::new(),
-                history_search_current: None,
-            },
+            query_state: TabQueryState::new(
+                saved.query.clone(),
+                shell.shell.runtime.query_state.query_history.clone(),
+            ),
             result_state: TabResultState {
                 committed: TabCommittedPayload::default(),
                 result_sort_mode: ResultSortMode::Score,
@@ -817,18 +730,10 @@ impl AppTabState {
                 search_resume_pending: false,
                 search_rerun_pending: false,
             },
-            query_state: TabQueryState {
-                search_error: None,
-                query: String::new(),
-                query_history: shell.shell.runtime.query_state.query_history.clone(),
-                query_history_cursor: None,
-                query_history_draft: None,
-                history_search_active: false,
-                history_search_query: String::new(),
-                history_search_original_query: String::new(),
-                history_search_results: Vec::new(),
-                history_search_current: None,
-            },
+            query_state: TabQueryState::new(
+                String::new(),
+                shell.shell.runtime.query_state.query_history.clone(),
+            ),
             result_state: TabResultState {
                 committed: TabCommittedPayload {
                     all_entries: Arc::clone(&shell.shell.runtime.all_entries),

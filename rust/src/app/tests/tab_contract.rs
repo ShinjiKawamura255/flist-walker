@@ -4,6 +4,90 @@ use crate::app::tab_state::{
 };
 
 #[test]
+fn query_payload_swap_preserves_every_tab_field_and_allocation_but_keeps_global_state() {
+    fn query_payload(label: &str) -> TabQueryState {
+        TabQueryState {
+            search_error: Some((format!("{label}["), format!("{label}エラー"))),
+            query: format!("{label}検索🙂"),
+            query_history: VecDeque::from([format!("{label}一"), format!("{label}二")]),
+            query_history_cursor: Some(1),
+            query_history_draft: Some(format!("{label}下書き")),
+            history_search_active: true,
+            history_search_query: format!("{label}履歴検索"),
+            history_search_original_query: format!("{label}元の検索"),
+            history_search_results: vec![format!("{label}結果")],
+            history_search_current: Some(0),
+        }
+    }
+    // All owned allocations must move, including those nested in history/error state.
+    fn allocations(state: &TabQueryState) -> [usize; 9] {
+        [
+            state.query.as_ptr() as usize,
+            state.query_history.front().unwrap().as_ptr() as usize,
+            state.query_history_draft.as_ref().unwrap().as_ptr() as usize,
+            state.history_search_query.as_ptr() as usize,
+            state.history_search_original_query.as_ptr() as usize,
+            state.history_search_results.as_ptr() as usize,
+            state.history_search_results[0].as_ptr() as usize,
+            state.search_error.as_ref().unwrap().0.as_ptr() as usize,
+            state.search_error.as_ref().unwrap().1.as_ptr() as usize,
+        ]
+    }
+
+    let root = test_root("query-payload-swap");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let dirty_since = Instant::now();
+    app.shell.runtime.query_state.query_history_dirty_since = Some(dirty_since);
+    app.shell.runtime.query_state.kill_buffer = "タブ共通🙂".to_string();
+    let kill_buffer_allocation = app.shell.runtime.query_state.kill_buffer.as_ptr();
+    let active = query_payload("前面");
+    active.apply_shell(&mut app);
+    let mut background = query_payload("背景");
+    background.query_history_cursor = None;
+    background.history_search_active = false;
+    background.history_search_current = None;
+    let expected_background = background.clone();
+    let active_allocations = allocations(&app.shell.runtime.query_state.tab);
+    let background_allocations = allocations(&background);
+
+    background.swap_shell(&mut app);
+    assert_eq!(TabQueryState::from_shell(&app), expected_background);
+    assert_eq!(background, active);
+    assert_eq!(
+        allocations(&app.shell.runtime.query_state.tab),
+        background_allocations
+    );
+    assert_eq!(allocations(&background), active_allocations);
+    assert_eq!(
+        app.shell.runtime.query_state.query_history_dirty_since,
+        Some(dirty_since)
+    );
+    assert_eq!(app.shell.runtime.query_state.kill_buffer, "タブ共通🙂");
+    assert_eq!(
+        app.shell.runtime.query_state.kill_buffer.as_ptr(),
+        kill_buffer_allocation
+    );
+
+    background.swap_shell(&mut app);
+    assert_eq!(
+        allocations(&app.shell.runtime.query_state.tab),
+        active_allocations
+    );
+    assert_eq!(allocations(&background), background_allocations);
+    assert_eq!(TabQueryState::from_shell(&app), active);
+    assert_eq!(
+        app.shell.runtime.query_state.query_history_dirty_since,
+        Some(dirty_since)
+    );
+    assert_eq!(
+        app.shell.runtime.query_state.kill_buffer.as_ptr(),
+        kill_buffer_allocation
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn history_search_keeps_only_history_actions_and_help() {
     let root = test_root("history-search-action-visibility");
     fs::create_dir_all(&root).expect("create root");

@@ -94,7 +94,7 @@ impl FlistWalkerApp {
         Self::apply_emacs_text_edit_shortcuts(
             ctx,
             output,
-            &mut query_state.query,
+            &mut query_state.tab.query,
             &mut query_state.kill_buffer,
             enabled,
             ime_composition_active,
@@ -114,7 +114,7 @@ impl FlistWalkerApp {
         Self::apply_emacs_text_edit_shortcuts(
             ctx,
             output,
-            &mut query_state.history_search_query,
+            &mut query_state.tab.history_search_query,
             &mut query_state.kill_buffer,
             enabled,
             ime_composition_active,
@@ -289,14 +289,14 @@ impl FlistWalkerApp {
         let query_state = &mut self.shell.runtime.query_state;
         let outcome = if editing_history_search {
             apply_emacs_edit(
-                &mut query_state.history_search_query,
+                &mut query_state.tab.history_search_query,
                 &mut cursor,
                 &mut query_state.kill_buffer,
                 EmacsEdit::KillBackwardWord,
             )
         } else {
             apply_emacs_edit(
-                &mut query_state.query,
+                &mut query_state.tab.query,
                 &mut cursor,
                 &mut query_state.kill_buffer,
                 EmacsEdit::KillBackwardWord,

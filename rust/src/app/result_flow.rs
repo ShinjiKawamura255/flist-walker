@@ -1,16 +1,6 @@
-use super::{normalized_compare_key, result_reducer, FlistWalkerApp, ResultSortMode, SortMetadata};
+use super::{result_reducer, FlistWalkerApp, ResultSortMode, SortMetadata};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
-use std::time::SystemTime;
-
-struct SortableResult {
-    original_index: usize,
-    entry: (PathBuf, f64),
-    name_key: String,
-    path_key: String,
-    timestamp: Option<SystemTime>,
-    size_bytes: Option<u64>,
-}
+use std::path::PathBuf;
 
 impl FlistWalkerApp {
     /// root 単位で破棄すべき sort metadata cache をまとめて消す。
@@ -27,135 +17,13 @@ impl FlistWalkerApp {
         );
     }
 
-    /// sort mode ごとに比較対象の timestamp を取り出す。
-    fn sort_metadata_value(metadata: SortMetadata, mode: ResultSortMode) -> Option<SystemTime> {
-        match mode {
-            ResultSortMode::ModifiedDesc | ResultSortMode::ModifiedAsc => metadata.modified,
-            ResultSortMode::CreatedDesc | ResultSortMode::CreatedAsc => metadata.created,
-            _ => None,
-        }
-    }
-
-    fn sort_size_for_path(
-        cache: &HashMap<PathBuf, SortMetadata>,
-        path: &Path,
-        mode: ResultSortMode,
-    ) -> Option<u64> {
-        match mode {
-            ResultSortMode::SizeDesc | ResultSortMode::SizeAsc => {
-                cache.get(path).and_then(|metadata| metadata.size_bytes)
-            }
-            _ => None,
-        }
-    }
-
-    /// 指定 path の timestamp sort key を cache から取得する。
-    fn sort_timestamp_for_path(
-        cache: &HashMap<PathBuf, SortMetadata>,
-        path: &Path,
-        mode: ResultSortMode,
-    ) -> Option<SystemTime> {
-        cache
-            .get(path)
-            .copied()
-            .and_then(|metadata| Self::sort_metadata_value(metadata, mode))
-    }
-
-    /// Name sort 用の比較キーをファイル名優先で正規化する。
-    fn path_name_key(path: &Path) -> String {
-        path.file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or_default()
-            .to_ascii_lowercase()
-    }
-
-    /// base result snapshot から指定 sort mode の表示順を再構築する。
+    /// Adapter for the shared, data-only result ordering policy.
     pub(super) fn build_sorted_results_from(
         base_results: &[(PathBuf, f64)],
         mode: ResultSortMode,
         cache: &HashMap<PathBuf, SortMetadata>,
     ) -> Vec<(PathBuf, f64)> {
-        if mode == ResultSortMode::Score {
-            return base_results.to_vec();
-        }
-
-        let mut items = base_results
-            .iter()
-            .cloned()
-            .enumerate()
-            .map(|(original_index, entry)| {
-                let timestamp = Self::sort_timestamp_for_path(cache, &entry.0, mode);
-                let size_bytes = Self::sort_size_for_path(cache, &entry.0, mode);
-                let name_key = Self::path_name_key(&entry.0);
-                let path_key = normalized_compare_key(&entry.0);
-                SortableResult {
-                    original_index,
-                    entry,
-                    name_key,
-                    path_key,
-                    timestamp,
-                    size_bytes,
-                }
-            })
-            .collect::<Vec<_>>();
-        match mode {
-            ResultSortMode::Score => unreachable!("score mode returns before sorting"),
-            ResultSortMode::NameAsc | ResultSortMode::NameDesc => {
-                let desc = matches!(mode, ResultSortMode::NameDesc);
-                items.sort_by(|a, b| {
-                    let cmp = a
-                        .name_key
-                        .cmp(&b.name_key)
-                        .then_with(|| a.path_key.cmp(&b.path_key))
-                        .then_with(|| a.original_index.cmp(&b.original_index));
-                    if desc {
-                        cmp.reverse()
-                    } else {
-                        cmp
-                    }
-                });
-            }
-            ResultSortMode::PathAsc | ResultSortMode::PathDesc => {
-                let desc = matches!(mode, ResultSortMode::PathDesc);
-                items.sort_by(|a, b| {
-                    let cmp = a
-                        .path_key
-                        .cmp(&b.path_key)
-                        .then_with(|| a.original_index.cmp(&b.original_index));
-                    if desc {
-                        cmp.reverse()
-                    } else {
-                        cmp
-                    }
-                });
-            }
-            ResultSortMode::ModifiedDesc
-            | ResultSortMode::ModifiedAsc
-            | ResultSortMode::CreatedDesc
-            | ResultSortMode::CreatedAsc
-            | ResultSortMode::SizeDesc
-            | ResultSortMode::SizeAsc => {
-                let desc = matches!(
-                    mode,
-                    ResultSortMode::ModifiedDesc
-                        | ResultSortMode::CreatedDesc
-                        | ResultSortMode::SizeDesc
-                );
-                items.sort_by(|a, b| {
-                    let value_cmp =
-                        if matches!(mode, ResultSortMode::SizeDesc | ResultSortMode::SizeAsc) {
-                            compare_optional_sort_value(a.size_bytes, b.size_bytes, desc)
-                        } else {
-                            compare_optional_sort_value(a.timestamp, b.timestamp, desc)
-                        };
-                    value_cmp
-                        .then_with(|| a.name_key.cmp(&b.name_key))
-                        .then_with(|| a.path_key.cmp(&b.path_key))
-                        .then_with(|| a.original_index.cmp(&b.original_index))
-                });
-            }
-        }
-        items.into_iter().map(|item| item.entry).collect()
+        super::result_policy::build_sorted_results_from(base_results, mode, cache)
     }
 
     /// 現在の base result snapshot から表示用の整列結果を生成する。
@@ -207,24 +75,5 @@ impl FlistWalkerApp {
     /// sort scope を切り替え、必要なら全マッチ検索を再実行する。
     pub(super) fn set_result_sort_scope(&mut self, scope: super::ResultSortScope) {
         result_reducer::set_result_sort_scope(self, scope);
-    }
-}
-
-fn compare_optional_sort_value<T: Ord>(
-    a: Option<T>,
-    b: Option<T>,
-    desc: bool,
-) -> std::cmp::Ordering {
-    match (a, b) {
-        (Some(a), Some(b)) => {
-            if desc {
-                b.cmp(&a)
-            } else {
-                a.cmp(&b)
-            }
-        }
-        (Some(_), None) => std::cmp::Ordering::Less,
-        (None, Some(_)) => std::cmp::Ordering::Greater,
-        (None, None) => std::cmp::Ordering::Equal,
     }
 }
