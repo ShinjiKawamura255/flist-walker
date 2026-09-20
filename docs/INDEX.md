@@ -29,6 +29,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How is a release built and published? | [RELEASE.md](RELEASE.md) |
 | How do I recover from an ambiguous local updater state? | [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md) |
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
+| What evidence supports past CI rollouts and timing changes? | [CI rollout history](history/ci-rollouts.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
 | What native GUI residual evidence exists outside a release record? | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
 | What did the Windows build and GUI maintenance checks establish? | [gui-test-results/2026-09-06-windows-validation.md](gui-test-results/2026-09-06-windows-validation.md) |
@@ -93,6 +94,7 @@ Root SDD files are concise entrypoints. Topic content remains grouped by SDD res
 - `AI_DEVELOPMENT.md` owns managed-worktree modes, durable evidence, validation entrypoints, PR work packets, independent review, and external-action boundaries.
 - `TASKS.md` explains task-state boundaries. It does not duplicate current posture or completed records.
 - `history/INDEX.md` owns navigation to completed maintenance history.
+- `CI_OPERATIONS.md` owns current CI procedures; `history/ci-rollouts.md` owns completed CI rollout records and point-in-time measurements.
 - `releases/INDEX.md` owns navigation to release records and evidence; `RELEASE.md` owns the procedure.
 - Root SDD files own their respective indexes and trace excerpts; topic directories own detailed content.
 - `TESTPLAN.md` and `testplan/validation-matrix.md` own validation selection and canonical commands.
