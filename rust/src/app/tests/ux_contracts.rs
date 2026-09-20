@@ -376,3 +376,70 @@ fn ux_contract_pin_count_and_clear_highlight_follow_real_clear_button() {
             .any(|shape| has_fill(&shape.shape, pos, selected_color)));
     }
 }
+
+#[test]
+fn ux_contract_pinned_clear_highlight_does_not_reflow_results_on_hover() {
+    fn painted_texts(output: &egui::FullOutput) -> Vec<String> {
+        fn collect(shape: &egui::Shape, texts: &mut Vec<String>) {
+            match shape {
+                egui::Shape::Text(text) => texts.push(text.galley.text().to_owned()),
+                egui::Shape::Vec(shapes) => {
+                    for shape in shapes {
+                        collect(shape, texts);
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        let mut texts = Vec::new();
+        for shape in &output.shapes {
+            collect(&shape.shape, &mut texts);
+        }
+        texts
+    }
+
+    for dark in [false, true] {
+        let scope = test_settings_scope("ux-contract-clear-hover-layout");
+        let root = test_root("ux-contract-clear-hover-layout-root");
+        let mut app = scope.app(root.clone(), 50, "keep query".into());
+        prepare(&mut app, &[]);
+        app.shell
+            .runtime
+            .pinned_paths
+            .insert(root.join("hidden.txt"));
+
+        let mut gui = Gui::default();
+        gui.ctx.set_visuals(if dark {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        });
+
+        gui.idle(&mut app);
+        let output = gui.idle(&mut app);
+        let clear_center = text_rect(&output, |text| text == "Clear Selected").center();
+        let results_top = maybe_text_rect(&output, |text| text == "0 shown")
+            .map(|rect| rect.top())
+            .unwrap_or_else(|| panic!("painted texts: {:?}", painted_texts(&output)));
+
+        let hovered_output = gui.frame(
+            &mut app,
+            vec![egui::Event::PointerMoved(clear_center)],
+            egui::Modifiers::NONE,
+        );
+        let hovered_results_top = maybe_text_rect(&hovered_output, |text| text == "0 shown")
+            .map(|rect| rect.top())
+            .unwrap_or_else(|| {
+                panic!(
+                    "hovered painted texts: {:?}",
+                    painted_texts(&hovered_output)
+                )
+            });
+
+        assert_eq!(
+            hovered_results_top, results_top,
+            "hovering Clear Selected must not move the Results panel"
+        );
+    }
+}
