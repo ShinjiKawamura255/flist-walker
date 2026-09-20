@@ -3,6 +3,8 @@ use eframe::egui;
 use std::time::Instant;
 
 pub(super) struct RuntimeUiState {
+    pub(super) search_assist: super::search_assist::SearchAssist,
+    pub(super) selection_inspector: Option<super::selection_ux::SelectionInspector>,
     pub(super) pending_copy_shortcut: bool,
     pub(super) root_dropdown_highlight: Option<usize>,
     pub(super) scroll_to_current: bool,
@@ -37,6 +39,8 @@ impl RuntimeUiState {
         preview_panel_width: f32,
     ) -> Self {
         Self {
+            search_assist: Default::default(),
+            selection_inspector: None,
             pending_copy_shortcut: false,
             root_dropdown_highlight: None,
             scroll_to_current: true,

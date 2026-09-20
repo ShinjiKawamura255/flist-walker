@@ -14,6 +14,262 @@ use crate::app::worker::tasks::{
 use std::sync::atomic::AtomicUsize;
 
 #[test]
+fn ux_row_activation_ignores_hidden_pins_but_batch_activation_retains_them() {
+    let root = test_root("ux-row-action-pins");
+    fs::create_dir_all(&root).expect("create root");
+    let row_path = root.join("clicked.txt");
+    let pinned = root.join("hidden-pin.txt");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<ActionRequest>(8);
+    app.shell.worker_bus.action.tx = tx;
+    app.shell.runtime.committed_for_test_mut().results = vec![(row_path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.pinned_paths.insert(pinned.clone());
+
+    for open_parent in [false, true] {
+        app.execute_result_row_for_activation(0, open_parent);
+        let request = rx.try_recv().expect("row action request");
+        assert_eq!(request.paths, vec![row_path.clone()]);
+        assert_eq!(request.open_parent_for_files, open_parent);
+        assert_eq!(request.root, root);
+        assert!(app.shell.runtime.pinned_paths.contains(&pinned));
+    }
+    app.execute_selected();
+    assert_eq!(rx.try_recv().expect("batch request").paths, vec![pinned]);
+    app.execute_result_row_for_activation(99, false);
+    assert!(
+        rx.try_recv().is_err(),
+        "invalid row must not fall back to pins"
+    );
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ux_row_activation_keeps_lexical_root_guard() {
+    let root = test_root("ux-row-action-root-guard");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (tx, rx) = bounded_request_channel::<ActionRequest>(8);
+    app.shell.worker_bus.action.tx = tx;
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(root.join("..").join("outside.txt"), 0.0)];
+    app.shell.runtime.pinned_paths.insert(root.join("safe.txt"));
+    app.execute_result_row_for_activation(0, true);
+    assert!(rx.try_recv().is_err());
+    assert!(app.shell.runtime.notice.starts_with("Action blocked:"));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ux_inspector_removes_hidden_pin_and_escape_preserves_remaining_selection() {
+    let root = test_root("ux-pin-inspector");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "query".to_string());
+    let hidden = root.join("hidden.txt");
+    let keep = root.join("keep.txt");
+    app.shell.runtime.pinned_paths.insert(hidden.clone());
+    app.shell.runtime.pinned_paths.insert(keep.clone());
+    app.open_selection_inspector();
+    app.remove_inspected_pin(&hidden);
+    assert!(!app.shell.runtime.pinned_paths.contains(&hidden));
+    assert!(app.shell.runtime.pinned_paths.contains(&keep));
+
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            events: vec![egui::Event::Key {
+                key: egui::Key::Escape,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        },
+        |ui| {
+            assert!(app.handle_selection_inspector_shortcuts(ui.ctx()));
+        },
+    );
+    assert!(app.shell.ui.selection_inspector.is_none());
+    assert_eq!(app.shell.runtime.query_state.query, "query");
+    assert!(app.shell.runtime.pinned_paths.contains(&keep));
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ux_inspector_renders_at_narrow_width_and_closes_on_context_change() {
+    let root = test_root("ux-pin-inspector-render");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    for n in 0..10_000 {
+        app.shell
+            .runtime
+            .pinned_paths
+            .insert(root.join(format!("item-{n:05}.txt")));
+    }
+    let ctx = egui::Context::default();
+    app.open_selection_inspector();
+    let output = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(640.0, 600.0),
+            )),
+            ..Default::default()
+        },
+        |ui| app.render_selection_inspector(ui.ctx()),
+    );
+    assert!(!output.shapes.is_empty());
+    assert!(app.shell.ui.selection_inspector.is_some());
+    app.shell.runtime.root = root.join("different-context");
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        app.render_selection_inspector(ui.ctx())
+    });
+    assert!(app.shell.ui.selection_inspector.is_none());
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn ux_inspector_contains_input_on_first_and_closing_frames() {
+    fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
+        egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        }
+    }
+    for close in [None, Some(egui::Key::Escape), Some(egui::Key::G)] {
+        let root = test_root("ux-inspector-input-containment");
+        fs::create_dir_all(&root).expect("create root");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "keep query".to_string());
+        app.shell.runtime.emacs_keybindings_enabled = true;
+        app.shell.runtime.pinned_paths.insert(root.join("keep.txt"));
+        let (tx, rx) = bounded_request_channel::<ActionRequest>(8);
+        app.shell.worker_bus.action.tx = tx;
+        let ctx = egui::Context::default();
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+        app.open_selection_inspector();
+        let mut events = vec![
+            egui::Event::Text("leaked text".to_string()),
+            egui::Event::Paste("leaked paste".to_string()),
+            egui::Event::Copy,
+            egui::Event::Cut,
+            egui::Event::Ime(egui::ImeEvent::Commit("入力".to_string())),
+            key(egui::Key::Enter, egui::Modifiers::NONE),
+            key(egui::Key::J, emacs_shortcut_modifiers(false)),
+            key(egui::Key::M, emacs_shortcut_modifiers(false)),
+            key(egui::Key::Space, egui::Modifiers::NONE),
+        ];
+        if let Some(close_key) = close {
+            let modifiers = if close_key == egui::Key::G {
+                emacs_shortcut_modifiers(false)
+            } else {
+                egui::Modifiers::NONE
+            };
+            events.push(key(close_key, modifiers));
+        }
+        let output = ctx.run_ui(
+            egui::RawInput {
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                app.run_ui_frame(ui);
+            },
+        );
+        assert_eq!(
+            app.shell.runtime.query_state.query, "keep query",
+            "close={close:?}"
+        );
+        assert_eq!(app.shell.runtime.pinned_paths.len(), 1);
+        assert_eq!(app.shell.ui.selection_inspector.is_some(), close.is_none());
+        assert!(
+            rx.try_recv().is_err(),
+            "modal must block Enter and Emacs activation"
+        );
+        assert!(!app.shell.ui.pending_copy_shortcut);
+        assert!(
+            !output
+                .platform_output
+                .commands
+                .iter()
+                .any(|command| { matches!(command, egui::OutputCommand::CopyText(_)) }),
+            "modal must not copy the backing query"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
+fn ux_inspector_keyboard_can_remove_and_close_without_activating_files() {
+    fn key(key: egui::Key, modifiers: egui::Modifiers) -> egui::Event {
+        egui::Event::Key {
+            key,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers,
+        }
+    }
+    for remove in [true, false] {
+        let root = test_root("ux-inspector-keyboard");
+        fs::create_dir_all(&root).expect("create root");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, "keep query".to_string());
+        app.shell.runtime.pinned_paths.insert(root.join("keep.txt"));
+        let (tx, rx) = bounded_request_channel::<ActionRequest>(8);
+        app.shell.worker_bus.action.tx = tx;
+        let ctx = egui::Context::default();
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+        app.open_selection_inspector();
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+        if remove {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    events: vec![key(egui::Key::Tab, egui::Modifiers::SHIFT)],
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+        }
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                events: vec![key(
+                    if remove {
+                        egui::Key::Space
+                    } else {
+                        egui::Key::Enter
+                    },
+                    egui::Modifiers::NONE,
+                )],
+                ..Default::default()
+            },
+            |ui| app.run_ui_frame(ui),
+        );
+        if remove {
+            assert!(
+                app.shell.runtime.pinned_paths.is_empty(),
+                "Shift+Tab then Space must activate Remove"
+            );
+            assert!(app.shell.ui.selection_inspector.is_some());
+        } else {
+            assert!(
+                app.shell.ui.selection_inspector.is_none(),
+                "Enter must activate the focused Close button"
+            );
+            assert_eq!(app.shell.runtime.pinned_paths.len(), 1);
+        }
+        assert_eq!(app.shell.runtime.query_state.query, "keep query");
+        assert!(
+            rx.try_recv().is_err(),
+            "inspector keys must never activate files"
+        );
+        let _ = fs::remove_dir_all(&root);
+    }
+}
+
+#[test]
 fn execute_selected_enqueues_action_request_without_sync_io() {
     let root = test_root("async-action-enqueue");
     fs::create_dir_all(&root).expect("create dir");

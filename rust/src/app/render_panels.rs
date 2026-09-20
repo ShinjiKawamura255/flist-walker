@@ -542,7 +542,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             egui::vec2(row_width, row_height),
             egui::Layout::right_to_left(egui::Align::Center),
             |ui| {
-                let mut selected_scope = app.shell.runtime.result_sort_scope;
+                let original_scope = app.shell.runtime.result_sort_scope;
+                let mut selected_scope = original_scope;
                 let scope_response = egui::ComboBox::from_id_salt("results-sort-scope-selector")
                     .width(126.0)
                     .selected_text("")
@@ -581,14 +582,23 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 paint_compact_combo_selected_text(ui, &sort_response, selected.label());
                 centered_top_panel_label(ui, "Sorted by");
                 if selected != app.shell.runtime.result_sort_mode {
-                    app.set_result_sort_mode(selected);
+                    app.select_result_sort_mode(selected);
                 }
-                if selected_scope != app.shell.runtime.result_sort_scope {
+                if selected_scope != original_scope {
                     app.set_result_sort_scope(selected_scope);
                 }
             },
         );
     });
+    if app.shell.runtime.result_sort_mode.uses_metadata()
+        && app.shell.runtime.result_sort_scope == ResultSortScope::ShownResults
+    {
+        ui.weak(format!(
+            "Sorting shown {} results only",
+            app.shell.runtime.results.len()
+        ));
+    }
+    app.render_empty_result_assistance(ui);
     let scroll_enabled =
         FlistWalkerApp::results_scroll_enabled(app.shell.ui.preview_resize_in_progress());
     let scroll_source = if scroll_enabled {
@@ -699,10 +709,10 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         let open_parent_for_files = ui.input(|i| i.modifiers.shift);
         #[cfg(test)]
         if !record_result_action(i) {
-            app.execute_selected_for_activation(open_parent_for_files);
+            app.execute_result_row_for_activation(i, open_parent_for_files);
         }
         #[cfg(not(test))]
-        app.execute_selected_for_activation(open_parent_for_files);
+        app.execute_result_row_for_activation(i, open_parent_for_files);
     }
 }
 

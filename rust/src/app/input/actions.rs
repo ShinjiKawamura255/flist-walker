@@ -3,12 +3,21 @@ use eframe::egui;
 use std::path::PathBuf;
 
 impl FlistWalkerApp {
+    pub(in crate::app) fn execute_result_row_for_activation(
+        &mut self,
+        row: usize,
+        open_parent_for_files: bool,
+    ) {
+        let Some((path, _)) = self.shell.runtime.results.get(row) else {
+            return;
+        };
+        self.execute_paths_with_options(vec![path.clone()], open_parent_for_files);
+    }
+
     /// pinned selection 優先で action 対象 path を列挙する。
     fn selected_paths(&self) -> Vec<PathBuf> {
         if !self.shell.runtime.pinned_paths.is_empty() {
-            let mut out: Vec<PathBuf> = self.shell.runtime.pinned_paths.iter().cloned().collect();
-            out.sort();
-            return out;
+            return self.shell.runtime.pinned_paths.iter().cloned().collect();
         }
         self.shell
             .runtime
@@ -41,6 +50,11 @@ impl FlistWalkerApp {
     /// worker dispatch と root 外 path ガードを含めて action を起動する。
     pub(in crate::app) fn execute_selected_with_options(&mut self, open_parent_for_files: bool) {
         let paths = self.selected_paths();
+        self.execute_paths_with_options(paths, open_parent_for_files);
+    }
+
+    /// Both row activation and pinned batch activation retain the same authorization/worker path.
+    fn execute_paths_with_options(&mut self, paths: Vec<PathBuf>, open_parent_for_files: bool) {
         if paths.is_empty() {
             return;
         }

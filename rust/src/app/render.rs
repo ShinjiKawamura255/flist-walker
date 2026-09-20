@@ -448,6 +448,7 @@ impl FlistWalkerApp {
             render_dialogs::render_update_install_failure_dialog(self, &ctx);
             render_dialogs::render_help_dialog(self, &ctx);
             render_dialogs::render_preset_picker_dialog(self, &ctx);
+            self.render_selection_inspector(&ctx);
         }
 
         render_panels::render_top_panel(self, ui);

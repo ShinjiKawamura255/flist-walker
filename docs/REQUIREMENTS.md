@@ -6,7 +6,7 @@ This file is the entry point for FlistWalker requirements. Detailed FR/NFR/CON a
 | Topic | Content |
 | --- | --- |
 | [Product Scope and Acceptance Criteria](requirements/product-scope.md) | Background / KPI, scope, use cases, acceptance criteria |
-| [Functional Requirements](requirements/functional.md) | FR-001 through FR-045 |
+| [Functional Requirements](requirements/functional.md) | FR-001 through FR-047 |
 | [Quality, Constraints, and Risks](requirements/quality-constraints.md) | NFR, CON, risks |
 | [Requirements Traceability](requirements/traceability.md) | FR/NFR to SP/DES/TC traceability excerpt |
 

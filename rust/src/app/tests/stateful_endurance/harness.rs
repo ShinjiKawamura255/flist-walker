@@ -386,9 +386,24 @@ impl StatefulHarness {
                 | Event::CompleteNewestIndex(_)
                 | Event::DeliverStaleIndex
         ) {
-            // prepare_frame can defer an injected response across event boundaries.
-            // Track the exact submitted request IDs that the next poll may consume.
-            for request_id in self.submitted_index_responses.iter().copied() {
+            // Selection is not completion: the arbitrator can select an injected
+            // response into a deferred queue, then stop on an active terminal.
+            // Include the exact retained responses even after selection tracking
+            // removes their submitted IDs. Duplicate IDs remain one owner, and
+            // unrelated in-flight routes do not acquire ownership here.
+            let indexing = &self.app.shell.indexing;
+            let deferred_request_ids = indexing
+                .deferred_response
+                .iter()
+                .chain(indexing.deferred_non_active_responses.iter())
+                .chain(indexing.pending_replace_all.iter())
+                .map(crate::app::index_coordinator::IndexCoordinator::response_request_id);
+            for request_id in self
+                .submitted_index_responses
+                .iter()
+                .copied()
+                .chain(deferred_request_ids)
+            {
                 owners.extend(request_owner(
                     Some(request_id),
                     self.app
@@ -1067,6 +1082,87 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc_183_deferred_index_responses_keep_exact_owner_after_selection() {
+        let mut harness = StatefulHarness::new("endurance-deferred-owner");
+        harness.app.request_index_refresh();
+        harness.capture_requests();
+        let background = harness
+            .pending_indexes
+            .pop_front()
+            .expect("background request");
+        let background_tab = harness.app.current_tab_id().unwrap();
+        harness.app.create_new_tab();
+        let active_tab = harness.app.current_tab_id().unwrap();
+        assert_ne!(active_tab, background_tab);
+        harness.app.request_index_refresh();
+        harness.capture_requests();
+        let active = harness.pending_indexes.pop_front().expect("active request");
+
+        // Both messages belong to the same background request. Selection from the
+        // injected channel only moves them to the deferred queue; the active
+        // terminal then ends this poll before either background message applies.
+        for response in [
+            IndexResponse::Batch {
+                request_id: background.request_id,
+                entries: Vec::new(),
+            },
+            IndexResponse::Failed {
+                request_id: background.request_id,
+                error: "injected endurance failure".into(),
+            },
+            IndexResponse::Finished {
+                request_id: active.request_id,
+                source: IndexSource::Walker,
+            },
+        ] {
+            harness.submitted_index_responses.push_back(
+                crate::app::index_coordinator::IndexCoordinator::response_request_id(&response),
+            );
+            harness.index_responses.send(response).unwrap();
+        }
+        harness.poll_index_responses_and_track_consumption();
+        assert_eq!(
+            harness
+                .app
+                .shell
+                .indexing
+                .deferred_non_active_responses
+                .len(),
+            2
+        );
+        assert!(harness.submitted_index_responses.is_empty());
+        let owners = harness.response_owners(&Event::DeliverStaleIndex).unwrap();
+        assert_eq!(owners, HashSet::from([background_tab]));
+
+        let before = harness.snapshot();
+        harness.poll_index_responses_and_track_consumption();
+        let after = harness.snapshot();
+        harness.assert_other_tab_content_unchanged(
+            &before,
+            &after,
+            &owners,
+            0x184,
+            1,
+            &Event::DeliverStaleIndex,
+        );
+        let background_state = after
+            .tabs
+            .iter()
+            .find(|tab| tab.id == background_tab)
+            .unwrap();
+        assert_eq!(background_state.lifecycle, TabResourceLifecycle::Failed);
+        assert_eq!(
+            background_state.notice,
+            "Indexing failed: injected endurance failure"
+        );
+        assert!(harness
+            .response_owners(&Event::DeliverStaleIndex)
+            .unwrap()
+            .is_empty());
+        harness.cleanup();
+    }
 
     fn snapshot(index_pending: bool, notice: &str) -> TabSemanticSnapshot {
         TabSemanticSnapshot {

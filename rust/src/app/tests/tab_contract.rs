@@ -98,6 +98,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     index_state.search_resume_pending = true;
     index_state.search_rerun_pending = false;
     let query_state = TabQueryState {
+        search_error: None,
         query: "tab-contract".to_string(),
         query_history: VecDeque::from(vec!["first".to_string(), "second".to_string()]),
         query_history_cursor: Some(1),
@@ -127,7 +128,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
         pending_sort_request_id: Some(21),
         sort_in_progress: true,
         pending_sorted_total_match_count: Some(12),
-        pinned_paths: HashSet::from([root.join("pinned.txt")]),
+        pinned_paths: std::collections::BTreeSet::from([root.join("pinned.txt")]),
         evicted_selected_path: None,
         results_compacted: false,
     };

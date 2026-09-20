@@ -375,6 +375,7 @@ impl FlistWalkerApp {
         request_focus: bool,
         trigger_restore_refresh: bool,
     ) {
+        self.invalidate_filter_undo();
         if restore_results {
             self.restore_results_from_compacted_tab(results_compacted);
         }
@@ -993,6 +994,7 @@ impl FlistWalkerApp {
         effect
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
+        self.invalidate_filter_undo();
         let normalized = normalize_windows_path_buf(new_root);
         if self.shell.indexing.pending_finish.is_some() {
             self.shell.indexing.root_after_pending_finish = Some(normalized);
