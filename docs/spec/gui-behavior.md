@@ -15,6 +15,8 @@
 - MUST: Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を控えめに強調する。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
 - MUST: 検索欄直下に query に対応する検索エラーまたは入力補助を示す。`name:` / `path:` / `dir:` / `ext:` の値が空なら入力待ちとして示す。未知の接頭辞のうち既知フィールドに近い綴りは、単語先頭のコロンを契機に任意の修正候補を示す。入力、貼付け、編集で再評価し、IME 合成中は指摘・修正しない。修正は提案した接頭辞だけを置換し、他の検索語と演算子を維持し、検索欄へ focus を戻す。
 - MUST: 補助は query 解釈を変更せず、未知の接頭辞を通常語とする共通契約を維持する。drive path、URL、引用された通常語、regex 内のコロンを一律に誤記と見なしてはならない。補助解析は最大4096 byteの入力に限定し、それを超える入力でも検索自体は制限してはならない。
+- MUST: 綴りの修正候補と、そのqueryに対応する確定済み検索エラーが同時にある場合は、検索欄直下に両方を表示する。候補によって別の検索語の構文エラーやworker障害の理由を隠してはならない。既知fieldの値が空の場合は入力待ち案内を表示し、空fieldの検索エラーを重複表示しない。
+- MUST: search workerの応答channel切断または要求送信失敗を検知したら、受信済みの完了応答を先に適用し、残る全tabのsearch待機・要求routing・取消tokenを解放する。query、PIN、直前のResultsとcurrent rowを保持し、検索欄直下にworker利用不可とアプリ再起動による復旧案内を継続表示する。この障害表示は空field入力待ち、IME合成、履歴表示、queryクリア、tab切替、汎用noticeの更新によって隠してはならない。切断したworkerへの追加要求や自動再実行は行わない。
 - MUST: Results が0件のとき、進行中の index/search、入力待ち/検索失敗、index失敗、確定した一致なしを区別する。一致なしの表示と条件緩和は query 入力が300ms以上静止し、その query の検索・index・sortが完了した後にだけ表示する。stale response または別 tab の response のエラーを現在 query のエラーとして表示してはならない。
 - MUST: 一致なしの場合、有効な種別・深さ・case・regex・Ignore List 条件を示して個別に緩和できる。除外原因は断定しない。変更は通常controlと同じ適用範囲・保存・非同期再検索経路に従い、Esc/Ctrl+GでqueryとPINをクリアしても維持する。直近の緩和は結果の有無に関わらず明示的に取り消せるが、同じ設定への後続変更、root/tab切替、preset適用では古い取消を無効にする。取消は対象条件だけを戻し、queryや無関係な設定を巻き戻してはならない。
 - MUST: Windows では on-demand placeholder と判定できるファイルの本文プレビューを行わず、取得系 I/O による意図しないダウンロードを避ける。
