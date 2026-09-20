@@ -3,11 +3,13 @@ use std::path::{Path, PathBuf};
 pub fn path_key(path: &Path) -> String {
     #[cfg(windows)]
     {
-        path.to_string_lossy().to_string().to_ascii_lowercase()
+        let mut key = path.to_string_lossy().into_owned();
+        key.make_ascii_lowercase();
+        key
     }
     #[cfg(not(windows))]
     {
-        path.to_string_lossy().to_string()
+        path.to_string_lossy().into_owned()
     }
 }
 
