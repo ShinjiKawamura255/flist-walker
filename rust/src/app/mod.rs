@@ -57,6 +57,10 @@ mod update;
 mod worker;
 
 use crate::actions::{lexical_action_path_precheck, ActionPathPrecheck};
+pub use crate::persistence::{
+    history_persistence_enabled, load_persisted_roots_and_history,
+    load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence, PersistedRootsAndHistory,
+};
 use cache::{
     EntryKindCacheState, HighlightCacheState, IgnoreMatcherCacheState, PreviewCacheState,
     SortMetadataCacheState,
@@ -71,11 +75,7 @@ use index_worker::spawn_index_worker;
 use pipeline_owner::PipelineOwner;
 use query_state::QueryState;
 use search_coordinator::SearchCoordinator;
-pub use session::{
-    history_persistence_enabled, load_persisted_roots_and_history,
-    load_persisted_roots_and_history_from_paths, AsyncHistoryPersistence, PersistedRootsAndHistory,
-    StartupWindowPlacement,
-};
+pub use session::StartupWindowPlacement;
 use session::{LaunchSettings, SavedTabState, SavedWindowGeometry, TabAccentColor};
 use state::{
     AppRuntimeState, AppShellState, BackgroundIndexState, CacheStateBundle, ClosedTabState,
@@ -136,7 +136,7 @@ impl TabAccentColor {
         }
     }
 
-    pub(super) const fn palette(self, dark_mode: bool) -> TabAccentPalette {
+    pub(in crate::app) const fn palette(self, dark_mode: bool) -> TabAccentPalette {
         match (dark_mode, self) {
             (true, Self::Teal) => {
                 TabAccentPalette::new((0x10, 0x2A, 0x30), (0x1F, 0x76, 0x7D), (0xE4, 0xFD, 0xFF))

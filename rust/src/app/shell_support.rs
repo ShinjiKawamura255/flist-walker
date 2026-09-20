@@ -401,15 +401,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn history_persist_disabled() -> bool {
-        std::env::var("FLISTWALKER_DISABLE_HISTORY_PERSIST")
-            .ok()
-            .map(|value| {
-                matches!(
-                    value.trim().to_ascii_lowercase().as_str(),
-                    "1" | "true" | "yes" | "on"
-                )
-            })
-            .unwrap_or(false)
+        crate::persistence::history_persist_disabled()
     }
 
     pub(super) fn open_runtime_config_file(&mut self) {

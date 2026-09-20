@@ -44,6 +44,8 @@ class ValidateChangeTests(unittest.TestCase):
             "rust/src/app/index_worker.rs": {"VM-003", "VM-008"},
             "rust/src/app/shell_support.rs": {"VM-002", "VM-008"},
             "rust/src/app/session.rs": {"VM-002", "VM-008"},
+            "rust/src/persistence/mod.rs": {"VM-008"},
+            "rust/src/persistence/worker/tests.rs": {"VM-008"},
             "rust/src/updater.rs": {"VM-005", "VM-008"},
             "scripts/manual-self-update-test.ps1": {"VM-005", "VM-009"},
             "scripts/sign-notarize-macos.sh": {"VM-005", "VM-009"},

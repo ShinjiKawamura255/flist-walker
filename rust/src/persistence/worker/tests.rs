@@ -1,5 +1,9 @@
 use super::*;
 use crate::fs_atomic::acquire_sidecar_lock;
+use crate::persistence::paths::{
+    migrate_or_legacy_path, migrate_or_legacy_saved_roots_path, saved_roots_file_path_in,
+    ui_state_file_path_in,
+};
 use serde_json::json;
 use std::env;
 use std::fs;
@@ -7,10 +11,115 @@ use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[test]
+fn public_persistence_round_trip_preserves_existing_document_fields() {
+    let base = temp_dir("public-round-trip");
+    fs::create_dir_all(&base).expect("create base");
+    let state_path = base.join("ui-state.json");
+    let roots_path = base.join("roots.txt");
+    let last_root = base.join("last-root");
+    fs::write(
+        &state_path,
+        json!({
+            "last_root": last_root,
+            "query_history": ["old"],
+            "unknown_future_field": {"keep": true},
+            "show_preview": false
+        })
+        .to_string(),
+    )
+    .expect("seed state");
+    fs::write(&roots_path, "saved-root\n").expect("seed roots");
+
+    let writer = crate::persistence::AsyncHistoryPersistence::new(state_path.clone(), false);
+    writer.enqueue_history(vec!["new".into()]).expect("enqueue");
+    writer.flush(Duration::from_secs(2)).expect("flush");
+    writer.shutdown(Duration::from_secs(2)).expect("shutdown");
+    let loaded = crate::persistence::load_persisted_roots_and_history_from_paths(
+        &state_path,
+        &roots_path,
+        false,
+    );
+    assert_eq!(
+        loaded.last_root,
+        Some(normalize_windows_path_buf(last_root))
+    );
+    assert_eq!(loaded.saved_roots, vec![PathBuf::from("saved-root")]);
+    assert_eq!(loaded.query_history, vec!["old", "new"]);
+    let document: Value =
+        serde_json::from_str(&fs::read_to_string(&state_path).expect("read document"))
+            .expect("parse document");
+    assert_eq!(document["unknown_future_field"], json!({"keep": true}));
+    assert_eq!(document["show_preview"], false);
+    fs::remove_dir_all(base).expect("remove fixture");
+}
+
+#[test]
+fn default_persistence_paths_are_isolated_in_unit_tests() {
+    assert!(ui_state_file_path().is_none());
+    assert!(crate::persistence::saved_roots_file_path().is_none());
+    assert!(crate::persistence::AsyncHistoryPersistence::new_default().is_none());
+    assert_eq!(
+        crate::persistence::load_persisted_roots_and_history(),
+        crate::persistence::PersistedRootsAndHistory::default()
+    );
+}
+
+#[test]
+fn public_persisted_reader_preserves_full_document_validation() {
+    let base = temp_dir("wire-schema-compatibility");
+    fs::create_dir_all(&base).expect("create base");
+    let state_path = base.join("ui-state.json");
+    let roots_path = base.join("roots.txt");
+    fs::write(&roots_path, "saved-root\n").expect("write roots");
+    let valid = json!({
+        "last_root": "last-root",
+        "default_root": "default-root",
+        "query_history": ["first", "second"],
+        "unknown_future_field": {"keep": true}
+    });
+    fs::write(&state_path, valid.to_string()).expect("write valid state");
+    let loaded = crate::persistence::load_persisted_roots_and_history_from_paths(
+        &state_path,
+        &roots_path,
+        false,
+    );
+    assert_eq!(loaded.last_root, Some(PathBuf::from("last-root")));
+    assert_eq!(loaded.default_root, Some(PathBuf::from("default-root")));
+    assert_eq!(loaded.query_history, vec!["first", "second"]);
+    assert_eq!(loaded.saved_roots, vec![PathBuf::from("saved-root")]);
+
+    let mut malformed_window = valid.clone();
+    malformed_window["window"] = json!({"width": 100.0});
+    let mut malformed_tabs = valid;
+    malformed_tabs["tabs"] = json!([{
+        "root": "root", "use_filelist": false, "use_regex": false,
+        "include_files": true, "include_dirs": true, "query": "",
+        "tab_accent": "unknown"
+    }]);
+    for document in [
+        malformed_window.to_string(),
+        malformed_tabs.to_string(),
+        "{".into(),
+    ] {
+        fs::write(&state_path, document).expect("write malformed state");
+        let loaded = crate::persistence::load_persisted_roots_and_history_from_paths(
+            &state_path,
+            &roots_path,
+            false,
+        );
+        assert_eq!(loaded.last_root, None);
+        assert_eq!(loaded.default_root, None);
+        assert!(loaded.query_history.is_empty());
+        assert_eq!(loaded.saved_roots, vec![PathBuf::from("saved-root")]);
+    }
+    fs::remove_dir_all(&base).expect("remove fixture");
+}
+
+#[test]
 fn ui_state_file_path_in_joins_base_directory() {
     let base = PathBuf::from("/tmp/flistwalker-settings");
     assert_eq!(
-        FlistWalkerApp::ui_state_file_path_in(&base),
+        ui_state_file_path_in(&base),
         base.join(".flistwalker_ui_state.json")
     );
 }
@@ -19,7 +128,7 @@ fn ui_state_file_path_in_joins_base_directory() {
 fn saved_roots_file_path_in_joins_base_directory() {
     let base = PathBuf::from("/tmp/flistwalker-settings");
     assert_eq!(
-        FlistWalkerApp::saved_roots_file_path_in(&base),
+        saved_roots_file_path_in(&base),
         base.join(".flistwalker_roots.txt")
     );
 }
@@ -39,12 +148,11 @@ fn migrate_or_legacy_ui_state_path_prefers_current_and_moves_legacy_when_missing
     let current_base = base.join("current");
     fs::create_dir_all(&legacy_base).expect("create legacy");
     fs::create_dir_all(&current_base).expect("create current");
-    let current_path = FlistWalkerApp::ui_state_file_path_in(&current_base);
-    let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
+    let current_path = ui_state_file_path_in(&current_base);
+    let legacy_path = ui_state_file_path_in(&legacy_base);
     fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
 
-    let resolved =
-        FlistWalkerApp::migrate_or_legacy_path(&current_path, std::slice::from_ref(&legacy_path));
+    let resolved = migrate_or_legacy_path(&current_path, std::slice::from_ref(&legacy_path));
     assert_eq!(resolved, current_path);
     assert!(current_path.exists());
     assert!(!legacy_path.exists());
@@ -59,12 +167,12 @@ fn migrate_or_legacy_saved_roots_path_leaves_existing_current_file_untouched() {
     let current_base = base.join("current");
     fs::create_dir_all(&legacy_base).expect("create legacy");
     fs::create_dir_all(&current_base).expect("create current");
-    let current_path = FlistWalkerApp::saved_roots_file_path_in(&current_base);
-    let legacy_path = FlistWalkerApp::saved_roots_file_path_in(&legacy_base);
+    let current_path = saved_roots_file_path_in(&current_base);
+    let legacy_path = saved_roots_file_path_in(&legacy_base);
     fs::write(&legacy_path, "legacy-root").expect("write legacy");
     fs::write(&current_path, "current-root").expect("write current");
 
-    let resolved = FlistWalkerApp::migrate_or_legacy_saved_roots_path(&current_path);
+    let resolved = migrate_or_legacy_saved_roots_path(&current_path);
     assert_eq!(resolved, current_path);
     assert!(current_path.exists());
     assert!(legacy_path.exists());
@@ -80,15 +188,13 @@ fn migrate_or_legacy_path_skips_missing_legacy_and_uses_next_one() {
     let legacy_base = base.join("legacy");
     fs::create_dir_all(&current_base).expect("create current");
     fs::create_dir_all(&legacy_base).expect("create legacy");
-    let current_path = FlistWalkerApp::ui_state_file_path_in(&current_base);
-    let missing_legacy_path = FlistWalkerApp::ui_state_file_path_in(&missing_legacy_base);
-    let legacy_path = FlistWalkerApp::ui_state_file_path_in(&legacy_base);
+    let current_path = ui_state_file_path_in(&current_base);
+    let missing_legacy_path = ui_state_file_path_in(&missing_legacy_base);
+    let legacy_path = ui_state_file_path_in(&legacy_base);
     fs::write(&legacy_path, "{\"ignore_list_enabled\":false}").expect("write legacy");
 
-    let resolved = FlistWalkerApp::migrate_or_legacy_path(
-        &current_path,
-        &[missing_legacy_path, legacy_path.clone()],
-    );
+    let resolved =
+        migrate_or_legacy_path(&current_path, &[missing_legacy_path, legacy_path.clone()]);
     assert_eq!(resolved, current_path);
     assert!(current_path.exists());
     assert!(!legacy_path.exists());
@@ -744,7 +850,13 @@ fn tc_167_two_process_writers_preserve_alternating_history() {
     let path = base.join("ui-state.json");
     fs::create_dir_all(&base).expect("create base");
     let test_exe = env::current_exe().expect("current test executable");
-    let helper = "app::session::tests::tc_167_child_process_history_writer_helper";
+    let helper = concat!(
+        module_path!(),
+        "::tc_167_child_process_history_writer_helper"
+    );
+    let helper = helper
+        .strip_prefix("flist_walker::")
+        .expect("crate-qualified helper");
 
     let parent_writer = AsyncHistoryPersistence::new(path.clone(), false);
     parent_writer
@@ -754,14 +866,18 @@ fn tc_167_two_process_writers_preserve_alternating_history() {
         .flush(Duration::from_secs(2))
         .expect("parent flush A");
 
-    let status = Command::new(&test_exe)
+    let output = Command::new(&test_exe)
         .arg("--exact")
         .arg(helper)
         .env("FLISTWALKER_PERSISTENCE_CHILD_PATH", &path)
         .env("FLISTWALKER_PERSISTENCE_CHILD_DELTA", "B")
-        .status()
+        .output()
         .expect("run child writer");
-    assert!(status.success(), "child writer B failed");
+    assert!(output.status.success(), "child writer B failed: {output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stdout).contains("1 passed"),
+        "expected exactly one child helper test: {output:?}"
+    );
 
     parent_writer
         .enqueue_history(vec!["A".into()])
