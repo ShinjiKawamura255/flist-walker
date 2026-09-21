@@ -69,6 +69,7 @@ pub(super) fn dir_entry(path: PathBuf) -> Entry {
 
 mod action_commands;
 mod app_core;
+mod autosave;
 mod cache_tests;
 mod index_pipeline;
 mod paged_preview;

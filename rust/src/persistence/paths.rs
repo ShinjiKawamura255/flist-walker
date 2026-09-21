@@ -1,6 +1,6 @@
 //! Settings locations, legacy migration, and synchronous startup reads.
 use super::schema::UiState;
-use super::worker::seed_persisted_history_snapshot;
+use super::worker::{protect_failed_startup_read, seed_persisted_history_snapshot};
 use crate::path_utils::{normalize_windows_path_buf, path_key};
 #[cfg(not(test))]
 use crate::runtime_config::settings_base_dir;
@@ -29,16 +29,30 @@ pub(crate) fn load_ui_state() -> UiState {
         return UiState::default();
     };
     let source_path = migrate_or_legacy_ui_state_path(&path);
-    let state = read_ui_state_from_path(&source_path);
+    let state = read_ui_state_for_destination(&source_path, &path);
     seed_persisted_history_snapshot(path, &state.query_history);
     state
 }
 
 pub(crate) fn read_ui_state_from_path(path: &Path) -> UiState {
-    let Ok(text) = fs::read_to_string(path) else {
-        return UiState::default();
-    };
-    serde_json::from_str::<UiState>(&text).unwrap_or_default()
+    read_ui_state_for_destination(path, path)
+}
+
+fn read_ui_state_for_destination(source: &Path, destination: &Path) -> UiState {
+    match fs::read_to_string(source) {
+        Ok(text) => match serde_json::from_str::<UiState>(&text) {
+            Ok(state) => state,
+            Err(_) => {
+                protect_failed_startup_read(destination);
+                UiState::default()
+            }
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => UiState::default(),
+        Err(_) => {
+            protect_failed_startup_read(destination);
+            UiState::default()
+        }
+    }
 }
 
 pub(crate) fn saved_roots_file_path() -> Option<PathBuf> {

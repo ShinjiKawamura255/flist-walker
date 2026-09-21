@@ -23,7 +23,8 @@ pub(crate) use worker::{
 };
 pub(crate) use worker::{
     enqueue_settings_commit, enqueue_ui_state_patch, flush_ui_state_persistence,
-    SettingsCommitRequest, SettingsCommitResponse, UiStatePatch,
+    ui_state_persistence_status, SettingsCommitRequest, SettingsCommitResponse, UiStatePatch,
+    UiStatePersistenceStatus,
 };
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

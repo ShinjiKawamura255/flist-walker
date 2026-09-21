@@ -12,7 +12,10 @@ pub(super) use crate::persistence::{
     enqueue_settings_commit, SavedTabState, SavedWindowGeometry, SettingsCommitRequest,
     SettingsCommitResponse, TabAccentColor, UiState, UiStatePatch,
 };
-use crate::persistence::{enqueue_ui_state_patch, flush_ui_state_persistence};
+use crate::persistence::{
+    enqueue_ui_state_patch, flush_ui_state_persistence, ui_state_persistence_status,
+    UiStatePersistenceStatus,
+};
 use eframe::egui;
 #[cfg(test)]
 use serde_json::Value;
@@ -47,6 +50,35 @@ pub(super) struct LaunchSettings {
     pub(super) test_settings_paths: Option<super::TestSettingsPaths>,
 }
 
+/// Submission and durable completion are different states. In particular, an
+/// older successful write cannot clear an error admitting a newer GUI snapshot.
+#[derive(Default)]
+pub(super) struct SessionPersistenceUi {
+    pub(super) submitted_generation: u64,
+    pub(super) status: UiStatePersistenceStatus,
+    pub(super) submission_error: Option<String>,
+}
+
+impl SessionPersistenceUi {
+    pub(super) fn observe(&mut self, status: UiStatePersistenceStatus) {
+        if status.accepted_generation >= self.status.accepted_generation
+            && status.persisted_generation >= self.status.persisted_generation
+        {
+            self.status = status;
+        }
+    }
+
+    pub(super) fn saving(&self) -> bool {
+        self.status.accepted_generation > self.status.persisted_generation
+    }
+
+    pub(super) fn error(&self) -> Option<&str> {
+        self.submission_error
+            .as_deref()
+            .or(self.status.last_error.as_deref())
+    }
+}
+
 impl FlistWalkerApp {
     pub(super) const SET_DEFAULT_DISABLED_BY_RESTORE_TABS_NOTICE: &'static str =
         "Set as default is unavailable while Restore Tabs is enabled because the last session takes priority at startup.";
@@ -58,19 +90,57 @@ impl FlistWalkerApp {
         self.shell.ui.ui_state_dirty = true;
         if self.settings_commit_in_progress() {
             if let Some(path) = self.persistence_ui_state_file_path() {
-                flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
+                self.flush_session_state(&path);
             }
             self.poll_settings_commit_response();
         }
         self.maybe_save_ui_state(true);
         if let Some(path) = self.persistence_ui_state_file_path() {
-            flush_ui_state_persistence(&path, Self::WORKER_JOIN_TIMEOUT);
+            self.flush_session_state(&path);
         }
         let _ = self.shutdown_workers_with_timeout(Self::WORKER_JOIN_TIMEOUT, phase);
         Self::shutdown_window_trace(Self::WORKER_JOIN_TIMEOUT);
         #[cfg(test)]
         if let Some(path) = self.persistence_ui_state_file_path() {
             shutdown_ui_state_persistence_for_test(&path, Self::WORKER_JOIN_TIMEOUT);
+        }
+    }
+
+    fn flush_session_state(&mut self, path: &std::path::Path) {
+        if let Err(error) = flush_ui_state_persistence(path, Self::WORKER_JOIN_TIMEOUT) {
+            tracing::warn!(flow = "persistence", event = "shutdown_flush_failed", %error);
+            self.shell.ui.persistence.submission_error = Some(error);
+        }
+        self.poll_ui_state_persistence();
+    }
+
+    pub(super) fn poll_ui_state_persistence(&mut self) {
+        if let Some(path) = self.persistence_ui_state_file_path() {
+            self.shell
+                .ui
+                .persistence
+                .observe(ui_state_persistence_status(&path));
+        }
+    }
+
+    pub(super) fn session_persistence_label(&self) -> Option<String> {
+        let persistence = &self.shell.ui.persistence;
+        if let Some(error) = persistence.error() {
+            return Some(format!(
+                "Session not saved: {}",
+                crate::path_utils::normalize_text_for_display(error)
+            ));
+        }
+        if persistence.saving() {
+            Some("Saving session...".into())
+        } else if self.shell.ui.ui_state_dirty {
+            Some("Session changes pending".into())
+        } else if persistence.submitted_generation != 0
+            && persistence.status.persisted_generation >= persistence.submitted_generation
+        {
+            Some("Session saved".into())
+        } else {
+            None
         }
     }
 
@@ -294,18 +364,38 @@ impl FlistWalkerApp {
         !restore_tabs_enabled
     }
 
-    pub(super) fn save_ui_state(&self) {
+    pub(super) fn save_ui_state(&mut self) {
+        self.shell.ui.last_ui_state_save = Instant::now();
+        self.poll_ui_state_persistence();
+        if self.shell.ui.persistence.status.startup_protected {
+            self.shell.ui.ui_state_dirty = true;
+            return;
+        }
         let Some(path) = self.persistence_ui_state_file_path() else {
+            self.shell.ui.persistence.submission_error =
+                Some("Session storage location is unavailable".into());
+            self.shell.ui.ui_state_dirty = true;
             return;
         };
         let history_persist_disabled = Self::history_persist_disabled();
         let state = self.ui_state_snapshot(history_persist_disabled);
-        enqueue_ui_state_patch(
+        match enqueue_ui_state_patch(
             path,
             UiStatePatch::from_ui_state(&state),
             state.query_history,
             history_persist_disabled,
-        );
+        ) {
+            Ok(generation) => {
+                self.shell.ui.persistence.submitted_generation = generation;
+                self.shell.ui.persistence.submission_error = None;
+                self.shell.ui.ui_state_dirty = false;
+            }
+            Err(error) => {
+                self.shell.ui.persistence.submission_error = Some(error);
+                self.shell.ui.ui_state_dirty = true;
+            }
+        }
+        self.poll_ui_state_persistence();
     }
 
     #[cfg(test)]
@@ -403,6 +493,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn maybe_save_ui_state(&mut self, force: bool) {
+        self.poll_ui_state_persistence();
         if !self.shell.ui.ui_state_dirty {
             return;
         }
@@ -411,8 +502,6 @@ impl FlistWalkerApp {
         }
         if force || self.shell.ui.last_ui_state_save.elapsed() >= Self::UI_STATE_SAVE_INTERVAL {
             self.save_ui_state();
-            self.shell.ui.ui_state_dirty = false;
-            self.shell.ui.last_ui_state_save = Instant::now();
         }
     }
 
@@ -422,8 +511,6 @@ impl FlistWalkerApp {
             return;
         }
         self.save_ui_state();
-        self.shell.ui.ui_state_dirty = false;
-        self.shell.ui.last_ui_state_save = Instant::now();
     }
 
     #[cfg(test)]

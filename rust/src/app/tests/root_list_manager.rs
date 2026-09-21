@@ -148,9 +148,10 @@ fn tc_167_pending_root_commit_rejects_draft_mutation_until_apply_or_ok_settles()
 
 #[test]
 fn tc_168_ui_state_autosave_waits_for_observed_settings_commit() {
+    let scope = test_settings_scope("settings-autosave-order");
     let root = test_root("settings-autosave-order");
     fs::create_dir_all(&root).expect("create root");
-    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let mut app = scope.app(root.clone(), 50, String::new());
     let (response_tx, response_rx) = mpsc::channel();
     app.shell.features.root_browser.pending_settings_commit = Some(PendingSettingsCommit {
         request_id: 42,

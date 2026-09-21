@@ -419,6 +419,7 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.config_settings.in_progress()
             || self.paged_preview_view.busy
             || self.settings_commit_in_progress()
+            || (self.shell.ui.persistence.saving() && self.shell.ui.persistence.error().is_none())
             || self.active_entry_filter_pending()
             || self.any_tab_async_in_progress()
         {
@@ -430,6 +431,7 @@ impl FlistWalkerApp {
         let ctx = ui.ctx().clone();
         self.capture_window_geometry(&ctx);
         self.apply_stable_window_geometry(false);
+        self.poll_ui_state_persistence();
         // Handle app shortcuts before widget rendering so Tab is not consumed by egui focus traversal.
         self.handle_shortcuts(&ctx);
         // Register the modal layer before background widgets so first-frame input cannot leak.
