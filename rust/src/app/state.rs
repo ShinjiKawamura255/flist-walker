@@ -347,6 +347,11 @@ impl AppRuntimeState {
         self.committed.entries = entries;
     }
 
+    pub(super) fn exchange_visible_entries(&mut self, entries: Arc<Vec<Entry>>) -> Arc<Vec<Entry>> {
+        std::mem::replace(&mut self.committed.entries, entries)
+    }
+
+    #[cfg(test)]
     pub(super) fn sync_visible_entries(&mut self, source: &[Entry]) {
         if let Some(entries) = Arc::get_mut(&mut self.committed.entries) {
             entries.clear();

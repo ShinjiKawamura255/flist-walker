@@ -4,8 +4,6 @@ use super::{
 };
 use crate::indexer::IndexSource;
 use std::path::PathBuf;
-use std::sync::Arc;
-use std::time::Instant;
 
 fn clear_tab_result_selection(tab: &mut AppTabState) {
     tab.result_state.committed.current_row = None;
@@ -280,17 +278,9 @@ pub(super) fn apply_active_search_response(
     {
         app.shell.indexing.search_rerun_pending = false;
         app.shell.indexing.search_resume_pending = false;
-        let entries = Arc::new(
-            app.shell
-                .indexing
-                .build
-                .incremental_filtered_entries
-                .clone(),
-        );
-        app.shell.runtime.replace_visible_entries(entries);
-        app.shell.indexing.last_search_snapshot_len = app.shell.runtime.entries.len();
-        app.shell.indexing.last_incremental_results_refresh = Instant::now();
-        app.enqueue_search_request();
+        if !app.active_entry_filter_pending() {
+            app.request_active_entry_filter(true);
+        }
     }
     true
 }

@@ -1153,6 +1153,19 @@ fn non_empty_query_incremental_refresh_updates_entries_with_large_delta() {
         app.shell.indexing.last_incremental_results_refresh =
             Instant::now() - Duration::from_secs(3);
         app.poll_index_response();
+        // Poll the same continuation used by the frame loop. Scheduling a large
+        // snapshot must preserve the previous committed candidates.
+        if app
+            .shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .is_some_and(|pending| pending.cursor == 0)
+        {
+            assert!(app.shell.runtime.entries.is_empty());
+        }
+        app.poll_active_entry_filter();
         if app.shell.runtime.entries.len()
             >= FlistWalkerApp::INCREMENTAL_SEARCH_MIN_DELTA_DURING_INDEX
         {

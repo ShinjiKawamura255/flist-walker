@@ -419,6 +419,7 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.config_settings.in_progress()
             || self.paged_preview_view.busy
             || self.settings_commit_in_progress()
+            || self.active_entry_filter_pending()
             || self.any_tab_async_in_progress()
         {
             ctx.request_repaint_after(std::time::Duration::from_millis(16));

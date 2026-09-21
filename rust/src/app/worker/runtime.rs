@@ -323,6 +323,7 @@ impl FlistWalkerApp {
         self.poll_search_response();
         self.poll_routed_worker_responses();
         self.poll_kind_response();
+        self.poll_active_entry_filter();
         self.pump_kind_resolution_requests();
         self.poll_filelist_response();
         self.poll_update_response();
