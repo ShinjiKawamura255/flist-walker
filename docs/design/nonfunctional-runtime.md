@@ -1,6 +1,7 @@
 ﻿# Non-functional Runtime Design
 
 ## Non-functional design
+- DES-007 / DES-009: active filter の大量候補は `active_filter.rs` の request-owned continuation として `TabBuildPayload` に保持し、1回のpollで最大512候補を処理する。unknown-kind収集、候補clone、incremental snapshot構築も同じ予算内で行う。source/tab/root/index/kind/filterの同一性を確認してから公開し、完了までは旧表示を維持する。処理中は対象indexの取込みを止め、supersessionとtab/root破棄を含むscratch/旧payloadは既存reclaimerへ移す。Full時は所有権を保持して再試行する。
 - DES-006 Performance
 - directory previewは共有cancelable builderで4096件sample＋1 lookaheadまで列挙し、bounded sampleだけをsortする。新requestを受けたGUI/TUI workerはfilesystem呼出し間で旧要求を中断し、本文を返す前にもcancelを確認する。
 - Indexer と search を分離し、GUI ではワーカースレッドで非同期処理する。

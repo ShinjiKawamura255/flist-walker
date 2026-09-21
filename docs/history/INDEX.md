@@ -4,6 +4,7 @@ This directory contains completed maintenance and closure records. These documen
 
 | Record | Contents |
 | --- | --- |
+| [アーキテクチャ残課題の補強 2026-09-21](architecture-residual-hardening-2026-09-21.md) | 型不正設定の保護、保存受付上限と失敗表示、active filterの分割処理、検証範囲 |
 | [復旧性・仕様実装テスト整合レビュー 2026-09-21](resilience-contract-review-2026-09-21.md) | 保存失敗時のデータ保全、rollback検証、障害・契約マトリクスと検証範囲 |
 | [CI Rollout History](ci-rollouts.md) | Completed trusted-policy rollouts, protected-route evidence, and historical CI timing measurements |
 | [仕様整合・UX改善 2026-09-06](spec-ux-alignment-2026-09-06.md) | 検索・索引・GUI/TUIの修正と検証範囲 |

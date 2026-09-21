@@ -172,6 +172,8 @@
 - 役割補足: CLI/TUI の filter/sort/root transition は GUI と同じ ignore setting を shared query input として渡し、adapter 固有の別解釈を作らない。
 
 - DES-017 Runtime Config Bootstrap
+- 保存 worker は容量72のcommand channelと未保存autosave最大64件の共通creditを用い、queueとretry pendingの合計を制限する。patchは受理順で適用し、配列の縮小を含むmerge順序を保持する。受付失敗ではhistory baselineを進めない。共有statusはaccepted/persisted generation、last error、起動時保護を保持し、GUI sessionは結果queueを増やさずpollする。
+- 既存JSONとmerge後JSONをUiStateへ型検証してから副作用を実行する。startup readerの失敗は保存先ごとのprocess内保護として登録し、修復後も再起動までfallback由来のautosave/settingsを拒否する。正常起動後の一時的な保存失敗はpendingを保持して再試行する。footerは保存失敗をnoticeより優先して表示し、正常な保存状況は既存noticeに併記する。
 - GUI config openは`worker/config_open.rs`の単一workerと容量1のrequest/response mailboxを使い、response消費まで1件だけ受理する。完了は要求元tabだけへ通知し、shutdownは既存WorkerRuntimeのjoin budgetを共有する。設定openは既存fileを保持し、起動済みconfigを新しいfileのseedとして使う。
 - 役割: Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` を runtime settings の保存先として扱い、起動初回のみ current env を seed に自動生成する。
 - 実装: `rust/src/runtime_config.rs`, `rust/src/main.rs`, `rust/src/app/session.rs`, `rust/src/app/shell_support.rs`, `rust/src/search/config.rs`, `rust/src/app/index_worker.rs`, `rust/src/updater.rs`
