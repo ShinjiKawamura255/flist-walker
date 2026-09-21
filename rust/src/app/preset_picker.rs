@@ -836,6 +836,7 @@ impl FlistWalkerApp {
             self.shell.runtime.result_sort_scope = sort_scope;
             self.apply_entry_filters(false);
             if self.shell.runtime.query_state.query.trim().is_empty()
+                && !self.active_entry_filter_pending()
                 && sort_scope == ResultSortScope::ShownResults
                 && sort_mode != ResultSortMode::Score
             {

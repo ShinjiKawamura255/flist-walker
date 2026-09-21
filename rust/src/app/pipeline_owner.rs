@@ -1,4 +1,4 @@
-use super::{result_reducer, AppTabState, Entry, FlistWalkerApp, ResultSortMode, SearchRequest};
+use super::{result_reducer, AppTabState, FlistWalkerApp, ResultSortMode, SearchRequest};
 use crate::app::search_coordinator::SearchResponseRoute;
 use std::path::PathBuf;
 use std::sync::mpsc::TryRecvError;
@@ -10,11 +10,6 @@ pub(super) struct PipelineOwner<'a> {
 }
 
 impl<'a> PipelineOwner<'a> {
-    fn overwrite_entries_vec(target: &mut Vec<Entry>, source: &[Entry]) {
-        target.clear();
-        target.extend(source.iter().cloned());
-    }
-
     pub(super) fn new(app: &'a mut FlistWalkerApp) -> Self {
         Self { app }
     }
@@ -34,6 +29,11 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn enqueue_search_request(&mut self) {
+        // The current query is retained in runtime; preparation completion
+        // submits it with the authoritative candidate snapshot exactly once.
+        if self.app.active_entry_filter_pending() {
+            return;
+        }
         self.app.shell.runtime.query_state.search_error = None;
         self.app.commit_query_history_if_needed(false);
         let current_tab_id = self.app.current_tab_id();
@@ -102,6 +102,9 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn update_results(&mut self) {
+        if self.app.active_entry_filter_pending() {
+            return;
+        }
         if !super::result_policy::needs_search_worker(
             &self.app.shell.runtime.query_state.query,
             self.app.shell.runtime.result_sort_mode,
@@ -127,120 +130,13 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn apply_entry_filters(&mut self, keep_scroll_position: bool) {
-        if self.app.kind_resolution_needed_for_filters() {
-            self.app.queue_unknown_kind_paths_for_active_entries();
-        } else if !self.app.shell.indexing.build.pending_kind_paths.is_empty()
-            || !self
-                .app
-                .shell
-                .indexing
-                .build
-                .in_flight_kind_paths
-                .is_empty()
-        {
-            self.app.reset_kind_resolution_state();
-        }
-
-        let compiled_ignore_terms = self.app.compiled_ignore_terms();
-        let source_is_all_entries = !self.app.shell.indexing.in_progress
-            || self.app.shell.indexing.build.index.entries.is_empty();
-        let base = if !source_is_all_entries {
-            &self.app.shell.indexing.build.index.entries
-        } else {
-            self.app.shell.runtime.all_entries.as_ref()
-        };
-        let needs_filtering = !self.app.shell.runtime.include_files
-            || !self.app.shell.runtime.include_dirs
-            || self.ignore_list_filter_active();
-        if self.app.shell.indexing.in_progress
-            && !source_is_all_entries
-            && !needs_filtering
-            && self.app.shell.runtime.query_state.query.trim().is_empty()
-        {
-            self.app
-                .shell
-                .indexing
-                .build
-                .incremental_filtered_entries
-                .clear();
-            self.app.shell.indexing.last_search_snapshot_len = base.len();
-            self.app.shell.indexing.search_rerun_pending = false;
-            self.app.shell.search.clear_active_request_state();
-            let results = base
-                .iter()
-                .take(self.app.shell.runtime.limit)
-                .cloned()
-                .map(|entry| (entry.path, 0.0))
-                .collect();
-            self.app.shell.runtime.set_total_match_count(base.len());
-            self.app
-                .replace_results_snapshot(results, keep_scroll_position);
-            return;
-        }
-        // Keep the zero-copy path only when no per-entry filter needs evaluation.
-        // Ignore List must stay in the filtered path even when files/folders are both enabled,
-        // otherwise the default all-entries snapshot leaks ignored paths back into the UI.
-        if needs_filtering {
-            let entries = Arc::new(Self::filtered_entries(
-                self.app,
-                base,
-                compiled_ignore_terms.as_deref(),
-            ));
-            self.app.shell.runtime.replace_visible_entries(entries);
-        } else if source_is_all_entries {
-            let entries = Arc::clone(&self.app.shell.runtime.all_entries);
-            self.app.shell.runtime.replace_visible_entries(entries);
-        } else {
-            let entries = Arc::new(base.clone());
-            self.app.shell.runtime.replace_visible_entries(entries);
-        }
-        if self.app.shell.indexing.in_progress {
-            let entries = Arc::clone(&self.app.shell.runtime.entries);
-            Self::overwrite_entries_vec(
-                &mut self.app.shell.indexing.build.incremental_filtered_entries,
-                entries.as_ref(),
-            );
-        } else {
-            self.app
-                .shell
-                .indexing
-                .build
-                .incremental_filtered_entries
-                .clear();
-        }
-        self.app.shell.indexing.last_search_snapshot_len = self.app.shell.runtime.entries.len();
-        self.app.shell.indexing.search_rerun_pending = false;
-
-        if self.app.shell.runtime.query_state.query.trim().is_empty() {
-            if super::result_policy::needs_search_worker(
-                "",
-                self.app.shell.runtime.result_sort_mode,
-                self.app.shell.runtime.result_sort_scope,
-            ) {
-                self.update_results();
-                return;
-            }
-            self.app.shell.search.clear_active_request_state();
-            let results = self
-                .app
-                .shell
-                .runtime
-                .entries
-                .iter()
-                .take(self.app.shell.runtime.limit)
-                .cloned()
-                .map(|entry| (entry.path, 0.0))
-                .collect();
-            let count = self.app.shell.runtime.entries.len();
-            self.app.shell.runtime.set_total_match_count(count);
-            self.app
-                .replace_results_snapshot(results, keep_scroll_position);
-        } else {
-            self.update_results();
-        }
+        self.app.request_active_entry_filter(keep_scroll_position);
     }
 
     pub(super) fn apply_incremental_empty_query_results(&mut self) {
+        if self.app.active_entry_filter_pending() {
+            return;
+        }
         if self.app.shell.indexing.in_progress
             && self.app.shell.runtime.result_sort_mode != ResultSortMode::Score
         {
@@ -267,24 +163,13 @@ impl<'a> PipelineOwner<'a> {
             self.app.replace_results_snapshot(results, true);
             return;
         }
-        self.sync_entries_from_incremental();
-        self.app.shell.search.clear_active_request_state();
-        let results = self
-            .app
-            .shell
-            .runtime
-            .entries
-            .iter()
-            .take(self.app.shell.runtime.limit)
-            .cloned()
-            .map(|entry| (entry.path, 0.0))
-            .collect();
-        let count = self.app.shell.runtime.entries.len();
-        self.app.shell.runtime.set_total_match_count(count);
-        self.app.replace_results_snapshot(results, true);
+        self.app.request_active_entry_filter(true);
     }
 
     pub(super) fn maybe_refresh_incremental_search(&mut self) {
+        if self.app.active_entry_filter_pending() {
+            return;
+        }
         if self.app.shell.runtime.query_state.query.trim().is_empty() {
             return;
         }
@@ -294,30 +179,16 @@ impl<'a> PipelineOwner<'a> {
                 self.app.shell.indexing.search_rerun_pending = true;
                 return;
             }
-            self.sync_entries_from_incremental();
-            self.app.shell.indexing.last_search_snapshot_len = self.app.shell.runtime.entries.len();
-            self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
-            self.update_results();
-            self.app.shell.indexing.search_resume_pending = false;
+            self.app.request_active_entry_filter(true);
             return;
         }
 
-        let current_len = self
-            .app
-            .shell
-            .indexing
-            .build
-            .incremental_filtered_entries
-            .len();
         if self.app.should_refresh_incremental_search() {
             if self.app.shell.search.in_progress() {
                 self.app.shell.indexing.search_rerun_pending = true;
                 return;
             }
-            self.sync_entries_from_incremental();
-            self.app.shell.indexing.last_search_snapshot_len = current_len;
-            self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
-            self.update_results();
+            self.app.request_active_entry_filter(true);
         }
     }
 
@@ -364,31 +235,9 @@ impl<'a> PipelineOwner<'a> {
         }
     }
 
-    fn filtered_entries(
-        app: &FlistWalkerApp,
-        source: &[Entry],
-        ignore_terms: Option<&crate::query::CompiledIgnoreTerms>,
-    ) -> Vec<Entry> {
-        source
-            .iter()
-            .filter(|entry| app.is_entry_visible_for_current_filter(entry, ignore_terms))
-            .cloned()
-            .collect()
-    }
-
     fn ignore_list_filter_active(&self) -> bool {
         self.app.shell.ui.ignore_list_enabled
             && !self.app.shell.runtime.ignore_list_terms.is_empty()
-    }
-
-    fn sync_entries_from_incremental(&mut self) {
-        let incremental_entries = &self.app.shell.indexing.build.incremental_filtered_entries;
-        // Regression guard: the runtime owner performs the one required snapshot copy and
-        // reuses the allocation when the current Arc is unique.
-        self.app
-            .shell
-            .runtime
-            .sync_visible_entries(incremental_entries);
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {

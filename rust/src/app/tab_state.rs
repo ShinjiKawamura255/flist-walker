@@ -105,6 +105,7 @@ impl TabResourceState {
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub(super) struct TabBuildPayload {
+    pub(super) active_filter: Option<super::active_filter::ActiveFilterContinuation>,
     pub(super) index: IndexBuildResult,
     pub(super) pending_entries: VecDeque<IndexEntry>,
     pub(super) pending_kind_paths: VecDeque<PathBuf>,
@@ -118,6 +119,7 @@ pub(super) struct TabBuildPayload {
 impl Default for TabBuildPayload {
     fn default() -> Self {
         Self {
+            active_filter: None,
             index: IndexBuildResult {
                 entries: Vec::new(),
                 source: IndexSource::None,
@@ -146,7 +148,8 @@ impl TabBuildPayload {
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.index.entries.capacity() == 0
+        self.active_filter.is_none()
+            && self.index.entries.capacity() == 0
             && self.pending_entries.capacity() == 0
             && self.pending_kind_paths.capacity() == 0
             && self.pending_kind_paths_set.capacity() == 0
@@ -160,6 +163,11 @@ impl TabBuildPayload {
         self.index
             .entries
             .capacity()
+            .saturating_add(
+                self.active_filter
+                    .as_ref()
+                    .map_or(0, |state| state.weight()),
+            )
             .saturating_add(self.pending_entries.capacity())
             .saturating_add(self.pending_kind_paths.capacity())
             .saturating_add(self.pending_kind_paths_set.capacity())

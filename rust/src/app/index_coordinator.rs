@@ -669,6 +669,7 @@ impl FlistWalkerApp {
     }
 
     /// 表示中または incremental index 中の entry から kind 未解決 path を拾う。
+    #[cfg(test)]
     pub(super) fn queue_unknown_kind_paths_for_active_entries(&mut self) {
         if !self.kind_resolution_needed_for_filters() {
             return;
@@ -688,7 +689,10 @@ impl FlistWalkerApp {
         } else {
             self.shell.runtime.all_entries.as_ref()
         };
-        for entry in source {
+        for entry in source
+            .iter()
+            .take(super::active_filter::ACTIVE_FILTER_ENTRY_BUDGET)
+        {
             if entry.kind.is_some()
                 || entry_kind_cache.get(entry.path()).is_some()
                 || pending_kind_paths_set.contains(entry.path())
@@ -925,7 +929,7 @@ impl FlistWalkerApp {
                 || !self.shell.indexing.build.in_flight_kind_paths.is_empty();
 
         if resolved_any && (!self.shell.runtime.include_files || !self.shell.runtime.include_dirs) {
-            self.apply_entry_filters(true);
+            self.request_kind_entry_refilter();
         }
         if resolved_current_row && self.shell.ui.show_preview {
             self.request_preview_for_current();

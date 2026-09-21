@@ -14,6 +14,7 @@ use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
+mod active_filter;
 mod bootstrap;
 mod cache;
 mod config;

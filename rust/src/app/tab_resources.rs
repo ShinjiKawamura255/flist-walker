@@ -145,6 +145,21 @@ struct RetiredRoutingPayload {
 }
 
 impl RetiredIndexBuildResources {
+    pub(super) fn from_active_filter(
+        state: super::active_filter::ActiveFilterContinuation,
+    ) -> Self {
+        let mut resources = Self::empty();
+        resources.build.active_filter = Some(state);
+        resources
+    }
+
+    pub(super) fn take_active_filter(&mut self) -> super::active_filter::ActiveFilterContinuation {
+        self.build
+            .active_filter
+            .take()
+            .expect("active filter retirement")
+    }
+
     pub(super) fn empty() -> Self {
         Self {
             #[cfg(test)]

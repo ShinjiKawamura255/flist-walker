@@ -506,26 +506,6 @@ fn should_refresh_incremental_search_is_true_for_large_delta_after_interval() {
 }
 
 #[test]
-fn regression_incremental_snapshot_sync_has_no_redundant_full_vec_clone() {
-    let source = include_str!("../pipeline_owner.rs");
-    let body = source
-        .split("fn sync_entries_from_incremental")
-        .nth(1)
-        .expect("snapshot sync owner")
-        .split("pub(super) fn enqueue_search_request_for_tab_index")
-        .next()
-        .expect("snapshot sync body");
-
-    assert!(body.contains("sync_visible_entries"));
-    assert!(!source.contains("fn overwrite_entries_arc"));
-    assert!(
-        !body.contains("incremental_filtered_entries\r\n            .clone()")
-            && !body.contains("incremental_filtered_entries\n            .clone()"),
-        "the GUI snapshot path must not clone the full incremental Vec before its owned copy"
-    );
-}
-
-#[test]
 fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
     let root = test_root("ignore-list-fast-path-regression");
     fs::create_dir_all(&root).expect("create dir");
@@ -555,6 +535,434 @@ fn regression_ignore_list_is_applied_when_files_and_folders_are_both_enabled() {
     );
     assert_eq!(app.shell.runtime.results, vec![(kept, 0.0)]);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn tc_151_large_active_filter_keeps_last_good_snapshot_and_bounds_unknown_queue() {
+    let root = test_root("active-filter-budget");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..20_000)
+            .map(|i| unknown_entry(root.join(format!("unknown-{i}"))))
+            .collect(),
+    );
+    let last_good = Arc::new(vec![file_entry(root.join("last-good"))]);
+    app.shell
+        .runtime
+        .replace_visible_entries(Arc::clone(&last_good));
+    app.apply_entry_filters(true);
+    assert!(app.status_line_text().contains("Searching..."));
+    assert!(
+        Arc::ptr_eq(&app.shell.runtime.entries, &last_good),
+        "partial filtering must retain the last committed snapshot"
+    );
+    assert!(
+        app.shell.indexing.build.pending_kind_paths.len() <= 512,
+        "unknown-kind discovery must have a deterministic per-call budget"
+    );
+    app.poll_active_entry_filter();
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        512
+    );
+    assert_eq!(app.shell.indexing.build.pending_kind_paths.len(), 512);
+    for _ in 0..20 {
+        app.poll_active_entry_filter();
+    }
+    assert_eq!(app.shell.indexing.build.pending_kind_paths.len(), 4096);
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        4096
+    );
+}
+
+fn finish_budgeted_filter(app: &mut FlistWalkerApp) {
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while app.active_entry_filter_pending() {
+        assert!(Instant::now() < deadline, "filter continuation must finish");
+        app.poll_active_entry_filter();
+        thread::yield_now();
+    }
+}
+
+#[test]
+fn tc_151_incremental_snapshot_copy_is_budgeted_and_ingestion_waits() {
+    let root = test_root("budgeted-incremental-copy");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "file".to_string());
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.build.index.entries = (0..20_000)
+        .map(|i| file_entry(root.join(format!("file-{i}"))))
+        .collect();
+    let previous = Arc::clone(&app.shell.runtime.entries);
+    app.apply_entry_filters(true);
+    assert!(Arc::ptr_eq(&previous, &app.shell.runtime.entries));
+    app.poll_active_entry_filter();
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        512
+    );
+    let request_id = app.shell.indexing.pending_request_id.unwrap();
+    app.queue_index_batch(
+        request_id,
+        vec![IndexEntry {
+            path: root.join("next"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }],
+    );
+    assert!(!app.drain_queued_index_entries(request_id, 1024));
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 20_000);
+    finish_budgeted_filter(&mut app);
+    assert_eq!(app.shell.runtime.entries.len(), 20_000);
+    assert_eq!(
+        app.shell.indexing.build.incremental_filtered_entries.len(),
+        20_000
+    );
+    assert!(app.drain_queued_index_entries(request_id, 1024));
+    assert_eq!(
+        app.shell.indexing.build.incremental_filtered_entries.len(),
+        20_001
+    );
+}
+
+#[test]
+fn tc_151_active_filter_supersession_never_publishes_partial_or_old_policy() {
+    let root = test_root("filter-supersession");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..4096)
+            .map(|i| {
+                if i % 2 == 0 {
+                    file_entry(root.join(format!("f{i}")))
+                } else {
+                    dir_entry(root.join(format!("d{i}")))
+                }
+            })
+            .collect(),
+    );
+    let previous = Arc::clone(&app.shell.runtime.entries);
+    app.apply_entry_filters(true);
+    app.poll_active_entry_filter();
+    app.shell.runtime.include_dirs = true;
+    app.shell.runtime.include_files = false;
+    app.apply_entry_filters(true);
+    assert!(Arc::ptr_eq(&previous, &app.shell.runtime.entries));
+    finish_budgeted_filter(&mut app);
+    assert_eq!(app.shell.runtime.entries.len(), 2048);
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .all(|entry| entry.kind == Some(EntryKind::dir())));
+}
+
+#[test]
+fn tc_151_active_filter_full_retirement_retains_previous_owner() {
+    let root = test_root("filter-retirement-full");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.indexing.in_progress = false;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..2048)
+            .map(|i| file_entry(root.join(format!("file-{i}"))))
+            .collect(),
+    );
+    let previous = Arc::new(
+        (0..2048)
+            .map(|i| file_entry(root.join(format!("old-{i}"))))
+            .collect(),
+    );
+    app.shell
+        .runtime
+        .replace_visible_entries(Arc::clone(&previous));
+    app.shell.tabs.pause_resource_reclaimer();
+    for _ in 0..super::super::tab_resources::TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut retired = super::super::tab_resources::RetiredIndexBuildResources::empty();
+        retired.set_stale_index_entries(vec![IndexEntry {
+            path: root.join("retired"),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }]);
+        assert!(app
+            .shell
+            .tabs
+            .try_retire_index_build_resources(retired)
+            .is_ok());
+    }
+    app.apply_entry_filters(true);
+    for _ in 0..10 {
+        app.poll_active_entry_filter();
+    }
+    assert!(app.active_entry_filter_pending());
+    assert!(Arc::ptr_eq(&previous, &app.shell.runtime.entries));
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        2048
+    );
+    app.shell.tabs.resume_resource_reclaimer();
+    finish_budgeted_filter(&mut app);
+    assert!(!Arc::ptr_eq(&previous, &app.shell.runtime.entries));
+    assert_eq!(app.shell.runtime.entries.len(), 2048);
+}
+
+#[test]
+fn tc_151_kind_batch_replays_completed_discovery_without_prefix_starvation() {
+    let root = test_root("filter-kind-replay");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.include_dirs = false;
+    let unknown = root.join("unknown");
+    let mut source: Vec<_> = (0..4096)
+        .map(|i| file_entry(root.join(format!("file-{i}"))))
+        .collect();
+    source[0] = unknown_entry(unknown.clone());
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(source);
+    app.apply_entry_filters(true);
+    app.poll_active_entry_filter();
+    app.shell.indexing.build.pending_kind_paths.clear();
+    app.shell.indexing.build.pending_kind_paths_set.clear();
+    app.shell
+        .indexing
+        .build
+        .in_flight_kind_paths
+        .insert(unknown.clone());
+    let (tx, rx) = mpsc::channel();
+    app.shell.worker_bus.kind.rx = rx;
+    tx.send(KindResolveResponse {
+        tab_id: app.current_tab_id().unwrap(),
+        epoch: app.shell.indexing.kind_resolution_epoch,
+        path: unknown.clone(),
+        kind: Some(EntryKind::file()),
+    })
+    .unwrap();
+    app.poll_kind_response();
+    app.poll_active_entry_filter();
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        1024
+    );
+    finish_budgeted_filter(&mut app);
+    assert_eq!(app.shell.runtime.entries.len(), 4096);
+    assert!(app
+        .shell
+        .runtime
+        .entries
+        .iter()
+        .any(|entry| entry.path == unknown));
+}
+
+#[test]
+fn tc_151_active_filter_disconnected_kind_worker_does_not_stall() {
+    let root = test_root("filter-kind-disconnected");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..6000)
+            .map(|i| unknown_entry(root.join(format!("unknown-{i}"))))
+            .collect(),
+    );
+    let (tx, rx) = super::super::worker::channel::bounded_request_channel(1);
+    drop(rx);
+    app.shell.worker_bus.kind.tx = tx;
+    app.apply_entry_filters(true);
+    for _ in 0..30 {
+        app.poll_active_entry_filter();
+        app.pump_kind_resolution_requests();
+        if !app.active_entry_filter_pending() {
+            break;
+        }
+    }
+    assert!(!app.active_entry_filter_pending());
+    assert!(app.shell.runtime.entries.is_empty());
+    assert!(app.shell.runtime.notice.contains("unavailable"));
+}
+
+#[test]
+fn tc_151_active_filter_continuation_follows_its_tab() {
+    let root = test_root("filter-tab-transfer");
+    fs::create_dir_all(&root).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell
+        .indexing
+        .apply_resource_transition(super::super::tab_state::TabResourceTransition::Success);
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    // Seed a completed index, including its lifecycle. A Dormant fixture is
+    // intentionally reindexed on activation and must discard its old build.
+    app.shell
+        .indexing
+        .apply_resource_transition(super::super::tab_state::TabResourceTransition::Success);
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..4096)
+            .map(|i| file_entry(root.join(format!("file-{i}"))))
+            .collect(),
+    );
+    app.apply_entry_filters(true);
+    app.poll_active_entry_filter();
+    app.switch_to_tab_index(0);
+    assert!(!app.active_entry_filter_pending());
+    assert_eq!(
+        app.shell
+            .tabs
+            .get(1)
+            .unwrap()
+            .index_state
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        512
+    );
+    app.switch_to_tab_index(1);
+    assert!(app.active_entry_filter_pending());
+    finish_budgeted_filter(&mut app);
+    assert_eq!(app.shell.runtime.entries.len(), 4096);
+    assert!(app
+        .shell
+        .tabs
+        .get(0)
+        .unwrap()
+        .result_state
+        .committed
+        .entries
+        .is_empty());
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn tc_151_deferred_live_results_respect_current_sort_query_and_scope() {
+    for transition in 0..3 {
+        let root = test_root("filter-live-deferred-policy");
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        app.shell.indexing.in_progress = true;
+        app.shell.runtime.include_files = true;
+        app.shell.runtime.include_dirs = true;
+        app.shell.ui.ignore_list_enabled = false;
+        app.shell.indexing.build.index.entries = (0..4096)
+            .map(|i| file_entry(root.join(format!("file-{i:05}"))))
+            .collect();
+        app.shell.indexing.build.incremental_filtered_entries =
+            app.shell.indexing.build.index.entries.clone();
+        let previous = vec![(root.join("last-good"), 0.0)];
+        app.shell.runtime.replace_results(previous.clone());
+        app.shell.runtime.set_total_match_count(123);
+        let (request_tx, request_rx) = mpsc::channel();
+        let (_response_tx, response_rx) = mpsc::channel();
+        app.shell.search = SearchCoordinator::new(request_tx, response_rx);
+        app.shell.tabs.pause_resource_reclaimer();
+        for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+            let mut retired = RetiredIndexBuildResources::empty();
+            retired.set_stale_index_entries(vec![IndexEntry {
+                path: root.join("retired"),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }]);
+            assert!(app
+                .shell
+                .tabs
+                .try_retire_index_build_resources(retired)
+                .is_ok());
+        }
+        app.apply_entry_filters(true);
+        assert!(app.active_entry_filter_pending());
+        assert_eq!(app.shell.runtime.results, previous);
+        assert_eq!(app.shell.runtime.total_match_count, 123);
+        match transition {
+            0 => app.shell.runtime.result_sort_mode = ResultSortMode::NameDesc,
+            1 => app.shell.runtime.query_state.query = "file".to_string(),
+            _ => {
+                app.shell.runtime.result_sort_mode = ResultSortMode::NameDesc;
+                app.shell.runtime.result_sort_scope = ResultSortScope::AllMatches;
+            }
+        }
+        app.update_results();
+        app.enqueue_search_request();
+        assert!(
+            request_rx.try_recv().is_err(),
+            "preparation must not search the previous membership"
+        );
+        app.shell.tabs.resume_resource_reclaimer();
+        finish_budgeted_filter(&mut app);
+        if transition == 0 {
+            assert_eq!(app.shell.runtime.results[0].0, root.join("file-00049"));
+            assert_eq!(app.shell.runtime.total_match_count, 4096);
+            assert!(request_rx.try_recv().is_err());
+        } else {
+            let request = request_rx
+                .try_recv()
+                .expect("latest query/sort needs full candidate snapshot");
+            assert_eq!(request.entries.len(), 4096);
+            assert_eq!(request.query, if transition == 1 { "file" } else { "" });
+            assert_eq!(request.sort_scope, app.shell.runtime.result_sort_scope);
+            assert!(
+                request_rx.try_recv().is_err(),
+                "latest prepared query is submitted once"
+            );
+            assert_eq!(app.shell.runtime.results, previous);
+        }
+    }
+}
+
+#[test]
+fn tc_151_active_filter_scratch_retires_off_ui_thread() {
+    let _observer_guard = lock_reclaim_drop_observer_for_test();
+    let root = test_root("filter-worker-retirement");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..4096)
+            .map(|i| file_entry(root.join(format!("file-{i}"))))
+            .collect(),
+    );
+    let (tx, rx) = mpsc::channel();
+    set_reclaim_drop_observer(Some(tx));
+    app.apply_entry_filters(true);
+    finish_budgeted_filter(&mut app);
+    let name = rx
+        .recv_timeout(Duration::from_secs(3))
+        .expect("retirement drop observed");
+    set_reclaim_drop_observer(None);
+    assert_eq!(name, "flistwalker-tab-reclaimer");
 }
 
 #[test]

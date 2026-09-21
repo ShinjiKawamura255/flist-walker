@@ -697,6 +697,48 @@ fn regression_same_root_preset_applies_filters_and_sort_before_fresh_search() {
 }
 
 #[test]
+fn tc_151_large_same_root_preset_keeps_sorted_last_good_rows_until_filter_finishes() {
+    let root = test_root("preset-large-filter");
+    fs::create_dir_all(&root).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    app.shell.runtime.use_filelist = false;
+    app.shell.runtime.include_dirs = false;
+    app.shell.runtime.ignore_list_terms = Arc::new(vec!["ignore-sentinel".to_string()]);
+    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
+        (0..4096)
+            .map(|i| file_entry(root.join(format!("file-{i:05}"))))
+            .collect(),
+    );
+    let previous = vec![(root.join("last-good"), 0.0)];
+    app.shell.runtime.replace_results(previous.clone());
+    app.shell.runtime.set_total_match_count(123);
+    let mut selected = preset("Large same root", &root, "");
+    selected.sort = PresetSortMode::NameDesc;
+    app.shell
+        .features
+        .presets
+        .catalog
+        .save_preset(selected)
+        .unwrap();
+    app.shell.features.presets.picker.open = true;
+    app.refresh_preset_picker_matches();
+    app.apply_selected_preset();
+    assert!(app.active_entry_filter_pending());
+    assert_eq!(app.shell.runtime.results, previous);
+    assert_eq!(app.shell.runtime.total_match_count, 123);
+    let deadline = Instant::now() + Duration::from_secs(3);
+    while app.active_entry_filter_pending() {
+        assert!(Instant::now() < deadline);
+        app.poll_active_entry_filter();
+        thread::yield_now();
+    }
+    assert_eq!(app.shell.runtime.total_match_count, 4096);
+    assert_eq!(app.shell.runtime.results[0].0, root.join("file-00049"));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
 fn tc_180_preset_max_depth_is_tab_local_persistent_and_new_tabs_start_unlimited() {
     let root = test_root("preset-picker-max-depth-tab-local");
     fs::create_dir_all(&root).expect("create root");

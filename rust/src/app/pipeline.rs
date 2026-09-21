@@ -1094,6 +1094,11 @@ impl FlistWalkerApp {
     }
 
     fn poll_index_response_with_budget(&mut self, frame_budget: Duration) {
+        // The continuation reads a fixed live index without copying it first.
+        // Leave bounded worker mailboxes in place until that snapshot is ready.
+        if self.active_entry_filter_pending() {
+            return;
+        }
         if !IndexResponseApplicationOwner::new(self).prepare_frame() {
             return;
         }
@@ -1236,6 +1241,9 @@ impl FlistWalkerApp {
         request_id: u64,
         max_entries: usize,
     ) -> bool {
+        if self.active_entry_filter_pending() {
+            return false;
+        }
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             return false;
         }
@@ -1260,6 +1268,9 @@ impl FlistWalkerApp {
         budget: Duration,
         max_entries: usize,
     ) -> bool {
+        if self.active_entry_filter_pending() {
+            return false;
+        }
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             return false;
         }
@@ -1407,6 +1418,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn try_finish_active_index_after_pending_drain(&mut self) -> bool {
+        if self.active_entry_filter_pending() {
+            return false;
+        }
         let Some(pending_finish) = self.shell.indexing.pending_finish.clone() else {
             return false;
         };

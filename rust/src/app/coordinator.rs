@@ -166,7 +166,8 @@ impl FlistWalkerApp {
             total_match_count: self.shell.runtime.total_match_count,
             limit: self.shell.runtime.limit,
             pinned_paths_len: self.shell.runtime.pinned_paths.len(),
-            search_in_progress: self.shell.search.in_progress(),
+            search_in_progress: self.shell.search.in_progress()
+                || self.active_entry_filter_pending(),
             indexing_in_progress: self.shell.indexing.in_progress,
             action_in_progress: self.shell.worker_bus.action.in_progress,
             filelist_in_progress: self.shell.features.filelist.workflow.in_progress,
