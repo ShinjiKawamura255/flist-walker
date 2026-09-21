@@ -180,6 +180,13 @@ impl FlistWalkerApp {
             notice: &self.shell.runtime.notice,
             memory_text: memory,
         });
+        let status_line = match self.session_persistence_label() {
+            Some(label) if self.shell.ui.persistence.error().is_some() => {
+                format!("{label} | {status_line}")
+            }
+            Some(label) => format!("{status_line} | {label}"),
+            None => status_line,
+        };
         self.shell.runtime.status_line = status_line.clone();
         status_line
     }

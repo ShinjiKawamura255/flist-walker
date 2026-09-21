@@ -11,6 +11,356 @@ use std::process::Command;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[test]
+fn tc_168_typed_invalid_document_is_preserved_before_settings_side_effects() {
+    for invalid in [
+        json!({"show_preview": "invalid", "default_root": "valuable"}),
+        json!({"window": {"width": 100}}),
+        json!({"tabs": [{"root": "valuable"}]}),
+    ] {
+        let base = temp_dir("typed-invalid-write");
+        fs::create_dir_all(&base).unwrap();
+        let path = base.join("state.json");
+        let roots = base.join("roots.txt");
+        let original = invalid.to_string();
+        fs::write(&path, &original).unwrap();
+        fs::write(&roots, "valuable roots").unwrap();
+        let result = commit_settings(
+            &path,
+            &[],
+            false,
+            Duration::from_millis(10),
+            SettingsCommitRequest {
+                request_id: 1,
+                patch: UiStatePatch::from_ui_state(&UiState::default()),
+                saved_roots: Some((roots.clone(), "replacement".into())),
+            },
+        );
+        assert!(
+            result.is_err(),
+            "typed-invalid data must not grant write permission"
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), original);
+        assert_eq!(fs::read_to_string(&roots).unwrap(), "valuable roots");
+        fs::remove_dir_all(base).unwrap();
+    }
+}
+
+#[test]
+fn tc_168_sustained_failure_has_bounded_nonblocking_admission() {
+    let base = temp_dir("bounded-admission");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    fs::write(&path, "{").unwrap();
+    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
+        path.clone(),
+        false,
+        Duration::from_millis(10),
+    );
+    let mut admitted = 0;
+    for index in 0..10_000 {
+        if writer
+            .enqueue_history(vec![format!("query-{index}")])
+            .is_ok()
+        {
+            admitted += 1;
+        }
+    }
+    assert!(admitted <= 64, "failure backlog admitted {admitted} writes");
+    assert!(writer.shutdown(Duration::from_secs(1)).is_err());
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_168_failed_startup_read_never_autosaves_fallback_after_external_repair() {
+    let base = temp_dir("startup-fallback-provenance");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    fs::write(
+        &path,
+        json!({"show_preview": "invalid", "default_root": "valuable"}).to_string(),
+    )
+    .unwrap();
+    let fallback = crate::persistence::read_ui_state_from_path(&path);
+    assert!(fallback.default_root.is_none());
+    let repaired =
+        json!({"show_preview": true, "default_root": "valuable", "future": 42}).to_string();
+    fs::write(&path, &repaired).unwrap();
+    let _ = enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::from_ui_state(&fallback),
+        Vec::new(),
+        false,
+    );
+    let _ = flush_ui_state_persistence(&path, Duration::from_secs(1));
+    assert_eq!(fs::read_to_string(&path).unwrap(), repaired);
+    shutdown_ui_state_persistence_for_test(&path, Duration::from_secs(1));
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_168_compacted_history_delta_preserves_sequential_recency_and_cap() {
+    let initial = (0..100)
+        .map(|index| format!("q-{index}"))
+        .collect::<Vec<_>>();
+    let deltas = (0..1_000)
+        .map(|index| format!("q-{}", (index * 37) % 151))
+        .collect::<Vec<_>>();
+    let mut sequential = initial.clone();
+    for delta in &deltas {
+        append_history_delta(&mut sequential, delta.clone());
+    }
+    let compacted = normalize_history_recency(deltas);
+    assert_eq!(compacted.len(), MAX_QUERY_HISTORY_ENTRIES);
+    let mut replayed = initial;
+    for delta in compacted {
+        append_history_delta(&mut replayed, delta);
+    }
+    assert_eq!(replayed, sequential);
+}
+
+#[test]
+fn tc_168_rejected_snapshot_keeps_history_baseline_and_recovers_latest_generation() {
+    let base = temp_dir("full-snapshot-retry");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    // No failed startup read: these are legitimate changes made before a later
+    // external corruption, so repairing the file may resume this session.
+    fs::write(&path, "{}").unwrap();
+    crate::persistence::read_ui_state_from_path(&path);
+    fs::write(&path, "{").unwrap();
+    for index in 0..MAX_PENDING_UI_STATE_WRITES {
+        enqueue_ui_state_patch(
+            path.clone(),
+            UiStatePatch::from_json(json!({"latest": index})),
+            vec!["accepted".into()],
+            false,
+        )
+        .unwrap();
+    }
+    let rejection = enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::from_json(json!({"latest": 999})),
+        vec!["accepted".into(), "retry".into()],
+        false,
+    )
+    .unwrap_err();
+    assert!(rejection.contains("full"));
+    assert!(flush_ui_state_persistence(&path, Duration::from_secs(2)).is_err());
+    let failed = ui_state_persistence_status(&path);
+    assert_eq!(failed.accepted_generation, 64);
+    assert_eq!(failed.persisted_generation, 0);
+    assert!(failed.last_error.is_some());
+    assert!(!failed.startup_protected);
+    fs::write(
+        &path,
+        json!({"query_history": ["external"], "future": {"keep": true}}).to_string(),
+    )
+    .unwrap();
+    flush_ui_state_persistence(&path, Duration::from_secs(2)).unwrap();
+    let generation = enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::from_json(json!({"latest": 999})),
+        vec!["accepted".into(), "retry".into()],
+        false,
+    )
+    .unwrap();
+    flush_ui_state_persistence(&path, Duration::from_secs(2)).unwrap();
+    let status = ui_state_persistence_status(&path);
+    assert_eq!(status.accepted_generation, generation);
+    assert_eq!(status.persisted_generation, generation);
+    assert!(status.last_error.is_none());
+    let document: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(
+        document["query_history"],
+        json!(["external", "accepted", "retry"])
+    );
+    assert_eq!(document["latest"], 999);
+    assert_eq!(document["future"], json!({"keep": true}));
+    shutdown_ui_state_persistence_for_test(&path, Duration::from_secs(1));
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_168_failed_startup_read_blocks_settings_after_repair_and_keeps_roots() {
+    let base = temp_dir("startup-settings-protection");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let roots = base.join("roots.txt");
+    fs::write(&path, "{\"show_preview\":42}").unwrap();
+    fs::write(&roots, "valuable").unwrap();
+    crate::persistence::read_ui_state_from_path(&path);
+    fs::write(&path, "{}").unwrap();
+    assert!(ui_state_persistence_status(&path).startup_protected);
+    assert!(enqueue_settings_commit(
+        path.clone(),
+        false,
+        SettingsCommitRequest {
+            request_id: 1,
+            patch: UiStatePatch::from_ui_state(&UiState::default()),
+            saved_roots: Some((roots.clone(), "replacement".into())),
+        }
+    )
+    .is_err());
+    assert_eq!(fs::read_to_string(&roots).unwrap(), "valuable");
+    assert_eq!(fs::read_to_string(&path).unwrap(), "{}");
+    shutdown_ui_state_persistence_for_test(&path, Duration::from_secs(1));
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_168_disconnected_admission_never_claims_a_generation() {
+    let (tx, rx) = mpsc::sync_channel(1);
+    drop(rx);
+    let sender = PersistenceSender {
+        tx,
+        state: Arc::new(Mutex::new(AdmissionState::default())),
+    };
+    assert!(sender
+        .enqueue(UiStatePatch::default(), vec!["retry".into()])
+        .unwrap_err()
+        .contains("unavailable"));
+    let state = sender.state.lock().unwrap();
+    assert_eq!(state.outstanding, 0);
+    assert_eq!(state.status.accepted_generation, 0);
+    assert!(state.status.last_error.is_some());
+}
+
+#[test]
+fn tc_168_old_success_cannot_clear_failure_while_new_generation_is_pending() {
+    let state = Mutex::new(AdmissionState {
+        status: UiStatePersistenceStatus {
+            accepted_generation: 2,
+            last_error: Some("failure".into()),
+            ..Default::default()
+        },
+        outstanding: 2,
+    });
+    let mut pending = vec![PendingUiStateWrite {
+        generation: 1,
+        patch: UiStatePatch::default(),
+        history_delta: Vec::new(),
+    }];
+    publish_write_result(&state, &mut pending, &Ok(()), true);
+    assert_eq!(state.lock().unwrap().status.persisted_generation, 1);
+    assert_eq!(
+        state.lock().unwrap().status.last_error.as_deref(),
+        Some("failure")
+    );
+    pending.push(PendingUiStateWrite {
+        generation: 2,
+        patch: UiStatePatch::default(),
+        history_delta: Vec::new(),
+    });
+    publish_write_result(&state, &mut pending, &Ok(()), true);
+    assert_eq!(state.lock().unwrap().status.persisted_generation, 2);
+    assert!(state.lock().unwrap().status.last_error.is_none());
+}
+
+#[test]
+fn tc_168_settings_flush_and_shutdown_preserve_admission_barriers() {
+    let base = temp_dir("ordered-barriers");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let (tx, rx) = mpsc::sync_channel(UI_STATE_COMMAND_CAPACITY);
+    let state = Arc::new(Mutex::new(AdmissionState::default()));
+    let sender = PersistenceSender {
+        tx,
+        state: Arc::clone(&state),
+    };
+    sender
+        .enqueue(
+            UiStatePatch::from_json(json!({"show_preview": false})),
+            vec!["A".into()],
+        )
+        .unwrap();
+    let (settings_tx, settings_rx) = mpsc::channel();
+    sender
+        .send_control(UiStatePersistenceCommand::CommitSettings {
+            request: SettingsCommitRequest {
+                request_id: 7,
+                patch: UiStatePatch::from_json(json!({"show_preview": true})),
+                saved_roots: None,
+            },
+            response: settings_tx,
+        })
+        .unwrap();
+    sender
+        .enqueue(
+            UiStatePatch::from_json(json!({"future": "second"})),
+            vec!["B".into()],
+        )
+        .unwrap();
+    let (flush_tx, flush_rx) = mpsc::channel();
+    sender
+        .send_control(UiStatePersistenceCommand::Flush(flush_tx))
+        .unwrap();
+    sender
+        .enqueue(
+            UiStatePatch::from_json(json!({"show_preview": "invalid"})),
+            vec!["C".into()],
+        )
+        .unwrap();
+    let (shutdown_tx, shutdown_rx) = mpsc::channel();
+    sender
+        .send_control(UiStatePersistenceCommand::Shutdown(shutdown_tx))
+        .unwrap();
+    // Queue all barriers before starting the worker so scheduling cannot make
+    // a later invalid write appear to belong to an earlier flush/commit.
+    let worker_path = path.clone();
+    let worker_state = Arc::clone(&state);
+    let handle = thread::spawn(move || {
+        run_ui_state_persistence_worker(
+            rx,
+            worker_path,
+            false,
+            Duration::from_millis(10),
+            worker_state,
+        )
+    });
+    let settings = settings_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+    assert_eq!(settings.request_id, 7);
+    settings.result.unwrap();
+    flush_rx
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap()
+        .unwrap();
+    assert!(shutdown_rx
+        .recv_timeout(Duration::from_secs(2))
+        .unwrap()
+        .is_err());
+    handle.join().unwrap();
+    let document: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    assert_eq!(document["show_preview"], true);
+    assert_eq!(document["future"], "second");
+    assert_eq!(document["query_history"], json!(["A", "B"]));
+    let status = &state.lock().unwrap().status;
+    assert_eq!(status.persisted_generation, 2);
+    assert_eq!(status.accepted_generation, 3);
+    assert!(status.last_error.is_some());
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_168_control_channel_is_bounded_and_full_is_explicit() {
+    let (tx, _rx) = mpsc::sync_channel(UI_STATE_COMMAND_CAPACITY);
+    let sender = PersistenceSender {
+        tx,
+        state: Arc::new(Mutex::new(AdmissionState::default())),
+    };
+    for _ in 0..UI_STATE_COMMAND_CAPACITY {
+        let (reply, _) = mpsc::channel();
+        sender
+            .send_control(UiStatePersistenceCommand::Flush(reply))
+            .unwrap();
+    }
+    let (reply, _) = mpsc::channel();
+    assert!(sender
+        .send_control(UiStatePersistenceCommand::Shutdown(reply))
+        .unwrap_err()
+        .contains("full"));
+}
+
+#[test]
 fn public_persistence_round_trip_preserves_existing_document_fields() {
     let base = temp_dir("public-round-trip");
     fs::create_dir_all(&base).expect("create base");
@@ -211,7 +561,7 @@ fn tc_167_persistence_merges_two_writers_and_preserves_unknown_json_fields() {
         &path,
         json!({
             "unknown_top": {"keep": true},
-            "window": {"x": 1.0, "unknown_nested": "keep"},
+            "window": {"x": 1.0, "y": 2.0, "width": 700.0, "height": 500.0, "unknown_nested": "keep"},
             "query_history": []
         })
         .to_string(),
@@ -326,7 +676,7 @@ fn tc_167_persistence_coalesces_patch_leaves_last_write_wins() {
     );
 
     writer.enqueue_patch_for_test(
-        UiStatePatch::from_json(json!({"show_preview": false, "window": {"width": 800.0}})),
+        UiStatePatch::from_json(json!({"show_preview": false, "window": {"x": 0.0, "y": 0.0, "width": 800.0, "height": 500.0}})),
         Vec::new(),
     );
     writer.enqueue_patch_for_test(
@@ -458,10 +808,11 @@ fn tc_168_detached_ui_state_writer_flushes_outside_frame_waiting_for_lock_releas
         UiStatePatch::from_json(json!({"frame": "enqueued"})),
         Vec::new(),
         false,
-    );
+    )
+    .expect("admit patch");
     assert!(started.elapsed() < Duration::from_millis(200));
     drop(lock);
-    flush_ui_state_persistence(&path, Duration::from_secs(1));
+    flush_ui_state_persistence(&path, Duration::from_secs(1)).expect("flush patch");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");
@@ -945,8 +1296,9 @@ fn tc_167_seeded_gui_history_does_not_replay_over_latest_external_history() {
         UiStatePatch::from_json(json!({"show_preview": false})),
         vec!["local".into()],
         false,
-    );
-    flush_ui_state_persistence(&path, Duration::from_secs(1));
+    )
+    .expect("admit patch");
+    flush_ui_state_persistence(&path, Duration::from_secs(1)).expect("flush patch");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");

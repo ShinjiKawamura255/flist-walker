@@ -191,7 +191,8 @@ pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     egui::Layout::left_to_right(egui::Align::Center),
                     |ui| {
                         ui.set_width(status_width);
-                        ui.add(egui::Label::new(status_line).truncate());
+                        ui.add(egui::Label::new(&status_line).truncate())
+                            .on_hover_text(&status_line);
                     },
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
