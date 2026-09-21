@@ -37,7 +37,7 @@ If startup or update reports an ambiguous or recovery-required installation stat
 
 ## UI-State Persistence Recovery
 
-If saving roots or query history reports an unreadable or invalid UI-state document, preserve `.flistwalker_ui_state.json` and `.flistwalker_roots.txt` before attempting repair. The writer refuses to replace an existing unreadable, invalid-UTF-8, malformed, or non-object JSON document; startup may still use default values. A missing file is initialized normally.
+If saving roots or query history reports an unreadable or invalid UI-state document, preserve `.flistwalker_ui_state.json` and `.flistwalker_roots.txt` before attempting repair. The writer refuses to replace an existing unreadable, invalid-UTF-8, malformed, non-object, or incorrectly typed JSON document. Startup may still use default values, but saving remains disabled until a successful restart to protect the original settings. A missing file is initialized normally. The GUI footer keeps a session-save failure visible; hover over it to read the full error.
 
 Close all FlistWalker and `fw` instances normally before manual repair, then make a private copy of the affected files. Pending, unflushed history is not guaranteed to survive process exit. Restore a known-good copy or repair the UI-state file as a UTF-8 JSON object while retaining its settings, history and unknown fields. Do not replace it with an empty object as a generic fix, and do not delete the sidecar lock file to bypass another running writer. If the error is an access or storage failure, resolve that condition before retrying.
 

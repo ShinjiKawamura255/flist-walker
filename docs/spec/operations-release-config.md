@@ -166,6 +166,9 @@
 
 ## SP-016 Runtime Config Bootstrap
 ### Requirements
+- MUST: UI-state 保存は既存文書と merge 後文書の既知フィールド型を検証し、型不正時は関連ファイルを変更してはならない。起動時に既存 UI-state の読込が失敗した process は、修復後も再起動まで full autosave と settings commit を停止し、default fallback で既存設定を上書きしてはならない。
+- MUST: autosave の受理待ちと失敗後の保留を合わせて有限件数に制限する。満杯時は非同期受付を拒否し、GUI は最新 dirty snapshot を再送する。拒否した履歴を送信済み baseline へ進めてはならない。受理順の patch と履歴を保持し、保存成功と単なる受理を区別する。
+- MUST: GUI は保存失敗を編集がなくても表示し続け、保存復旧を反映する。古い保存完了で新しい未受理変更や失敗を消してはならない。shutdown flush の失敗も診断へ残す。
 - MUST: ツールは runtime config file と関連する永続化ファイルを、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` へ保存しなければならない。
 - MUST: runtime config file は Windows では `%LocalAppData%\flistwalker\.flistwalker_config.json`、Linux/macOS では `~/.flistwalker/.flistwalker_config.json` を使わなければならない。
 - MUST: Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
