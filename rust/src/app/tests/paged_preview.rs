@@ -166,6 +166,35 @@ fn gui_preview_copy_layout_contains_only_body_and_color_toggle_preserves_text() 
 }
 
 #[test]
+fn gui_paged_preview_body_uses_the_cjk_primary_text_style() {
+    let root = test_root("paged-preview-cjk-text-style");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("sample.txt");
+    fs::write(&path, "English 日本語\n").expect("write fixture");
+    let document = PagedTextPreview::initial(&path, &|| false).expect("preview");
+    let ctx = egui::Context::default();
+    let mut body_font = None;
+    let mut preview_font = None;
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        body_font = Some(egui::TextStyle::Body.resolve(ui.style()));
+        preview_font = Some(
+            crate::app::render_panels::preview_line_job(&document, 0, false, ui)
+                .sections
+                .first()
+                .expect("preview body section")
+                .format
+                .font_id
+                .clone(),
+        );
+    });
+    assert_eq!(
+        preview_font, body_font,
+        "mixed Japanese/Latin preview text must share the CJK-primary font metrics"
+    );
+    fs::remove_dir_all(root).expect("cleanup root");
+}
+
+#[test]
 fn gui_long_line_copy_layout_excludes_truncation_marker() {
     let root = test_root("paged-preview-long-line-copy");
     fs::create_dir_all(&root).expect("create root");
