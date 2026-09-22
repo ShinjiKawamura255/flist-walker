@@ -335,8 +335,15 @@ impl FlistWalkerApp {
 
     pub(super) fn filelist_use_walker_dialog_lines() -> [&'static str; 2] {
         [
-            "Use FileList が有効です。Create File List には Walker indexing が必要です。",
-            "FileList インデックスからは生成せず、現在のタブの裏で一時的に Walker を実行します。続行しますか？",
+            "FileList is enabled. Create File List requires Walker indexing.",
+            "Create the list with a temporary background Walker instead of the FileList index. Continue?",
+        ]
+    }
+
+    pub(super) fn filelist_ancestor_dialog_lines() -> [&'static str; 2] {
+        [
+            "Also append references to existing FileLists directly under ancestor directories.",
+            "Continue updates ancestors too; Current Root Only creates a FileList only for the current root.",
         ]
     }
 

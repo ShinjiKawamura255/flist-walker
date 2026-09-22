@@ -224,13 +224,10 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         .pending_ancestor_confirmation
         .is_some()
     {
+        let [line1, line2] = FlistWalkerApp::filelist_ancestor_dialog_lines();
         filelist_dialogs.push(DialogSnapshot {
             title: "Update Ancestor FileLists?".to_string(),
-            lines: vec![
-                "親ディレクトリ直下の既存 FileList にも参照を追記します。".to_string(),
-                "Continue は祖先も更新し、Current Root Only は現在 root の FileList だけを作成します。"
-                    .to_string(),
-            ],
+            lines: vec![line1.to_string(), line2.to_string()],
             buttons: vec![
                 "Continue".to_string(),
                 "Current Root Only".to_string(),

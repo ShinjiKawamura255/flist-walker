@@ -864,8 +864,7 @@ fn filelist_use_walker_dialog_text_describes_background_execution() {
     let [line1, line2] = FlistWalkerApp::filelist_use_walker_dialog_lines();
 
     assert!(line1.contains("Walker indexing"));
-    assert!(line2.contains("現在のタブの裏"));
-    assert!(!line2.contains("新規タブ"));
+    assert!(line2.contains("background Walker"));
 }
 
 #[test]

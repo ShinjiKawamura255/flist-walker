@@ -28,10 +28,12 @@ impl FlistWalkerApp {
     pub(super) const WORKER_JOIN_TIMEOUT: Duration = Duration::from_millis(250);
     pub(super) const SEARCH_HINTS_TOOLTIP: &'static str = "\
 Search hints:
-- トークンは AND 条件（例: main py）
-- abc|foo|bar : OR 条件（スペースなしの | で連結）
-- 'term : 完全一致トークン（例: 'main.py）
-- !term : 除外トークン（例: main !test）
-- ^term : 先頭一致を優先（例: ^src）
-- term$ : 末尾一致を優先（例: .rs$）";
+- Tokens are ANDed (example: main py)
+- abc|foo|bar : OR terms (joined by | without spaces)
+- 'term : exact-match token (example: 'main.py)
+- !term : excluded token (example: main !test)
+- ^term : prefer prefix matches (example: ^src)
+- term$ : prefer suffix matches (example: .rs$)";
+    pub(super) const QUERY_HISTORY_SEARCH_TOOLTIP: &'static str =
+        "Ctrl+R to search query history. Enter / Ctrl+J / Ctrl+M to apply; Esc / Ctrl+G to cancel.";
 }

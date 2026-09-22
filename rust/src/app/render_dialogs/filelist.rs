@@ -114,10 +114,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
             .show(ctx, |ui| {
-                ui.label("親ディレクトリ直下の既存 FileList にも参照を追記します。");
-                ui.label(
-                    "Continue は祖先も更新し、Current Root Only は現在 root の FileList だけを作成します。",
-                );
+                let [line1, line2] = FlistWalkerApp::filelist_ancestor_dialog_lines();
+                ui.label(line1);
+                ui.label(line2);
                 ui.horizontal(|ui| {
                     if app
                         .dialog_button(

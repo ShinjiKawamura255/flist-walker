@@ -1,6 +1,37 @@
 use super::*;
 
 #[test]
+fn query_search_hints_tooltip_uses_english_application_copy() {
+    for tooltip in [
+        FlistWalkerApp::SEARCH_HINTS_TOOLTIP,
+        FlistWalkerApp::QUERY_HISTORY_SEARCH_TOOLTIP,
+    ] {
+        assert!(
+            !tooltip
+                .chars()
+                .any(|character| ('\u{3040}'..='\u{30ff}').contains(&character)),
+            "application tooltip copy must be English; file-derived text is rendered elsewhere"
+        );
+    }
+}
+
+#[test]
+fn filelist_dialog_copy_uses_english_application_copy() {
+    for line in FlistWalkerApp::filelist_use_walker_dialog_lines()
+        .into_iter()
+        .chain(FlistWalkerApp::filelist_ancestor_dialog_lines())
+    {
+        assert!(
+            !line.chars().any(|character| {
+                ('\u{3040}'..='\u{30ff}').contains(&character)
+                    || ('\u{4e00}'..='\u{9fff}').contains(&character)
+            }),
+            "application dialog copy must be English; file-derived text is rendered elsewhere"
+        );
+    }
+}
+
+#[test]
 fn tc202_regression_gui_renderers_never_use_raw_os_path_strings() {
     let app_source = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/app");
     let mut production_sources = vec![
@@ -565,7 +596,7 @@ fn filelist_use_walker_dialog_lines_are_stable() {
     let lines = FlistWalkerApp::filelist_use_walker_dialog_lines();
     assert_eq!(lines.len(), 2);
     assert!(lines[0].contains("Walker indexing"));
-    assert!(lines[1].contains("裏で一時的に Walker"));
+    assert!(lines[1].contains("background Walker"));
 }
 
 #[test]
