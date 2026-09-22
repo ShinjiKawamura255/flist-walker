@@ -447,7 +447,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             .show(ui);
         let _ = egui::Response::clone(&output.response).on_hover_ui_at_pointer(|ui| {
             if editing_history_search {
-                ui.label("Ctrl+R で履歴検索を開始。Enter / Ctrl+J / Ctrl+M で確定、Esc / Ctrl+G でキャンセル。");
+                ui.label(FlistWalkerApp::QUERY_HISTORY_SEARCH_TOOLTIP);
             } else {
                 ui.label(FlistWalkerApp::SEARCH_HINTS_TOOLTIP);
             }
