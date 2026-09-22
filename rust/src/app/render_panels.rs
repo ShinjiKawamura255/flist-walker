@@ -252,7 +252,7 @@ pub(super) fn preview_line_job(
     let mut job = egui::text::LayoutJob::default();
     job.wrap.max_width = f32::INFINITY;
     let plain = egui::TextFormat {
-        font_id: egui::TextStyle::Monospace.resolve(ui.style()),
+        font_id: preview_text_style().resolve(ui.style()),
         color: ui.visuals().text_color(),
         ..Default::default()
     };
@@ -345,7 +345,7 @@ fn render_paged_preview(
     }
     ui.separator();
     let body_height = (ui.available_height() - 85.0).max(80.0);
-    let row_height = ui.text_style_height(&egui::TextStyle::Monospace) + 4.0;
+    let row_height = ui.text_style_height(&preview_text_style()) + 4.0;
     egui::ScrollArea::both()
         .id_salt(("paged-preview", generation))
         .max_height(body_height)
