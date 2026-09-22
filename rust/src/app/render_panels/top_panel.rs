@@ -211,8 +211,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                 .enumerate()
                             {
                                 let text = normalize_path_for_display(path);
-                                let is_selected = app.shell.ui.root_dropdown_highlight() == Some(index);
-                                if FlistWalkerApp::selectable_row(ui, is_selected, &text).clicked() {
+                                let is_selected =
+                                    app.shell.ui.root_dropdown_highlight() == Some(index);
+                                if FlistWalkerApp::selectable_row(ui, is_selected, &text).clicked()
+                                {
                                     next_root = Some(path.clone());
                                 }
                             }
@@ -258,26 +260,24 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let use_filelist_changed =
                 centered_checkbox(ui, &mut app.shell.runtime.use_filelist, "Use FileList")
                     .changed();
-            if use_filelist_changed { app.invalidate_filter_undo(); }
+            if use_filelist_changed {
+                app.invalidate_filter_undo();
+            }
             if centered_checkbox(ui, &mut app.shell.runtime.use_regex, "Regex").changed() {
                 app.manual_filter_changed(FilterValue::Regex(false));
                 app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed()
-            {
+            if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed() {
                 app.manual_filter_changed(FilterValue::Case(true));
                 app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            let ignore_list_response = centered_checkbox(
-                ui,
-                &mut app.shell.ui.ignore_list_enabled,
-                "Use Ignore List",
-            )
-                .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
+            let ignore_list_response =
+                centered_checkbox(ui, &mut app.shell.ui.ignore_list_enabled, "Use Ignore List")
+                    .on_hover_text("Apply executable-relative rules from flistwalker.ignore.txt");
             let ignore_list_changed = ignore_list_response.changed();
             #[cfg(test)]
             let ignore_list_changed = if super::take_forced_ignore_list_checkbox_click() {
@@ -311,19 +311,18 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     centered_checkbox(ui, &mut app.shell.runtime.include_dirs, "Folders").changed(),
                 )
             };
-            if centered_checkbox(ui, &mut app.shell.runtime.follow_links, "Follow links").changed() {
+            if centered_checkbox(ui, &mut app.shell.runtime.follow_links, "Follow links").changed()
+            {
                 app.shell.tabs.mark_active_tab_meaningfully_engaged();
                 app.sync_active_tab_state();
                 app.mark_ui_state_dirty();
                 app.persist_ui_state_now();
                 app.request_index_refresh();
             }
-            let depth_label = app
-                .shell
-                .runtime
-                .max_depth
-                .value()
-                .map_or_else(|| "Depth: All".to_string(), |depth| format!("Depth: ≤ {depth}"));
+            let depth_label = app.shell.runtime.max_depth.value().map_or_else(
+                || "Depth: All".to_string(),
+                |depth| format!("Depth: ≤ {depth}"),
+            );
             let depth_popup_id = egui::Id::new("max-depth-popup");
             let depth_response = ui.button(depth_label);
             if depth_response.clicked() {
@@ -398,7 +397,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
             ui.separator();
             centered_top_panel_label(ui, app.source_text());
-            if files_changed || dirs_changed { app.manual_filter_changed(FilterValue::Kind(true, true)); }
+            if files_changed || dirs_changed {
+                app.manual_filter_changed(FilterValue::Kind(true, true));
+            }
             app.maybe_reindex_from_filter_toggles(
                 use_filelist_changed,
                 files_changed,
@@ -423,11 +424,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             app.shell.runtime.emacs_keybindings_enabled,
         );
         let text_before_widget = if editing_history_search {
-            app.shell
-                .runtime
-                .query_state
-                .history_search_query
-                .clone()
+            app.shell.runtime.query_state.history_search_query.clone()
         } else {
             app.shell.runtime.query_state.query.clone()
         };
@@ -436,15 +433,15 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         } else {
             &mut app.shell.runtime.query_state.query
         })
-            .id(query_input_id)
-            .lock_focus(true)
-            .desired_width(f32::INFINITY)
-            .hint_text(if editing_history_search {
-                "Type to fuzzy-search query history..."
-            } else {
-                "Type to fuzzy-search files/folders..."
-            })
-            .show(ui);
+        .id(query_input_id)
+        .lock_focus(true)
+        .desired_width(f32::INFINITY)
+        .hint_text(if editing_history_search {
+            "Type to fuzzy-search query history..."
+        } else {
+            "Type to fuzzy-search files/folders..."
+        })
+        .show(ui);
         let _ = egui::Response::clone(&output.response).on_hover_ui_at_pointer(|ui| {
             if editing_history_search {
                 ui.label(FlistWalkerApp::QUERY_HISTORY_SEARCH_TOOLTIP);
@@ -473,19 +470,19 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         }
         let events = ctx.input(|i| i.events.clone());
         if !editing_history_search {
-            let (query_event_changed, query_cursor_after_fallback) = app.process_query_input_events(
-                &ctx,
-                &events,
-                output.response.has_focus(),
-                output.response.changed(),
-                output.state.cursor.char_range(),
-            );
+            let (query_event_changed, query_cursor_after_fallback) = app
+                .process_query_input_events(
+                    &ctx,
+                    &events,
+                    output.response.has_focus(),
+                    output.response.changed(),
+                    output.state.cursor.char_range(),
+                );
             if query_event_changed {
                 app.mark_query_edited();
                 if output.response.has_focus() {
-                    let end = query_cursor_after_fallback.unwrap_or_else(|| {
-                        char_count(&app.shell.runtime.query_state.query)
-                    });
+                    let end = query_cursor_after_fallback
+                        .unwrap_or_else(|| char_count(&app.shell.runtime.query_state.query));
                     output
                         .state
                         .cursor
@@ -501,8 +498,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.update_results();
             }
             if output.response.changed() {
-                let normalized =
-                    FlistWalkerApp::normalize_singleline_input(&mut app.shell.runtime.query_state.query);
+                let normalized = FlistWalkerApp::normalize_singleline_input(
+                    &mut app.shell.runtime.query_state.query,
+                );
                 if normalized && output.response.has_focus() {
                     let end = char_count(&app.shell.runtime.query_state.query);
                     output
@@ -553,7 +551,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 };
                 let mut button = egui::Button::new(caption);
                 if label == "Clear Selected" && count > 0 {
-                    button = button.fill(super::super::render_theme::selected_fill(ui.visuals().dark_mode));
+                    button = button.fill(super::super::render_theme::selected_fill(
+                        ui.visuals().dark_mode,
+                    ));
                 }
                 let mut response = ui.add(button);
                 if label == "Presets..." {
@@ -567,8 +567,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 }
             }
             let count = app.shell.runtime.pinned_paths.len();
-            if count > 0 && !app.shell.runtime.query_state.history_search_active
-                && ui.button(format!("Selected ({count})...")).clicked() { app.open_selection_inspector(); }
+            if count > 0
+                && !app.shell.runtime.query_state.history_search_active
+                && ui.button(format!("Selected ({count})...")).clicked()
+            {
+                app.open_selection_inspector();
+            }
         });
     });
 }
