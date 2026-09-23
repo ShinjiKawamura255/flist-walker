@@ -222,6 +222,10 @@ fn preview_visible_prefix(line: &str) -> (&str, bool) {
     }
 }
 
+pub(super) fn preview_paged_row_height(ui: &egui::Ui) -> f32 {
+    ui.text_style_height(&preview_text_style()) + 4.0
+}
+
 fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
     const COLUMN_DARK: [(u8, u8, u8); 8] = [
         (103, 183, 255),
@@ -369,7 +373,7 @@ fn render_paged_preview(
     }
     ui.separator();
     let body_height = (ui.available_height() - 85.0).max(80.0);
-    let row_height = ui.text_style_height(&preview_text_style()) + 4.0;
+    let row_height = preview_paged_row_height(ui);
     egui::ScrollArea::both()
         .id_salt(("paged-preview", generation))
         .max_height(body_height)
