@@ -61,6 +61,7 @@ pub enum SyntaxTokenKind {
     Attribute,
     Preprocessor,
     Delimiter,
+    Column(u8),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -77,9 +78,19 @@ enum Mode {
     Quoted(u8),
     Triple(u8),
     RawCpp,
-    DelimitedQuoted(u8),
-    DelimitedQuotedPending(u8),
-    DelimitedUnquoted { delimiter: u8, start: usize },
+    DelimitedQuoted {
+        delimiter: u8,
+        column: u8,
+    },
+    DelimitedQuotedPending {
+        delimiter: u8,
+        column: u8,
+    },
+    DelimitedUnquoted {
+        delimiter: u8,
+        start: usize,
+        column: u8,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -88,6 +99,7 @@ pub struct SyntaxHighlight {
     spans: Vec<SyntaxSpan>,
     parsed_bytes: usize,
     mode: Mode,
+    delimited_column: u8,
     fallback: bool,
 }
 
@@ -98,6 +110,7 @@ impl SyntaxHighlight {
             spans: Vec::new(),
             parsed_bytes: 0,
             mode: Mode::Normal,
+            delimited_column: 0,
             fallback: false,
         }
     }
@@ -182,7 +195,7 @@ impl SyntaxHighlight {
                     }
                     self.push(start..i, SyntaxTokenKind::String);
                 }
-                Mode::DelimitedQuoted(delimiter) => {
+                Mode::DelimitedQuoted { delimiter, column } => {
                     let mut closed = false;
                     while i < bytes.len() {
                         if i.is_multiple_of(4096) && canceled() {
@@ -190,8 +203,8 @@ impl SyntaxHighlight {
                         }
                         if bytes[i] == b'"' {
                             if i + 1 == bytes.len() {
-                                self.mode = Mode::DelimitedQuotedPending(delimiter);
-                                self.push(start..i, SyntaxTokenKind::String);
+                                self.mode = Mode::DelimitedQuotedPending { delimiter, column };
+                                self.push(start..i, SyntaxTokenKind::Column(column));
                                 self.parsed_bytes = i;
                                 return;
                             }
@@ -206,31 +219,37 @@ impl SyntaxHighlight {
                         }
                         i += 1;
                     }
-                    self.push(start..i, SyntaxTokenKind::String);
+                    self.push(start..i, SyntaxTokenKind::Column(column));
                     if closed && i < bytes.len() && bytes[i] == delimiter {
                         self.push(i..i + 1, SyntaxTokenKind::Delimiter);
                         i += 1;
+                        self.delimited_column = next_delimited_column(column);
                     }
                 }
-                Mode::DelimitedQuotedPending(delimiter) => {
+                Mode::DelimitedQuotedPending { delimiter, column } => {
                     if i >= bytes.len() {
                         return;
                     }
                     if bytes.get(i + 1) == Some(&b'"') {
-                        self.mode = Mode::DelimitedQuoted(delimiter);
+                        self.mode = Mode::DelimitedQuoted { delimiter, column };
                         i += 2;
-                        self.push(start..i, SyntaxTokenKind::String);
+                        self.push(start..i, SyntaxTokenKind::Column(column));
                     } else {
                         self.mode = Mode::Normal;
                         i += 1;
-                        self.push(start..i, SyntaxTokenKind::String);
+                        self.push(start..i, SyntaxTokenKind::Column(column));
                         if i < bytes.len() && bytes[i] == delimiter {
                             self.push(i..i + 1, SyntaxTokenKind::Delimiter);
                             i += 1;
+                            self.delimited_column = next_delimited_column(column);
                         }
                     }
                 }
-                Mode::DelimitedUnquoted { delimiter, start } => {
+                Mode::DelimitedUnquoted {
+                    delimiter,
+                    start,
+                    column,
+                } => {
                     while i < bytes.len() && bytes[i] != delimiter && bytes[i] != b'\n' {
                         if i.is_multiple_of(4096) && canceled() {
                             return;
@@ -240,13 +259,14 @@ impl SyntaxHighlight {
                     if i == bytes.len() {
                         break;
                     }
-                    if is_delimited_number(&body[start..i]) {
-                        self.push(start..i, SyntaxTokenKind::Number);
-                    }
+                    self.push(start..i, SyntaxTokenKind::Column(column));
                     self.mode = Mode::Normal;
                     if bytes[i] == delimiter {
                         self.push(i..i + 1, SyntaxTokenKind::Delimiter);
                         i += 1;
+                        self.delimited_column = next_delimited_column(column);
+                    } else {
+                        self.delimited_column = 0;
                     }
                 }
                 Mode::Normal => {
@@ -254,19 +274,23 @@ impl SyntaxHighlight {
                     let language = self.language;
                     if let Some(delimiter) = delimited_separator(language) {
                         if bytes[i] == b'\n' {
+                            self.delimited_column = 0;
                             i += 1;
                         } else if bytes[i] == delimiter {
                             self.push(i..i + 1, SyntaxTokenKind::Delimiter);
                             i += 1;
+                            self.delimited_column = next_delimited_column(self.delimited_column);
                         } else if is_delimited_field_start(bytes, i, delimiter) && bytes[i] == b'"'
                         {
-                            self.mode = Mode::DelimitedQuoted(delimiter);
+                            let column = self.delimited_column;
+                            self.mode = Mode::DelimitedQuoted { delimiter, column };
                             i += 1;
-                            self.push(start..i, SyntaxTokenKind::String);
+                            self.push(start..i, SyntaxTokenKind::Column(column));
                         } else if is_delimited_field_start(bytes, i, delimiter) {
                             self.mode = Mode::DelimitedUnquoted {
                                 delimiter,
                                 start: i,
+                                column: self.delimited_column,
                             };
                             i += 1;
                         } else {
@@ -385,22 +409,21 @@ impl SyntaxHighlight {
     pub fn finish(&mut self, body: &str) {
         let bytes = body.as_bytes();
         match self.mode {
-            Mode::DelimitedQuotedPending(delimiter) => {
+            Mode::DelimitedQuotedPending { delimiter, column } => {
                 let i = self.parsed_bytes;
                 if i < bytes.len() && bytes[i] == b'"' {
                     self.mode = Mode::Normal;
-                    self.push(i..i + 1, SyntaxTokenKind::String);
+                    self.push(i..i + 1, SyntaxTokenKind::Column(column));
                     self.parsed_bytes = i + 1;
                     if i + 1 < bytes.len() && bytes[i + 1] == delimiter {
                         self.push(i + 1..i + 2, SyntaxTokenKind::Delimiter);
                         self.parsed_bytes = i + 2;
+                        self.delimited_column = next_delimited_column(column);
                     }
                 }
             }
-            Mode::DelimitedUnquoted { start, .. } if start < bytes.len() => {
-                if is_delimited_number(&body[start..]) {
-                    self.push(start..bytes.len(), SyntaxTokenKind::Number);
-                }
+            Mode::DelimitedUnquoted { start, column, .. } if start < bytes.len() => {
+                self.push(start..bytes.len(), SyntaxTokenKind::Column(column));
                 self.mode = Mode::Normal;
                 self.parsed_bytes = bytes.len();
             }
@@ -443,15 +466,11 @@ fn delimited_separator(l: SyntaxLanguage) -> Option<u8> {
         _ => None,
     }
 }
+fn next_delimited_column(column: u8) -> u8 {
+    (column + 1) % 8
+}
 fn is_delimited_field_start(bytes: &[u8], index: usize, delimiter: u8) -> bool {
     index == 0 || bytes[index - 1] == delimiter || bytes[index - 1] == b'\n'
-}
-fn is_delimited_number(field: &str) -> bool {
-    field
-        .strip_suffix('\r')
-        .unwrap_or(field)
-        .parse::<f64>()
-        .is_ok()
 }
 fn supports_block_comment(l: SyntaxLanguage) -> bool {
     matches!(
@@ -708,7 +727,7 @@ mod tests {
     }
 
     #[test]
-    fn classifies_csv_and_tsv_fields_without_reformatting_text() {
+    fn colors_csv_and_tsv_fields_by_column_without_reformatting_text() {
         let mut csv = SyntaxHighlight::new(SyntaxLanguage::Csv);
         let csv_source = "name,age,note\nAlice,42,\"hello, world\"\nempty,\n";
         csv.append(csv_source, &|| false);
@@ -719,12 +738,22 @@ mod tests {
         assert!(csv
             .spans()
             .iter()
-            .any(|span| span.kind == SyntaxTokenKind::Number
+            .any(|span| span.kind == SyntaxTokenKind::Column(1)
                 && &csv_source[span.range.start as usize..span.range.end as usize] == "42"));
         assert!(csv
             .spans()
             .iter()
-            .any(|span| span.kind == SyntaxTokenKind::String
+            .any(|span| span.kind == SyntaxTokenKind::Column(0)
+                && &csv_source[span.range.start as usize..span.range.end as usize] == "Alice"));
+        assert!(csv
+            .spans()
+            .iter()
+            .any(|span| span.kind == SyntaxTokenKind::Column(1)
+                && &csv_source[span.range.start as usize..span.range.end as usize] == "age"));
+        assert!(csv
+            .spans()
+            .iter()
+            .any(|span| span.kind == SyntaxTokenKind::Column(2)
                 && &csv_source[span.range.start as usize..span.range.end as usize]
                     == "\"hello, world\""));
 
@@ -738,8 +767,13 @@ mod tests {
         assert!(tsv
             .spans()
             .iter()
-            .any(|span| span.kind == SyntaxTokenKind::Number
+            .any(|span| span.kind == SyntaxTokenKind::Column(1)
                 && &tsv_source[span.range.start as usize..span.range.end as usize] == "3.14"));
+        assert!(tsv
+            .spans()
+            .iter()
+            .any(|span| span.kind == SyntaxTokenKind::Column(0)
+                && &tsv_source[span.range.start as usize..span.range.end as usize] == "item"));
     }
 
     #[test]
@@ -753,7 +787,10 @@ mod tests {
         let quoted = syntax
             .spans()
             .iter()
-            .find(|span| span.kind == SyntaxTokenKind::String)
+            .find(|span| {
+                span.kind == SyntaxTokenKind::Column(1)
+                    && complete[span.range.start as usize..span.range.end as usize].starts_with('"')
+            })
             .expect("quoted CSV field span");
         assert_eq!(
             &complete[quoted.range.start as usize..quoted.range.end as usize],
@@ -772,7 +809,10 @@ mod tests {
         let quoted = syntax
             .spans()
             .iter()
-            .find(|span| span.kind == SyntaxTokenKind::String)
+            .find(|span| {
+                span.kind == SyntaxTokenKind::Column(1)
+                    && complete[span.range.start as usize..span.range.end as usize].starts_with('"')
+            })
             .expect("quoted CSV field span");
         assert_eq!(
             &complete[quoted.range.start as usize..quoted.range.end as usize],
@@ -784,7 +824,7 @@ mod tests {
         eof.append(eof_source, &|| false);
         eof.finish(eof_source);
         assert!(eof.spans().iter().any(|span| {
-            span.kind == SyntaxTokenKind::String
+            span.kind == SyntaxTokenKind::Column(1)
                 && &eof_source[span.range.start as usize..span.range.end as usize] == "\"x\""
         }));
     }
