@@ -169,27 +169,60 @@ fn gui_preview_copy_layout_contains_only_body_and_color_toggle_preserves_text() 
 fn gui_paged_preview_body_uses_the_cjk_primary_text_style() {
     let root = test_root("paged-preview-cjk-text-style");
     fs::create_dir_all(&root).expect("create root");
-    let path = root.join("sample.txt");
-    fs::write(&path, "English 日本語\n").expect("write fixture");
+    let path = root.join("sample.rs");
+    fs::write(&path, "fn main() { let value = \"English 日本語\"; }\n").expect("write fixture");
     let document = PagedTextPreview::initial(&path, &|| false).expect("preview");
     let ctx = egui::Context::default();
     let mut body_font = None;
-    let mut preview_font = None;
+    let mut plain_fonts = None;
+    let mut colored_fonts = None;
+    let mut colored_section_count = None;
+    let mut body_row_height = None;
+    let mut preview_row_height = None;
     let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+        ui.style_mut()
+            .text_styles
+            .insert(egui::TextStyle::Body, egui::FontId::proportional(18.0));
+        ui.style_mut()
+            .text_styles
+            .insert(egui::TextStyle::Monospace, egui::FontId::monospace(12.0));
         body_font = Some(egui::TextStyle::Body.resolve(ui.style()));
-        preview_font = Some(
+        plain_fonts = Some(
             crate::app::render_panels::preview_line_job(&document, 0, false, ui)
                 .sections
-                .first()
-                .expect("preview body section")
-                .format
-                .font_id
-                .clone(),
+                .iter()
+                .map(|section| section.format.font_id.clone())
+                .collect::<Vec<_>>(),
         );
+        let colored = crate::app::render_panels::preview_line_job(&document, 0, true, ui);
+        colored_section_count = Some(colored.sections.len());
+        colored_fonts = Some(
+            colored
+                .sections
+                .iter()
+                .map(|section| section.format.font_id.clone())
+                .collect::<Vec<_>>(),
+        );
+        body_row_height = Some(ui.text_style_height(&egui::TextStyle::Body) + 4.0);
+        preview_row_height = Some(crate::app::render_panels::preview_paged_row_height(ui));
     });
+    let body_font = body_font.expect("body font");
+    for (label, fonts) in [
+        ("plain", plain_fonts.expect("plain fonts")),
+        ("colored", colored_fonts.expect("colored fonts")),
+    ] {
+        assert!(
+            !fonts.is_empty() && fonts.iter().all(|font| *font == body_font),
+            "{label} mixed Japanese/Latin preview text must share the CJK-primary font metrics"
+        );
+    }
+    assert!(
+        colored_section_count.expect("colored section count") > 1,
+        "syntax-highlighted preview must exercise multiple text sections"
+    );
     assert_eq!(
-        preview_font, body_font,
-        "mixed Japanese/Latin preview text must share the CJK-primary font metrics"
+        preview_row_height, body_row_height,
+        "virtualized preview row height must use the same text style as its body"
     );
     fs::remove_dir_all(root).expect("cleanup root");
 }
