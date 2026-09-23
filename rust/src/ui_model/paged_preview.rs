@@ -356,6 +356,9 @@ impl PagedTextPreview {
     fn update_syntax(&mut self, canceled: &dyn Fn() -> bool) {
         if let Some(syntax) = &mut self.syntax {
             syntax.append(&self.body, canceled);
+            if self.state != PreviewPageState::More {
+                syntax.finish(&self.body);
+            }
         }
     }
 

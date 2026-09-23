@@ -230,12 +230,14 @@ fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
         (SyntaxTokenKind::Number, true) => (242, 182, 126),
         (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, true) => (107, 191, 246),
         (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, true) => (239, 194, 117),
+        (SyntaxTokenKind::Delimiter, true) => (220, 220, 220),
         (SyntaxTokenKind::Keyword, false) => (111, 50, 150),
         (SyntaxTokenKind::String, false) => (26, 111, 54),
         (SyntaxTokenKind::Comment, false) => (96, 103, 111),
         (SyntaxTokenKind::Number, false) => (151, 82, 27),
         (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, false) => (29, 92, 157),
         (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, false) => (135, 88, 16),
+        (SyntaxTokenKind::Delimiter, false) => (120, 120, 120),
     };
     egui::Color32::from_rgb(r, g, b)
 }
