@@ -34,7 +34,7 @@ Each axis cell uses `STATUS — reason — evidence — reproduction`.
 | GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — light/dark visual pass | NOT RUN — supporting only | Theme/contrast |
 | GSM-010 | NOT RUN — run deterministic wrapper/perf gates | NOT RUN — responsiveness during native input | NOT RUN — run isolated headful smoke | Responsiveness |
 | GSM-011 | NOT RUN — run deterministic wrapper and TC-180 | NOT RUN — limited-to-Unlimited Apply, popup/editor checkbox alignment, preset reset, and tab-local interaction | NOT RUN — supporting only | Maximum depth and presets |
-| GSM-012 | NOT RUN — run paged-preview group | NOT RUN — selection/copy/focus/scroll/color and Japanese/long line | NOT RUN — supporting only | Paged preview and syntax colors |
+| GSM-012 | NOT RUN — run paged-preview group | NOT RUN — selection/copy/focus/scroll, Japanese/long line, and CSV/TSV column colors in both themes | NOT RUN — supporting only | Paged preview and syntax colors |
 | GSM-013 | NOT RUN — run settings-dialog group | NOT RUN — isolated save/restart and owned JSON editor | NOT RUN — supporting only | Settings dialog and JSON route |
 
 ## Native Residuals

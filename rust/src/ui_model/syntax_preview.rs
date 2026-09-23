@@ -777,6 +777,86 @@ mod tests {
     }
 
     #[test]
+    fn empty_delimited_cells_advance_columns_and_ninth_column_reuses_first_color() {
+        for (language, delimiter) in [(SyntaxLanguage::Csv, ','), (SyntaxLanguage::Tsv, '\t')] {
+            let source = format!(
+                "first{delimiter}{delimiter}third{delimiter}c3{delimiter}c4{delimiter}c5{delimiter}c6{delimiter}c7{delimiter}ninth{delimiter}tenth\nnext{delimiter}{delimiter}last\n"
+            );
+            let mut syntax = SyntaxHighlight::new(language);
+            syntax.append(&source, &|| false);
+            syntax.finish(&source);
+
+            let fields = syntax
+                .spans()
+                .iter()
+                .filter_map(|span| match span.kind {
+                    SyntaxTokenKind::Column(column) => Some((
+                        &source[span.range.start as usize..span.range.end as usize],
+                        column,
+                    )),
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(
+                fields,
+                [
+                    ("first", 0),
+                    ("third", 2),
+                    ("c3", 3),
+                    ("c4", 4),
+                    ("c5", 5),
+                    ("c6", 6),
+                    ("c7", 7),
+                    ("ninth", 0),
+                    ("tenth", 1),
+                    ("next", 0),
+                    ("last", 2),
+                ],
+                "{language:?}"
+            );
+            assert_eq!(
+                syntax
+                    .spans()
+                    .iter()
+                    .filter(|span| span.kind == SyntaxTokenKind::Delimiter)
+                    .map(|span| (span.range.end - span.range.start) as usize)
+                    .sum::<usize>(),
+                11,
+                "{language:?}"
+            );
+            assert!(!syntax.is_plain_fallback(), "{language:?}");
+        }
+    }
+
+    #[test]
+    fn multiline_quoted_field_keeps_following_column_across_pages() {
+        for (language, delimiter) in [(SyntaxLanguage::Csv, ','), (SyntaxLanguage::Tsv, '\t')] {
+            let first_page = format!("id{delimiter}note{delimiter}tail\n1{delimiter}\"two\n");
+            let complete =
+                format!("{first_page}lines\"{delimiter}after\n2{delimiter}plain{delimiter}end\n");
+            let mut syntax = SyntaxHighlight::new(language);
+            syntax.append(&first_page, &|| false);
+            syntax.append(&complete, &|| false);
+            syntax.finish(&complete);
+
+            let field_column = |field: &str| {
+                syntax.spans().iter().find_map(|span| {
+                    (&complete[span.range.start as usize..span.range.end as usize] == field)
+                        .then_some(span.kind)
+                })
+            };
+            for (field, column) in [("after", 2), ("2", 0), ("plain", 1), ("end", 2)] {
+                assert_eq!(
+                    field_column(field),
+                    Some(SyntaxTokenKind::Column(column)),
+                    "{language:?}: {field}"
+                );
+            }
+            assert!(!syntax.is_plain_fallback(), "{language:?}");
+        }
+    }
+
+    #[test]
     fn preserves_quoted_csv_state_across_pages_and_escaped_quotes() {
         let mut syntax = SyntaxHighlight::new(SyntaxLanguage::Csv);
         let first = "id,note\n1,\"line one\n";

@@ -999,6 +999,28 @@ mod preview_render_tests {
     use std::fs;
 
     #[test]
+    fn delimited_column_colors_are_distinct_and_cycle_in_both_themes() {
+        for dark in [false, true] {
+            let colors = (0..8)
+                .map(|column| preview_token_color(SyntaxTokenKind::Column(column), dark))
+                .collect::<Vec<_>>();
+            for (index, color) in colors.iter().enumerate() {
+                assert!(!colors[..index].contains(color), "theme dark={dark}");
+                assert_ne!(
+                    *color,
+                    preview_token_color(SyntaxTokenKind::Delimiter, dark),
+                    "theme dark={dark}"
+                );
+                assert_eq!(
+                    *color,
+                    preview_token_color(SyntaxTokenKind::Column(index as u8 + 8), dark),
+                    "theme dark={dark}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn paged_preview_renders_only_visible_rows() {
         let path = std::env::temp_dir().join(format!(
             "flistwalker-preview-rows-{}.rs",
