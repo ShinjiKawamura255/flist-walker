@@ -223,6 +223,26 @@ fn preview_visible_prefix(line: &str) -> (&str, bool) {
 }
 
 fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
+    const COLUMN_DARK: [(u8, u8, u8); 8] = [
+        (103, 183, 255),
+        (132, 213, 157),
+        (255, 190, 116),
+        (211, 164, 255),
+        (255, 142, 164),
+        (98, 216, 207),
+        (245, 225, 126),
+        (200, 211, 232),
+    ];
+    const COLUMN_LIGHT: [(u8, u8, u8); 8] = [
+        (31, 91, 158),
+        (29, 112, 63),
+        (158, 78, 18),
+        (112, 68, 157),
+        (166, 47, 73),
+        (10, 112, 111),
+        (126, 101, 0),
+        (75, 85, 110),
+    ];
     let (r, g, b) = match (kind, dark) {
         (SyntaxTokenKind::Keyword, true) => (198, 155, 255),
         (SyntaxTokenKind::String, true) => (157, 213, 161),
@@ -231,6 +251,7 @@ fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
         (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, true) => (107, 191, 246),
         (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, true) => (239, 194, 117),
         (SyntaxTokenKind::Delimiter, true) => (220, 220, 220),
+        (SyntaxTokenKind::Column(column), true) => COLUMN_DARK[column as usize % 8],
         (SyntaxTokenKind::Keyword, false) => (111, 50, 150),
         (SyntaxTokenKind::String, false) => (26, 111, 54),
         (SyntaxTokenKind::Comment, false) => (96, 103, 111),
@@ -238,6 +259,7 @@ fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
         (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, false) => (29, 92, 157),
         (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, false) => (135, 88, 16),
         (SyntaxTokenKind::Delimiter, false) => (120, 120, 120),
+        (SyntaxTokenKind::Column(column), false) => COLUMN_LIGHT[column as usize % 8],
     };
     egui::Color32::from_rgb(r, g, b)
 }
