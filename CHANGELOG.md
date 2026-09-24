@@ -24,6 +24,32 @@
 ### Known issues
 - なし。
 
+## [0.29.0] - 2026-09-24
+### Added
+- CSV / TSV preview に列ごとの syntax color を追加し、行ごとに列色を揃えた。引用符内の区切り文字や複数行 field にも対応した。
+
+### Changed
+- tab を切り替えた後の query と検索結果を一貫させ、active result の絞り込みを bounded にして遅延 query を保持するようにした。
+- session / settings の保存と復旧を bounded worker へ集約し、失敗を表示して既存状態を保つようにした。
+- path key の生成で中間 allocation を減らした。
+
+### Fixed
+- 選択行に hover しても選択解除 control の配置が変わらないようにした。
+- application の混在した tooltip 文言、paged preview の font metrics、および復元した sort 結果数を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+
 ## [0.28.0] - 2026-09-20
 ### Added
 - GUI に設定ダイアログ、ページ単位のテキスト preview、bounded な syntax coloring、選択項目のページング表示を追加した。
@@ -2092,7 +2118,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...HEAD
+[0.29.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...v0.27.1
 [0.27.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.26.0...v0.27.0
