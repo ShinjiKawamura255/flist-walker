@@ -601,6 +601,10 @@ fn repeated_more_across_tabs_while_reclaimer_is_full_keeps_one_parked_document()
         fs::write(path, "line\n".repeat(101)).expect("fixture");
     }
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let (preview_request_tx, preview_request_rx) = std::sync::mpsc::channel::<PreviewRequest>();
+    let (preview_response_tx, preview_response_rx) = std::sync::mpsc::channel::<PreviewResponse>();
+    app.shell.worker_bus.preview.tx = preview_request_tx;
+    app.shell.worker_bus.preview.rx = preview_response_rx;
     app.shell.ui.show_preview = true;
     app.shell.runtime.committed_for_test_mut().results = vec![(paths[0].clone(), 0.0)];
     app.shell.runtime.committed_for_test_mut().current_row = Some(0);
@@ -657,8 +661,40 @@ fn repeated_more_across_tabs_while_reclaimer_is_full_keeps_one_parked_document()
         app.parked_preview_request.is_none(),
         "parked request retires after capacity returns"
     );
+    let more_request = preview_request_rx
+        .try_recv()
+        .expect("deferred More intent reaches the controlled worker");
+    assert_eq!(more_request.path, paths[0]);
+    let request_document = more_request
+        .document
+        .as_ref()
+        .expect("More request retains its active document");
+    let expected_retirement_bytes = request_document.capacity_bytes();
+    let more_document = Arc::new(
+        request_document
+            .read_more(&more_request.path, &|| false)
+            .expect("build deterministic More response"),
+    );
+    preview_response_tx
+        .send(PreviewResponse {
+            request_id: more_request.request_id,
+            path: more_request.path.clone(),
+            preview: String::new(),
+            document: Some(more_document),
+            page_error: None,
+            canceled: false,
+            is_more: true,
+        })
+        .expect("controlled worker response");
+    drop(more_request);
     while reclaimer.drain_one_paused_for_test() {}
     app.poll_preview_response();
+    assert_eq!(
+        reclaimer.preview_retirement_bytes(),
+        expected_retirement_bytes,
+        "the settled More response queues the prior active document for reclamation"
+    );
+    while reclaimer.drain_one_paused_for_test() {}
     assert_eq!(reclaimer.preview_retirement_bytes(), 0);
     assert!(
         app.deferred_more_intent.is_none(),
