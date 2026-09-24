@@ -565,7 +565,26 @@ fn tc_207_terminal_reclaimer_debt_preserves_create_filelist_mode_for_latest_root
     assert!(request_rx.try_recv().is_err());
 
     app.shell.tabs.resume_resource_reclaimer();
-    app.poll_index_response();
+    super::super::tab_background_responses::poll_background_index_until(
+        &mut app,
+        "latest-root terminal reclaimer settlement",
+        |app| {
+            let root_c_is_active = path_key(&app.shell.runtime.root) == path_key(&root_c);
+            if !root_c_is_active {
+                assert_eq!(path_key(&app.shell.runtime.root), path_key(&root_a));
+                assert_eq!(
+                    app.shell
+                        .indexing
+                        .root_after_pending_finish
+                        .as_ref()
+                        .map(|root| path_key(root)),
+                    Some(path_key(&root_c))
+                );
+                assert!(request_rx.try_recv().is_err());
+            }
+            root_c_is_active
+        },
+    );
 
     assert_eq!(path_key(&app.shell.runtime.root), path_key(&root_c));
     let replay = request_rx.try_recv().expect("one latest-root refresh");

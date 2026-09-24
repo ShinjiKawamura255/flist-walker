@@ -20,7 +20,7 @@ fn collect_drop_threads_until(
     threads
 }
 
-fn poll_background_index_until(
+pub(super) fn poll_background_index_until(
     app: &mut FlistWalkerApp,
     description: &str,
     mut settled: impl FnMut(&FlistWalkerApp) -> bool,
