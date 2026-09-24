@@ -821,6 +821,37 @@ fn regression_gui_sort_pending_query_reissued_with_latest_shown_sort() {
 }
 
 #[test]
+fn metadata_sort_clears_stale_visible_results_when_refreshed_base_is_empty() {
+    let root = test_root("empty-refreshed-sort-snapshot");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let stale = root.join("stale.txt");
+    app.shell.runtime.committed_for_test_mut().results = vec![(stale, 1.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+
+    app.apply_result_sort(false);
+
+    assert!(app.shell.runtime.results.is_empty());
+    assert_eq!(app.shell.runtime.current_row, None);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn retained_result_reapplication_keeps_total_at_least_visible_count() {
+    let root = test_root("retained-result-count-floor");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let retained = root.join("retained.txt");
+    app.shell.runtime.committed_for_test_mut().base_results = vec![(retained.clone(), 1.0)];
+    app.shell.runtime.result_sort_mode = ResultSortMode::SizeDesc;
+
+    app.invalidate_result_sort(false);
+
+    assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.total_match_count, 1);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
 fn regression_gui_sort_background_metadata_completion_and_stale_response_are_tab_owned() {
     let root = test_root("sort-background-response");
     let mut app = FlistWalkerApp::new(root.clone(), 2, "new".into());

@@ -80,6 +80,12 @@ pub(super) fn apply_results_with_selection_policy(
     });
     let previous_row = app.shell.runtime.current_row;
     app.shell.runtime.replace_results(results);
+    let total_match_count = app
+        .shell
+        .runtime
+        .total_match_count
+        .max(app.shell.runtime.results.len());
+    app.shell.runtime.set_total_match_count(total_match_count);
     if app.shell.runtime.results.is_empty() {
         app.set_current_row(None);
         app.shell.runtime.clear_preview();
@@ -422,7 +428,7 @@ pub(super) fn apply_result_sort(
     }
     if app.shell.runtime.base_results.is_empty() {
         app.shell.worker_bus.sort.clear_request();
-        app.refresh_status_line();
+        apply_results_with_selection_policy(app, Vec::new(), keep_scroll_position, false);
         return ResultSortApplyOutcome::Applied;
     }
     if !app.shell.runtime.result_sort_mode.uses_metadata() {
@@ -627,9 +633,10 @@ pub(super) fn apply_background_sort_response(
             tab.result_state.result_sort_mode,
             &sort_metadata,
         );
-        if let Some(total_match_count) = pending_total_match_count {
-            tab.result_state.committed.total_match_count = total_match_count;
-        }
+        let total_match_count = pending_total_match_count
+            .unwrap_or(tab.result_state.committed.total_match_count)
+            .max(tab.result_state.committed.results.len());
+        tab.result_state.committed.total_match_count = total_match_count;
         tab.result_state.results_compacted = false;
         if tab.result_state.committed.results.is_empty() {
             tab.result_state.committed.current_row = None;
@@ -664,9 +671,10 @@ pub(super) fn apply_active_sort_response(
     app.shell.worker_bus.sort.clear_request();
     if response.mode == app.shell.runtime.result_sort_mode {
         apply_result_sort(app, false);
-        if let Some(total_match_count) = pending_total_match_count {
-            app.shell.runtime.set_total_match_count(total_match_count);
-        }
+        let total_match_count = pending_total_match_count
+            .unwrap_or(app.shell.runtime.total_match_count)
+            .max(app.shell.runtime.results.len());
+        app.shell.runtime.set_total_match_count(total_match_count);
     } else {
         app.refresh_status_line();
     }

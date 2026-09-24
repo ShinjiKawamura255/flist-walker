@@ -144,6 +144,11 @@ fn tc_183_interleaved_worker_failures_converge() {
 }
 
 #[test]
+fn tc_184_restored_preview_kind_resolution_survives_index_refresh() {
+    run_generated_profile(0x1840_002e, 1, 1_000, "stateful-restore-kind-regression");
+}
+
+#[test]
 #[ignore = "extended deterministic endurance profile; run explicitly"]
 fn tc_184_stateful_endurance_extended() {
     let base_seed = parse_u64_setting("FLISTWALKER_ENDURANCE_BASE_SEED", 0x1840_0000);

@@ -162,17 +162,18 @@ impl FlistWalkerApp {
             return;
         }
         self.ensure_entry_filters();
-        if matches!(mode, super::PendingIndexRefreshMode::PreserveSort) {
-            self.shell.worker_bus.sort.clear_request();
-        } else {
-            self.invalidate_result_sort(true);
-        }
+        self.shell.worker_bus.sort.clear_request();
         self.clear_sort_metadata_cache();
         self.cancel_stale_pending_filelist_confirmations_for_active_root();
         self.cancel_stale_pending_after_index_for_active_root();
         let tab_id = self.current_tab_id();
         let request_id = self.shell.indexing.allocate_request_id(tab_id);
         self.prepare_active_index_refresh_request(request_id, false);
+        if !matches!(mode, super::PendingIndexRefreshMode::PreserveSort) {
+            // Reset the old index epoch before reapplying retained results.
+            // That can request a preview and start kind resolution in the new epoch.
+            self.invalidate_result_sort(true);
+        }
         self.refresh_status_line();
 
         let req = IndexRequest {

@@ -2305,6 +2305,8 @@ fn restoring_closed_tab_reissues_interrupted_sort_without_reindex() {
     reset_index_request_state_for_test(&mut app);
     let (sort_tx, sort_rx) = mpsc::channel::<SortMetadataRequest>();
     app.shell.worker_bus.sort.tx = sort_tx;
+    let (sort_response_tx, sort_response_rx) = mpsc::channel::<SortMetadataResponse>();
+    app.shell.worker_bus.sort.rx = sort_response_rx;
     app.shell.runtime.committed_for_test_mut().base_results = vec![(selected.clone(), 1.0)];
     app.shell.runtime.committed_for_test_mut().results = app.shell.runtime.base_results.clone();
     app.shell.runtime.committed_for_test_mut().current_row = Some(0);
@@ -2325,11 +2327,21 @@ fn restoring_closed_tab_reissues_interrupted_sort_without_reindex() {
         .expect("restored tab must replace interrupted sort work");
     assert_ne!(replacement.request_id, 402);
     assert_eq!(replacement.mode, ResultSortMode::SizeDesc);
-    assert_eq!(replacement.paths, vec![selected]);
+    assert_eq!(replacement.paths, vec![selected.clone()]);
     assert!(
         index_rx.try_recv().is_err(),
         "sort-only restore must not reindex"
     );
+    sort_response_tx
+        .send(SortMetadataResponse {
+            request_id: replacement.request_id,
+            entries: vec![(selected, SortMetadata::default())],
+            mode: ResultSortMode::SizeDesc,
+        })
+        .expect("send restored sort response");
+    app.poll_sort_response();
+    assert_eq!(app.shell.runtime.results.len(), 1);
+    assert_eq!(app.shell.runtime.total_match_count, 1);
     let _ = fs::remove_dir_all(&root);
 }
 
