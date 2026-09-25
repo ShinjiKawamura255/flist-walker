@@ -1672,6 +1672,7 @@ fn tc_207_root_change_moves_heavy_snapshot_to_reclaimer_before_mutation() {
     app.shell.indexing.pending_queue.clear();
     app.shell.indexing.inflight_requests.clear();
     app.shell.indexing.request_tabs.clear();
+    app.shell.indexing.settle_active_terminal_state();
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.committed_for_test_mut().entries = Arc::new(vec![old.clone()]);
     app.shell.runtime.committed_for_test_mut().results = vec![(old.path, 0.0)];
