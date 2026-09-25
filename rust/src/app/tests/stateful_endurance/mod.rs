@@ -93,6 +93,20 @@ fn tc_183_seeded_state_sequences_converge() {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn tc_183_seed_1838_diagnostic_interleavings() {
+    const SEED: u64 = 0x1838;
+    let events = generate(SEED, 128);
+    for iteration in 0..16 {
+        let mut harness =
+            StatefulHarness::new(&format!("stateful-seed-1838-diagnostic-{iteration}"));
+        harness.run(SEED, &events);
+        harness.quiesce(SEED);
+        harness.cleanup();
+    }
+}
+
 #[test]
 fn tc_183_interleaved_worker_failures_converge() {
     let mut harness = StatefulHarness::new("stateful-worker-failures");

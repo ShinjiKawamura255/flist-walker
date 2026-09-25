@@ -37,6 +37,8 @@ pub(super) struct StatefulHarness {
     next_stale_request_id: u64,
     next_index_entry_id: u64,
     replay_steps: usize,
+    diagnostic_pre_poll: Option<String>,
+    diagnostic_selected_ids: Vec<u64>,
 }
 
 impl StatefulHarness {
@@ -121,6 +123,8 @@ impl StatefulHarness {
             next_stale_request_id: 1_000_000,
             next_index_entry_id: 1,
             replay_steps: 0,
+            diagnostic_pre_poll: None,
+            diagnostic_selected_ids: Vec::new(),
         }
     }
 
@@ -131,6 +135,10 @@ impl StatefulHarness {
         for (step, event) in events.iter().enumerate() {
             let before = self.snapshot();
             let response_owners = self.response_owners(event);
+            self.diagnostic_pre_poll = (seed == 0x1838
+                && matches!(event, Event::DeliverStaleIndex))
+            .then(|| self.index_poll_diagnostic());
+            self.diagnostic_selected_ids.clear();
             self.apply(event);
             self.capture_requests();
             let after = self.snapshot();
@@ -490,7 +498,12 @@ impl StatefulHarness {
         self.app.shell.indexing.mailbox_selection_trace.clear();
         self.app
             .poll_index_response_with_budget_for_test(ENDURANCE_RESPONSE_DRAIN_BUDGET);
-        for request_id in std::mem::take(&mut self.app.shell.indexing.mailbox_selection_trace) {
+        let selected_ids = std::mem::take(&mut self.app.shell.indexing.mailbox_selection_trace);
+        if self.diagnostic_pre_poll.is_some() {
+            self.diagnostic_selected_ids
+                .extend_from_slice(&selected_ids);
+        }
+        for request_id in selected_ids {
             if let Some(index) = self
                 .submitted_index_responses
                 .iter()
@@ -789,9 +802,97 @@ impl StatefulHarness {
         snapshot: &SemanticSnapshot,
     ) -> String {
         format!(
-            "seed={seed:#x}; step={step}; event={event:?}; state={}; replay={}",
+            "seed={seed:#x}; step={step}; event={event:?}; state={}; pre_poll={:?}; selected_ids={:?}; replay={}",
             snapshot.digest(),
+            self.diagnostic_pre_poll,
+            self.diagnostic_selected_ids,
             self.replay_command(seed)
+        )
+    }
+
+    fn index_poll_diagnostic(&self) -> String {
+        let indexing = &self.app.shell.indexing;
+        let active_index = self.app.shell.tabs.active_tab_index();
+        let active_tab_id = self.app.shell.tabs.get(active_index).map(|tab| tab.id);
+        let active_pending_finish_id = indexing
+            .pending_finish
+            .as_ref()
+            .map(|pending| pending.request_id);
+        let active_root_eligible =
+            active_pending_finish_id.is_none() && indexing.root_after_pending_finish.is_some();
+        let active_build_reclaim_eligible = indexing.build_reclaim_pending
+            && active_pending_finish_id.is_none()
+            && indexing.root_after_pending_finish.is_none();
+        let stale_cleanup_id = indexing
+            .pending_stale_build_reclaim
+            .as_ref()
+            .and_then(|(request_id, _)| *request_id);
+        let stale_cleanup_route =
+            stale_cleanup_id.and_then(|request_id| indexing.request_tabs.get(&request_id).copied());
+        let inactive = || {
+            self.app
+                .shell
+                .tabs
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != active_index)
+        };
+        let pending_finish = inactive().find_map(|(_, tab)| {
+            tab.index_state
+                .pending_index_finish
+                .as_ref()
+                .map(|pending| (tab.id, pending.request_id))
+        });
+        let build_reclaim = inactive()
+            .find(|(_, tab)| tab.index_state.build_reclaim_pending)
+            .map(|(_, tab)| (tab.id, tab.index_state.build_reclaim_request_id));
+        let deferred_refresh = inactive()
+            .find(|(_, tab)| {
+                tab.index_state.pending_index_request_id.is_none()
+                    && tab.index_state.pending_index_finish.is_none()
+                    && tab.index_state.refresh_after_pending_finish.is_some()
+            })
+            .map(|(_, tab)| (tab.id, tab.index_state.refresh_after_pending_finish));
+        let tabs = self
+            .app
+            .shell
+            .tabs
+            .iter()
+            .map(|tab| {
+                (
+                    tab.id,
+                    tab.index_state.pending_index_request_id,
+                    tab.index_state.index_in_progress,
+                    tab.index_state
+                        .pending_index_finish
+                        .as_ref()
+                        .map(|pending| pending.request_id),
+                    tab.index_state.build_reclaim_pending,
+                    tab.index_state.refresh_after_pending_finish,
+                    tab.index_state.root_after_pending_finish.is_some(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let deferred_ids = indexing
+            .deferred_response
+            .iter()
+            .chain(indexing.deferred_non_active_responses.iter())
+            .map(crate::app::index_coordinator::IndexCoordinator::response_request_id)
+            .collect::<Vec<_>>();
+        format!(
+            "prepare_order=[stale_build_reclaim=(present={},cleanup_id={stale_cleanup_id:?},route={stale_cleanup_route:?}), replace_all={:?}, active_root=(tab={active_tab_id:?},raw={},finish={active_pending_finish_id:?},eligible={active_root_eligible}), active_build_reclaim=(tab={active_tab_id:?},raw={},eligible={active_build_reclaim_eligible}), background_finish={pending_finish:?}, background_build_reclaim={build_reclaim:?}, deferred_background_refresh={deferred_refresh:?}, activation={:?}]; tabs=(id,pending_id,in_progress,finish_id,build_reclaim,refresh,root_after)={tabs:?}; reclaimer={}/{}; pending_queue={:?}; submitted={:?}; deferred={deferred_ids:?}; routes={:?}",
+            indexing.pending_stale_build_reclaim.is_some(),
+            indexing.pending_replace_all.as_ref().map(
+                crate::app::index_coordinator::IndexCoordinator::response_request_id
+            ),
+            indexing.root_after_pending_finish.is_some(),
+            indexing.build_reclaim_pending,
+            self.app.shell.tabs.pending_activation_tab_id,
+            self.app.shell.tabs.reclaimer_pending(),
+            crate::app::tab_resources::TAB_RESOURCE_RECLAIMER_CAPACITY,
+            indexing.pending_queue.iter().map(|request| request.request_id).collect::<Vec<_>>(),
+            self.submitted_index_responses,
+            indexing.request_tabs,
         )
     }
 
