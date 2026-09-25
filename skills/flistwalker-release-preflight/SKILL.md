@@ -29,6 +29,7 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 ## 手順
 1. 対象 version を `vX.Y.Z` 形式で確定する。
 2. tag をまだ作っていないことを確認する。tag 済みなら、version 不一致を黙認せずユーザへ明示する。
+2a. 候補 dispatch 前に GitHub の最新公開 release version を読み戻し、その版が `SHIPPED_FAMILY_CAPABILITIES` に登録され、直前公開版から候補版への exact 26-entry self-test ケースが存在することを確認する。self-test を実行し、いずれか欠ければ候補作成を止める。生成後の実物 manifest に対する手順 13a は省略しない。
 3. 前回 release tag を確認し、`git diff --name-only <前回tag>..HEAD` と `git diff --stat <前回tag>..HEAD` で release 対象差分を分類する。
 4. 差分を `docs/TESTPLAN.md` の Validation Matrix に対応付け、VM-001 から VM-008 のどれを実行・確認すべきか決める。
 5. `rust/Cargo.toml` の `[package].version` を `X.Y.Z` へ更新する。
@@ -45,7 +46,8 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 15. `cargo clippy --locked --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。tag workflowではLinux/macOS/Windows nativeの全preflight jobが同じlocked clippyを実行することも確認する。
 16. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
 17. release candidate では coverage gate と GUI headful smoke / `GSM-*` 証跡の要否を確認し、必要な PASS / FAIL / SKIPPED と証跡パスを残す。
-18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。warning が残る場合は publish 前に修正するか、release blocker ではない理由と follow-up を明記する。
+17a. native GUI が FAIL なら、`docs/RELEASE.md` の「候補の停止要因と GUI 失敗の記録」に従い、正確なバイナリ・fixture・操作・時刻と、クリック dispatch / request / worker 応答の観測有無を dated addendum に残す。未観測の因果は unknown とし、headless PASS で FAIL を上書きしない。
+18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。外部 Action の warning も停止条件とし、例外には version と exact run を限定したユーザの明示承認を要する。理由と follow-up だけで承認を代用せず、後続候補・tag run に継承しない。
 19. tag 名 `vX.Y.Z`、`CHANGELOG.md`、`rust/Cargo.toml`、`rust/Cargo.lock` の version が一致していることを確認する。
 20. この確認が終わるまで tag 作成・push・draft release publish を行わない。
 21. release 本文が必要なら `skills/flistwalker-release-notes/SKILL.md` を続けて使う。

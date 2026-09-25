@@ -187,9 +187,12 @@
 - `.app` bundle 自体は notarization / staple 用に `dist/` へ保持するが、GitHub Releases には添付しない。
 
 ## GitHub Actions 自動リリース
+
+候補 workflow を dispatch する前に、GitHub の最新公開 release version を読み戻し、その version が `scripts/check-updater-n-minus-one-compatibility.py` の `SHIPPED_FAMILY_CAPABILITIES` に明示登録され、`scripts/test-updater-n-minus-one-compatibility.py` に直前公開版から候補版への exact 26-entry inventory 回帰ケースがあることを確認する。self-test を実行し、未登録・ケース欠落・失敗なら候補を作らず修正する。これは既知の前提を早く確認する手順であり、生成後の実物 `SHA256SUMS` に対する N-1 検証の代用にはならない。
+
 1. version / changelog / release note の準備を protected PR で merge し、clean な `master == origin/master` と対象 commit SHA を確認する。
 2. tag 作成前に、default branch の workflow だけを使って候補を生成する: `gh workflow run release-tagged.yml --ref master -f version=vX.Y.Z`。`workflow_dispatch` は `master` 以外を拒否し、候補モードでは release/tag を作成・更新しない。
-3. manual run の `headSha` が手順1の対象 SHA と一致することを API で確認してから完了を待つ。`validated-release-bundle-vX.Y.Z-<headSha>` artifact を取得し、28 asset、26 checksum entry、署名、archive/sidecar notice、直前公開版との N-1 互換性、および全 build/test/clippy/audit job の warning ゼロを確認する。run URL、head SHA、artifact ID/expiry、inventory/N-1結果を変更不能な Actions run と release 証跡へ記録する。
+3. manual run の `headSha` が手順1の対象 SHA と一致することを API で確認してから完了を待つ。`validated-release-bundle-vX.Y.Z-<headSha>` artifact を取得し、28 asset、26 checksum entry、署名、archive/sidecar notice、直前公開版との N-1 互換性、および全 build/test/clippy/audit job の warning を棚卸しして下記の警告停止規則を満たすことを確認する。run URL、head SHA、artifact ID/expiry、inventory/N-1結果を変更不能な Actions run と release 証跡へ記録する。
 4. 候補がすべて成功し、対象 SHA が変わっていないことを再確認してから `vX.Y.Z` tag を同じ `master` commit に作成して push する。
 5. `Release Tagged Build` workflow は最初に preflight として Linux / macOS / Windows native の `cargo test --locked` と `cargo clippy --locked --all-targets -- -D warnings`、および `cargo audit` を実行し、すべて成功した場合のみ release build へ進む。
 6. preflight 成功後に Linux / Windows / macOS（x86_64, arm64）向け release build を実行する。
@@ -199,6 +202,12 @@
 10. 当面の暫定運用として、macOS 向け配布物の notarization 確認は publish 前提条件にしない。notarization 環境が整うまでは、そのまま draft を本リリースへ publish してよい。
 11. ただし publish 時は、GitHub Release 本文の `Security` または `Known issues` に macOS 配布物が未 notarized である旨を明記する。
 12. 公開後に重大問題を検出した場合は `docs/RELEASE_INCIDENT_RUNBOOK.md` に従い、公開済みtag/assetを上書きせずに取得停止、警告、影響確認、patch releaseを行う。
+
+### 候補の停止要因と GUI 失敗の記録
+
+- 候補や GUI gate が失敗したら、実行 SHA、run/artifact、対象バイナリの SHA-256 と停止した gate を一つの現行判断記録に固定する。roadmap は状態とその記録へのリンク、work-item manifest は依存関係と進行状態を持つ。同じ判断文や証跡を複数の計画・snapshot に複製しない。reviewer が同じ checkout を参照できるときは、正確な ref・path・diff を指定する。
+- native GUI の不一致は、既存の `GUI-TESTREPORT.template.md` の FAIL と dated addendum に、隔離 profile、使い捨て fixture の変更前後の内容・byte 数、操作、待機時間、画面結果、記録時刻、証跡パスを残す。クリック dispatch、request ID、worker 応答を観測できたかも分け、観測できない段階は `unknown` と書く。決定論的テストの PASS を native FAIL の解消とみなさず、通常経路で原因を示す証拠がないまま製品修正や判定目的の同条件再試行を始めない。原因切り分けのための再観測は、目的・観測方法・exact binary/session 承認を先に固定し、旧 FAIL を保持したまま別の dated addendum に結果を記録する。
+- 失敗した候補から別の候補へ進むときは、修正の protected merge SHA と新候補の SHA/run を対応付ける。旧候補の GUI PASS や例外承認は新候補へ引き継がない。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
@@ -213,7 +222,7 @@
 - tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
 - Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal direct-process median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
-- release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。warning が 1 件でもある場合は、原因を修正するか、release blocker ではない理由と follow-up を明記するまで publish しない。
+- release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。外部 Action 由来を含め warning が 1 件でもあれば停止し、出所・影響・follow-up を記録する。例外扱いには version と exact run を限定したユーザの明示承認が必要であり、理由の記載だけでは解除できない。例外は次の候補や tag workflow に引き継がない。
 - tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
