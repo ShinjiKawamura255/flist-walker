@@ -663,8 +663,22 @@ fn tc_207_create_filelist_terminal_root_survives_switch_and_replays_on_original_
     }
     app.switch_to_tab_index(1);
 
+    let original = app.shell.tabs.get(0).expect("original background tab");
+    assert_eq!(original.id, original_tab_id);
+    assert_eq!(path_key(&original.root), path_key(&root_a));
+    assert!(request_rx.try_recv().is_err());
+
     app.shell.tabs.resume_resource_reclaimer();
-    app.poll_index_response();
+    super::super::tab_background_responses::poll_background_index_until(
+        &mut app,
+        "switched create-file-list root settlement",
+        |app| {
+            app.shell.tabs.get(0).is_some_and(|original| {
+                path_key(&original.root) == path_key(&root_b)
+                    && original.index_state.pending_index_finish.is_none()
+            })
+        },
+    );
 
     let original = app.shell.tabs.get(0).expect("original background tab");
     assert_eq!(original.id, original_tab_id);
