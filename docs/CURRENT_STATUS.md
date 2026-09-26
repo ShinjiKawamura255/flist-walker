@@ -20,6 +20,7 @@ This document is the durable current-state snapshot for maintainers. It does not
 
 ## Known Evidence Gaps
 
+- In v0.29.0, paged-preview Color is reachable by pointer only; keyboard activation is a known specification gap. FR-045 / SP-025 / DES-026 / TC-222 require a keyboard route, and the native keyboard axis remains FAIL until implementation and a normal-render-path regression test are merged.
 - Native Japanese IME composition, alternate-DPI display movement, real UNC access, and explicitly authorized external Open/Reveal behavior require suitable platform sessions and remain conditional manual evidence.
 - Native headful GUI launch is not a normal pull-request gate. GUI-adjacent changes and release candidates follow [GUI-TESTPLAN.md](GUI-TESTPLAN.md).
 - macOS release artifacts may remain unnotarized under the temporary release posture; the public release note must disclose that condition.

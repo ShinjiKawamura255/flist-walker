@@ -60,7 +60,7 @@ For documentation-only restructuring, apply VM-001:
 - Apply VM-008 to `rust/src/persistence/` changes and VM-002 when changing GUI save/restore adapters.
 
 ## GUI Evidence Axes
-- `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..012. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
+- `docs/GUI-TESTPLAN.md` is the procedure owner for GSM-001..013. Its report records Deterministic, Native interaction, and Liveness independently; process liveness and headless tests do not imply native interaction PASS.
 - `scripts/gui-deterministic-scenarios.tsv` is the canonical nonzero owner-test inventory used by both platform wrappers.
 - Headful smoke MUST launch only a fresh BaseDir-owned staged executable with isolated settings, the exact binary/ignore/sample allowlist, and no `.flistwalker-update*` artifact. External actions, clipboard mutation, network update checks, and live updater activation are not validation defaults.
 - Windows `-ScriptedQueryProbe` extends the staged headful smoke with PID-bound visible-window responsiveness, Unicode query initialization, and isolated trace verification. It is not physical input focus, IME composition, Copy Path, Open/Reveal, or multi-display evidence.

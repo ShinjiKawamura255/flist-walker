@@ -210,6 +210,7 @@
 - MUST: 追加要求は実行中1件と最新待機1件までとし、古い要求や別タブの応答を本文へ混入させない。ファイルの取得可能なID、size、mtimeの変化は `Changed` として拒否する。Windows の on-demand 判定は初回と追加時の両方で行う。
 - MUST: 拡張子に応じて Rust、Python、JavaScript、TypeScript、JSON、TOML、YAML、Markdown、shell、PowerShell、C、C++、HTML、CSV、TSV を色分けする。`.h` は C、正確な `.C` は C++ とする。CSV/TSV は表形式へ整形せず、セルの値の種類によらず同じ列を同じ色で本文上に色分けし、区切り文字は中立色で表示する。色数を超える列は8色の列色を循環して使う。空セルも列位置に数える。引用フィールド内の区切り文字と改行、および `""` による引用符エスケープを正しく扱い、引用フィールド内の改行では列位置を維持する。未対応形式、分類上限超過、解析失敗ではプレーン本文を維持する。HTML を実行・資源取得しない。
 - MUST: 色分けは初期ONとし、プレビュー内の切替は全タブ共通の当該GUIセッションにだけ適用する。OFFでも本文、行番号、コピー結果を変えない。色だけを状態の唯一の手掛かりにしない。
+- MUST: 色分けのON/OFFは pointer と application-owned keyboard command の両方から同じsession状態へ到達できなければならない。`Tab` / `Shift+Tab` は行のPIN固定/解除を所有するため、preview controlへのfocus移動として扱ってはならない。keyboard commandが未実装またはhelpから識別不能なbuildはkeyboard axisをFAILとし、pointer PASSで補完してはならない。
 - MUST: TUIは20行/64 KiBの先頭表示と既存操作を維持し、GUIの追加ボタンを設けない。フォルダは従来の直接の子4096件と24行の表示上限を維持する。
 
 ### Preconditions / Postconditions
