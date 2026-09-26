@@ -32,7 +32,10 @@
 - GUI Manual:
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を `docs/GUI-TESTPLAN.md` の `GSM-*` 手順で検証する。
 - GUI smoke fixture は `scripts/gui-smoke-fixture.sh` で作成し、証跡は `rust/target/gui-smoke/evidence/` に記録する。手動で報告を作る場合は `docs/GUI-TESTREPORT.template.md` を雛形にする。
-- release candidate または VM-002 対象の GUI-adjacent 変更では、該当 `GSM-*` の PASS / FAIL / SKIPPED と証跡パスを必ず記録する。単なる「手元で見た」だけでは gate 完了扱いにしない。
+- release candidate または VM-002 対象の GUI-adjacent 変更では、該当 `GSM-*` の Deterministic / Native interaction / Liveness 各軸について PASS / FAIL / SKIPPED / NOT RUN と証跡パスを必ず記録する。単なる「手元で見た」だけでは gate 完了扱いにしない。
+- per-candidate core は全deterministic group、native startup/input/liveness baseline、変更・回帰感度のあるGSMを対象とする。full platform certificationはrelease planが要求するexact candidateで実施し、residual addendumは同一source/binaryの未解決axisだけを追加する。既存PASSを理由なく再実行しない。
+- native sessionの前にOS、display/DPI、IME、UNC、owned external handler、clipboard gate、loopback/signing、scale fixture、isolated restart profileのprerequisiteを一括確認する。release-requiredなFAIL/NOT RUNは、formal statusを維持したversion-specific deviationがない限りpublicationをblockする。
+- cross-process restartは`SavedTabState`の永続fieldだけを対象とする。sort/PIN/selection/results/preview/lifecycle/heavy snapshotは、owned contractが追加されない限りcross-process期待へ含めず、in-process closed-tab/Recent-Inactive検証と分ける。
 - GUI Headful Smoke:
 - release candidate / nightly では `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で native window 起動の早期クラッシュを検出し、`rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE.local.md` に記録する。通常 PR の required gate にはしない。
 - Perf/Sec:

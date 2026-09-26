@@ -209,6 +209,14 @@
 - native GUI の不一致は、既存の `GUI-TESTREPORT.template.md` の FAIL と dated addendum に、隔離 profile、使い捨て fixture の変更前後の内容・byte 数、操作、待機時間、画面結果、記録時刻、証跡パスを残す。クリック dispatch、request ID、worker 応答を観測できたかも分け、観測できない段階は `unknown` と書く。決定論的テストの PASS を native FAIL の解消とみなさず、通常経路で原因を示す証拠がないまま製品修正や判定目的の同条件再試行を始めない。原因切り分けのための再観測は、目的・観測方法・exact binary/session 承認を先に固定し、旧 FAIL を保持したまま別の dated addendum に結果を記録する。
 - 失敗した候補から別の候補へ進むときは、修正の protected merge SHA と新候補の SHA/run を対応付ける。旧候補の GUI PASS や例外承認は新候補へ引き継がない。
 
+### Release execution packet
+
+- 実行開始時に `Preparation → Candidate → Native GUI → Tag/Tagged build → Draft review → Publish/readback → Closure PR` のgateを一つのpacketへ固定する。各gateは入力identity、必要証跡、停止条件、外部変更、完了readbackを1箇所だけに持ち、同じ判断を複数のplanへ複製しない。
+- GUI開始前に `docs/GUI-TESTPLAN.md` のexecution profileとsession prerequisite表を完成させる。利用不能なnative OS、display/DPI、IME、UNC、owned handler、clipboard、loopback/signing、scale fixtureは初回launch前にまとめ、release-requiredな`NOT RUN`のdeviation判断を1回に集約する。
+- candidateとtagged runは別identityなのでwarning dispositionを共有しない。ただし各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、1 runにつき1つの承認判断として提示する。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
+- 同じsource SHAと同じbinary hashのresidual addendumは、失敗または未実行axisだけを追加検証する。既に有効なPASSを理由なく反復しない。sourceまたはbinaryが変わった場合は関連するcandidate証跡を無効化する。
+- 公開後はrelease URL、release/tag/source identity、本文、asset count/name/size/digestを直ちにread backし、versioned release recordと検証processの恒久修正を同じclosure PRへまとめる。release公開とclosure PR mergeを別の完了条件として追跡する。
+
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
 - `rust/Cargo.lock` の `flist-walker` package version が同じ `X.Y.Z` へ更新済みであること。
