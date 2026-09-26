@@ -890,6 +890,14 @@ fn is_expected_scheduler_notice_transition(
         && after.notice == "Index request dropped due to queue limit")
         || (before.reclaim_pending
             && after.notice == "Waiting for background tab resource reclamation")
+        || (before.index_finalization_pending
+            && after.index_finalization_pending
+            && matches!(
+                before.notice.as_str(),
+                "" | "Waiting for background tab resource reclamation"
+                    | "Waiting for background tab resource finalization"
+            )
+            && after.notice == "Waiting for background tab resource finalization")
         || (before.reclaim_pending
             && after.reclaim_pending
             && matches!(
@@ -981,6 +989,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                     reclaim_pending: app.shell.indexing.build_reclaim_pending
                         || app.shell.indexing.pending_finish.is_some()
                         || app.shell.indexing.root_after_pending_finish.is_some(),
+                    index_finalization_pending: app.shell.indexing.pending_finish.is_some(),
                     index_pending: app.shell.indexing.pending_request_id.is_some()
                         || app.shell.indexing.in_progress,
                     search_pending: app.shell.search.pending_request_id().is_some()
@@ -1008,6 +1017,7 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
                     reclaim_pending: tab.index_state.build_reclaim_pending
                         || tab.index_state.pending_index_finish.is_some()
                         || tab.index_state.root_after_pending_finish.is_some(),
+                    index_finalization_pending: tab.index_state.pending_index_finish.is_some(),
                     index_pending: tab.index_state.pending_index_request_id.is_some()
                         || tab.index_state.index_in_progress,
                     search_pending: tab.pending_request_id.is_some() || tab.search_in_progress,
@@ -1178,6 +1188,7 @@ mod tests {
             results_digest: 0,
             notice: notice.to_string(),
             reclaim_pending: false,
+            index_finalization_pending: false,
             index_pending,
             search_pending: false,
             preview_pending: false,
@@ -1212,11 +1223,27 @@ mod tests {
     fn tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases() {
         let mut before = snapshot(false, "Waiting for background tab resource reclamation");
         before.reclaim_pending = true;
+        before.index_finalization_pending = true;
         let mut after = snapshot(false, "Waiting for background tab resource finalization");
         after.reclaim_pending = true;
+        after.index_finalization_pending = true;
         assert!(is_expected_scheduler_notice_transition(&before, &after));
 
         before.notice = "Action completed".to_string();
+        assert!(!is_expected_scheduler_notice_transition(&before, &after));
+    }
+
+    #[test]
+    fn tc_184_empty_notice_to_finalization_requires_exact_pending_phase() {
+        let mut before = snapshot(false, "");
+        before.reclaim_pending = true;
+        before.index_finalization_pending = true;
+        let mut after = before.clone();
+        after.notice = "Waiting for background tab resource finalization".to_string();
+        assert!(is_expected_scheduler_notice_transition(&before, &after));
+
+        before.index_finalization_pending = false;
+        after.index_finalization_pending = false;
         assert!(!is_expected_scheduler_notice_transition(&before, &after));
     }
 
