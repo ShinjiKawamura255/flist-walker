@@ -5,8 +5,8 @@ use crate::walker_runtime::{
     default_adaptive_max_limit_from_logical_cores, next_limit_from_throughput, resolve_entry_kind,
     walk_adaptive, walk_adaptive_filtered, walk_adaptive_filtered_deferred,
     walk_adaptive_filtered_unbounded, walk_adaptive_filtered_with_frontier_limits,
-    walk_adaptive_filtered_with_frontier_limits_and_max_depth, walk_adaptive_with_max_depth,
-    walker_runtime_settings, LimitDirection, WalkerBackend,
+    walk_adaptive_filtered_with_frontier_limits_and_max_depth, walker_runtime_settings,
+    LimitDirection, WalkerBackend,
 };
 use std::sync::atomic::AtomicUsize;
 use std::sync::Condvar;
@@ -1380,6 +1380,8 @@ fn adaptive_walker_should_stop_after_frontier_saturation_returns_promptly() {
 #[test]
 fn adaptive_walker_frontier_saturation_preserves_max_depth() {
     const MAX_WORKERS: usize = 4;
+    const SOFT_LIMIT: usize = 8;
+    const LOCAL_FRAME_LIMIT: usize = 4;
     const TOP_DIR_COUNT: usize = 512;
 
     let root = test_root("adaptive-saturated-max-depth");
@@ -1392,13 +1394,15 @@ fn adaptive_walker_frontier_saturation_preserves_max_depth() {
     }
 
     let mut paths = Vec::new();
-    let metrics = walk_adaptive_with_max_depth(
+    let metrics = walk_adaptive_filtered_with_frontier_limits_and_max_depth(
         &root,
         MAX_WORKERS,
         2,
         true,
         true,
         crate::indexer::MaxDepth::limited(2).expect("valid depth"),
+        SOFT_LIMIT,
+        LOCAL_FRAME_LIMIT,
         |entry| {
             paths.push(entry.path);
             true
@@ -1408,8 +1412,15 @@ fn adaptive_walker_frontier_saturation_preserves_max_depth() {
 
     assert_eq!(paths.len(), TOP_DIR_COUNT * 2);
     assert!(paths.iter().all(|path| !path.ends_with("too-deep.txt")));
+    assert_eq!(metrics.shared_frontier_soft_limit, SOFT_LIMIT);
     assert!(metrics.frontier_saturation_fallbacks > 0);
-    assert!(metrics.max_queued_dirs <= adaptive_shared_frontier_soft_limit(MAX_WORKERS));
+    assert_eq!(metrics.frontier_soft_limit_bypasses, 0);
+    assert!(metrics.max_queued_dirs <= SOFT_LIMIT);
+    assert_eq!(
+        metrics.open_directory_frame_budget,
+        MAX_WORKERS * LOCAL_FRAME_LIMIT
+    );
+    assert!(metrics.max_open_directory_frames <= metrics.open_directory_frame_budget);
     let _ = std::fs::remove_dir_all(&root);
 }
 
