@@ -38,6 +38,87 @@ fn test_home(name: &str) -> PathBuf {
 }
 
 #[test]
+fn filelist_auto_check_defaults_on_for_old_config_and_saved_file_is_authoritative() {
+    let _guard = locked_env();
+    let _restore = EnvRestore::capture(&[FILELIST_AUTO_CHECK_ENABLED_ENV]);
+    let base = test_home("filelist-auto-check-old-config");
+    fs::create_dir_all(&base).expect("create fixture");
+    let path = base.join(RUNTIME_CONFIG_FILE_NAME);
+    env::set_var(FILELIST_AUTO_CHECK_ENABLED_ENV, "0");
+    fs::write(&path, r#"{"future_setting":"keep"}"#).expect("write old config");
+    let config = load_runtime_config_from_path(&path).expect("load old config");
+    assert!(RuntimeConfig::default().filelist_auto_check_enabled);
+    assert!(
+        config.filelist_auto_check_enabled,
+        "old config uses defaults, not environment"
+    );
+    let normalized: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(normalized["filelist_auto_check_enabled"], true);
+    assert_eq!(normalized["future_setting"], "keep");
+
+    env::set_var(FILELIST_AUTO_CHECK_ENABLED_ENV, "1");
+    fs::write(&path, r#"{"filelist_auto_check_enabled":false}"#).expect("write opt-out");
+    assert!(
+        !load_runtime_config_from_path(&path)
+            .expect("load saved opt-out")
+            .filelist_auto_check_enabled
+    );
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn filelist_auto_check_environment_seeds_explicit_opt_out_and_default() {
+    let _guard = locked_env();
+    let _restore = EnvRestore::capture(&[FILELIST_AUTO_CHECK_ENABLED_ENV]);
+    for (value, enabled) in [(None, true), (Some("0"), false), (Some("1"), true)] {
+        match value {
+            Some(value) => env::set_var(FILELIST_AUTO_CHECK_ENABLED_ENV, value),
+            None => env::remove_var(FILELIST_AUTO_CHECK_ENABLED_ENV),
+        }
+        let (config, seed) = RuntimeConfig::seed_from_current_env();
+        assert_eq!(config.filelist_auto_check_enabled, enabled, "{value:?}");
+        assert_eq!(
+            RuntimeConfig::from_current_env().filelist_auto_check_enabled,
+            enabled
+        );
+        let saved = serde_json::to_value(seed).expect("serialize seed");
+        assert_eq!(saved["filelist_auto_check_enabled"], enabled);
+    }
+}
+
+#[test]
+fn editable_filelist_auto_check_opt_out_preserves_unknowns_and_detects_conflict() {
+    let base = test_home("editable-filelist-auto-check");
+    fs::create_dir_all(&base).expect("create fixture");
+    let path = base.join("settings.json");
+    fs::write(&path, r#"{"future":{"keep":17}}"#).expect("write old config");
+    let baseline = read_editable_settings(&path).expect("read default draft");
+    assert!(baseline.values.filelist_auto_check_enabled);
+    let mut draft = baseline.values.clone();
+    draft.filelist_auto_check_enabled = false;
+    let saved = save_editable_settings(&path, &baseline, &draft).expect("save opt-out");
+    assert!(!saved.values.filelist_auto_check_enabled);
+    let bytes = fs::read(&path).expect("saved bytes");
+    let json: serde_json::Value = serde_json::from_slice(&bytes).expect("saved JSON");
+    assert_eq!(json["filelist_auto_check_enabled"], false);
+    assert_eq!(json["future"]["keep"], 17);
+    assert!(
+        !load_runtime_config_from_path(&path)
+            .expect("next launch")
+            .filelist_auto_check_enabled
+    );
+    draft.filelist_auto_check_enabled = true;
+    assert!(save_editable_settings(&path, &baseline, &draft).is_err());
+    assert!(
+        !read_editable_settings(&path)
+            .expect("saved draft")
+            .values
+            .filelist_auto_check_enabled
+    );
+    fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
 fn editable_settings_save_preserves_unknown_json_and_defers_effective_config() {
     let base = test_home("editable-preserve");
     fs::create_dir_all(&base).expect("create fixture directory");
@@ -269,6 +350,7 @@ fn seeds_and_writes_config_when_missing() {
         SEARCH_PARALLEL_THRESHOLD_ENV,
         SEARCH_THREADS_ENV,
         RESTORE_TABS_ENV,
+        FILELIST_AUTO_CHECK_ENABLED_ENV,
         WALKER_MAX_ENTRIES_ENV,
         WINDOW_TRACE_PATH_ENV,
         WINDOW_TRACE_ENV,
@@ -295,6 +377,8 @@ fn seeds_and_writes_config_when_missing() {
     env::remove_var(UPDATE_ALLOW_DOWNGRADE_ENV);
     env::remove_var(DISABLE_SELF_UPDATE_ENV);
     env::remove_var(FORCE_UPDATE_CHECK_FAILURE_ENV);
+
+    env::remove_var(FILELIST_AUTO_CHECK_ENABLED_ENV);
 
     let path = runtime_config_file_path_in(&home);
     let config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
@@ -386,6 +470,7 @@ fn seeds_default_user_config_values_when_missing() {
         WINDOW_TRACE_VERBOSE_ENV,
         HISTORY_PERSIST_ENV,
         RESTORE_TABS_ENV,
+        FILELIST_AUTO_CHECK_ENABLED_ENV,
         UPDATE_FEED_URL_ENV,
         UPDATE_ALLOW_SAME_VERSION_ENV,
         UPDATE_ALLOW_DOWNGRADE_ENV,
@@ -402,6 +487,7 @@ fn seeds_default_user_config_values_when_missing() {
     env::remove_var(WINDOW_TRACE_PATH_ENV);
     env::remove_var(HISTORY_PERSIST_ENV);
     env::remove_var(RESTORE_TABS_ENV);
+    env::remove_var(FILELIST_AUTO_CHECK_ENABLED_ENV);
     env::remove_var(UPDATE_FEED_URL_ENV);
     env::remove_var(UPDATE_ALLOW_SAME_VERSION_ENV);
     env::remove_var(UPDATE_ALLOW_DOWNGRADE_ENV);
@@ -450,7 +536,7 @@ fn seeds_default_user_config_values_when_missing() {
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 6);
+    assert_eq!(saved.len(), 7);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -468,6 +554,7 @@ fn seeds_keep_explicit_default_env_values_in_generated_config() {
         WINDOW_TRACE_PATH_ENV,
         WINDOW_TRACE_ENV,
         RESTORE_TABS_ENV,
+        FILELIST_AUTO_CHECK_ENABLED_ENV,
         UPDATE_FEED_URL_ENV,
     ]);
     env::set_var("HOME", &home);
@@ -481,6 +568,8 @@ fn seeds_keep_explicit_default_env_values_in_generated_config() {
     env::remove_var(WINDOW_TRACE_PATH_ENV);
     env::set_var(RESTORE_TABS_ENV, "false");
     env::set_var(UPDATE_FEED_URL_ENV, DEFAULT_UPDATE_FEED_URL);
+
+    env::remove_var(FILELIST_AUTO_CHECK_ENABLED_ENV);
 
     let path = runtime_config_file_path_in(&home);
     let _config = RuntimeConfig::load_or_seed_at(Some(path.clone()));
@@ -529,16 +618,19 @@ fn existing_config_overrides_current_env_values() {
         "USERPROFILE",
         SEARCH_PARALLEL_THRESHOLD_ENV,
         RESTORE_TABS_ENV,
+        FILELIST_AUTO_CHECK_ENABLED_ENV,
         WINDOW_TRACE_PATH_ENV,
     ]);
     env::set_var("HOME", &home);
     env::set_var("USERPROFILE", &home);
     env::set_var(SEARCH_PARALLEL_THRESHOLD_ENV, "999");
     env::set_var(RESTORE_TABS_ENV, "1");
+    env::set_var(FILELIST_AUTO_CHECK_ENABLED_ENV, "1");
 
     let config = RuntimeConfig {
         search_parallel_threshold: 7,
         restore_tabs_enabled: false,
+        filelist_auto_check_enabled: false,
         ..RuntimeConfig::default()
     };
     let path = runtime_config_file_path_in(&home);
@@ -547,6 +639,11 @@ fn existing_config_overrides_current_env_values() {
     let loaded = RuntimeConfig::load_or_seed_at(Some(path));
     assert_eq!(loaded.search_parallel_threshold, 7);
     assert!(!loaded.restore_tabs_enabled);
+    assert!(!loaded.filelist_auto_check_enabled);
+    assert_eq!(
+        env::var(FILELIST_AUTO_CHECK_ENABLED_ENV).expect("env set"),
+        "0"
+    );
     assert_eq!(
         env::var(SEARCH_PARALLEL_THRESHOLD_ENV).expect("env set"),
         "7"
@@ -695,7 +792,7 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 6);
+    assert_eq!(saved.len(), 7);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -876,6 +973,7 @@ fn migrate_file_if_needed_atomic_fallback_copies_exact_bytes_and_removes_legacy(
 #[test]
 fn load_or_seed_rechecks_current_after_waiting_for_sidecar_lock() {
     let _guard = locked_env();
+    let _restore = EnvRestore::capture(&[FILELIST_AUTO_CHECK_ENABLED_ENV]);
     let base = test_home("seed-lock-recheck");
     fs::create_dir_all(&base).expect("create base");
     let current_path = runtime_config_file_path_in(&base);

@@ -98,7 +98,7 @@ impl FileIdentity {
 }
 
 #[cfg(windows)]
-fn windows_file_identity(file: &File) -> Option<(u32, u64)> {
+pub(crate) fn windows_file_identity(file: &File) -> Option<(u32, u64)> {
     use std::ffi::c_void;
     use std::os::windows::io::AsRawHandle;
 

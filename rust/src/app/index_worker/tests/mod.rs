@@ -82,6 +82,7 @@ fn tc_206_full_mailbox_publish_stops_when_generation_is_superseded() {
         .expect("fill mailbox data lane");
     let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(tab_id, request_id)])));
     let sink = MailboxResponseSink {
+        root: PathBuf::from("/tmp/mailbox-test"),
         request_id,
         tab_id,
         mailbox,

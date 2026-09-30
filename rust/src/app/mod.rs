@@ -20,6 +20,7 @@ mod cache;
 mod config;
 mod coordinator;
 mod filelist;
+mod freshness;
 mod index_coordinator;
 mod index_finalization;
 pub(crate) mod index_mailbox;
@@ -196,6 +197,8 @@ pub struct FlistWalkerApp {
     shell: AppShellState,
     settings_dialog: settings_dialog::SettingsDialogState,
     paged_preview_view: paged_preview_flow::PagedPreviewView,
+    freshness_monitor: freshness::FreshnessMonitor,
+    filelist_auto_check_enabled: bool,
     deferred_preview_response: Option<PreviewResponse>,
     parked_preview_request: Option<PreviewRequest>,
     deferred_latest_preview_request: Option<PreviewRequest>,

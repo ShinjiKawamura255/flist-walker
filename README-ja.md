@@ -25,6 +25,8 @@
 - 実行ファイル横の `flistwalker.ignore.txt` による Ignore List
 - Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` による runtime config / session files
 
+GUIのSource表示には、FileListを読み込んだ時刻／Walkerで取得した時刻からの経過を表示します。ホバーで取得元path、UTC取得時刻、確認範囲を確認できます。`filelist_auto_check_enabled=true`（既定）では、アプリとタブがactiveの間、読み込んだroot直下のFileListだけを約5秒間隔で確認します。変更・確認不能の通知から `Refresh Index` を選ぶと、検索語・フィルター・並び順と、残存する選択pathを維持して更新します。子FileList、新規FileList、tree内の増減は確認対象外です。Settings → Searchで無効化でき、保存内容は次回起動から反映します。
+
 ## クイックスタート（GUI）
 
 ```bash

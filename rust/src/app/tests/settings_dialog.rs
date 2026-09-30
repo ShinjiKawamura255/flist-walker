@@ -57,6 +57,7 @@ fn gui_settings_external_edit_keeps_draft_and_external_bytes() {
     settle_settings_dialog(&mut app);
     if let SettingsView::Editing { draft, .. } = &mut app.settings_dialog.view {
         draft.restore_tabs_enabled = true;
+        draft.filelist_auto_check_enabled = false;
     } else {
         panic!("settings draft not loaded")
     }
@@ -68,6 +69,7 @@ fn gui_settings_external_edit_keeps_draft_and_external_bytes() {
         panic!("failed save must retain draft")
     };
     assert!(draft.restore_tabs_enabled);
+    assert!(!draft.filelist_auto_check_enabled);
     assert!(error
         .as_ref()
         .is_some_and(|message| message.contains("changed")));
@@ -298,7 +300,7 @@ fn gui_settings_limit_uses_runtime_emacs_shortcuts_and_shared_kill_buffer() {
 }
 
 #[test]
-fn tc_216_gui_settings_six_fields_round_trip_to_next_launch() {
+fn tc_216_gui_settings_seven_fields_round_trip_to_next_launch() {
     let scope = test_settings_scope("gui-settings-six-fields");
     let path = scope.runtime_config_path();
     fs::write(&path, r#"{"future_key":"retained"}"#).expect("seed config");
@@ -313,6 +315,7 @@ fn tc_216_gui_settings_six_fields_round_trip_to_next_launch() {
         ctrl_w_deletes_word_in_query: true,
         tab_pin_moves_to_next_row: true,
         walker_max_entries: 1,
+        filelist_auto_check_enabled: false,
     };
     let SettingsView::Editing {
         draft, limit_text, ..
@@ -352,6 +355,10 @@ fn tc_216_gui_settings_six_fields_round_trip_to_next_launch() {
         expected.tab_pin_moves_to_next_row
     );
     assert_eq!(next_launch.walker_max_entries, expected.walker_max_entries);
+    assert_eq!(
+        next_launch.filelist_auto_check_enabled,
+        expected.filelist_auto_check_enabled
+    );
     assert!(
         !next_launch.emacs_keybindings_enabled && next_launch.ctrl_w_deletes_word_in_query,
         "dependent Ctrl+W preference is retained while Emacs shortcuts are disabled"
@@ -504,4 +511,95 @@ fn tc_216_gui_history_checkbox_inverts_persist_disabled() {
     )
     .expect("valid JSON");
     assert_eq!(saved["history_persist_disabled"], true);
+}
+
+#[test]
+fn gui_filelist_auto_check_checkbox_persists_opt_out_for_next_launch() {
+    let scope = test_settings_scope("gui-settings-filelist-auto-check");
+    fs::write(
+        scope.runtime_config_path(),
+        r#"{"filelist_auto_check_enabled":true}"#,
+    )
+    .expect("seed config");
+    let mut app = scope.app(
+        test_root("gui-settings-filelist-auto-check-root"),
+        30,
+        String::new(),
+    );
+    app.open_settings_dialog();
+    settle_settings_dialog(&mut app);
+    let ctx = egui::Context::default();
+    let screen_rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 800.0));
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(screen_rect),
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let output = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(screen_rect),
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    fn find_text<'a>(shape: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find_text(shape, label)),
+            _ => None,
+        }
+    }
+    let label = output
+        .shapes
+        .iter()
+        .find_map(|shape| find_text(&shape.shape, "Check root FileList for changes"))
+        .expect("FileList automatic check checkbox rendered");
+    let target = label.pos + egui::vec2(8.0, label.galley.size().y / 2.0);
+    let press = egui::Event::PointerButton {
+        pos: target,
+        button: egui::PointerButton::Primary,
+        pressed: true,
+        modifiers: egui::Modifiers::NONE,
+    };
+    let release = egui::Event::PointerButton {
+        pos: target,
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![egui::Event::PointerMoved(target), press],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(screen_rect),
+            events: vec![release],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+        panic!("settings draft remains open")
+    };
+    assert!(!draft.filelist_auto_check_enabled);
+    app.request_settings_save();
+    settle_settings_dialog(&mut app);
+    let saved: serde_json::Value = serde_json::from_slice(
+        &fs::read(scope.runtime_config_path()).expect("saved FileList check setting"),
+    )
+    .expect("valid JSON");
+    assert_eq!(saved["filelist_auto_check_enabled"], false);
+    app.open_settings_dialog();
+    settle_settings_dialog(&mut app);
+    let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+        panic!("saved FileList opt-out draft is reloaded")
+    };
+    assert!(!draft.filelist_auto_check_enabled);
 }

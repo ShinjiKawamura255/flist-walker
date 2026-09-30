@@ -17,3 +17,6 @@ pub use preview::{
     build_preview_text, build_preview_text_with_kind, build_preview_text_with_kind_cancellable,
 };
 pub(crate) use preview::{format_file_size, format_system_time, metadata_attributes};
+
+#[cfg(windows)]
+pub(crate) use paged_preview::windows_file_identity;

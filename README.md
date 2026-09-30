@@ -28,6 +28,8 @@ Language docs:
 - Ignore list support via `flistwalker.ignore.txt` next to the executable
 - Runtime config and session file support under `%LocalAppData%\flistwalker\` on Windows, or under `~/.flistwalker/` on Linux/macOS
 
+The GUI source label shows when its index snapshot was loaded (FileList) or indexed (Walker). Hover it for the source path, UTC acquisition time, and scope. With `filelist_auto_check_enabled=true` (default), only the loaded root FileList is checked about every five seconds while the tab and app are active. Changes or an unavailable check show a notice; its `Refresh Index` preserves the query, filters, sort, and selected path when it still exists. Child FileLists, new FileLists, and filesystem tree changes are outside this check. Disable it in Settings → Search; saved settings take effect after restart.
+
 ## Quick Start
 
 ```bash
@@ -121,7 +123,8 @@ Example:
   "restore_tabs_enabled": false,
   "emacs_keybindings_enabled": true,
   "ctrl_w_deletes_word_in_query": false,
-  "tab_pin_moves_to_next_row": false
+  "tab_pin_moves_to_next_row": false,
+  "filelist_auto_check_enabled": true
 }
 ```
 

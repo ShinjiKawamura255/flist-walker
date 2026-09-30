@@ -111,6 +111,16 @@ impl FlistWalkerApp {
         self.request_index_refresh_with_mode(super::PendingIndexRefreshMode::Normal);
     }
 
+    pub(super) fn refresh_changed_filelist(&mut self) {
+        self.shell.runtime.evicted_selected_path = self
+            .shell
+            .runtime
+            .current_row
+            .and_then(|row| self.shell.runtime.results.get(row))
+            .map(|(path, _)| path.clone());
+        self.request_index_refresh_preserving_sort();
+    }
+
     fn request_index_refresh_preserving_sort(&mut self) {
         self.request_index_refresh_with_mode(super::PendingIndexRefreshMode::PreserveSort);
     }
@@ -1614,6 +1624,12 @@ impl FlistWalkerApp {
                 std::mem::take(&mut finalization.unresolved_kind_paths_set);
             finalized_filelist_paths = finalization.filelist_paths.take();
         }
+        let snapshot = self.acquired_index_snapshot(
+            request_id,
+            pending_finish.source.clone(),
+            self.shell.runtime.root.clone(),
+        );
+        self.shell.runtime.set_snapshot_freshness(snapshot);
         self.shell.indexing.build.index.source = pending_finish.source;
         let all_entries = Arc::new(std::mem::take(&mut self.shell.indexing.build.index.entries));
         self.shell.runtime.replace_all_entries(all_entries);

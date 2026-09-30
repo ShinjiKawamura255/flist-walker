@@ -87,6 +87,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     );
                     ui.add_space(10.0);
                     ui.heading("Search");
+                    ui.checkbox(
+                        &mut draft.filelist_auto_check_enabled,
+                        "Check root FileList for changes",
+                    );
+                    ui.label("Checks only the loaded root FileList while this window is active. Does not automatically refresh results or monitor child folders.");
                     ui.horizontal(|ui| {
                         ui.label("Walker entry limit");
                         FlistWalkerApp::emacs_singleline_text_edit(
