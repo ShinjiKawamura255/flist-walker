@@ -1,5 +1,185 @@
 use super::*;
 
+fn settle_freshness_indexes(app: &mut FlistWalkerApp) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        app.poll_index_response();
+        app.poll_search_response();
+        let background_pending = app.shell.tabs.iter().any(|tab| {
+            tab.index_state.index_in_progress
+                || tab.index_state.pending_index_request_id.is_some()
+                || tab.index_state.pending_index_finish.is_some()
+        });
+        if !app.shell.indexing.in_progress
+            && app.shell.indexing.pending_request_id.is_none()
+            && app.shell.indexing.pending_finish.is_none()
+            && !background_pending
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "snapshot acquisition did not settle"
+        );
+        thread::yield_now();
+    }
+}
+
+#[test]
+fn freshness_successful_refresh_advances_acquisition_time_and_generation() {
+    let scope = test_settings_scope("freshness-success-time");
+    let root = test_root("freshness-success-time");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("FileList.txt"), "alpha.txt\n").unwrap();
+    let mut app = scope.app(root.clone(), 50, String::new());
+    settle_freshness_indexes(&mut app);
+    let previous = UNIX_EPOCH + Duration::from_secs(100);
+    app.shell
+        .runtime
+        .snapshot_freshness_mut()
+        .unwrap()
+        .acquired_at = previous;
+    let old_generation = app.shell.runtime.freshness.as_ref().unwrap().request_id;
+    fs::write(root.join("FileList.txt"), "alpha.txt\nbeta.txt\n").unwrap();
+    let requested_at = SystemTime::now();
+    app.refresh_changed_filelist();
+    assert_eq!(
+        app.shell.runtime.freshness.as_ref().unwrap().acquired_at,
+        previous
+    );
+    assert!(app.source_text().contains("Refreshing"));
+    settle_freshness_indexes(&mut app);
+    let snapshot = app.shell.runtime.freshness.as_ref().unwrap();
+    assert!(snapshot.acquired_at >= requested_at);
+    assert!(snapshot.acquired_at <= SystemTime::now());
+    assert_ne!(snapshot.request_id, old_generation);
+    assert_eq!(
+        snapshot.source,
+        IndexSource::FileList(root.join("FileList.txt"))
+    );
+    assert_eq!(snapshot.root, root);
+    assert_eq!(
+        snapshot.change,
+        crate::app::freshness::FileListChange::Unchanged
+    );
+    assert!(app.source_text().contains("Loaded"));
+    assert!(!app.source_text().contains("Refreshing"));
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+fn check_background_success_keeps_distinct_root_source_time_and_generation(filelist_on_a: bool) {
+    let case = if filelist_on_a { "walker" } else { "filelist" };
+    let scope = test_settings_scope(&format!("freshness-background-success-{case}"));
+    let root_a = test_root(&format!("freshness-background-source-a-{case}"));
+    let root_b = test_root(&format!("freshness-background-source-b-{case}"));
+    for root in [&root_a, &root_b] {
+        fs::create_dir_all(root).unwrap();
+        fs::write(root.join("alpha.txt"), "alpha\n").unwrap();
+    }
+    let filelist_root = if filelist_on_a { &root_a } else { &root_b };
+    fs::write(filelist_root.join("FileList.txt"), "alpha.txt\n").unwrap();
+    let source_a = if filelist_on_a {
+        IndexSource::FileList(root_a.join("FileList.txt"))
+    } else {
+        IndexSource::Walker
+    };
+    let source_b = if filelist_on_a {
+        IndexSource::Walker
+    } else {
+        IndexSource::FileList(root_b.join("FileList.txt"))
+    };
+    let mut app = scope.app(root_a.clone(), 50, String::new());
+    settle_freshness_indexes(&mut app);
+    let time_a = UNIX_EPOCH + Duration::from_secs(100);
+    app.shell
+        .runtime
+        .snapshot_freshness_mut()
+        .unwrap()
+        .acquired_at = time_a;
+    let generation_a = app.shell.runtime.freshness.as_ref().unwrap().request_id;
+    app.create_new_tab();
+    app.apply_root_change(root_b.clone());
+    settle_freshness_indexes(&mut app);
+    assert_eq!(
+        app.shell.runtime.freshness.as_ref().unwrap().source,
+        source_b
+    );
+    let time_b = UNIX_EPOCH + Duration::from_secs(200);
+    app.shell
+        .runtime
+        .snapshot_freshness_mut()
+        .unwrap()
+        .acquired_at = time_b;
+    let old_generation_b = app.shell.runtime.freshness.as_ref().unwrap().request_id;
+    let tab_b = app.current_tab_id().unwrap();
+    fs::write(root_b.join("beta.txt"), "beta\n").unwrap();
+    if !filelist_on_a {
+        fs::write(root_b.join("FileList.txt"), "alpha.txt\nbeta.txt\n").unwrap();
+    }
+    let requested_at = SystemTime::now();
+    app.request_index_refresh();
+    let generation_b = app.shell.indexing.pending_request_id.unwrap();
+    app.switch_to_tab_index(0);
+    assert_eq!(app.shell.runtime.root, root_a);
+    settle_freshness_indexes(&mut app);
+    let snapshot_a = app.shell.runtime.freshness.as_ref().unwrap();
+    assert_eq!(snapshot_a.acquired_at, time_a);
+    assert_eq!(snapshot_a.request_id, generation_a);
+    assert_eq!(snapshot_a.source, source_a);
+    let background = app.shell.tabs.iter().find(|tab| tab.id == tab_b).unwrap();
+    let snapshot_b = background
+        .result_state
+        .committed
+        .freshness
+        .as_ref()
+        .unwrap();
+    assert_eq!(snapshot_b.root, root_b);
+    assert_eq!(snapshot_b.source, source_b);
+    assert_eq!(snapshot_b.request_id, generation_b);
+    assert_ne!(snapshot_b.request_id, old_generation_b);
+    assert!(snapshot_b.acquired_at >= requested_at);
+    assert!(snapshot_b.acquired_at <= SystemTime::now());
+    let acquired_b = snapshot_b.acquired_at;
+    assert!(background
+        .result_state
+        .committed
+        .all_entries
+        .iter()
+        .any(|entry| entry.path == root_b.join("beta.txt")));
+    app.switch_to_tab_index(1);
+    let restored = app.shell.runtime.freshness.as_ref().unwrap();
+    assert_eq!(restored.root, root_b);
+    assert_eq!(restored.source, source_b);
+    assert_eq!(restored.acquired_at, acquired_b);
+    assert_eq!(restored.request_id, generation_b);
+    assert!(app
+        .source_text()
+        .contains(if filelist_on_a { "Indexed" } else { "Loaded" }));
+    app.switch_to_tab_index(0);
+    assert_eq!(
+        app.shell.runtime.freshness.as_ref().unwrap().acquired_at,
+        time_a
+    );
+    assert!(app
+        .source_text()
+        .contains(if filelist_on_a { "Loaded" } else { "Indexed" }));
+    drop(app);
+    for root in [root_a, root_b] {
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
+fn freshness_background_success_keeps_distinct_walker_root_source_time_and_generation() {
+    check_background_success_keeps_distinct_root_source_time_and_generation(true);
+}
+
+#[test]
+fn freshness_background_success_keeps_distinct_filelist_root_source_time_and_generation() {
+    check_background_success_keeps_distinct_root_source_time_and_generation(false);
+}
+
 #[test]
 fn freshness_source_is_visible_and_hoverable_at_compact_widths() {
     use crate::app::freshness::{FileListChange, FileObservation, SnapshotFreshness};

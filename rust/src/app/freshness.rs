@@ -225,3 +225,109 @@ impl FlistWalkerApp {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::tests::test_root;
+    use std::sync::atomic::AtomicBool;
+    use std::sync::Arc;
+
+    fn check_isolated_filelist_change(component: &str) {
+        let root = test_root(&format!("freshness-fingerprint-{component}"));
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("FileList.txt");
+        let modified = SystemTime::UNIX_EPOCH + Duration::from_secs(100);
+        let set_modified = |path: &Path, time| {
+            File::options()
+                .write(true)
+                .open(path)
+                .unwrap()
+                .set_times(std::fs::FileTimes::new().set_modified(time))
+                .unwrap();
+        };
+        std::fs::write(&path, "alpha.txt\n").unwrap();
+        set_modified(&path, modified);
+        let baseline = observe_file(&path);
+        let FileObservation::Present(before) = &baseline else {
+            panic!("fixture fingerprint must be available");
+        };
+        match component {
+            "size" => {
+                std::fs::write(&path, "alpha.txt\nbeta.txt\n").unwrap();
+                set_modified(&path, before.modified);
+            }
+            "mtime" => {
+                std::fs::write(&path, "bravo.txt\n").unwrap();
+                set_modified(&path, modified + Duration::from_secs(10));
+            }
+            "identity" => {
+                let replacement = root.join("replacement");
+                std::fs::write(&replacement, "alpha.txt\n").unwrap();
+                set_modified(&replacement, before.modified);
+                std::fs::remove_file(&path).unwrap();
+                std::fs::rename(replacement, &path).unwrap();
+            }
+            _ => unreachable!(),
+        }
+        let FileObservation::Present(after) = observe_file(&path) else {
+            panic!("changed fixture fingerprint must be available");
+        };
+        assert_eq!(
+            before.size == after.size,
+            component != "size",
+            "{component}"
+        );
+        assert_eq!(
+            before.modified == after.modified,
+            component != "mtime",
+            "{component}"
+        );
+        #[cfg(any(unix, windows))]
+        assert_eq!(
+            before.identity == after.identity,
+            component != "identity",
+            "{component}"
+        );
+
+        let mut snapshot = SnapshotFreshness::acquired(
+            1,
+            root.clone(),
+            IndexSource::FileList(path),
+            baseline.clone(),
+            baseline,
+        );
+        let acquired_at = snapshot.acquired_at;
+        let now = Instant::now();
+        snapshot.last_checked_at = now - Duration::from_secs(6);
+        let (mut monitor, handle) = FreshnessMonitor::new(Arc::new(AtomicBool::new(false)));
+        monitor.tick(Some(&mut snapshot), Some(1), &root, true, true, now);
+        assert!(monitor.in_progress());
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while monitor.in_progress() {
+            monitor.tick(Some(&mut snapshot), Some(1), &root, true, true, now);
+            assert!(Instant::now() < deadline);
+            std::thread::yield_now();
+        }
+        assert_eq!(snapshot.change, FileListChange::Changed, "{component}");
+        assert_eq!(snapshot.acquired_at, acquired_at);
+        monitor.disconnect();
+        handle.join().unwrap();
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn freshness_monitor_detects_size_only_in_place_update() {
+        check_isolated_filelist_change("size");
+    }
+
+    #[test]
+    fn freshness_monitor_detects_mtime_only_in_place_update() {
+        check_isolated_filelist_change("mtime");
+    }
+
+    #[test]
+    fn freshness_monitor_detects_identity_only_replacement() {
+        check_isolated_filelist_change("identity");
+    }
+}
