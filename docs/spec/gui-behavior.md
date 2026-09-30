@@ -210,7 +210,9 @@
 - MUST: 追加要求は実行中1件と最新待機1件までとし、古い要求や別タブの応答を本文へ混入させない。ファイルの取得可能なID、size、mtimeの変化は `Changed` として拒否する。Windows の on-demand 判定は初回と追加時の両方で行う。
 - MUST: 拡張子に応じて Rust、Python、JavaScript、TypeScript、JSON、TOML、YAML、Markdown、shell、PowerShell、C、C++、HTML、CSV、TSV を色分けする。`.h` は C、正確な `.C` は C++ とする。CSV/TSV は表形式へ整形せず、セルの値の種類によらず同じ列を同じ色で本文上に色分けし、区切り文字は中立色で表示する。色数を超える列は8色の列色を循環して使う。空セルも列位置に数える。引用フィールド内の区切り文字と改行、および `""` による引用符エスケープを正しく扱い、引用フィールド内の改行では列位置を維持する。未対応形式、分類上限超過、解析失敗ではプレーン本文を維持する。HTML を実行・資源取得しない。
 - MUST: 色分けは初期ONとし、プレビュー内の切替は全タブ共通の当該GUIセッションにだけ適用する。OFFでも本文、行番号、コピー結果を変えない。色だけを状態の唯一の手掛かりにしない。
-- MUST: 色分けのON/OFFは pointer と application-owned keyboard command の両方から同じsession状態へ到達できなければならない。`Tab` / `Shift+Tab` は行のPIN固定/解除を所有するため、preview controlへのfocus移動として扱ってはならない。keyboard commandが未実装またはhelpから識別不能なbuildはkeyboard axisをFAILとし、pointer PASSで補完してはならない。
+- MUST: Windows/Linux の `Ctrl+Shift+L` と macOS の `Cmd+Shift+L` は検索欄とpreview操作欄を切り替える。preview操作欄では `Left` / `Right` で `Color`・`Load more`・`Reload preview` を循環選択し、`Enter` / `Space`（Emacs shortcut有効時は `Ctrl+J` / `Ctrl+M` も）で選択した操作を実行する。`PageUp` / `PageDown` はpreview本文だけをスクロールする。`Esc`（Emacs有効時は `Ctrl+G` も）またはprimary `L` はqueryとPINを消さず検索欄へ戻り、通常画面のprimary `L` の検索欄focus toggleは維持する。
+- MUST: focus切替とpreview操作自体はquery・現在行・PINを変えない。`Tab` / `Shift+Tab` は従来のPIN固定/解除と設定済みの次行移動を維持し、preview controlへのfocus traversalに使わない。選択controlを枠で識別できるようにし、切替・操作方法をhelpとpreview内の表示・tooltipに載せる。
+- MUST: pointerとkeyboardは同じ操作の利用可能条件とapplication-owned commandを使う。`Color` は非プレーンのsyntax文書だけで有効とし、`Load more` は読込中・終端・表示上限・恒久的page errorで無効、`Reload preview` は読込中に無効とする。新しいfocus移動には表示中の確定済みテキスト文書を必要とするが、明示reload中の同じtab/pathでは操作focusを維持する。preview非表示や文書なし、modal・履歴検索・IME変換中から背後のpreviewへ操作を漏らさず、押し続けた実行・切替キーのrepeatを新規操作として受け付けない。
 - MUST: TUIは20行/64 KiBの先頭表示と既存操作を維持し、GUIの追加ボタンを設けない。フォルダは従来の直接の子4096件と24行の表示上限を維持する。
 
 ### Preconditions / Postconditions

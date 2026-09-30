@@ -2,12 +2,13 @@ mod top_panel;
 mod widgets;
 
 use self::widgets::{centered_top_panel_label, paint_compact_combo_selected_text};
+use super::paged_preview_flow::{PagedPreviewView, PreviewAction};
 use super::{
     render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode, ResultSortScope,
 };
 use crate::ui_model::{
     format_file_size, format_system_time, normalize_path_for_display, PagedTextPreview,
-    PreviewPageError, PreviewPageState, SyntaxTokenKind,
+    PreviewPageState, SyntaxTokenKind,
 };
 use eframe::egui;
 #[cfg(test)]
@@ -32,6 +33,14 @@ pub(super) struct ResultRenderProbe {
 }
 
 #[cfg(test)]
+pub(super) struct PreviewControlProbe {
+    pub(super) action: PreviewAction,
+    pub(super) rect: egui::Rect,
+    pub(super) enabled: bool,
+    pub(super) selected: bool,
+}
+
+#[cfg(test)]
 struct ActiveResultRenderProbe {
     interaction: TestResultRowInteraction,
     result: ResultRenderProbe,
@@ -42,6 +51,17 @@ thread_local! {
     static RESULT_RENDER_PROBE: RefCell<Option<ActiveResultRenderProbe>> = const { RefCell::new(None) };
     static FORCE_IGNORE_LIST_CHECKBOX_CLICK: RefCell<bool> = const { RefCell::new(false) };
     static PREVIEW_RENDER_ROWS: RefCell<Option<usize>> = const { RefCell::new(None) };
+    static PREVIEW_CONTROL_PROBE: RefCell<Option<Vec<PreviewControlProbe>>> = const { RefCell::new(None) };
+}
+
+#[cfg(test)]
+pub(super) fn begin_preview_control_probe() {
+    PREVIEW_CONTROL_PROBE.with(|probe| *probe.borrow_mut() = Some(Vec::new()));
+}
+
+#[cfg(test)]
+pub(super) fn take_preview_control_probe() -> Vec<PreviewControlProbe> {
+    PREVIEW_CONTROL_PROBE.with(|probe| probe.borrow_mut().take().unwrap_or_default())
 }
 
 #[cfg(test)]
@@ -207,13 +227,6 @@ fn result_row_height(ui: &egui::Ui) -> f32 {
     ui.text_style_height(&egui::TextStyle::Body) + (FlistWalkerApp::RESULT_ROW_V_MARGIN * 2.0)
 }
 
-#[derive(Clone, Copy)]
-enum PreviewAction {
-    More,
-    Reload,
-    ToggleColor,
-}
-
 fn preview_visible_prefix(line: &str) -> (&str, bool) {
     if let Some((boundary, _)) = line.char_indices().nth(4_096) {
         (&line[..boundary], true)
@@ -338,11 +351,12 @@ pub(super) fn preview_line_job(
 fn render_paged_preview(
     ui: &mut egui::Ui,
     document: &PagedTextPreview,
-    generation: u64,
-    busy: bool,
-    error: Option<PreviewPageError>,
-    color_enabled: bool,
+    view: &mut PagedPreviewView,
 ) -> Option<PreviewAction> {
+    let generation = view.display_generation;
+    let busy = view.busy;
+    let error = view.error;
+    let color_enabled = view.color_enabled;
     ui.label(format!(
         "File: {}",
         normalize_path_for_display(&document.header.path)
@@ -372,10 +386,21 @@ fn render_paged_preview(
         ui.label(format!("Target: {target}"));
     }
     ui.separator();
-    let body_height = (ui.available_height() - 85.0).max(80.0);
+    let controls_height = 110.0 + if error.is_some() { 22.0 } else { 0.0 };
+    let body_height = (ui.available_height() - controls_height).max(80.0);
     let row_height = preview_paged_row_height(ui);
-    egui::ScrollArea::both()
-        .id_salt(("paged-preview", generation))
+    if view.scroll_generation != generation {
+        view.scroll_offset = 0.0;
+        view.scroll_generation = generation;
+    }
+    let mut scroll = egui::ScrollArea::both().id_salt(("paged-preview", generation));
+    if view.scroll_pages != 0 {
+        scroll = scroll.vertical_scroll_offset(
+            (view.scroll_offset + view.scroll_pages as f32 * body_height).max(0.0),
+        );
+        view.scroll_pages = 0;
+    }
+    let scroll_output = scroll
         .max_height(body_height)
         .auto_shrink([false, false])
         .show_rows(ui, row_height, document.line_count(), |ui, rows| {
@@ -409,6 +434,7 @@ fn render_paged_preview(
                 });
             }
         });
+    view.scroll_offset = scroll_output.state.offset.y;
     ui.separator();
     let mut action = None;
     ui.horizontal(|ui| {
@@ -428,36 +454,36 @@ fn render_paged_preview(
             super::paged_preview_flow::page_error_label(error),
         );
     }
+    let focus_hint = format!(
+        "{}+Shift+L: Search / Preview",
+        FlistWalkerApp::primary_shortcut_label()
+    );
+    ui.weak(&focus_hint);
     ui.horizontal(|ui| {
-        if document
-            .syntax()
-            .is_some_and(|syntax| !syntax.is_plain_fallback())
-            && ui
-                .button(if color_enabled {
-                    "Color: on"
-                } else {
-                    "Color: off"
-                })
-                .clicked()
-        {
-            action = Some(PreviewAction::ToggleColor);
-        }
-        if ui
-            .add_enabled(
-                !busy
-                    && document.state() == PreviewPageState::More
-                    && !error.is_some_and(super::paged_preview_flow::permanent_page_error),
-                egui::Button::new("Load more"),
-            )
-            .clicked()
-        {
-            action = Some(PreviewAction::More);
-        }
-        if ui
-            .add_enabled(!busy, egui::Button::new("Reload preview"))
-            .clicked()
-        {
-            action = Some(PreviewAction::Reload);
+        for candidate in PreviewAction::ALL {
+            let label = match candidate {
+                PreviewAction::ToggleColor => if color_enabled { "Color: on" } else { "Color: off" },
+                PreviewAction::More => "Load more",
+                PreviewAction::Reload => "Reload preview",
+            };
+            let selected = view.controls_focused && view.selected_control == candidate;
+            let button = egui::Button::new(label).stroke(if selected {
+                egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)
+            } else {
+                ui.visuals().widgets.inactive.bg_stroke
+            });
+            let response = ui.add_enabled(candidate.available(document, busy, error), button)
+                .on_hover_text(format!("{focus_hint}\nLeft / Right: select; Enter / Space: activate; Esc: return to search"));
+            #[cfg(test)]
+            PREVIEW_CONTROL_PROBE.with(|probe| {
+                if let Some(controls) = probe.borrow_mut().as_mut() {
+                    controls.push(PreviewControlProbe { action: candidate, rect: response.rect, enabled: response.enabled(), selected });
+                }
+            });
+            if response.clicked() {
+                view.selected_control = candidate;
+                action = Some(candidate);
+            }
         }
     });
     action
@@ -492,14 +518,8 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                     egui::Frame::NONE.fill(frame_fill).show(ui, |ui| {
                         ui.set_min_size(egui::vec2(preview_width, preview_height));
                         if let Some(document) = paged_document.as_ref() {
-                            preview_action = render_paged_preview(
-                                ui,
-                                document,
-                                app.paged_preview_view.display_generation,
-                                app.paged_preview_view.busy,
-                                app.paged_preview_view.error,
-                                app.paged_preview_view.color_enabled,
-                            );
+                            preview_action =
+                                render_paged_preview(ui, document, &mut app.paged_preview_view);
                         } else {
                             egui::ScrollArea::both()
                                 .auto_shrink([false, false])
@@ -520,13 +540,8 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                 },
             );
         });
-        match preview_action {
-            Some(PreviewAction::More) => app.request_paged_preview_more(),
-            Some(PreviewAction::Reload) => app.reload_paged_preview(),
-            Some(PreviewAction::ToggleColor) => {
-                app.paged_preview_view.color_enabled = !app.paged_preview_view.color_enabled
-            }
-            None => {}
+        if let Some(action) = preview_action {
+            app.apply_preview_action(action);
         }
         let new_width = response
             .response
@@ -1050,7 +1065,9 @@ mod preview_render_tests {
                     ..Default::default()
                 },
                 |ui| {
-                    render_paged_preview(ui, &document, 1, false, None, true);
+                    let mut view = PagedPreviewView::default();
+                    view.display_generation = 1;
+                    render_paged_preview(ui, &document, &mut view);
                 },
             );
             rendered = PREVIEW_RENDER_ROWS.with(|count| count.borrow_mut().take().unwrap_or(0));
