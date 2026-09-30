@@ -49,6 +49,10 @@ impl WorkerRuntime {
         self.shutdown.store(true, Ordering::Relaxed);
     }
 
+    pub(in crate::app) fn shutdown_token(&self) -> Arc<AtomicBool> {
+        self.shutdown.clone()
+    }
+
     #[cfg(test)]
     pub(in crate::app) fn worker_names(&self) -> Vec<String> {
         self.handles
@@ -160,6 +164,7 @@ impl FlistWalkerApp {
 
     /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
     fn disconnect_worker_channels(&mut self) {
+        self.freshness_monitor.disconnect();
         self.shell.worker_bus.config_open.disconnect();
         self.shell.worker_bus.config_settings.disconnect();
         let (dummy_search_tx, _) = mpsc::channel::<SearchRequest>();

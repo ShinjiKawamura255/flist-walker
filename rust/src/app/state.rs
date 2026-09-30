@@ -382,6 +382,12 @@ impl AppRuntimeState {
         self.committed.current_row = row;
     }
 
+    pub(super) fn snapshot_freshness_mut(
+        &mut self,
+    ) -> Option<&mut super::freshness::SnapshotFreshness> {
+        self.committed.freshness.as_mut()
+    }
+
     pub(super) fn install_preview_retirement(&mut self, handle: PreviewRetirementHandle) {
         self.preview_retirement = Some(handle);
     }
@@ -462,6 +468,10 @@ impl AppRuntimeState {
 
     pub(super) fn preview_text_mut(&mut self) -> &mut String {
         &mut self.committed.preview
+    }
+
+    pub(super) fn set_snapshot_freshness(&mut self, snapshot: super::freshness::SnapshotFreshness) {
+        self.committed.freshness = Some(snapshot);
     }
 
     pub(super) fn swap_committed_payload(&mut self, payload: &mut TabCommittedPayload) {

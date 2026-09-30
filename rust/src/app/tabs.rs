@@ -737,6 +737,17 @@ impl FlistWalkerApp {
             .remove(&request_id)
             .expect("completed background finalization");
         debug_assert_eq!(finalization.request_id, request_id);
+        let snapshot = {
+            let tab = self.shell.tabs.get(tab_index).expect("validated tab");
+            let source = tab
+                .index_state
+                .pending_index_finish
+                .as_ref()
+                .expect("staged background finish")
+                .source
+                .clone();
+            self.acquired_index_snapshot(request_id, source, tab.root.clone())
+        };
         let shell = &mut self.shell;
         let (tabs, features) = (&mut shell.tabs, &mut shell.features);
         let tab = tabs.get_mut(tab_index).expect("validated tab");
@@ -748,6 +759,7 @@ impl FlistWalkerApp {
             .expect("staged background finish");
         debug_assert_eq!(finalization.tab_id, tab.id);
         tab.index_state.build.index.source = pending_finish.source;
+        tab.result_state.committed.freshness = Some(snapshot);
         tab.result_state.committed.all_entries =
             Arc::new(std::mem::take(&mut finalization.completed_entries));
         tab.index_state

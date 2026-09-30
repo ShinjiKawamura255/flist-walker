@@ -77,7 +77,7 @@
 ## DES-025 GUI settings persistence boundary
 
 - `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。Walker 上限の単一行入力は現在の process の Emacs 設定で共有 text-editing adapter を使い、次回起動用の草稿値をその場で適用しない。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
-- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、6つの利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
+- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、7つの利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
 - `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
 
 ## DES-026 段階的プレビューの所有権と色分け
@@ -100,3 +100,9 @@
 - `PipelineOwner` distinguishes empty and disconnected search response channels, drains completed responses before failure settlement, and handles send failure through the same terminal path. `SearchCoordinator` owns process-local worker health separately from query/tab state, cancels outstanding tokens, and clears routing/pending ownership. Active and background tab request snapshots are cleared without replacing committed results, selection, PINs, or queries. Failure settlement is idempotent; subsequent dispatch is rejected locally. The GUI paints a persistent restart instruction independently of query advice and notices. A new application runtime recreates the worker; no automatic replay or new thread/join/lock is introduced.
 - Empty-result guidance waits for idle input and settled workers. Relaxation delegates to ordinary filter transitions; a context-bound single undo stores only the affected condition. Esc keeps filter state; subsequent edits of that condition and root/tab/preset changes invalidate undo. No filesystem probes run during rendering.
 - Trace: FR-046/047 → SP-010/SP-013 → DES-027 → TC-223/224/225/226.
+
+## DES-028 Snapshot freshnessとbounded FileList checker
+- `TabCommittedPayload::freshness`が小さな取得情報を所有し、active/inactive移動に追従する。index workerのrequest mailboxに開始時fingerprintと完了時比較を記録し、成功したcommitだけが取得情報を公開する。root FileListの取得metadata pathは要求されたlexical rootへ投影し、resolved root aliasの違いで監視を拒否しない。UI threadはmetadataを読まない。
+- `FreshnessMonitor`は1本のworkerとbounded request/result channelを所有する。tab/root/snapshot request ID/source path/check IDで照合し、focus・active・index settlementを確認して応答を採用する。Changedは次の取得まで保持し、通常のUnavailableは再試行できる。timeoutはそのsnapshotを停止し、物理pendingを完了まで保持する。shutdownは既存WorkerRuntimeへ登録する。
+- 変更通知のrefreshはPreserveSortと既存selected-path復元intentを利用し、query/filter/PINは維持する。取得情報はsession保存schemaに含めない。追加依存はない。
+- Trace: FR-048 → SP-026 → DES-028 → TC-227. rollbackは監視・設定と取得情報接続を独立して戻せる。

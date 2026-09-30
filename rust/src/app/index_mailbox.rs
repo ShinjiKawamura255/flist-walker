@@ -18,6 +18,7 @@ struct MailboxState {
     truncated: Option<SequencedResponse>,
     terminal: Option<SequencedResponse>,
     closed: bool,
+    snapshot: Option<super::freshness::SnapshotFreshness>,
 }
 
 pub(super) enum IndexMailboxPublishError {
@@ -51,6 +52,58 @@ impl IndexResponseMailbox {
             data_capacity: data_capacity.max(1),
             state: Mutex::new(MailboxState::default()),
         }
+    }
+
+    // Called only by the index worker. Filesystem probes occur outside the mutex.
+    pub(super) fn record_snapshot_started(
+        &self,
+        request_id: u64,
+        root: std::path::PathBuf,
+        source: crate::indexer::IndexSource,
+    ) {
+        use super::freshness::{observe_file, FileObservation, SnapshotFreshness};
+        // Discovery resolves the root before selecting its root-only FileList.
+        // Keep snapshot/check identity in the requested lexical root namespace
+        // (e.g. /var vs /private/var on macOS), without resolving paths on UI.
+        let source = match source {
+            crate::indexer::IndexSource::FileList(path) => {
+                match path
+                    .file_name()
+                    .filter(|name| *name == "FileList.txt" || *name == "filelist.txt")
+                {
+                    Some(name) => crate::indexer::IndexSource::FileList(root.join(name)),
+                    None => crate::indexer::IndexSource::FileList(path),
+                }
+            }
+            other => other,
+        };
+        let baseline = match &source {
+            crate::indexer::IndexSource::FileList(path) => observe_file(path),
+            _ => FileObservation::Unavailable,
+        };
+        let snapshot =
+            SnapshotFreshness::acquired(request_id, root, source, baseline.clone(), baseline);
+        if let Ok(mut state) = self.state.lock() {
+            state.snapshot = Some(snapshot);
+        }
+    }
+
+    pub(super) fn record_snapshot_completed(&self) {
+        use super::freshness::{observe_file, FileListChange};
+        let Some(mut snapshot) = self.snapshot() else {
+            return;
+        };
+        if let crate::indexer::IndexSource::FileList(path) = &snapshot.source {
+            snapshot.change = FileListChange::compare(&snapshot.baseline, &observe_file(path));
+        }
+        snapshot.acquired_at = std::time::SystemTime::now();
+        if let Ok(mut state) = self.state.lock() {
+            state.snapshot = Some(snapshot);
+        }
+    }
+
+    pub(super) fn snapshot(&self) -> Option<super::freshness::SnapshotFreshness> {
+        self.state.lock().ok()?.snapshot.clone()
     }
 
     pub(super) fn try_publish(

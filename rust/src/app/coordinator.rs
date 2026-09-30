@@ -1,6 +1,5 @@
 use super::tab_state::TabResourceTransition;
 use super::{normalize_windows_path_buf, FlistWalkerApp};
-use crate::indexer::IndexSource;
 use crate::path_utils::normalize_text_for_display;
 use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
@@ -324,22 +323,14 @@ impl FlistWalkerApp {
 
     /// 現在の index source を status 向け文言へ整形する。
     pub(super) fn source_text(&self) -> String {
-        match &self.shell.indexing.build.index.source {
-            IndexSource::FileList(path) => format!(
-                "Source: FileList ({})",
-                path.file_name()
-                    .and_then(|s: &std::ffi::OsStr| s.to_str())
-                    .unwrap_or("FileList.txt")
-            ),
-            IndexSource::Walker => "Source: Walker".to_string(),
-            IndexSource::None => "Source: None".to_string(),
-        }
+        self.freshness_source_text()
     }
 
     pub(super) fn run_update_cycle(&mut self, ui: &mut egui::Ui) -> bool {
         let ctx = ui.ctx().clone();
         self.maybe_apply_pending_cjk_font(&ctx);
         self.poll_runtime_events();
+        self.tick_freshness(&ctx);
         if self.request_viewport_close_if_needed(&ctx) {
             return false;
         }

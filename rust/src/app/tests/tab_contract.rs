@@ -195,6 +195,7 @@ fn tab_state_contract_round_trip_pins_field_layout() {
     };
     let result_state = TabResultState {
         committed: TabCommittedPayload {
+            freshness: None,
             all_entries: Arc::new(vec![file_entry(root.join("all.txt"))]),
             entries: Arc::new(vec![file_entry(root.join("visible.txt"))]),
             base_results: vec![(root.join("base.txt"), 0.5)],

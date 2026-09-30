@@ -401,7 +401,7 @@ impl FlistWalkerApp {
             index_response_mailboxes,
             latest_kind_epochs,
             tab_resource_reclaimer,
-            worker_runtime,
+            mut worker_runtime,
         ) = Self::bootstrap_workers().into_parts();
         let (
             root,
@@ -431,10 +431,15 @@ impl FlistWalkerApp {
         let emacs_keybindings_enabled = runtime_config.emacs_keybindings_enabled;
         let ctrl_w_deletes_word_in_query = runtime_config.ctrl_w_deletes_word_in_query;
         let tab_pin_moves_to_next_row = runtime_config.tab_pin_moves_to_next_row;
+        let (freshness_monitor, freshness_worker) =
+            super::freshness::FreshnessMonitor::new(worker_runtime.shutdown_token());
+        worker_runtime.push("filelist-freshness", freshness_worker);
         let preview_retirement = tab_resource_reclaimer.preview_handle();
         let mut app = Self {
             settings_dialog: Default::default(),
             paged_preview_view: Default::default(),
+            freshness_monitor,
+            filelist_auto_check_enabled: runtime_config.filelist_auto_check_enabled,
             deferred_preview_response: None,
             parked_preview_request: None,
             deferred_latest_preview_request: None,

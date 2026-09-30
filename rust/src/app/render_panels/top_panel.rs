@@ -1,4 +1,3 @@
-use super::widgets::centered_top_panel_label;
 use crate::app::search_assist::FilterValue;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::text_editing::char_count;
@@ -396,7 +395,6 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.persist_ui_state_now();
             }
             ui.separator();
-            centered_top_panel_label(ui, app.source_text());
             if files_changed || dirs_changed {
                 app.manual_filter_changed(FilterValue::Kind(true, true));
             }
@@ -407,6 +405,43 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ignore_list_changed,
             );
         });
+
+        ui.add(egui::Label::new(app.source_text()).wrap()).on_hover_ui(|ui| {
+            if let Some(snapshot) = app.shell.runtime.freshness.as_ref() {
+                ui.label(format!("Root: {}", normalize_path_for_display(&snapshot.root)));
+                if let crate::indexer::IndexSource::FileList(path) = &snapshot.source {
+                    ui.label(format!("FileList: {}", normalize_path_for_display(path)));
+                }
+                if let Some(time) = crate::ui_model::format_system_time(snapshot.acquired_at) {
+                    ui.label(format!("Acquired: {time}"));
+                }
+            }
+            ui.label("Acquisition time describes this snapshot; it does not guarantee the tree is current.");
+            ui.label("Change checks cover only the loaded root FileList, not child FileLists, new FileLists, or tree changes.");
+        });
+
+        let freshness_warning = app.shell.runtime.freshness.as_ref().and_then(|snapshot| {
+            if !matches!(snapshot.source, crate::indexer::IndexSource::FileList(_)) {
+                return None;
+            }
+            match snapshot.change {
+                crate::app::freshness::FileListChange::Changed => Some("FileList changed since loading"),
+                crate::app::freshness::FileListChange::Unavailable => Some("FileList change check unavailable"),
+                crate::app::freshness::FileListChange::Unchanged => None,
+            }
+        });
+        if let Some(message) = freshness_warning {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(message).color(ui.visuals().warn_fg_color))
+                    .on_hover_text("Only the loaded root FileList is checked. Refresh is manual.");
+                if ui.add_enabled(
+                    !app.shell.indexing.in_progress && app.shell.indexing.pending_finish.is_none(),
+                    egui::Button::new("Refresh Index"),
+                ).clicked() {
+                    app.refresh_changed_filelist();
+                }
+            });
+        }
 
         if app.shell.runtime.query_state.history_search_active {
             ui.label(

@@ -181,6 +181,7 @@ impl TabBuildPayload {
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub(super) struct TabCommittedPayload {
+    pub(super) freshness: Option<super::freshness::SnapshotFreshness>,
     pub(super) all_entries: Arc<Vec<Entry>>,
     pub(super) entries: Arc<Vec<Entry>>,
     pub(super) base_results: Vec<(PathBuf, f64)>,
@@ -198,6 +199,7 @@ pub(super) struct TabCommittedPayload {
 impl Default for TabCommittedPayload {
     fn default() -> Self {
         Self {
+            freshness: None,
             all_entries: Arc::new(Vec::new()),
             entries: Arc::new(Vec::new()),
             base_results: Vec::new(),
@@ -744,6 +746,7 @@ impl AppTabState {
             ),
             result_state: TabResultState {
                 committed: TabCommittedPayload {
+                    freshness: shell.shell.runtime.freshness.clone(),
                     all_entries: Arc::clone(&shell.shell.runtime.all_entries),
                     entries: Arc::clone(&shell.shell.runtime.entries),
                     results: base_results.clone(),

@@ -222,3 +222,14 @@
 ### Edge / Error
 - 読込途中でファイルが置換・更新された場合は旧本文を保持して再読込を案内する。同一ID、同一size、同一mtimeを維持するin-place変更の完全検知は保証しない。
 - 長い1行、UTF-16 surrogate、マルチバイト文字、改行直前のbyte上限でも次ページに正しく継続する。外部コマンド・構文検査・リモート資源取得は行わない。
+
+## SP-026 Snapshotの取得情報とroot FileListの変更確認
+### Requirements
+- MUST: 成功して公開したindex snapshotにsource、root、request generation、取得時刻を保持する。FileListは Loaded、Walkerは Indexed と相対経過時間を表示し、tooltipでpathとUTC取得時刻を示す。取得情報は独立した幅制約付きrowへ配置し、長い更新・失敗表示も折り返して表示する。更新中・失敗時は直前の取得情報を維持し、起動間の永続化は行わない。
+- MUST: 読込に選ばれたroot直下のFileListについて、取得時のfile ID・size・mtimeをworkerで記録し、foregroundのactive tabで約5秒間隔に比較する。child FileList、未選択の新規FileList、tree内の増減は監視対象としない。最新性の保証とは表現しない。
+- MUST: 変更・置換・削除は変更通知を一度表示して保持する。確認失敗は確認不能と表示する。通知はmodalを開かず、Refresh Indexからだけ更新する。通知からの更新ではquery・filters・sortを保持し、同じpathが残る場合は選択を復元する。
+- MUST: workerは1本、request/resultは各1件までとする。tab/root/index generation/path/確認request IDを照合し、旧応答は破棄する。確認が2秒を超えたsnapshotは確認不能として監視を停止し、遅れて届いた応答は採用しない。OS I/O自体の強制中断は保証せず、占有workerに追加要求を積まない。
+- MUST: `filelist_auto_check_enabled`は既定trueとし、SettingsのSearchで無効にできる。保存は他のGUI設定同様、次回起動から反映する。
+### Edge / Error
+- 初回fingerprintを取得できない場合、後続の成功だけで未変更とは判定しない。同一ID・size・mtimeを保つ書換えの完全検知は保証しない。
+- 更新中は監視応答を適用せず、成功した次のsnapshotから新しい基準を使う。失敗は旧取得時刻を保つ。

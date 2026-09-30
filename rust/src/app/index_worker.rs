@@ -51,6 +51,7 @@ impl IndexResponseSink for Sender<IndexResponse> {
 
 struct MailboxResponseSink {
     request_id: u64,
+    root: PathBuf,
     tab_id: u64,
     mailbox: Arc<IndexResponseMailbox>,
     shutdown: Arc<AtomicBool>,
@@ -71,6 +72,15 @@ impl MailboxResponseSink {
 
 impl IndexResponseSink for MailboxResponseSink {
     fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
+        match &response {
+            IndexResponse::Started { source, .. } => self.mailbox.record_snapshot_started(
+                self.request_id,
+                self.root.clone(),
+                source.clone(),
+            ),
+            IndexResponse::Finished { .. } => self.mailbox.record_snapshot_completed(),
+            _ => {}
+        }
         loop {
             match self.mailbox.try_publish(response) {
                 Ok(()) => return Ok(()),
@@ -777,6 +787,7 @@ fn spawn_index_worker_with(
                 };
                 let tx_res_worker = MailboxResponseSink {
                     request_id: req.request_id,
+                    root: req.root.clone(),
                     tab_id: req.tab_id,
                     mailbox,
                     shutdown: Arc::clone(&shutdown_worker),

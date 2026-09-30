@@ -33,6 +33,7 @@ const WINDOW_TRACE_VERBOSE_ENV: &str = "FLISTWALKER_WINDOW_TRACE_VERBOSE";
 const WINDOW_TRACE_PATH_ENV: &str = "FLISTWALKER_WINDOW_TRACE_PATH";
 const HISTORY_PERSIST_ENV: &str = "FLISTWALKER_DISABLE_HISTORY_PERSIST";
 const RESTORE_TABS_ENV: &str = "FLISTWALKER_RESTORE_TABS";
+const FILELIST_AUTO_CHECK_ENABLED_ENV: &str = "FLISTWALKER_FILELIST_AUTO_CHECK_ENABLED";
 const UPDATE_FEED_URL_ENV: &str = "FLISTWALKER_UPDATE_FEED_URL";
 const UPDATE_ALLOW_SAME_VERSION_ENV: &str = "FLISTWALKER_UPDATE_ALLOW_SAME_VERSION";
 const UPDATE_ALLOW_DOWNGRADE_ENV: &str = "FLISTWALKER_UPDATE_ALLOW_DOWNGRADE";
@@ -45,6 +46,7 @@ pub struct RuntimeConfig {
     pub search_parallel_threshold: usize,
     pub search_threads: usize,
     pub walker_max_entries: usize,
+    pub filelist_auto_check_enabled: bool,
     pub window_trace_enabled: bool,
     pub window_trace_verbose: bool,
     pub window_trace_path: String,
@@ -72,6 +74,7 @@ pub struct EditableSettings {
     pub ctrl_w_deletes_word_in_query: bool,
     pub tab_pin_moves_to_next_row: bool,
     pub walker_max_entries: usize,
+    pub filelist_auto_check_enabled: bool,
 }
 
 impl From<&RuntimeConfig> for EditableSettings {
@@ -83,6 +86,7 @@ impl From<&RuntimeConfig> for EditableSettings {
             ctrl_w_deletes_word_in_query: config.ctrl_w_deletes_word_in_query,
             tab_pin_moves_to_next_row: config.tab_pin_moves_to_next_row,
             walker_max_entries: config.walker_max_entries,
+            filelist_auto_check_enabled: config.filelist_auto_check_enabled,
         }
     }
 }
@@ -179,6 +183,10 @@ fn save_editable_settings_with_writer(
         "walker_max_entries".into(),
         serde_json::json!(draft.walker_max_entries),
     );
+    object.insert(
+        "filelist_auto_check_enabled".into(),
+        serde_json::json!(draft.filelist_auto_check_enabled),
+    );
     let bytes = serde_json::to_vec_pretty(&value)?;
     if bytes.len() > GUI_EDITABLE_SETTINGS_MAX_BYTES {
         bail!("saved settings JSON exceeds the 64 KiB editor limit");
@@ -256,6 +264,8 @@ struct RuntimeConfigSeed {
     #[serde(skip_serializing_if = "Option::is_none")]
     walker_max_entries: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    filelist_auto_check_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     window_trace_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     window_trace_verbose: Option<bool>,
@@ -307,6 +317,7 @@ impl Default for RuntimeConfig {
             search_parallel_threshold: SEARCH_PARALLEL_THRESHOLD_DEFAULT,
             search_threads: default_search_threads(),
             walker_max_entries: WALKER_MAX_ENTRIES_DEFAULT,
+            filelist_auto_check_enabled: true,
             window_trace_enabled: false,
             window_trace_verbose: false,
             window_trace_path: default_window_trace_path(),
@@ -342,6 +353,10 @@ impl RuntimeConfig {
         set_env_value(WINDOW_TRACE_PATH_ENV, self.window_trace_path.clone());
         set_env_bool(HISTORY_PERSIST_ENV, self.history_persist_disabled);
         set_env_bool(RESTORE_TABS_ENV, self.restore_tabs_enabled);
+        set_env_bool(
+            FILELIST_AUTO_CHECK_ENABLED_ENV,
+            self.filelist_auto_check_enabled,
+        );
         set_env_value(UPDATE_FEED_URL_ENV, self.update_feed_url.clone());
         set_env_bool(
             UPDATE_ALLOW_SAME_VERSION_ENV,
@@ -724,6 +739,8 @@ impl RuntimeConfig {
         let (_, window_trace_path) = env_string_with_presence(WINDOW_TRACE_PATH_ENV);
         let (_, history_persist_disabled) = env_bool_with_presence(HISTORY_PERSIST_ENV);
         let (_, restore_tabs_enabled) = env_bool_with_presence(RESTORE_TABS_ENV);
+        let (filelist_auto_check_enabled_set, filelist_auto_check_enabled) =
+            env_bool_with_presence(FILELIST_AUTO_CHECK_ENABLED_ENV);
         let (_, update_feed_url) = env_string_with_presence(UPDATE_FEED_URL_ENV);
         let (update_allow_same_version_set, update_allow_same_version) =
             env_bool_with_presence(UPDATE_ALLOW_SAME_VERSION_ENV);
@@ -739,6 +756,8 @@ impl RuntimeConfig {
                 .unwrap_or(SEARCH_PARALLEL_THRESHOLD_DEFAULT),
             search_threads: search_threads.unwrap_or_else(default_search_threads),
             walker_max_entries: walker_max_entries.unwrap_or(WALKER_MAX_ENTRIES_DEFAULT),
+            filelist_auto_check_enabled: !filelist_auto_check_enabled_set
+                || filelist_auto_check_enabled,
             window_trace_enabled,
             window_trace_verbose,
             window_trace_path: window_trace_path
@@ -769,6 +788,7 @@ impl RuntimeConfig {
                 .map(|_| config.search_parallel_threshold),
             search_threads: search_threads.map(|_| config.search_threads),
             walker_max_entries: Some(config.walker_max_entries),
+            filelist_auto_check_enabled: Some(config.filelist_auto_check_enabled),
             window_trace_enabled: window_trace_enabled_set.then_some(config.window_trace_enabled),
             window_trace_verbose: window_trace_verbose_set.then_some(config.window_trace_verbose),
             window_trace_path: window_trace_path.map(|_| config.window_trace_path.clone()),
@@ -851,6 +871,11 @@ fn normalize_runtime_config_file_locked(path: &Path, text: &str, config: &Runtim
         root,
         "tab_pin_moves_to_next_row",
         serde_json::json!(config.tab_pin_moves_to_next_row),
+    );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "filelist_auto_check_enabled",
+        serde_json::json!(config.filelist_auto_check_enabled),
     );
     if let Some(developer) = root
         .get_mut("developer")
