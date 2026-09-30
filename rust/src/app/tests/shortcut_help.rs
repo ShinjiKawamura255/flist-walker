@@ -82,6 +82,10 @@ fn gui_help_lines_follow_platform_and_emacs_settings() {
     let disabled = FlistWalkerApp::gui_help_lines(false, true).join("\n");
     let primary = FlistWalkerApp::primary_shortcut_label();
 
+    assert!(enabled.contains(&format!("{primary}+Shift+L")));
+    assert!(enabled.contains("Select Color, Load more, or Reload preview"));
+    assert!(enabled.contains("Enter / Space — Activate the selected preview control"));
+    assert!(disabled.contains(&format!("{primary}+Shift+L")));
     assert!(enabled.contains(&format!("{primary}+T")));
     assert!(enabled.contains(&format!("{primary}+Shift+P")));
     assert!(enabled.contains("Type to filter preset names"));

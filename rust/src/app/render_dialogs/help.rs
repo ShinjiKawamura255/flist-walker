@@ -21,6 +21,14 @@ impl FlistWalkerApp {
             "PageUp / PageDown — Move one result page".to_string(),
             format!("{primary}+L — Focus or leave the search box"),
             "".to_string(),
+            "Preview controls".to_string(),
+            format!("{primary}+Shift+L — Switch between search and preview controls"),
+            "Left / Right — Select Color, Load more, or Reload preview".to_string(),
+            "Enter / Space — Activate the selected preview control".to_string(),
+            "PageUp / PageDown — Scroll the preview while its controls are active".to_string(),
+            format!("Esc / {primary}+L — Return to search without clearing the query or pins"),
+            "Tab / Shift+Tab — Keep toggling the current row pin".to_string(),
+            "".to_string(),
             "Selection and actions".to_string(),
             "Enter — Open or execute the current row and pinned items".to_string(),
             "Shift+Enter — Reveal the current row or pinned items in their folders".to_string(),
@@ -124,6 +132,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     } else if matches!(
                         line.as_str(),
                         "Search and navigation"
+                            | "Preview controls"
                             | "Selection and actions"
                             | "Tabs and roots"
                             | "Presets"

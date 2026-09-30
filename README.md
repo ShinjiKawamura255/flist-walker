@@ -55,18 +55,24 @@ cargo run --bin flistwalker -- --root ..
 - `Ctrl+Shift+C`: copy selected paths
 - `Esc` / `Ctrl+G`: cancel the active picker/modal; in the main view, clear query and pinned items
 - `Ctrl+A` / `Ctrl+E`, `Ctrl+B` / `Ctrl+F`, `Ctrl+H` / `Ctrl+D`, `Ctrl+K` / `Ctrl+U`, `Ctrl+Y`: edit the focused GUI/TUI text field with the shared Emacs reducer
-- `Ctrl+L`: focus the search box
+- `Ctrl+L`: toggle search-box focus; return to search when preview controls are active
 - `Ctrl+T`: new tab
 - `Ctrl+W`: close the current tab; when both `emacs_keybindings_enabled` and `ctrl_w_deletes_word_in_query` are enabled, a focused GUI search/history field uses it to delete the previous word instead
 - `Ctrl+Tab` / `Ctrl+Shift+Tab`: switch tabs
 - Drag and drop a tab to reorder tabs
+
+### Preview Keyboard Controls (GUI)
+
+Press `Ctrl+Shift+L` (`Cmd+Shift+L` on macOS) to switch between search and preview controls. Use `Left` / `Right` to select `Color`, `Load more`, or `Reload preview`, and `Enter` / `Space` to activate the selected button. `Ctrl+J` / `Ctrl+M` also activate it when Emacs shortcuts are enabled. `PageUp` / `PageDown` scroll the preview body; `Esc` or `Ctrl+L` (`Cmd+L` on macOS) returns to search without clearing the query or pins. Switching focus preserves the current result and pins. `Tab` / `Shift+Tab` keeps its pin-toggle behavior, including the configured move to the next row.
+
+The selected control has a visible outline, with the shortcut also shown in the preview and button tooltips. Preview controls require a displayed text document; dialogs, history search, and IME composition block background preview commands. Color is disabled for plain-text fallback; Load more is disabled while loading, at the end or display limit, or after a permanent page error; Reload preview is disabled while loading. Holding an activation or focus-switch key does not repeat its action.
 
 ## Shortcut Differences on macOS
 
 On macOS, the following primary shortcuts are mapped from `Ctrl` to `Cmd`:
 
 - `Ctrl+T` / `Ctrl+W`
-- `Ctrl+L`
+- `Ctrl+L` / `Ctrl+Shift+L`
 - `Ctrl+Shift+C`
 - `Ctrl+Shift+P`
 

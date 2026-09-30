@@ -3,6 +3,37 @@ use crate::ui_model::{PagedTextPreview, PreviewPageError, PreviewPageState};
 use std::path::Path;
 use std::sync::Arc;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub(super) enum PreviewAction {
+    #[default]
+    ToggleColor,
+    More,
+    Reload,
+}
+
+impl PreviewAction {
+    pub(super) const ALL: [Self; 3] = [Self::ToggleColor, Self::More, Self::Reload];
+
+    pub(super) fn available(
+        self,
+        document: &PagedTextPreview,
+        busy: bool,
+        error: Option<PreviewPageError>,
+    ) -> bool {
+        match self {
+            Self::ToggleColor => document
+                .syntax()
+                .is_some_and(|syntax| !syntax.is_plain_fallback()),
+            Self::More => {
+                !busy
+                    && document.state() == PreviewPageState::More
+                    && !error.is_some_and(permanent_page_error)
+            }
+            Self::Reload => !busy,
+        }
+    }
+}
+
 pub(super) struct PagedPreviewView {
     pub(super) error: Option<PreviewPageError>,
     pub(super) busy: bool,
@@ -11,6 +42,12 @@ pub(super) struct PagedPreviewView {
     path: Option<std::path::PathBuf>,
     request_id: Option<u64>,
     pub(super) color_enabled: bool,
+    pub(super) controls_focused: bool,
+    pub(super) exit_key_held: Option<eframe::egui::Key>,
+    pub(super) selected_control: PreviewAction,
+    pub(super) scroll_pages: i32,
+    pub(super) scroll_offset: f32,
+    pub(super) scroll_generation: u64,
 }
 
 impl Default for PagedPreviewView {
@@ -23,6 +60,12 @@ impl Default for PagedPreviewView {
             path: None,
             request_id: None,
             color_enabled: true,
+            controls_focused: false,
+            exit_key_held: None,
+            selected_control: PreviewAction::ToggleColor,
+            scroll_pages: 0,
+            scroll_offset: 0.0,
+            scroll_generation: 0,
         }
     }
 }
@@ -53,6 +96,40 @@ fn preview_payload_within_total_budget(
 }
 
 impl FlistWalkerApp {
+    pub(super) fn preview_controls_loading_current(&self) -> bool {
+        self.paged_preview_view.controls_focused
+            && self.paged_preview_view.busy
+            && self.paged_preview_view.tab_id == self.current_tab_id()
+            && self.paged_preview_view.path.as_deref()
+                == self
+                    .shell
+                    .runtime
+                    .current_row
+                    .and_then(|row| self.shell.runtime.results.get(row))
+                    .map(|(path, _)| path.as_path())
+            && self.shell.ui.show_preview()
+    }
+
+    pub(super) fn apply_preview_action(&mut self, action: PreviewAction) {
+        let Some(document) = self.paged_preview_for_current() else {
+            return;
+        };
+        if !action.available(
+            document,
+            self.paged_preview_view.busy,
+            self.paged_preview_view.error,
+        ) {
+            return;
+        }
+        match action {
+            PreviewAction::More => self.request_paged_preview_more(),
+            PreviewAction::Reload => self.reload_paged_preview(),
+            PreviewAction::ToggleColor => {
+                self.paged_preview_view.color_enabled = !self.paged_preview_view.color_enabled
+            }
+        }
+    }
+
     pub(super) fn enforce_preview_payload_budget(
         &mut self,
         incoming: Option<&Arc<PagedTextPreview>>,
@@ -169,6 +246,8 @@ impl FlistWalkerApp {
 
     pub(super) fn clear_paged_preview(&mut self) {
         self.deferred_more_intent = None;
+        self.paged_preview_view.controls_focused = false;
+        self.paged_preview_view.scroll_pages = 0;
         self.paged_preview_view.error = None;
         self.paged_preview_view.busy = false;
         self.paged_preview_view.tab_id = None;

@@ -14,6 +14,7 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        let restore_query_after_held_escape = self.suppress_held_preview_exit(ctx);
         if self.handle_selection_inspector_shortcuts(ctx) {
             return;
         }
@@ -46,6 +47,23 @@ impl FlistWalkerApp {
         }
         if self.handle_preset_picker_shortcuts(ctx) {
             return;
+        }
+        // Modal dispatch owns focus first. egui may already have surrendered
+        // query focus for a held Escape before application event consumption.
+        if restore_query_after_held_escape
+            && !self.shell.runtime.query_state.is_history_search_active()
+            && !self.is_root_dropdown_open(ctx)
+            && !self.shell.ui.ime_composition_active
+            && !ctx.input(|input| {
+                input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::Ime(_)))
+            })
+        {
+            self.clear_unfocus_query_request();
+            self.request_focus_query();
+            ctx.memory_mut(|memory| memory.request_focus(self.shell.ui.query_input_id));
         }
         let query_focused = ctx.memory(|m| m.has_focus(self.shell.ui.query_input_id));
         self.handle_shortcuts_with_focus(ctx, query_focused);
@@ -190,6 +208,239 @@ impl FlistWalkerApp {
             };
             ctx.input_mut(|i| i.consume_key(mods, key))
         }
+    }
+
+    // Consume held keys as well, but activate commands only on a new press.
+    fn consume_preview_key(
+        ctx: &egui::Context,
+        key: egui::Key,
+        modifiers: egui::Modifiers,
+    ) -> (bool, bool) {
+        ctx.input_mut(|input| {
+            let mut seen = false;
+            let mut fresh = false;
+            input.events.retain(|event| {
+                if let egui::Event::Key {
+                    key: actual,
+                    pressed: true,
+                    repeat,
+                    modifiers: actual_mods,
+                    ..
+                } = event
+                {
+                    if *actual == key
+                        && actual_mods.matches_logically(modifiers)
+                        && actual_mods.shift == modifiers.shift
+                        && actual_mods.alt == modifiers.alt
+                    {
+                        seen = true;
+                        fresh |= !repeat;
+                        return false;
+                    }
+                }
+                true
+            });
+            (seen, fresh)
+        })
+    }
+
+    fn consume_preview_primary(ctx: &egui::Context, shift: bool) -> (bool, bool) {
+        let modifiers = if cfg!(target_os = "macos") {
+            egui::Modifiers {
+                mac_cmd: true,
+                shift,
+                ..Default::default()
+            }
+        } else {
+            egui::Modifiers {
+                ctrl: true,
+                shift,
+                ..Default::default()
+            }
+        };
+        let primary = Self::consume_preview_key(ctx, egui::Key::L, modifiers);
+        if primary.0 || !cfg!(target_os = "macos") {
+            return primary;
+        }
+        Self::consume_preview_key(
+            ctx,
+            egui::Key::L,
+            egui::Modifiers {
+                command: true,
+                shift,
+                ..Default::default()
+            },
+        )
+    }
+
+    // A key that returned from preview must finish its press before the same
+    // key can reach query cancel/focus commands, including commands in modals.
+    // Release processing is ordered so release + fresh press in one frame works.
+    fn suppress_held_preview_exit(&mut self, ctx: &egui::Context) -> bool {
+        let Some(key) = self.paged_preview_view.exit_key_held else {
+            return false;
+        };
+        let mut held = true;
+        let mut suppressed = false;
+        ctx.input_mut(|input| {
+            input.events.retain(|event| {
+                if let egui::Event::Key {
+                    key: actual,
+                    pressed,
+                    ..
+                } = event
+                {
+                    if *actual == key && held {
+                        if !pressed {
+                            held = false;
+                        } else {
+                            suppressed = true;
+                            return false;
+                        }
+                    }
+                }
+                true
+            });
+        });
+        if !held || !ctx.input(|input| input.key_down(key)) {
+            self.paged_preview_view.exit_key_held = None;
+        }
+        suppressed
+            && key == egui::Key::Escape
+            && ctx.memory(|memory| {
+                memory.focused().is_none()
+                    && memory.had_focus_last_frame(self.shell.ui.query_input_id)
+            })
+    }
+
+    fn leave_preview_controls(&mut self, ctx: &egui::Context) {
+        self.paged_preview_view.controls_focused = false;
+        self.clear_unfocus_query_request();
+        self.request_focus_query();
+        ctx.memory_mut(|memory| memory.request_focus(self.shell.ui.query_input_id));
+    }
+
+    fn handle_preview_controls_shortcuts(
+        &mut self,
+        ctx: &egui::Context,
+        query_focused: bool,
+    ) -> bool {
+        let blocked = self.shell.runtime.query_state.is_history_search_active()
+            || self.shell.ui.ime_composition_active
+            || ctx.input(|input| {
+                input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::Ime(_)))
+            })
+            || self.is_root_dropdown_open(ctx);
+        if blocked {
+            if self.paged_preview_view.controls_focused
+                && (self.shell.ui.ime_composition_active
+                    || ctx.input(|input| {
+                        input
+                            .events
+                            .iter()
+                            .any(|event| matches!(event, egui::Event::Ime(_)))
+                    }))
+            {
+                return true;
+            }
+            return false;
+        }
+        if self.paged_preview_for_current().is_none() && !self.preview_controls_loading_current() {
+            if self.paged_preview_view.controls_focused {
+                self.leave_preview_controls(ctx);
+            }
+            return Self::consume_preview_primary(ctx, true).0;
+        }
+        if query_focused {
+            self.paged_preview_view.controls_focused = false;
+        }
+        let (toggle_seen, toggle_fresh) = Self::consume_preview_primary(ctx, true);
+        if toggle_seen {
+            if toggle_fresh {
+                if self.paged_preview_view.controls_focused {
+                    self.paged_preview_view.exit_key_held = Some(egui::Key::L);
+                    self.leave_preview_controls(ctx);
+                } else {
+                    self.paged_preview_view.controls_focused = true;
+                    self.clear_focus_query_request();
+                    self.request_unfocus_query();
+                    ctx.memory_mut(|memory| memory.stop_text_input());
+                }
+            }
+            return true;
+        }
+        if !self.paged_preview_view.controls_focused {
+            return false;
+        }
+        for (key, (seen, fresh)) in [
+            (egui::Key::L, Self::consume_preview_primary(ctx, false)),
+            (
+                egui::Key::Escape,
+                Self::consume_preview_key(ctx, egui::Key::Escape, egui::Modifiers::NONE),
+            ),
+            (
+                egui::Key::G,
+                if self.shell.runtime.emacs_keybindings_enabled {
+                    Self::consume_preview_key(
+                        ctx,
+                        egui::Key::G,
+                        egui::Modifiers {
+                            ctrl: true,
+                            ..Default::default()
+                        },
+                    )
+                } else {
+                    (false, false)
+                },
+            ),
+        ] {
+            if seen {
+                if fresh {
+                    self.paged_preview_view.exit_key_held = Some(key);
+                    self.leave_preview_controls(ctx);
+                }
+                return true;
+            }
+        }
+        for (key, direction) in [(egui::Key::ArrowLeft, -1_isize), (egui::Key::ArrowRight, 1)] {
+            if Self::consume_preview_key(ctx, key, egui::Modifiers::NONE).1 {
+                let actions = super::super::paged_preview_flow::PreviewAction::ALL;
+                let current = actions
+                    .iter()
+                    .position(|action| *action == self.paged_preview_view.selected_control)
+                    .unwrap_or(0);
+                self.paged_preview_view.selected_control = actions
+                    [(current as isize + direction).rem_euclid(actions.len() as isize) as usize];
+            }
+        }
+        let mut accept = Self::consume_preview_key(ctx, egui::Key::Enter, egui::Modifiers::NONE).1;
+        accept |= Self::consume_preview_key(ctx, egui::Key::Space, egui::Modifiers::NONE).1;
+        if self.shell.runtime.emacs_keybindings_enabled {
+            let modifiers = egui::Modifiers {
+                ctrl: true,
+                ..Default::default()
+            };
+            accept |= Self::consume_preview_key(ctx, egui::Key::J, modifiers).1;
+            accept |= Self::consume_preview_key(ctx, egui::Key::M, modifiers).1;
+        }
+        if accept {
+            self.apply_preview_action(self.paged_preview_view.selected_control);
+        }
+        for (key, pages) in [(egui::Key::PageUp, -1), (egui::Key::PageDown, 1)] {
+            if Self::consume_preview_key(ctx, key, egui::Modifiers::NONE).1 {
+                self.paged_preview_view.scroll_pages += pages;
+            }
+        }
+        if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Tab))
+            || ctx.input_mut(|input| input.consume_key(egui::Modifiers::SHIFT, egui::Key::Tab))
+            || self.consume_emacs_shortcut(ctx, egui::Key::I, false)
+        {
+            self.toggle_pin_current_from_tab();
+        }
+        true
     }
 
     fn consume_copy_event_shortcut(ctx: &egui::Context) -> bool {
@@ -386,6 +637,9 @@ impl FlistWalkerApp {
                 self.activate_tab_shortcut(shortcut_number);
                 return;
             }
+        }
+        if self.handle_preview_controls_shortcuts(ctx, query_focused) {
+            return;
         }
         // Regression guard: Primary+L is a focus toggle and must update the pending
         // focus flags before TextEdit is rendered. Keep this paired with

@@ -51,18 +51,24 @@ cargo run -- --root ..
 - `Tab` / `Shift+Tab` / `Ctrl+I`: 現在行のピン留め切り替え
 - `Ctrl+Shift+C`: 選択パスをコピー
 - `Esc` / `Ctrl+G`: query とピン留めをクリア
-- `Ctrl+L`: 検索欄の focus 切り替え
+- `Ctrl+L`: 検索欄の focus 切り替え。プレビュー操作中は検索欄へ戻る
 - `Ctrl+T`: 新規タブ
 - `Ctrl+W`: 現在タブを閉じる
 - `Ctrl+Tab` / `Ctrl+Shift+Tab`: タブ切り替え
 - タブのドラッグ&ドロップ: タブの並び替え
+
+### プレビューのキーボード操作（GUI）
+
+`Ctrl+Shift+L`（macOS は `Cmd+Shift+L`）で検索欄とプレビュー操作欄を切り替えます。`Left` / `Right` で `Color`・`Load more`・`Reload preview` を選択し、`Enter` / `Space` で実行します。Emacs ショートカットが有効なら `Ctrl+J` / `Ctrl+M` でも実行できます。`PageUp` / `PageDown` はプレビュー本文をスクロールし、`Esc` または `Ctrl+L`（macOS は `Cmd+L`）で検索語やピン留めを消さず検索欄へ戻ります。focus の切替で現在行とピン留めは変わりません。`Tab` / `Shift+Tab` は従来どおり現在行のピン留めを切り替え、設定に応じて次の行へ移動します。
+
+選択中の操作は枠で強調し、切替キーをプレビュー内とボタンのツールチップにも表示します。操作には表示中のテキスト文書が必要で、ダイアログ・履歴検索・IME 変換中は背後のプレビューを操作しません。プレーン本文では `Color` を無効にし、読込中・終端・表示上限・続行できない追加読込エラーでは `Load more` を無効にします。`Reload preview` も読込中は無効です。実行キーや切替キーを長押ししても操作を繰り返しません。
 
 ## ショートカット差分（Windows/Linux と macOS）
 
 macOS では次の「主要ショートカット」を `Ctrl` から `Cmd` に切り替えています。
 
 - `Ctrl+T` / `Ctrl+W`
-- `Ctrl+L`
+- `Ctrl+L` / `Ctrl+Shift+L`
 - `Ctrl+Shift+C`
 - `Ctrl+Shift+P`
 

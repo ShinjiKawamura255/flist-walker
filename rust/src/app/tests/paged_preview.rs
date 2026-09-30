@@ -760,3 +760,640 @@ fn gui_preview_worker_disconnect_settles_latest_and_future_requests() {
     assert!(!app.paged_preview_view.busy);
     fs::remove_dir_all(root).expect("cleanup root");
 }
+
+fn preview_focus_fixture(name: &str) -> (FlistWalkerApp, egui::Context, PathBuf) {
+    let root = test_root(name);
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("sample.rs");
+    fs::write(&path, "fn main() {}\n".repeat(700)).expect("fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.set_entry_kind(&path, EntryKind::file());
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    let ctx = egui::Context::default();
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    ctx.memory_mut(|memory| memory.request_focus(app.shell.ui.query_input_id));
+    (app, ctx, root)
+}
+
+fn preview_key_frame(
+    app: &mut FlistWalkerApp,
+    ctx: &egui::Context,
+    key: egui::Key,
+    modifiers: egui::Modifiers,
+    repeat: bool,
+) {
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 900.0),
+            )),
+            modifiers,
+            events: if repeat {
+                vec![egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat,
+                    modifiers,
+                }]
+            } else {
+                vec![
+                    egui::Event::Key {
+                        key,
+                        physical_key: None,
+                        pressed: false,
+                        repeat: false,
+                        modifiers,
+                    },
+                    egui::Event::Key {
+                        key,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers,
+                    },
+                ]
+            },
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+}
+
+#[test]
+fn regression_preview_focus_full_frames_toggle_color_and_return_preserve_selection() {
+    let (mut app, ctx, root) = preview_focus_fixture("preview-focus-controls");
+    let path = app.shell.runtime.results[0].0.clone();
+    app.toggle_pin_current_from_tab();
+    let before_pins = app.shell.runtime.pinned_paths.clone();
+    app.shell.runtime.query_state.query = "sample".to_owned();
+    let before_query = app.shell.runtime.query_state.query.clone();
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    assert!(
+        !ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)),
+        "preview chord must leave focused query"
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Space,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(
+        !app.paged_preview_view.color_enabled,
+        "Space must activate Color without text editing"
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Space,
+        egui::Modifiers::NONE,
+        true,
+    );
+    assert!(
+        !app.paged_preview_view.color_enabled,
+        "repeat must not toggle color"
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Escape,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+    assert_eq!(app.shell.runtime.query_state.query, before_query);
+    assert_eq!(app.shell.runtime.pinned_paths, before_pins);
+    assert_eq!(
+        app.shell.runtime.results[app.shell.runtime.current_row.unwrap()].0,
+        path
+    );
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn regression_preview_focus_full_frames_more_busy_emacs_and_pin() {
+    let (mut app, ctx, root) = preview_focus_fixture("preview-focus-more");
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::ArrowRight,
+        egui::Modifiers::NONE,
+        false,
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Enter,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(app.paged_preview_view.busy);
+    let request_id = app.shell.worker_bus.preview.pending_request_id;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Enter,
+        egui::Modifiers::NONE,
+        true,
+    );
+    assert_eq!(app.shell.worker_bus.preview.pending_request_id, request_id);
+    settle_preview(&mut app);
+    assert_eq!(app.paged_preview_for_current().unwrap().line_count(), 600);
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::J,
+        emacs_shortcut_modifiers(false),
+        false,
+    );
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().state(),
+        PreviewPageState::Eof
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::M,
+        emacs_shortcut_modifiers(false),
+        false,
+    );
+    assert!(
+        !app.paged_preview_view.busy,
+        "EOF disables More for every accept key"
+    );
+    preview_key_frame(&mut app, &ctx, egui::Key::Tab, egui::Modifiers::NONE, false);
+    assert_eq!(app.shell.runtime.pinned_paths.len(), 1);
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Tab,
+        egui::Modifiers::SHIFT,
+        false,
+    );
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::ArrowRight,
+        egui::Modifiers::NONE,
+        false,
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Space,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(app.paged_preview_view.busy, "Reload shares preview command");
+    settle_preview(&mut app);
+    assert_eq!(app.paged_preview_for_current().unwrap().line_count(), 100);
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(false),
+        false,
+    );
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn regression_preview_focus_full_frames_blocks_history_modal_ime_and_missing_document() {
+    for block in ["history", "modal", "ime", "missing", "hidden"] {
+        let (mut app, ctx, root) = preview_focus_fixture(&format!("preview-focus-block-{block}"));
+        match block {
+            "history" => app.start_history_search(),
+            "modal" => app.shell.ui.help_open = true,
+            "ime" => app.shell.ui.ime_composition_active = true,
+            "missing" => app.shell.runtime.clear_preview(),
+            "hidden" => app.shell.ui.show_preview = false,
+            _ => unreachable!(),
+        }
+        preview_key_frame(
+            &mut app,
+            &ctx,
+            egui::Key::L,
+            gui_shortcut_modifiers(true),
+            false,
+        );
+        preview_key_frame(
+            &mut app,
+            &ctx,
+            egui::Key::Space,
+            egui::Modifiers::NONE,
+            false,
+        );
+        assert!(
+            app.paged_preview_view.color_enabled,
+            "{block} must block background preview actions"
+        );
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+}
+
+#[test]
+fn regression_preview_focus_full_frames_scroll_toggle_repeat_and_disabled_accept() {
+    let (mut app, ctx, root) = preview_focus_fixture("preview-focus-scroll-repeat");
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    assert!(app.paged_preview_view.controls_focused);
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        true,
+    );
+    assert!(
+        app.paged_preview_view.controls_focused,
+        "held focus chord must not toggle back"
+    );
+    let before_row = app.shell.runtime.current_row;
+    let before_scroll = app.paged_preview_view.scroll_offset;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::PageDown,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(
+        app.paged_preview_view.scroll_offset > before_scroll,
+        "PageDown must scroll preview body"
+    );
+    assert_eq!(app.shell.runtime.current_row, before_row);
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::PageUp,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert_eq!(app.paged_preview_view.scroll_offset, before_scroll);
+    app.shell.runtime.emacs_keybindings_enabled = false;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::J,
+        emacs_shortcut_modifiers(false),
+        false,
+    );
+    assert!(
+        app.paged_preview_view.color_enabled,
+        "disabled Emacs accept must not activate Color"
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::M,
+        emacs_shortcut_modifiers(false),
+        false,
+    );
+    assert!(app.paged_preview_view.color_enabled);
+    app.shell.ui.help_open = true;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Space,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(
+        app.paged_preview_view.color_enabled,
+        "modal blocks already-focused preview"
+    );
+    app.shell.ui.help_open = false;
+    app.shell.ui.ime_composition_active = true;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Space,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(
+        app.paged_preview_view.color_enabled,
+        "IME blocks already-focused preview"
+    );
+    app.shell.ui.ime_composition_active = false;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    assert!(!app.paged_preview_view.controls_focused);
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn preview_control_availability_is_shared_for_busy_eof_error_and_plain_text() {
+    use crate::app::paged_preview_flow::PreviewAction;
+    let root = test_root("preview-control-availability");
+    fs::create_dir_all(&root).expect("root");
+    let path = root.join("plain.txt");
+    fs::write(&path, "line\n".repeat(200)).expect("fixture");
+    let document = PagedTextPreview::initial(&path, &|| false).expect("preview");
+    assert!(!PreviewAction::ToggleColor.available(&document, false, None));
+    assert!(PreviewAction::More.available(&document, false, None));
+    assert!(!PreviewAction::More.available(&document, true, None));
+    assert!(!PreviewAction::Reload.available(&document, true, None));
+    assert!(!PreviewAction::More.available(&document, false, Some(PreviewPageError::Changed)));
+    assert!(PreviewAction::Reload.available(&document, false, Some(PreviewPageError::Changed)));
+    let completed = document.read_more(&path, &|| false).expect("append");
+    assert!(!PreviewAction::More.available(&completed, false, None));
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn regression_preview_focus_normal_render_shows_focus_and_pointer_uses_same_command() {
+    use crate::app::paged_preview_flow::PreviewAction;
+    use crate::app::render_panels::{begin_preview_control_probe, take_preview_control_probe};
+    let (mut app, ctx, root) = preview_focus_fixture("preview-focus-render-pointer");
+    begin_preview_control_probe();
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    let controls = take_preview_control_probe();
+    assert_eq!(
+        controls.iter().filter(|control| control.selected).count(),
+        1
+    );
+    let color = controls
+        .iter()
+        .find(|control| control.action == PreviewAction::ToggleColor)
+        .unwrap();
+    assert!(
+        color.enabled && color.selected,
+        "normal render must highlight active enabled Color button"
+    );
+    let position = color.rect.center();
+    for pressed in [true, false] {
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(1280.0, 900.0),
+                )),
+                events: vec![
+                    egui::Event::PointerMoved(position),
+                    egui::Event::PointerButton {
+                        pos: position,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+                ..Default::default()
+            },
+            |ui| app.run_ui_frame(ui),
+        );
+    }
+    assert!(
+        !app.paged_preview_view.color_enabled,
+        "pointer invokes shared Color command"
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Enter,
+        egui::Modifiers::NONE,
+        false,
+    );
+    assert!(
+        app.paged_preview_view.color_enabled,
+        "keyboard invokes same Color command"
+    );
+    app.paged_preview_view.busy = true;
+    begin_preview_control_probe();
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::ArrowRight,
+        egui::Modifiers::NONE,
+        false,
+    );
+    let controls = take_preview_control_probe();
+    let more = controls
+        .iter()
+        .find(|control| control.action == PreviewAction::More)
+        .unwrap();
+    assert!(
+        !more.enabled && more.selected,
+        "disabled More retains a visible selected control"
+    );
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+fn assert_preview_exit_hold_isolated(name: &str, key: egui::Key, modifiers: egui::Modifiers) {
+    let (mut app, ctx, root) = preview_focus_fixture(name);
+    app.toggle_pin_current_from_tab();
+    app.shell.runtime.query_state.query = "sample".to_owned();
+    let pins = app.shell.runtime.pinned_paths.clone();
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    preview_key_frame(&mut app, &ctx, key, modifiers, false);
+    assert!(!app.paged_preview_view.controls_focused);
+    assert!(ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)));
+    for _ in 0..2 {
+        preview_key_frame(&mut app, &ctx, key, modifiers, true);
+        assert_eq!(
+            app.shell.runtime.query_state.query, "sample",
+            "held preview exit must not clear query in subsequent normal frames"
+        );
+        assert_eq!(
+            app.shell.runtime.pinned_paths, pins,
+            "held preview exit must not clear pins"
+        );
+        assert!(
+            ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)),
+            "held Primary+L must not toggle query focus again"
+        );
+    }
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            events: vec![egui::Event::Text("x".to_owned())],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(
+        app.shell.runtime.query_state.query, "samplex",
+        "suppressing the held exit must not freeze other query input"
+    );
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            events: vec![egui::Event::Key {
+                key,
+                physical_key: None,
+                pressed: false,
+                repeat: false,
+                modifiers,
+            }],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    preview_key_frame(&mut app, &ctx, key, modifiers, false);
+    if key == egui::Key::L {
+        assert!(
+            !ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)),
+            "fresh normal Primary+L retains its focus toggle"
+        );
+        assert_eq!(app.shell.runtime.query_state.query, "samplex");
+        assert_eq!(app.shell.runtime.pinned_paths, pins);
+    } else {
+        assert!(
+            app.shell.runtime.query_state.query.is_empty(),
+            "fresh normal cancel may clear query"
+        );
+        assert!(
+            app.shell.runtime.pinned_paths.is_empty(),
+            "fresh normal cancel may clear pins"
+        );
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn regression_preview_focus_exit_escape_repeats_do_not_clear_search() {
+    assert_preview_exit_hold_isolated(
+        "preview-exit-held-escape",
+        egui::Key::Escape,
+        egui::Modifiers::NONE,
+    );
+}
+
+#[test]
+fn regression_preview_focus_exit_ctrl_g_repeats_do_not_clear_search() {
+    assert_preview_exit_hold_isolated(
+        "preview-exit-held-ctrl-g",
+        egui::Key::G,
+        emacs_shortcut_modifiers(false),
+    );
+}
+
+#[test]
+fn regression_preview_focus_exit_primary_l_repeats_do_not_toggle_search() {
+    assert_preview_exit_hold_isolated(
+        "preview-exit-held-primary-l",
+        egui::Key::L,
+        gui_shortcut_modifiers(false),
+    );
+}
+
+#[test]
+fn regression_preview_focus_exit_requires_fresh_press_and_emacs_enabled() {
+    for (key, modifiers) in [
+        (egui::Key::Escape, egui::Modifiers::NONE),
+        (egui::Key::G, emacs_shortcut_modifiers(false)),
+        (egui::Key::L, gui_shortcut_modifiers(false)),
+    ] {
+        let (mut app, ctx, root) = preview_focus_fixture(&format!("preview-exit-fresh-{key:?}"));
+        preview_key_frame(
+            &mut app,
+            &ctx,
+            egui::Key::L,
+            gui_shortcut_modifiers(true),
+            false,
+        );
+        // The press began in a modal; only its repeat reaches the preview owner.
+        app.shell.ui.help_open = true;
+        preview_key_frame(&mut app, &ctx, key, modifiers, false);
+        app.shell.ui.help_open = false;
+        preview_key_frame(&mut app, &ctx, key, modifiers, true);
+        assert!(
+            app.paged_preview_view.controls_focused,
+            "an exit key repeat must not end preview focus: {key:?}"
+        );
+        if key == egui::Key::G {
+            app.shell.runtime.emacs_keybindings_enabled = false;
+            preview_key_frame(&mut app, &ctx, key, modifiers, false);
+            assert!(
+                app.paged_preview_view.controls_focused,
+                "disabled Ctrl+G must not exit preview"
+            );
+        }
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+}
+
+#[test]
+fn regression_preview_focus_exit_held_escape_does_not_refocus_behind_modal() {
+    let (mut app, ctx, root) = preview_focus_fixture("preview-exit-held-modal-focus");
+    app.toggle_pin_current_from_tab();
+    app.shell.runtime.query_state.query = "sample".to_owned();
+    let pins = app.shell.runtime.pinned_paths.clone();
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::L,
+        gui_shortcut_modifiers(true),
+        false,
+    );
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Escape,
+        egui::Modifiers::NONE,
+        false,
+    );
+    app.shell.ui.help_open = true;
+    preview_key_frame(
+        &mut app,
+        &ctx,
+        egui::Key::Escape,
+        egui::Modifiers::NONE,
+        true,
+    );
+    assert!(
+        app.shell.ui.help_open,
+        "held preview exit must not cancel the new modal"
+    );
+    assert!(
+        !ctx.memory(|memory| memory.has_focus(app.shell.ui.query_input_id)),
+        "held-key focus repair must not refocus the query behind a modal"
+    );
+    assert_eq!(app.shell.runtime.query_state.query, "sample");
+    assert_eq!(app.shell.runtime.pinned_paths, pins);
+    fs::remove_dir_all(root).expect("cleanup");
+}
