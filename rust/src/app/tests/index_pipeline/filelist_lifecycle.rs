@@ -1821,10 +1821,14 @@ fn finished_index_with_filters_reuses_incremental_snapshot_without_full_rescan()
     let other = dir_entry(root.join("other"));
     app.shell.indexing.build.index.entries = vec![kept.clone(), other.clone()];
     app.shell.indexing.build.incremental_filtered_entries = vec![kept.clone()];
+    app.shell.indexing.build.index.source = IndexSource::Walker;
     let (tx, rx) = mpsc::channel::<IndexResponse>();
     app.shell.indexing.rx = rx;
     app.shell.indexing.pending_request_id = Some(307);
     app.shell.indexing.in_progress = true;
+    // This fixture represents a completed ingestion snapshot, including its
+    // generation/policy proof; the deliberately smaller membership detects a rescan.
+    app.mark_incremental_entry_filter_current();
     tx.send(IndexResponse::Finished {
         request_id: 307,
         source: IndexSource::Walker,

@@ -9,6 +9,62 @@ use std::sync::Arc;
 pub(super) const ACTIVE_FILTER_ENTRY_BUDGET: usize = 512;
 const ACTIVE_FILTER_KIND_BACKLOG: usize = 4096;
 
+/// Proves that ingestion has filtered the entire live prefix under this policy.
+/// Query/sort changes do not invalidate membership; kind and filter changes do.
+#[derive(Clone, Debug)]
+pub(super) struct IncrementalFilterIdentity {
+    tab_id: Option<u64>,
+    root: PathBuf,
+    request_id: Option<u64>,
+    source_len: usize,
+    filtered_len: usize,
+    include_files: bool,
+    include_dirs: bool,
+    ignore_enabled: bool,
+    ignore_case: bool,
+    prefer_relative: bool,
+    ignore_source: std::sync::Weak<Vec<String>>,
+    kind_epoch: u64,
+    kind_revision: usize,
+}
+
+impl IncrementalFilterIdentity {
+    fn capture(app: &FlistWalkerApp) -> Self {
+        Self {
+            tab_id: app.current_tab_id(),
+            root: app.shell.runtime.root.clone(),
+            request_id: app.shell.indexing.pending_request_id,
+            source_len: app.shell.indexing.build.index.entries.len(),
+            filtered_len: app.shell.indexing.build.incremental_filtered_entries.len(),
+            include_files: app.shell.runtime.include_files,
+            include_dirs: app.shell.runtime.include_dirs,
+            ignore_enabled: app.shell.ui.ignore_list_enabled,
+            ignore_case: app.shell.runtime.ignore_case,
+            prefer_relative: app.prefer_relative_display(),
+            ignore_source: Arc::downgrade(&app.shell.runtime.ignore_list_terms),
+            kind_epoch: app.shell.indexing.kind_resolution_epoch,
+            kind_revision: app.shell.indexing.build.resolved_kind_updates.len(),
+        }
+    }
+
+    fn matches(&self, app: &FlistWalkerApp) -> bool {
+        self.tab_id == app.current_tab_id()
+            && self.root == app.shell.runtime.root
+            && self.request_id == app.shell.indexing.pending_request_id
+            && self.source_len == app.shell.indexing.build.index.entries.len()
+            && self.filtered_len == app.shell.indexing.build.incremental_filtered_entries.len()
+            && self.include_files == app.shell.runtime.include_files
+            && self.include_dirs == app.shell.runtime.include_dirs
+            && self.ignore_enabled == app.shell.ui.ignore_list_enabled
+            && self.ignore_case == app.shell.runtime.ignore_case
+            && self.prefer_relative == app.prefer_relative_display()
+            && self.ignore_source.as_ptr() == Arc::as_ptr(&app.shell.runtime.ignore_list_terms)
+            && (!app.kind_resolution_needed_for_filters()
+                || (self.kind_epoch == app.shell.indexing.kind_resolution_epoch
+                    && self.kind_revision == app.shell.indexing.build.resolved_kind_updates.len()))
+    }
+}
+
 #[derive(Debug)]
 #[cfg_attr(test, derive(Clone))]
 pub(super) struct ActiveFilterContinuation {
@@ -29,6 +85,7 @@ pub(super) struct ActiveFilterContinuation {
     incremental: Vec<Entry>,
     ready_entries: Option<Arc<Vec<Entry>>>,
     retired_visible: Option<Arc<Vec<Entry>>>,
+    retired_incremental: Vec<Entry>,
     keep_scroll: bool,
     restart: bool,
     results_only: bool,
@@ -45,6 +102,7 @@ impl ActiveFilterContinuation {
             .saturating_add(self.source.as_ref().map_or(0, |v| v.len()))
             .saturating_add(self.ready_entries.as_ref().map_or(0, |v| v.len()))
             .saturating_add(self.retired_visible.as_ref().map_or(0, |v| v.len()))
+            .saturating_add(self.retired_incremental.capacity())
             .saturating_add(self.discarded_kind_paths.len())
             .saturating_add(self.discarded_kind_set.len())
             .saturating_add(self.discarded_inflight.len())
@@ -77,6 +135,87 @@ impl ActiveFilterContinuation {
 }
 
 impl FlistWalkerApp {
+    pub(super) fn incremental_entry_filter_current(&self) -> bool {
+        self.shell
+            .indexing
+            .build
+            .incremental_filter_identity
+            .as_ref()
+            .is_some_and(|identity| identity.matches(self))
+    }
+
+    pub(super) fn mark_incremental_entry_filter_current(&mut self) {
+        self.shell.indexing.build.incremental_filter_identity =
+            Some(IncrementalFilterIdentity::capture(self));
+    }
+
+    pub(super) fn try_publish_live_empty_query_results(&mut self, keep_scroll: bool) -> bool {
+        if !self.shell.indexing.in_progress
+            || self.shell.indexing.build.index.entries.is_empty()
+            || !self.shell.runtime.query_state.query.trim().is_empty()
+            || self.shell.runtime.result_sort_mode != super::ResultSortMode::Score
+        {
+            return false;
+        }
+        let needs_filter = !self.shell.runtime.include_files
+            || !self.shell.runtime.include_dirs
+            || (self.shell.ui.ignore_list_enabled
+                && !self.shell.runtime.ignore_list_terms.is_empty());
+        if needs_filter && !self.incremental_entry_filter_current() {
+            return false;
+        }
+        self.shell.search.clear_active_request_state();
+        self.shell.indexing.search_resume_pending = false;
+        self.shell.indexing.search_rerun_pending = false;
+        if !needs_filter
+            && !self.active_entry_filter_pending()
+            && self
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .capacity()
+                > 0
+        {
+            self.start_active_entry_filter(keep_scroll);
+        }
+        // Cancellation must not destroy a partially built large snapshot on the UI.
+        // A full reclaimer retains the owner and retries through the frame poll.
+        if let Some(mut pending) = self.shell.indexing.build.active_filter.take() {
+            if !needs_filter {
+                pending.retired_incremental =
+                    std::mem::take(&mut self.shell.indexing.build.incremental_filtered_entries);
+            }
+            if let Err(mut pending) = self.retire_active_filter(pending) {
+                if !needs_filter {
+                    self.shell.indexing.build.incremental_filtered_entries =
+                        std::mem::take(&mut pending.retired_incremental);
+                }
+                self.shell.indexing.build.active_filter = Some(*pending);
+                return true;
+            }
+        }
+        if !needs_filter {
+            self.shell.indexing.build.incremental_filter_identity = None;
+        }
+        let source = if needs_filter {
+            &self.shell.indexing.build.incremental_filtered_entries
+        } else {
+            &self.shell.indexing.build.index.entries
+        };
+        let count = source.len();
+        let results = source
+            .iter()
+            .take(self.shell.runtime.limit)
+            .map(|entry| (entry.path.clone(), 0.0))
+            .collect();
+        self.shell.indexing.last_search_snapshot_len = count;
+        self.shell.indexing.last_incremental_results_refresh = std::time::Instant::now();
+        self.shell.indexing.build.live_results_only = true;
+        self.publish_prepared_filter_results(results, count, keep_scroll);
+        true
+    }
+
     pub(super) fn request_kind_entry_refilter(&mut self) {
         // Let discovery finish before replaying with the resolved cache. Restarting
         // at every response batch repeatedly rescans the same large prefix.
@@ -180,6 +319,7 @@ impl FlistWalkerApp {
             incremental: Vec::with_capacity(if live { capacity } else { 0 }),
             ready_entries,
             retired_visible: None,
+            retired_incremental: Vec::new(),
             keep_scroll,
             restart: false,
             results_only,
@@ -205,6 +345,19 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_active_entry_filter(&mut self) {
+        if self.active_entry_filter_pending() {
+            let keep_scroll = self
+                .shell
+                .indexing
+                .build
+                .active_filter
+                .as_ref()
+                .unwrap()
+                .keep_scroll;
+            if self.try_publish_live_empty_query_results(keep_scroll) {
+                return;
+            }
+        }
         let Some(mut pending) = self.shell.indexing.build.active_filter.take() else {
             return;
         };
@@ -285,6 +438,7 @@ impl FlistWalkerApp {
         }
         let keep_scroll = pending.keep_scroll;
         let results_only = pending.results_only;
+        let live_filtered = pending.source.is_none() && !results_only;
         if !results_only {
             pending.retired_visible = Some(
                 self.shell.runtime.exchange_visible_entries(
@@ -314,6 +468,12 @@ impl FlistWalkerApp {
                 return;
             }
         }
+        if live_filtered {
+            self.mark_incremental_entry_filter_current();
+        } else {
+            self.shell.indexing.build.incremental_filter_identity = None;
+        }
+        self.shell.indexing.build.live_results_only = results_only;
         self.shell.indexing.search_rerun_pending = false;
         self.shell.indexing.search_resume_pending = false;
         self.shell.indexing.last_incremental_results_refresh = std::time::Instant::now();
