@@ -41,6 +41,32 @@ fn common_persistence_does_not_depend_on_gui() {
 }
 
 #[test]
+fn persistence_document_and_settings_do_not_control_worker_scheduling() {
+    let root = source_root().join("persistence/worker");
+    for owner in ["document.rs", "settings.rs"] {
+        let source = std::fs::read_to_string(root.join(owner)).expect("persistence owner");
+        for forbidden in [
+            "std::sync",
+            "std::thread",
+            "PersistenceSender",
+            "UiStatePersistenceCommand",
+            "AdmissionState",
+            "UI_STATE_PERSISTENCE",
+        ] {
+            assert!(!source.contains(forbidden), "{owner} controls {forbidden}");
+        }
+    }
+    let actor = std::fs::read_to_string(source_root().join("persistence/worker.rs")).unwrap();
+    for policy in [
+        "fn build_ui_state_document",
+        "fn merge_json_leaves",
+        "fn restore_atomic_target",
+    ] {
+        assert!(!actor.contains(policy), "worker still owns {policy}");
+    }
+}
+
+#[test]
 fn result_policy_cannot_reach_application_or_workers() {
     let source = std::fs::read_to_string(source_root().join("app/result_policy.rs"))
         .expect("shared result policy module");

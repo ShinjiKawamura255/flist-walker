@@ -123,7 +123,7 @@ The shell owns:
 - `CacheStateBundle`: preview, highlight, entry kind, and sort metadata caches.
 - `TabSessionState`: persisted/background tabs and request-tab routing maps.
 - `FeatureStateBundle`: root browser, preset manager/picker, FileList manager, update manager.
-- `WorkerRuntime`: shutdown signal and join handles.
+- `WorkerRuntime`: shutdown signal and join handles; joined panicked workers and timed-out pending workers have distinct named outcomes. Healthy completion is logged only when neither remains.
 
 Rationale: the shell makes ownership explicit. Active-tab live state is separate from persisted/background tab snapshots, which prevents background worker responses from overwriting the visible tab.
 
@@ -131,7 +131,7 @@ Rationale: the shell makes ownership explicit. Active-tab live state is separate
 
 Responsibility: [app/tab_state.rs](../../rust/src/app/tab_state.rs) and [app/tabs.rs](../../rust/src/app/tabs.rs) own tab snapshots and lifecycle. [app/session.rs](../../rust/src/app/session.rs) adapts GUI snapshots and restore policy to [persistence/](../../rust/src/persistence/mod.rs), which owns the complete persisted schema, startup reads, migration, and storage worker for all frontends.
 
-The complete stored schema is deserialized before projecting roots/history, preserving default fallback when a known field is invalid. Unknown JSON fields survive storage merges. Reads seed the shared history baseline, and writes retain the sidecar-lock/read/merge/atomic-replace sequence and settings rollback. TC-167/168 live under `persistence/worker/tests.rs`.
+The complete stored schema is deserialized before projecting roots/history, preserving default fallback when a known field is invalid. Unknown JSON fields survive storage merges. Reads seed the shared history baseline, and writes retain the sidecar-lock/read/merge/atomic-replace sequence and settings rollback. `worker.rs` owns admission/status/retry and ordered barriers; its private `document.rs` owns validation/merge/history and locked single-file writes, while `settings.rs` owns multi-file commit and runtime rollback. TC-167/168 live under `persistence/worker/tests.rs`; architecture tests forbid these storage policy owners from controlling scheduling.
 
 Live and inactive tabs share `query_state::TabQueryState`; activation swaps the whole payload while history debounce and kill buffer remain app-global. `result_policy.rs` prepares the same publication/ranking/error decision for both result adapters and owns pure sorting. Active preview/scroll/status effects and background preview invalidation remain explicit adapter differences. `result_parity.rs` covers published and pending snapshots, empty/error outcomes, metadata availability and both sort scopes; tab ownership tests retain allocation and lifecycle coverage.
 
