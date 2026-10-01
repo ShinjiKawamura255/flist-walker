@@ -562,7 +562,24 @@ fn tc_151_large_active_filter_keeps_last_good_snapshot_and_bounds_unknown_queue(
         app.shell.indexing.build.pending_kind_paths.len() <= 512,
         "unknown-kind discovery must have a deterministic per-call budget"
     );
-    app.poll_active_entry_filter();
+    app.poll_active_entry_filter_with_budget(Duration::ZERO);
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .active_filter
+            .as_ref()
+            .unwrap()
+            .cursor,
+        0,
+        "an exhausted frame budget must yield without consuming candidates"
+    );
+    assert!(app.shell.indexing.build.pending_kind_paths.is_empty());
+    assert!(Arc::ptr_eq(&app.shell.runtime.entries, &last_good));
+
+    // Count and backlog caps are independent of elapsed wall time. Use an
+    // explicit generous deadline so CPU contention cannot shorten these slices.
+    app.poll_active_entry_filter_with_budget(Duration::from_secs(1));
     assert_eq!(
         app.shell
             .indexing
@@ -575,7 +592,7 @@ fn tc_151_large_active_filter_keeps_last_good_snapshot_and_bounds_unknown_queue(
     );
     assert_eq!(app.shell.indexing.build.pending_kind_paths.len(), 512);
     for _ in 0..20 {
-        app.poll_active_entry_filter();
+        app.poll_active_entry_filter_with_budget(Duration::from_secs(1));
     }
     assert_eq!(app.shell.indexing.build.pending_kind_paths.len(), 4096);
     assert_eq!(
@@ -588,6 +605,7 @@ fn tc_151_large_active_filter_keeps_last_good_snapshot_and_bounds_unknown_queue(
             .cursor,
         4096
     );
+    assert!(Arc::ptr_eq(&app.shell.runtime.entries, &last_good));
 }
 
 fn finish_budgeted_filter(app: &mut FlistWalkerApp) {
