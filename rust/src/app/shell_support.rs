@@ -530,7 +530,7 @@ impl FlistWalkerApp {
         }
         let kind = self.find_entry_kind(entry.path()).or(entry.kind);
         match kind {
-            Some(kind) => Entry::new(entry.path.clone(), Some(kind)).is_visible_for_flags(
+            Some(kind) => kind.is_visible_for_flags(
                 self.shell.runtime.include_files,
                 self.shell.runtime.include_dirs,
             ),

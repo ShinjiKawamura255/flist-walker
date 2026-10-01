@@ -277,6 +277,17 @@ impl FlistWalkerApp {
         self.finish_programmatic_query_replacement();
     }
 
+    pub(super) fn set_ignore_case(&mut self, ignore_case: bool) {
+        self.shell.runtime.ignore_case = ignore_case;
+        self.shell.tabs.mark_active_tab_meaningfully_engaged();
+        self.invalidate_result_sort(true);
+        if self.shell.ui.ignore_list_enabled && !self.shell.runtime.ignore_list_terms.is_empty() {
+            self.apply_entry_filters(true);
+        } else {
+            self.update_results();
+        }
+    }
+
     fn apply_assist_filter(&mut self, value: FilterValue) {
         self.shell.runtime.query_state.search_error = None;
         match value {
@@ -302,10 +313,7 @@ impl FlistWalkerApp {
                 self.maybe_reindex_from_filter_toggles(false, false, false, true);
             }
             FilterValue::Case(ignore_case) => {
-                self.shell.runtime.ignore_case = ignore_case;
-                self.shell.tabs.mark_active_tab_meaningfully_engaged();
-                self.invalidate_result_sort(true);
-                self.update_results();
+                self.set_ignore_case(ignore_case);
             }
             FilterValue::Regex(regex) => {
                 self.shell.runtime.use_regex = regex;
@@ -565,6 +573,30 @@ mod tests {
         app.undo_filter_relaxation();
         assert!(app.shell.ui.ignore_list_enabled);
         assert_eq!(app.shell.runtime.query_state.query, "report");
+    }
+
+    #[test]
+    fn tc_151_assist_case_and_undo_refresh_ignore_membership() {
+        use crate::entry::Entry;
+        use std::sync::Arc;
+        let scope = test_settings_scope("assist-case-membership");
+        let root = test_root("assist-case-membership");
+        let mut app = scope.app(root.clone(), 50, String::new());
+        app.shell.indexing.in_progress = false;
+        app.shell.runtime.ignore_case = false;
+        app.shell.ui.ignore_list_enabled = true;
+        app.shell.runtime.ignore_list_terms = Arc::new(vec!["FILE-".into()]);
+        app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(vec![Entry::new(
+            root.join("file-visible.txt"),
+            Some(crate::entry::EntryKind::file()),
+        )]);
+        app.apply_entry_filters(true);
+        assert_eq!(app.shell.runtime.total_match_count, 1);
+        app.relax_filter(FilterValue::Case(true));
+        assert_eq!(app.shell.runtime.total_match_count, 0);
+        app.undo_filter_relaxation();
+        assert!(!app.shell.runtime.ignore_case);
+        assert_eq!(app.shell.runtime.total_match_count, 1);
     }
 
     #[test]

@@ -1,7 +1,7 @@
 ﻿# Non-functional Runtime Design
 
 ## Non-functional design
-- DES-007 / DES-009: active filter の大量候補は `active_filter.rs` の request-owned continuation として `TabBuildPayload` に保持し、1回のpollで最大512候補を処理する。unknown-kind収集、候補clone、incremental snapshot構築も同じ予算内で行う。source/tab/root/index/kind/filterの同一性を確認してから公開し、完了までは旧表示を維持する。処理中は対象indexの取込みを止め、supersessionとtab/root破棄を含むscratch/旧payloadは既存reclaimerへ移す。Full時は所有権を保持して再試行する。
+- DES-007 / DES-009: active filter の大量候補は `active_filter.rs` の request-owned continuation として `TabBuildPayload` に保持し、1回のpollは4msを主予算、最大32,768候補を件数上限として候補cloneとincremental snapshot構築を進める。unknown-kind収集は1poll最大512件、backlog最大4096件を維持する。small-input同期処理と小規模scratchの同期退役の閾値も各512件に固定し、known候補の上限と連動させない。source/tab/root/index/kind/filterの同一性を確認してから公開し、完了までは旧表示を維持する。有効な増分membershipがあるlive filterでは、raw prefix長とfiltered subset長を別々に記録し、毎poll/公開再試行でidentityを検証する。subsetだけを検索snapshotへcloneし、除外再評価とincremental ownerの二重copy/swapを省く。kind/case/policyの失効時は再判定へ戻し、取消時は既存incremental allocationを保持する。処理中は対象indexの取込みを止め、supersessionとtab/root破棄を含むscratch/旧payloadは既存reclaimerへ移す。Full時は所有権を保持して再試行する。
 - DES-006 Performance
 - directory previewは共有cancelable builderで4096件sample＋1 lookaheadまで列挙し、bounded sampleだけをsortする。新requestを受けたGUI/TUI workerはfilesystem呼出し間で旧要求を中断し、本文を返す前にもcancelを確認する。
 - Indexer と search を分離し、GUI ではワーカースレッドで非同期処理する。
@@ -34,6 +34,8 @@
 - FILE/DIR/Ignore List のフィルタが必要な active indexing では、ingest 時に更新している `incremental_filtered_entries` を terminal state の `runtime.entries` へ移し、`Finished` 後に `all_entries` 全体を再走査しない。
 - 空クエリ・Score順のactive indexingでは、tab/root/request、処理済みprefix長、FILE/DIR/Ignore List/case/path投影、kind epoch/revisionが一致する増分フィルタ集合から先頭`limit`件だけを表示する。条件が変わらなければ追加batchごとに既存prefixのfilter/copyを繰り返さず、全件除外された空集合も処理済みとして終端へ昇格する。Ignore Listの同一性はWeak参照で保持し、古い除外語の大量payloadを追加所有しない。
 - Esc/Ctrl+Gまたは編集で空クエリになった場合、旧search requestを取消し、再利用可能な増分集合があれば不要な候補準備をreclaimerへ移す。Full時はscratchと旧一覧を保持して次frameで再試行する。初回batch前はlast-good候補を用い、index途中の空集合と未取得を混同しない。空クエリ表示だけで検索用全候補を公開していないことはtab-owned `live_results_only`で記録し、再入力やAllMatches sortでは現行候補の準備を完了してから検索要求を送る。
+- Ignore Caseのcheckboxと検索支援・undoは共通のcase変更処理を通す。Ignore Listが有効で除外語がある場合は候補membershipを再準備し、追加batchを待たずにlive/completed・空/非空queryへ反映する。
+- terminalで不要になるincremental候補scratch（Create File List finalizationで置き換わるscratchを含む）は、committed-resource退役・pending_finish解除・runtime公開より前にreclaimerへ渡す。Full/Disconnectedでは元のallocationとpending terminal、last-good一覧/count/rowを維持してnoticeを出す。恒久disconnect時もUI側で破棄しない。
 - kind filter 用の unknown path queue は、対象 entries を走査しながら entry 自体の kind / entry kind cache / pending set / in-flight set を直接参照して積む。全 path の中間 `Vec<PathBuf>` は作らず、queue へ入れる path だけ clone する。
 - `Finished` 受信後に pending entries が残る場合、`pending_finish` を内部後処理 marker として保持し、status line の indexing 表示は解除する。repaint は `pending_finish` でも継続要求し、drain / terminal snapshot 確定 / request cleanup は後続 frame で完了させる。
 - Active indexing の terminal cleanup は `pending_entries.clear()` に留め、直前まで大きかった queue の `shrink_to_fit()` を同じ UI frame で呼ばない。容量解放より入力応答性を優先し、必要な小規模 checkpoint shrink は失敗/キャンセルなど別経路に限定する。

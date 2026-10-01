@@ -604,23 +604,24 @@ fn tc_151_incremental_snapshot_copy_is_budgeted_and_ingestion_waits() {
     let root = test_root("budgeted-incremental-copy");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "file".to_string());
     app.shell.indexing.in_progress = true;
-    app.shell.indexing.build.index.entries = (0..20_000)
+    app.shell.indexing.build.index.entries = (0..100_000)
         .map(|i| file_entry(root.join(format!("file-{i}"))))
         .collect();
     let previous = Arc::clone(&app.shell.runtime.entries);
     app.apply_entry_filters(true);
     assert!(Arc::ptr_eq(&previous, &app.shell.runtime.entries));
     app.poll_active_entry_filter();
-    assert_eq!(
-        app.shell
-            .indexing
-            .build
-            .active_filter
-            .as_ref()
-            .unwrap()
-            .cursor,
-        512
-    );
+    // Known candidates now use a time/count bound; retain a partial source larger
+    // than the maximum to exercise immutable ownership and ingestion backpressure.
+    let cursor = app
+        .shell
+        .indexing
+        .build
+        .active_filter
+        .as_ref()
+        .unwrap()
+        .cursor;
+    assert!(cursor > 0 && cursor <= 32_768);
     let request_id = app.shell.indexing.pending_request_id.unwrap();
     app.queue_index_batch(
         request_id,
@@ -631,17 +632,17 @@ fn tc_151_incremental_snapshot_copy_is_budgeted_and_ingestion_waits() {
         }],
     );
     assert!(!app.drain_queued_index_entries(request_id, 1024));
-    assert_eq!(app.shell.indexing.build.index.entries.len(), 20_000);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 100_000);
     finish_budgeted_filter(&mut app);
-    assert_eq!(app.shell.runtime.entries.len(), 20_000);
+    assert_eq!(app.shell.runtime.entries.len(), 100_000);
     assert_eq!(
         app.shell.indexing.build.incremental_filtered_entries.len(),
-        20_000
+        100_000
     );
     assert!(app.drain_queued_index_entries(request_id, 1024));
     assert_eq!(
         app.shell.indexing.build.incremental_filtered_entries.len(),
-        20_001
+        100_001
     );
 }
 
@@ -652,7 +653,7 @@ fn tc_151_active_filter_supersession_never_publishes_partial_or_old_policy() {
     app.shell.indexing.in_progress = false;
     app.shell.runtime.include_dirs = false;
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
-        (0..4096)
+        (0..100_000)
             .map(|i| {
                 if i % 2 == 0 {
                     file_entry(root.join(format!("f{i}")))
@@ -670,7 +671,7 @@ fn tc_151_active_filter_supersession_never_publishes_partial_or_old_policy() {
     app.apply_entry_filters(true);
     assert!(Arc::ptr_eq(&previous, &app.shell.runtime.entries));
     finish_budgeted_filter(&mut app);
-    assert_eq!(app.shell.runtime.entries.len(), 2048);
+    assert_eq!(app.shell.runtime.entries.len(), 50_000);
     assert!(app
         .shell
         .runtime
@@ -741,13 +742,21 @@ fn tc_151_kind_batch_replays_completed_discovery_without_prefix_starvation() {
     reset_index_request_state_for_test(&mut app);
     app.shell.runtime.include_dirs = false;
     let unknown = root.join("unknown");
-    let mut source: Vec<_> = (0..4096)
+    let mut source: Vec<_> = (0..100_000)
         .map(|i| file_entry(root.join(format!("file-{i}"))))
         .collect();
     source[0] = unknown_entry(unknown.clone());
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(source);
     app.apply_entry_filters(true);
     app.poll_active_entry_filter();
+    let first_cursor = app
+        .shell
+        .indexing
+        .build
+        .active_filter
+        .as_ref()
+        .unwrap()
+        .cursor;
     app.shell.indexing.build.pending_kind_paths.clear();
     app.shell.indexing.build.pending_kind_paths_set.clear();
     app.shell
@@ -766,18 +775,21 @@ fn tc_151_kind_batch_replays_completed_discovery_without_prefix_starvation() {
     .unwrap();
     app.poll_kind_response();
     app.poll_active_entry_filter();
-    assert_eq!(
-        app.shell
-            .indexing
-            .build
-            .active_filter
-            .as_ref()
-            .unwrap()
-            .cursor,
-        1024
+    let next_cursor = app
+        .shell
+        .indexing
+        .build
+        .active_filter
+        .as_ref()
+        .unwrap()
+        .cursor;
+    assert!(
+        next_cursor > first_cursor,
+        "kind response must not restart the prefix"
     );
+    assert!(next_cursor - first_cursor <= 32_768);
     finish_budgeted_filter(&mut app);
-    assert_eq!(app.shell.runtime.entries.len(), 4096);
+    assert_eq!(app.shell.runtime.entries.len(), 100_000);
     assert!(app
         .shell
         .runtime
@@ -831,12 +843,21 @@ fn tc_151_active_filter_continuation_follows_its_tab() {
         .apply_resource_transition(super::super::tab_state::TabResourceTransition::Success);
     app.shell.runtime.include_dirs = false;
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
-        (0..4096)
+        (0..100_000)
             .map(|i| file_entry(root.join(format!("file-{i}"))))
             .collect(),
     );
     app.apply_entry_filters(true);
     app.poll_active_entry_filter();
+    let cursor = app
+        .shell
+        .indexing
+        .build
+        .active_filter
+        .as_ref()
+        .unwrap()
+        .cursor;
+    assert!(cursor > 0 && cursor <= 32_768);
     app.switch_to_tab_index(0);
     assert!(!app.active_entry_filter_pending());
     assert_eq!(
@@ -850,12 +871,12 @@ fn tc_151_active_filter_continuation_follows_its_tab() {
             .as_ref()
             .unwrap()
             .cursor,
-        512
+        cursor
     );
     app.switch_to_tab_index(1);
     assert!(app.active_entry_filter_pending());
     finish_budgeted_filter(&mut app);
-    assert_eq!(app.shell.runtime.entries.len(), 4096);
+    assert_eq!(app.shell.runtime.entries.len(), 100_000);
     assert!(app
         .shell
         .tabs

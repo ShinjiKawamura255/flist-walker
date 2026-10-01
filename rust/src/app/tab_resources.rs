@@ -145,6 +145,16 @@ struct RetiredRoutingPayload {
 }
 
 impl RetiredIndexBuildResources {
+    pub(super) fn from_incremental_filter(entries: Vec<crate::entry::Entry>) -> Self {
+        let mut resources = Self::empty();
+        resources.build.incremental_filtered_entries = entries;
+        resources
+    }
+
+    pub(super) fn take_incremental_filter(&mut self) -> Vec<crate::entry::Entry> {
+        std::mem::take(&mut self.build.incremental_filtered_entries)
+    }
+
     pub(super) fn from_active_filter(
         state: super::active_filter::ActiveFilterContinuation,
     ) -> Self {
