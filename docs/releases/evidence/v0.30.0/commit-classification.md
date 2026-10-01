@@ -14,6 +14,8 @@ Previous public tag: `v0.29.0`. Preparation input: `v0.29.0..2138076` (10 commit
 | 33f43e6 | Dependency patch | Changed: serde_json 1.0.149→1.0.151. No reported vulnerability correction. |
 | 4879892 | Dependency patch | Changed: semver 1.0.27→1.0.28. No reported vulnerability correction. |
 | 2138076 | Responsiveness/ownership fix | Changed: sliced preparation/subset reuse; Fixed: ignore reevaluation and off-thread scratch retirement. |
-| Current preparation (SHA pending) | Release gate/metadata/docs | Fixed: shipped v0.29.0 updater capability registration; version, changelog and this evidence. |
+| d860896 preparation | Release gate/metadata/docs | Fixed: shipped v0.29.0 updater capability registration; version, changelog and this evidence. |
+
+The subsequent CI repair is test/harness and TC-183 traceability only. It is excluded as a separate product feature or behavioral change; the final SHA and full immutable tag range will be reconciled before publication.
 
 0.30.0 is a minor release because it includes new user-facing features. Breaking/Deprecated/Security product changes: none established. All versions/compare links/body/tag are checked again against the immutable final tag. Public downloads are listed only after real bundle inventory verification. Large-dataset latency and macOS notarization posture remain disclosed.

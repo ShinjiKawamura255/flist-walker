@@ -8,6 +8,8 @@ Reviewed clean source `2138076dfea1a63c986d4f8195717a08fb569300`, base `48798929
 |---|---|---|---|
 | H-01 | Medium / high | `scripts/check-updater-n-minus-one-compatibility.py` omitted shipped 0.29.0; added exact 26-entry 0.29.0→0.30.0 test failed with unsupported previous capability | Fix required: candidate assembly fails closed. Registered only the two families proven by the immutable v0.29.0 parser. New regression and existing checker cases pass; generated signed candidate manifest remains a separate pending gate. |
 | H-02 | Release metadata / high | Cargo/CHANGELOG still 0.29.0 and Unreleased had no entries for two features and subsequent fixes | Prepare 0.30.0 under existing minor-version policy; classify the complete v0.29.0..target range. No breaking behavior proposed. |
+| H-03 | Medium / high | Exact PR platform CI exposed TC-151 conflating a 4 ms slice with guaranteed 512-path progress | Test-only repair separates deterministic time/count/backlog assertions; see [CI repair](CI-REPAIR.md). |
+| H-04 | Medium / high for the proven retry boundaries | Endurance isolation omitted pre-existing frame-start finish/activation owners; old activation trace lacks its ID | Test-only exact-debt owner repair with positive and negative regression guards; see [CI repair](CI-REPAIR.md). |
 
 No additional Critical/High product defect was established. Absence of a diagnosed defect does not establish runtime, native or publication PASS.
 

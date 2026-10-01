@@ -30,3 +30,16 @@ Each command used `cargo test --release --locked <filter> --lib -- --ignored --n
 
 ## Evidence durability
 Raw logs and screenshots stay Git-ignored under target. This sanitized committed record and exact future PR/run/tag records are durable evidence. No prior v0.29.0 waiver is reused. Local PASS does not assert exact remote candidate/tag/CI PASS.
+
+## Post-CI repair final validation
+The initial PR head `d860896` failed platform CI; [CI-REPAIR.md](CI-REPAIR.md) records the two narrow test/harness repairs. These are additional results on the final post-repair source, not a relabeling of that failed run. No production implementation, Cargo dependency or performance limit changed.
+
+- Required routing now also selects VM-010 for the endurance harness; its intent/detail checklist was applied.
+- `cargo test --locked`: 1,522 passed (1 menu + 1,461 lib + 8 architecture + 3 CLI integration + 47 CLI contract + 2 path), 0 failed; 15 normally ignored lib profiles retained.
+- `cargo fmt --check` and `cargo clippy --locked --all-targets -- -D warnings`: PASS.
+- Extended endurance: 256 seeds × 1000 steps PASS. Real-worker soak: 10 seconds, 5,438 iterations, settled routes/load state PASS.
+- `cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`: PASS; 41,954/49,145 lines = 85.37%.
+- Two exact-debt regression guards: failing-first before owner attribution, then PASS; the final activation fixture invokes actual paused/full-reclaimer retry. Seed replays 0x1839 and 0x183e (128 steps each), stateful suite, final canonical GUI 14 groups and repository quick checks PASS.
+- The earlier audit, four-target OSS, syntax and four performance results remain applicable to the unchanged production/dependency inputs. Exact updated PR CI and candidate/tag/native/publication gates remain pending. The Mac bundle environment failure remains unresolved locally and requires the existing Linux gates.
+
+Raw final logs: target/v0300-health-release/owner-final-{0..5}.log, owner-actual-retry-green.log, owner-repair-replay-{0x1839,0x183e}.log, owner-final-gui.log and owner-final-quick.log (Git-ignored).

@@ -392,6 +392,35 @@ impl StatefulHarness {
             // removes their submitted IDs. Duplicate IDs remain one owner, and
             // unrelated in-flight routes do not acquire ownership here.
             let indexing = &self.app.shell.indexing;
+            // prepare_frame retries retained work before reading the new
+            // response. Attribute the exact pending finish, not every route.
+            if let Some(tab) = self
+                .app
+                .shell
+                .tabs
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != self.app.shell.tabs.active_tab_index())
+                .find_map(|(_, tab)| tab.index_state.pending_index_finish.as_ref().map(|_| tab))
+            {
+                let finish = tab.index_state.pending_index_finish.as_ref().unwrap();
+                if tab.index_state.pending_index_request_id == Some(finish.request_id)
+                    && indexing.request_tabs.get(&finish.request_id) == Some(&tab.id)
+                {
+                    owners.insert(tab.id);
+                }
+            }
+            // Retrying a previously requested activation can change the
+            // current tab's waiting notice and transfer the target's state.
+            if let Some(target_id) = self.app.shell.tabs.pending_activation_tab_id {
+                if self.app.find_tab_index_by_id(target_id).is_some() {
+                    if let Some(active_id) = self.app.current_tab_id() {
+                        if active_id != target_id {
+                            owners.extend([active_id, target_id]);
+                        }
+                    }
+                }
+            }
             let deferred_request_ids = indexing
                 .deferred_response
                 .iter()
@@ -789,7 +818,8 @@ impl StatefulHarness {
         snapshot: &SemanticSnapshot,
     ) -> String {
         format!(
-            "seed={seed:#x}; step={step}; event={event:?}; state={}; replay={}",
+            "seed={seed:#x}; step={step}; event={event:?}; pending_activation={:?}; state={}; replay={}",
+            self.app.shell.tabs.pending_activation_tab_id,
             snapshot.digest(),
             self.replay_command(seed)
         )
@@ -1092,6 +1122,158 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc_183_pending_background_finish_keeps_only_its_exact_owner() {
+        let mut harness = StatefulHarness::new("endurance-pending-finish-owner");
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        let background_id = harness.app.shell.tabs.get(0).unwrap().id;
+        let unrelated_id = harness.app.shell.tabs.get(1).unwrap().id;
+        let active_id = harness.app.current_tab_id().unwrap();
+        let request_id = 42;
+        let state = &mut harness.app.shell.tabs.get_mut(0).unwrap().index_state;
+        state.pending_index_request_id = Some(request_id);
+        state.pending_index_finish = Some(PendingActiveIndexFinish {
+            request_id,
+            source: IndexSource::Walker,
+        });
+        harness
+            .app
+            .shell
+            .indexing
+            .request_tabs
+            .insert(request_id, background_id);
+        let event = Event::DeliverStaleIndex;
+        let owners = harness.response_owners(&event).unwrap();
+        assert_eq!(owners, HashSet::from([background_id]));
+        assert!(!owners.contains(&unrelated_id));
+        assert!(!owners.contains(&active_id));
+
+        // A legitimate finish may publish A's own snapshot; C must still fail
+        // isolation if its content changes while only A owns pending work.
+        let before = harness.snapshot();
+        let mut after = before.clone();
+        after
+            .tabs
+            .iter_mut()
+            .find(|tab| tab.id == background_id)
+            .unwrap()
+            .results_digest += 1;
+        harness.assert_other_tab_content_unchanged(&before, &after, &owners, 0x1839, 1, &event);
+        after
+            .tabs
+            .iter_mut()
+            .find(|tab| tab.id == unrelated_id)
+            .unwrap()
+            .results_digest += 1;
+        assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            harness.assert_other_tab_content_unchanged(&before, &after, &owners, 0x1839, 1, &event);
+        }))
+        .is_err());
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .pending_index_finish = None;
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "an in-flight route without retained terminal work is not a retry owner"
+        );
+        harness.cleanup();
+    }
+
+    #[test]
+    fn tc_183_pending_activation_retry_owns_only_current_and_target() {
+        let mut harness = StatefulHarness::new("endurance-pending-activation-owner");
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        let target_id = harness.app.shell.tabs.get(0).unwrap().id;
+        let unrelated_id = harness.app.shell.tabs.get(1).unwrap().id;
+        let active_id = harness.app.current_tab_id().unwrap();
+        let event = Event::DeliverStaleIndex;
+        assert!(harness.response_owners(&event).unwrap().is_empty());
+        harness.app.shell.tabs.pending_activation_tab_id = Some(target_id);
+        let owners = harness.response_owners(&event).unwrap();
+        assert_eq!(owners, HashSet::from([active_id, target_id]));
+        assert!(!owners.contains(&unrelated_id));
+        // Exercise the actual frame-start retry: a superseded target build
+        // cannot retire while the bounded reclaimer is paused and full.
+        harness.app.shell.tabs.pause_resource_reclaimer();
+        for _ in 0..crate::app::tab_resources::TAB_RESOURCE_RECLAIMER_CAPACITY {
+            let mut retired = crate::app::tab_resources::RetiredIndexBuildResources::empty();
+            retired.set_stale_index_entries(vec![IndexEntry {
+                path: harness.roots[0].join("retired"),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }]);
+            assert!(harness
+                .app
+                .shell
+                .tabs
+                .try_retire_index_build_resources(retired)
+                .is_ok());
+        }
+        let request_id = 42;
+        let target = harness.app.shell.tabs.get_mut(0).unwrap();
+        target.index_state.pending_index_request_id = Some(request_id);
+        target.index_state.build.index.entries = (0..1024)
+            .map(|index| file_entry(harness.roots[0].join(format!("pending-{index}"))))
+            .collect();
+        harness
+            .app
+            .shell
+            .indexing
+            .request_tabs
+            .insert(request_id, target_id);
+        harness
+            .app
+            .shell
+            .indexing
+            .superseded_request_ids
+            .insert(request_id);
+        let before = harness.snapshot();
+        harness.poll_index_responses_and_track_consumption();
+        let after = harness.snapshot();
+        assert_eq!(harness.app.current_tab_id(), Some(active_id));
+        assert_eq!(
+            harness.app.shell.tabs.pending_activation_tab_id,
+            Some(target_id)
+        );
+        assert_eq!(
+            after
+                .tabs
+                .iter()
+                .find(|tab| tab.id == active_id)
+                .unwrap()
+                .notice,
+            "Waiting for background tab resource reclamation"
+        );
+        harness.assert_other_tab_content_unchanged(&before, &after, &owners, 0x183e, 1, &event);
+        harness.app.shell.tabs.pending_activation_tab_id = None;
+        let owners = harness.response_owners(&event).unwrap();
+        assert!(owners.is_empty());
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                harness.assert_other_tab_content_unchanged(
+                    &before, &after, &owners, 0x183e, 1, &event,
+                );
+            }))
+            .is_err(),
+            "a waiting notice without pending activation must remain an isolation failure"
+        );
+        harness.app.shell.tabs.pending_activation_tab_id = Some(u64::MAX);
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "a closed activation target must not grant ownership"
+        );
+        harness.app.shell.tabs.pending_activation_tab_id = None;
+        harness.app.shell.tabs.resume_resource_reclaimer();
+        harness.cleanup();
+    }
 
     #[test]
     fn tc_183_deferred_index_responses_keep_exact_owner_after_selection() {
