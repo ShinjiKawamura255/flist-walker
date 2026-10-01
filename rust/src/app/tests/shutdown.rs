@@ -25,6 +25,45 @@ fn worker_runtime_join_all_with_timeout_returns_joined_when_workers_finish() {
 }
 
 #[test]
+fn worker_runtime_reports_named_panic_separately_from_timeout() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let mut runtime = WorkerRuntime::new(shutdown);
+    runtime.push(
+        "failed-worker",
+        std::thread::spawn(|| panic!("injected worker failure")),
+    );
+    let summary = runtime.join_all_with_timeout(Duration::from_secs(2));
+    assert_eq!(summary.total, 1);
+    assert_eq!(summary.joined, 1, "panicked worker was still joined");
+    assert!(summary.pending.is_empty());
+    assert_eq!(summary.panicked, vec!["failed-worker"]);
+}
+
+#[test]
+fn worker_runtime_keeps_panic_and_unfinished_worker_outcomes_distinct() {
+    let shutdown = Arc::new(AtomicBool::new(false));
+    let mut runtime = WorkerRuntime::new(shutdown);
+    let failed = std::thread::spawn(|| panic!("injected worker failure"));
+    while !failed.is_finished() {
+        std::thread::yield_now();
+    }
+    runtime.push("failed-worker", failed);
+    let (release, blocked) = std::sync::mpsc::channel::<()>();
+    runtime.push(
+        "blocked-worker",
+        std::thread::spawn(move || {
+            let _ = blocked.recv();
+        }),
+    );
+    let summary = runtime.join_all_with_timeout(Duration::from_millis(500));
+    release.send(()).unwrap();
+    assert_eq!(summary.total, 2);
+    assert_eq!(summary.joined, 1);
+    assert_eq!(summary.panicked, vec!["failed-worker"]);
+    assert_eq!(summary.pending, vec!["blocked-worker"]);
+}
+
+#[test]
 fn worker_runtime_join_all_with_timeout_returns_early_on_timeout() {
     let shutdown = Arc::new(AtomicBool::new(false));
     let mut runtime = WorkerRuntime::new(Arc::clone(&shutdown));

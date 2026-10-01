@@ -28,6 +28,7 @@ pub(in crate::app) struct WorkerJoinSummary {
     pub(in crate::app) joined: usize,
     pub(in crate::app) total: usize,
     pub(in crate::app) pending: Vec<String>,
+    pub(in crate::app) panicked: Vec<String>,
 }
 
 impl WorkerRuntime {
@@ -68,10 +69,11 @@ impl WorkerRuntime {
                 joined: 0,
                 total: 0,
                 pending: Vec::new(),
+                panicked: Vec::new(),
             };
         }
 
-        let (tx, rx) = mpsc::channel::<String>();
+        let (tx, rx) = mpsc::channel::<(String, bool)>();
         let mut pending = self
             .handles
             .iter()
@@ -82,14 +84,15 @@ impl WorkerRuntime {
             let name = named_handle.name;
             let handle = named_handle.handle;
             thread::spawn(move || {
-                let _ = handle.join();
-                let _ = tx_done.send(name);
+                let panicked = handle.join().is_err();
+                let _ = tx_done.send((name, panicked));
             });
         }
         drop(tx);
 
         let deadline = Instant::now() + timeout;
         let mut joined = 0usize;
+        let mut panicked = Vec::new();
         while joined < total {
             let now = Instant::now();
             if now >= deadline {
@@ -97,9 +100,12 @@ impl WorkerRuntime {
             }
             let remain = deadline.saturating_duration_since(now);
             match rx.recv_timeout(remain) {
-                Ok(name) => {
+                Ok((name, failed)) => {
                     joined = joined.saturating_add(1);
                     pending.retain(|pending_name| pending_name != &name);
+                    if failed {
+                        panicked.push(name);
+                    }
                 }
                 Err(_) => break,
             }
@@ -109,6 +115,7 @@ impl WorkerRuntime {
             joined,
             total,
             pending,
+            panicked,
         }
     }
 }
@@ -221,6 +228,19 @@ impl FlistWalkerApp {
         self.offload_tab_resources_for_shutdown(&mut runtime);
         self.disconnect_worker_channels();
         let summary = runtime.join_all_with_timeout(timeout);
+        for worker in &summary.panicked {
+            eprintln!("Worker panicked during {phase}: {worker}");
+            warn!(
+                flow = "worker_runtime",
+                event = "shutdown_panicked",
+                worker_id = worker.as_str(),
+                phase,
+                joined = summary.joined,
+                total = summary.total,
+                outcome = "panicked",
+                "worker terminated with a panic"
+            );
+        }
         if summary.joined < summary.total {
             let pending_names = if summary.pending.is_empty() {
                 "unknown".to_string()
@@ -280,7 +300,7 @@ impl FlistWalkerApp {
                     "worker shutdown exceeded its join budget"
                 );
             }
-        } else {
+        } else if summary.panicked.is_empty() {
             info!(
                 flow = "worker_runtime",
                 event = "shutdown_complete",
