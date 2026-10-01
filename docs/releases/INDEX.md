@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.30.0 Execution Packet](v0.30.0.md) | In preparation; health review and source validation, no publication claim |
 | [v0.29.0 Release Record](v0.29.0.md) | Published tag, workflows, assets, GUI deviations, warning dispositions, validation, and review evidence |
 | [v0.28.0 Release Record](v0.28.0.md) | Published tag, workflows, assets, validation, and final review evidence |
 | [v0.27.1 Release Record](v0.27.1.md) | Tag, candidate and tagged workflows, assets, GUI validation, warnings, and final review evidence |
@@ -20,6 +21,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.30.0/` | Preparation health review, range classification and local validation; native/publication pending |
 | `evidence/v0.29.0/` | Published release body, exact validation readback, and review/deviation notes |
 | `evidence/v0.28.0/` | Published release body, local validation, and review evidence |
 | `evidence/v0.27.1/` | Published release body and sanitized GUI validation evidence |

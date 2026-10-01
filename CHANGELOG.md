@@ -24,6 +24,37 @@
 ### Known issues
 - なし。
 
+## [0.30.0] - 2026-10-01
+### Added
+- GUI に preview の keyboard control mode を追加した。Primary+Shift+L で切り替え、ページ移動・scroll・Color 操作を keyboard から行える。
+- snapshot の取得時刻と経過時間を表示し、root の FileList 変更を検出して更新を案内するようにした。
+
+### Changed
+- session document と settings の保存責務を分離し、保存・復旧の既存 contract を独立した owner で維持するようにした。
+- 検索候補の準備を短い frame slice で進め、条件が一致する filtered subset を再利用することで、大きな候補集合での query dispatch の待ち時間を短縮した。
+- `semver` を 1.0.28、`serde_json` を 1.0.151 へ更新した。
+
+### Fixed
+- 復元した query の cancel と空 query の増分結果表示を修正し、古い検索状態が最新の入力や結果を巻き戻さないようにした。
+- Ignore Case checkbox、入力補助、undo 後に ignore membership を直ちに再評価するようにした。
+- index 完了時の scratch を UI thread 外で解放し、retirement queue の満杯・切断時も所有権と終端状態を保つようにした。
+- worker の panic を正常終了と区別し、健全な終了として扱わないようにした。
+- 公開済み v0.29.0 の updater capability を登録し、次版の exact checksum inventory に対する互換性検査を修正した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は notarization 環境が整うまで未 notarized の場合がある。
+- v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降へ移行後は通常の自動更新を再利用できる。
+- 大規模な候補集合では query 準備中の index 取り込みを一時停止する。50万候補の最終検証では query dispatch までの中央値が約339〜498 ms、最大536 msとなった。OS/入力環境による体感時間は別途確認が必要である。
+
 ## [0.29.0] - 2026-09-24
 ### Added
 - CSV / TSV preview に列ごとの syntax color を追加し、行ごとに列色を揃えた。引用符内の区切り文字や複数行 field にも対応した。
@@ -2118,7 +2149,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.0...HEAD
+[0.30.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...v0.28.0
 [0.27.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.0...v0.27.1

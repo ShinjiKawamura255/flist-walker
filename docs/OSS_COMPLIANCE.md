@@ -56,6 +56,13 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## semver 1.0.28 / serde_json 1.0.151 dependency review (2026-10-01)
+
+- Since v0.29.0, `semver` moves from 1.0.27 to 1.0.28 and `serde_json` from 1.0.149 to 1.0.151. Both retain `MIT OR Apache-2.0`; resolved registry packages include LICENSE-MIT and LICENSE-APACHE. No package name is added or removed in the release lockfile range.
+- `cargo metadata --locked --format-version 1 --filter-platform` resolves the four packaged targets with both updated versions: Windows GNU 292 packages, Linux x86_64 328, macOS x86_64 304, macOS arm64 303. No new license family or distribution obligation enters these graphs.
+- `THIRD_PARTY_NOTICES.txt` records the resolved versions. Archive, standalone sidecar, app-bundle and self-update notice routes remain unchanged; actual release bundle validation is a separate publication gate.
+- Latest audit and candidate-specific validation evidence belong in the v0.30.0 release packet; this dependency review does not claim future HEAD or publication PASS.
+
 ## rustls 0.23.45 security update (2026-09-16)
 
 - Transitive TLS dependency `rustls` moves from 0.23.38 to 0.23.45 through `ureq 2.12.1`, and `rustls-webpki` moves from 0.103.13 to 0.103.15, resolving RUSTSEC-2026-0285.
