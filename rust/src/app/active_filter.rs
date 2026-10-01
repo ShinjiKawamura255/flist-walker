@@ -6,7 +6,13 @@ use std::collections::{HashSet, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+// Unknown discovery, synchronous small-input work and inline retirement keep
+// their original limits; known-candidate throughput has a separate frame budget.
 pub(super) const ACTIVE_FILTER_ENTRY_BUDGET: usize = 512;
+const ACTIVE_FILTER_SYNC_THRESHOLD: usize = 512;
+const ACTIVE_FILTER_INLINE_RETIRE_THRESHOLD: usize = 512;
+const ACTIVE_FILTER_KNOWN_MAX: usize = 32_768;
+const ACTIVE_FILTER_TIME_BUDGET: std::time::Duration = std::time::Duration::from_millis(4);
 const ACTIVE_FILTER_KIND_BACKLOG: usize = 4096;
 
 /// Proves that ingestion has filtered the entire live prefix under this policy.
@@ -73,6 +79,8 @@ pub(super) struct ActiveFilterContinuation {
     request_id: Option<u64>,
     source: Option<Arc<Vec<Entry>>>,
     source_len: usize,
+    captured_live_prefix_len: usize,
+    reuse_incremental: bool,
     include_files: bool,
     include_dirs: bool,
     ignore_enabled: bool,
@@ -129,7 +137,13 @@ impl ActiveFilterContinuation {
                 || self.kind_revision == app.shell.indexing.build.resolved_kind_updates.len())
             && match &self.source {
                 Some(source) => Arc::ptr_eq(source, &app.shell.runtime.all_entries),
-                None => self.source_len == app.shell.indexing.build.index.entries.len(),
+                None => {
+                    self.captured_live_prefix_len == app.shell.indexing.build.index.entries.len()
+                        && (!self.reuse_incremental
+                            || (self.source_len
+                                == app.shell.indexing.build.incremental_filtered_entries.len()
+                                && app.incremental_entry_filter_current()))
+                }
             }
     }
 }
@@ -245,7 +259,8 @@ impl FlistWalkerApp {
             .active_filter
             .as_ref()
             .is_some_and(|pending| {
-                pending.source_len <= ACTIVE_FILTER_ENTRY_BUDGET || pending.ready_entries.is_some()
+                pending.source_len <= ACTIVE_FILTER_SYNC_THRESHOLD
+                    || pending.ready_entries.is_some()
             })
         {
             self.poll_active_entry_filter();
@@ -274,14 +289,19 @@ impl FlistWalkerApp {
         let live =
             self.shell.indexing.in_progress && !self.shell.indexing.build.index.entries.is_empty();
         let source = (!live).then(|| Arc::clone(&self.shell.runtime.all_entries));
-        let source_len = source.as_ref().map_or_else(
-            || self.shell.indexing.build.index.entries.len(),
-            |source| source.len(),
-        );
         let needs_filter = !self.shell.runtime.include_files
             || !self.shell.runtime.include_dirs
             || (self.shell.ui.ignore_list_enabled
                 && !self.shell.runtime.ignore_list_terms.is_empty());
+        let captured_live_prefix_len = self.shell.indexing.build.index.entries.len();
+        let reuse_incremental = live && needs_filter && self.incremental_entry_filter_current();
+        let source_len = if reuse_incremental {
+            self.shell.indexing.build.incremental_filtered_entries.len()
+        } else {
+            source
+                .as_ref()
+                .map_or(captured_live_prefix_len, |source| source.len())
+        };
         let results_only = live
             && !needs_filter
             && !super::result_policy::needs_search_worker(
@@ -307,6 +327,8 @@ impl FlistWalkerApp {
             request_id: self.shell.indexing.pending_request_id,
             source,
             source_len,
+            captured_live_prefix_len,
+            reuse_incremental,
             include_files: self.shell.runtime.include_files,
             include_dirs: self.shell.runtime.include_dirs,
             ignore_enabled: self.shell.ui.ignore_list_enabled,
@@ -316,7 +338,11 @@ impl FlistWalkerApp {
             kind_revision: self.shell.indexing.build.resolved_kind_updates.len(),
             cursor: 0,
             entries: Vec::with_capacity(capacity),
-            incremental: Vec::with_capacity(if live { capacity } else { 0 }),
+            incremental: Vec::with_capacity(if live && !reuse_incremental {
+                capacity
+            } else {
+                0
+            }),
             ready_entries,
             retired_visible: None,
             retired_incremental: Vec::new(),
@@ -333,7 +359,7 @@ impl FlistWalkerApp {
         &mut self,
         pending: ActiveFilterContinuation,
     ) -> Result<(), Box<ActiveFilterContinuation>> {
-        if pending.weight() <= ACTIVE_FILTER_ENTRY_BUDGET {
+        if pending.weight() <= ACTIVE_FILTER_INLINE_RETIRE_THRESHOLD {
             return Ok(());
         }
         self.shell
@@ -345,6 +371,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn poll_active_entry_filter(&mut self) {
+        self.poll_active_entry_filter_with_budget(ACTIVE_FILTER_TIME_BUDGET);
+    }
+
+    pub(super) fn poll_active_entry_filter_with_budget(&mut self, budget: std::time::Duration) {
         if self.active_entry_filter_pending() {
             let keep_scroll = self
                 .shell
@@ -376,17 +406,26 @@ impl FlistWalkerApp {
             let compiled = self.compiled_ignore_terms();
             let end = pending
                 .source_len
-                .min(pending.cursor.saturating_add(ACTIVE_FILTER_ENTRY_BUDGET));
-            while pending.cursor < end {
+                .min(pending.cursor.saturating_add(ACTIVE_FILTER_KNOWN_MAX));
+            let started = std::time::Instant::now();
+            let mut unknown_count = 0;
+            while pending.cursor < end && started.elapsed() < budget {
                 let entry = match &pending.source {
                     Some(source) => &source[pending.cursor],
+                    None if pending.reuse_incremental => {
+                        &self.shell.indexing.build.incremental_filtered_entries[pending.cursor]
+                    }
                     None => &self.shell.indexing.build.index.entries[pending.cursor],
                 };
-                let unknown = self.kind_resolution_needed_for_filters()
+                let unknown = !pending.reuse_incremental
+                    && self.kind_resolution_needed_for_filters()
                     && entry.kind.is_none_or(|kind| kind.needs_resolution())
                     && self
                         .find_entry_kind(entry.path())
                         .is_none_or(|kind| kind.needs_resolution());
+                if unknown && unknown_count == ACTIVE_FILTER_ENTRY_BUDGET {
+                    break;
+                }
                 if unknown
                     && self.shell.indexing.build.pending_kind_paths.len()
                         + self.shell.indexing.build.in_flight_kind_paths.len()
@@ -406,16 +445,20 @@ impl FlistWalkerApp {
                 {
                     break;
                 }
-                let visible = self.is_entry_visible_for_current_filter(entry, compiled.as_deref());
+                // Ingestion already established membership under the same policy.
+                // The proof is checked by matches() on every poll and retry.
+                let visible = pending.reuse_incremental
+                    || self.is_entry_visible_for_current_filter(entry, compiled.as_deref());
                 if visible {
                     pending.entries.push(entry.clone());
-                    if pending.source.is_none() {
+                    if pending.source.is_none() && !pending.reuse_incremental {
                         pending.incremental.push(entry.clone());
                     }
                 }
                 let path = unknown.then(|| entry.path.clone());
                 if let Some(path) = path {
                     self.queue_kind_resolution(path);
+                    unknown_count += 1;
                 }
                 pending.cursor += 1;
             }
@@ -449,17 +492,22 @@ impl FlistWalkerApp {
                 ),
             );
         }
-        std::mem::swap(
-            &mut pending.incremental,
-            &mut self.shell.indexing.build.incremental_filtered_entries,
-        );
+        let reuse_incremental = pending.reuse_incremental;
+        if !reuse_incremental {
+            std::mem::swap(
+                &mut pending.incremental,
+                &mut self.shell.indexing.build.incremental_filtered_entries,
+            );
+        }
         match self.retire_active_filter(pending) {
             Ok(()) => {}
             Err(mut pending) => {
-                std::mem::swap(
-                    &mut pending.incremental,
-                    &mut self.shell.indexing.build.incremental_filtered_entries,
-                );
+                if !reuse_incremental {
+                    std::mem::swap(
+                        &mut pending.incremental,
+                        &mut self.shell.indexing.build.incremental_filtered_entries,
+                    );
+                }
                 if let Some(previous) = pending.retired_visible.take() {
                     pending.ready_entries =
                         Some(self.shell.runtime.exchange_visible_entries(previous));

@@ -268,11 +268,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.invalidate_result_sort(true);
                 app.update_results();
             }
-            if centered_checkbox(ui, &mut app.shell.runtime.ignore_case, "Ignore Case").changed() {
-                app.manual_filter_changed(FilterValue::Case(true));
-                app.shell.tabs.mark_active_tab_meaningfully_engaged();
-                app.invalidate_result_sort(true);
-                app.update_results();
+            let mut ignore_case = app.shell.runtime.ignore_case;
+            if centered_checkbox(ui, &mut ignore_case, "Ignore Case").changed() {
+                app.manual_filter_changed(FilterValue::Case(ignore_case));
+                app.set_ignore_case(ignore_case);
             }
             let ignore_list_response =
                 centered_checkbox(ui, &mut app.shell.ui.ignore_list_enabled, "Use Ignore List")

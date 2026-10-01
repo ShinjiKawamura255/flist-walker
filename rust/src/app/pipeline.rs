@@ -1501,6 +1501,37 @@ impl FlistWalkerApp {
                 return true;
             }
         }
+        // A finalization replaces the incremental scratch; unfiltered completion
+        // does not need it. Admit its retirement before touching committed owners
+        // or settling the terminal. Backpressure retains the exact allocation.
+        let needs_filtering = !self.shell.runtime.include_files
+            || !self.shell.runtime.include_dirs
+            || (self.shell.ui.ignore_list_enabled
+                && !self.shell.runtime.ignore_list_terms.is_empty());
+        let replaces_incremental = self
+            .shell
+            .indexing
+            .background_finalizations
+            .contains_key(&pending_finish.request_id);
+        if (!needs_filtering || replaces_incremental)
+            && self
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .capacity()
+                > 0
+        {
+            let retired = super::tab_resources::RetiredIndexBuildResources::from_incremental_filter(
+                std::mem::take(&mut self.shell.indexing.build.incremental_filtered_entries),
+            );
+            if let Err(mut retired) = self.shell.tabs.try_retire_index_build_resources(retired) {
+                self.shell.indexing.build.incremental_filtered_entries =
+                    retired.take_incremental_filter();
+                self.set_notice("Waiting for background index scratch reclamation");
+                return false;
+            }
+        }
         let preserve_last_good_results =
             self.shell.runtime.result_sort_mode != ResultSortMode::Score;
         let mut previous = self.take_active_committed_resources();
@@ -1716,11 +1747,14 @@ impl FlistWalkerApp {
             self.shell
                 .runtime
                 .install_entry_snapshots(all_entries, entries);
-            self.shell
-                .indexing
-                .build
-                .incremental_filtered_entries
-                .clear();
+            debug_assert_eq!(
+                self.shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .capacity(),
+                0
+            );
             self.shell.indexing.last_search_snapshot_len = self.shell.runtime.entries.len();
             self.shell.indexing.search_rerun_pending = false;
             if self.shell.runtime.query_state.query.trim().is_empty() {
