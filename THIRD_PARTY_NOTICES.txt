@@ -101,7 +101,7 @@ The main direct dependencies currently used by FlistWalker are under the
 following license families:
 
 - MIT OR Apache-2.0: anyhow 1.0.104, clap, eframe, libc, memory-stats, rand_core, rayon,
-  regex, resvg, semver, serde, serde_json, sha2, unicode-width, ureq
+  regex, resvg, semver 1.0.28, serde, serde_json 1.0.151, sha2, unicode-width, ureq
 - MIT/Apache-2.0: ctrlc
 - MIT: crossterm, fuzzy-matcher, ico 0.5.0, native-dialog, tracing,
   tracing-subscriber, winres, objc2 0.6.4, objc2-foundation 0.3.2 (macOS only)
