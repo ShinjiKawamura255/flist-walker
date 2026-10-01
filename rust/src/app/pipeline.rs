@@ -1258,6 +1258,14 @@ impl FlistWalkerApp {
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             return false;
         }
+        let incremental_current = self.incremental_entry_filter_current()
+            || (self.shell.indexing.build.index.entries.is_empty()
+                && self
+                    .shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .is_empty());
         let mut processed = 0usize;
         while processed < max_entries {
             let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
@@ -1268,6 +1276,9 @@ impl FlistWalkerApp {
         }
         if self.shell.indexing.build.pending_entries.is_empty() {
             self.shell.indexing.pending_entries_request_id = None;
+        }
+        if incremental_current && self.should_track_incremental_filtered_entries() {
+            self.mark_incremental_entry_filter_current();
         }
         processed > 0
     }
@@ -1285,6 +1296,14 @@ impl FlistWalkerApp {
         if self.shell.indexing.pending_entries_request_id != Some(request_id) {
             return false;
         }
+        let incremental_current = self.incremental_entry_filter_current()
+            || (self.shell.indexing.build.index.entries.is_empty()
+                && self
+                    .shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .is_empty());
         let mut processed = 0usize;
         while processed < max_entries && frame_start.elapsed() < budget {
             let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
@@ -1295,6 +1314,9 @@ impl FlistWalkerApp {
         }
         if self.shell.indexing.build.pending_entries.is_empty() {
             self.shell.indexing.pending_entries_request_id = None;
+        }
+        if incremental_current && self.should_track_incremental_filtered_entries() {
+            self.mark_incremental_entry_filter_current();
         }
         processed > 0
     }
@@ -1607,6 +1629,10 @@ impl FlistWalkerApp {
         mut finalization: Option<super::PendingBackgroundIndexFinalize>,
     ) {
         let request_id = pending_finish.request_id;
+        self.shell.indexing.build.index.source = pending_finish.source.clone();
+        let incremental_filter_current = self.incremental_entry_filter_current();
+        self.shell.indexing.build.live_results_only = false;
+        self.shell.indexing.build.incremental_filter_identity = None;
         let finalized_filter_snapshot = finalization
             .as_ref()
             .is_some_and(|finalization| finalization.filtered_entries.is_some());
@@ -1645,15 +1671,8 @@ impl FlistWalkerApp {
             || !self.shell.runtime.include_dirs
             || (self.shell.ui.ignore_list_enabled
                 && !self.shell.runtime.ignore_list_terms.is_empty());
-        let has_incremental_filter_snapshot = needs_filtering
-            && (finalized_filter_snapshot
-                || !self
-                    .shell
-                    .indexing
-                    .build
-                    .incremental_filtered_entries
-                    .is_empty()
-                || !self.shell.indexing.build.index.entries.is_empty());
+        let has_incremental_filter_snapshot =
+            needs_filtering && (finalized_filter_snapshot || incremental_filter_current);
         self.shell.indexing.settle_active_terminal_state();
         if needs_filtering {
             if has_incremental_filter_snapshot {

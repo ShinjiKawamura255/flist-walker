@@ -3,7 +3,6 @@ use crate::app::search_coordinator::SearchResponseRoute;
 use std::path::PathBuf;
 use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
-use std::time::Instant;
 
 pub(super) struct PipelineOwner<'a> {
     app: &'a mut FlistWalkerApp,
@@ -32,6 +31,18 @@ impl<'a> PipelineOwner<'a> {
         // The current query is retained in runtime; preparation completion
         // submits it with the authoritative candidate snapshot exactly once.
         if self.app.active_entry_filter_pending() {
+            return;
+        }
+        if self.app.shell.indexing.in_progress
+            && self.app.shell.indexing.build.live_results_only
+            && super::result_policy::needs_search_worker(
+                &self.app.shell.runtime.query_state.query,
+                self.app.shell.runtime.result_sort_mode,
+                self.app.shell.runtime.result_sort_scope,
+            )
+        {
+            // Sort controls also dispatch directly through this entry point.
+            self.app.request_active_entry_filter(false);
             return;
         }
         self.app.shell.runtime.query_state.search_error = None;
@@ -102,14 +113,21 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn update_results(&mut self) {
+        if self.app.shell.runtime.query_state.query.trim().is_empty() {
+            self.app.shell.search.clear_active_request_state();
+            if self.app.try_publish_live_empty_query_results(false) {
+                return;
+            }
+        }
         if self.app.active_entry_filter_pending() {
             return;
         }
-        if !super::result_policy::needs_search_worker(
+        let needs_search_worker = super::result_policy::needs_search_worker(
             &self.app.shell.runtime.query_state.query,
             self.app.shell.runtime.result_sort_mode,
             self.app.shell.runtime.result_sort_scope,
-        ) {
+        );
+        if !needs_search_worker {
             self.app.shell.search.clear_active_request_state();
             let results = self
                 .app
@@ -134,6 +152,9 @@ impl<'a> PipelineOwner<'a> {
     }
 
     pub(super) fn apply_incremental_empty_query_results(&mut self) {
+        if self.app.try_publish_live_empty_query_results(true) {
+            return;
+        }
         if self.app.active_entry_filter_pending() {
             return;
         }
@@ -143,24 +164,6 @@ impl<'a> PipelineOwner<'a> {
             // A preserve-sort refresh keeps the sorted last-good snapshot visible.
             // The terminal snapshot is installed only when its selected sort can
             // be applied synchronously or handed to the bounded sort worker.
-            return;
-        }
-        let needs_filtering = !self.app.shell.runtime.include_files
-            || !self.app.shell.runtime.include_dirs
-            || self.ignore_list_filter_active();
-        if self.app.shell.indexing.in_progress && !needs_filtering {
-            self.app.shell.search.clear_active_request_state();
-            let source = self.app.shell.indexing.build.index.entries.as_slice();
-            let results = source
-                .iter()
-                .take(self.app.shell.runtime.limit)
-                .cloned()
-                .map(|entry| (entry.path, 0.0))
-                .collect();
-            self.app.shell.runtime.set_total_match_count(source.len());
-            self.app.shell.indexing.last_search_snapshot_len = source.len();
-            self.app.shell.indexing.last_incremental_results_refresh = Instant::now();
-            self.app.replace_results_snapshot(results, true);
             return;
         }
         self.app.request_active_entry_filter(true);
@@ -233,11 +236,6 @@ impl<'a> PipelineOwner<'a> {
             sort_scope: self.app.shell.runtime.result_sort_scope,
             cancel,
         }
-    }
-
-    fn ignore_list_filter_active(&self) -> bool {
-        self.app.shell.ui.ignore_list_enabled
-            && !self.app.shell.runtime.ignore_list_terms.is_empty()
     }
 
     pub(super) fn enqueue_search_request_for_tab_index(&mut self, tab_index: usize) {

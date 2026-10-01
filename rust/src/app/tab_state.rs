@@ -113,6 +113,8 @@ pub(super) struct TabBuildPayload {
     pub(super) in_flight_kind_paths: HashSet<PathBuf>,
     pub(super) resolved_kind_updates: Vec<(PathBuf, EntryKind)>,
     pub(super) incremental_filtered_entries: Vec<Entry>,
+    pub(super) incremental_filter_identity: Option<super::active_filter::IncrementalFilterIdentity>,
+    pub(super) live_results_only: bool,
     pub(super) entry_kind_cache: EntryKindCacheState,
 }
 
@@ -130,6 +132,8 @@ impl Default for TabBuildPayload {
             in_flight_kind_paths: HashSet::new(),
             resolved_kind_updates: Vec::new(),
             incremental_filtered_entries: Vec::new(),
+            incremental_filter_identity: None,
+            live_results_only: false,
             entry_kind_cache: EntryKindCacheState::default(),
         }
     }
@@ -149,6 +153,7 @@ impl TabBuildPayload {
 
     pub(super) fn is_empty(&self) -> bool {
         self.active_filter.is_none()
+            && self.incremental_filter_identity.is_none()
             && self.index.entries.capacity() == 0
             && self.pending_entries.capacity() == 0
             && self.pending_kind_paths.capacity() == 0
