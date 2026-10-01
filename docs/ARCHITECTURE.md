@@ -17,7 +17,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [lib.rs](../rust/src/lib.rs)
   - 共有モジュール公開面。
 - [persistence/mod.rs](../rust/src/persistence/mod.rs), [persistence/](../rust/src/persistence/)
-  - GUI/CLI/TUI 共通の保存 API。`schema.rs` は保存形式全体、`paths.rs` は保存先・移行・起動時読み込み、`worker.rs` は sidecar lock、JSON leaf merge、履歴、atomic write、設定の rollback を所有する。GUI 型や `FlistWalkerApp` に依存しない。
+  - GUI/CLI/TUI 共通の保存 API。`schema.rs` は保存形式全体、`paths.rs` は保存先・移行・起動時読み込み、`worker.rs` は bounded admission、generation/status、ordered barrier と retry を所有する。`worker/document.rs` は型検証・JSON leaf merge・履歴と単一文書の lock/atomic write、`worker/settings.rs` は設定の複数ファイル書込・rollback を所有する。GUI 型や `FlistWalkerApp` に依存しない。
 - [entry.rs](../rust/src/entry.rs)
   - `Entry` / `EntryKind` を定義し、index/search/app 間の候補表現を統一する。
 - [indexer/mod.rs](../rust/src/indexer/mod.rs)
@@ -73,6 +73,11 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - update manifest 署名検証を担当する。
 - [fs_atomic.rs](../rust/src/fs_atomic.rs)
   - atomic write helper。
+
+- [app/freshness.rs](../rust/src/app/freshness.rs), [app/freshness/worker.rs](../rust/src/app/freshness/worker.rs)
+  - snapshot の source/取得時刻/fingerprint と tab-local status、単一 filesystem probe の物理占有と論理 timeout を分担する。coordinator は描画更新時に poll し、timeout は元 tab/root/generation/path にだけ適用する。timeout 後も物理 slot を保持し、同じ snapshot の監視を停止する。
+- [app/paged_preview_flow.rs](../rust/src/app/paged_preview_flow.rs)
+  - preview control mode の選択/有効条件/command と request identity を所有する。input adapter と pointer rendering は共通 command seam を使用し、本文・encoding・pagination は `ui_model/paged_preview.rs` に置く。
 
 ## app Coordinator
 [mod.rs](../rust/src/app/mod.rs) の `FlistWalkerApp` は egui/eframe の coordinator であり、feature 実装は `rust/src/app/` に分割されている。state holder は worker / UI / query の単位でも分離されている。
@@ -137,7 +142,7 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
 - [worker/bus.rs](../rust/src/app/worker/bus.rs)
   - preview/action/sort/kind/filelist/update worker channel と request lifecycle state を束ねる。
 - [worker/runtime.rs](../rust/src/app/worker/runtime.rs)
-  - worker shutdown signal と join timeout 管理を担当する。
+  - worker shutdown signal と join timeout 管理を担当する。join 済み panic と未終了 worker を別々に記録し、panic は名前付き `shutdown_panicked` warning、未終了は `shutdown_timeout`、全員が正常終了した場合だけ `shutdown_complete` を出す。
 - [response_flow.rs](../rust/src/app/response_flow.rs)
   - preview/action/sort を中心に worker response の polling と routing を集約する。
 - [root_browser.rs](../rust/src/app/root_browser.rs)
