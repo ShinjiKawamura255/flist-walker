@@ -19,6 +19,39 @@ SPEC.loader.exec_module(POLICY)
 
 
 class CiPolicyTests(unittest.TestCase):
+    def test_install_tool_pins_cover_explicit_rust_selector(self) -> None:
+        workflow = (ROOT / ".github/workflows/release-tagged.yml").read_text()
+        original = f"cargo +{POLICY.PINNED_RUST} install cargo-audit --version {POLICY.PINNED_CARGO_AUDIT} --locked --force"
+        for tool, version in (("cargo-audit", POLICY.PINNED_CARGO_AUDIT), ("cargo-llvm-cov", POLICY.PINNED_CARGO_LLVM_COV)):
+            for selector in ("", f" +{POLICY.PINNED_RUST}"):
+                with self.subTest(tool=tool, selector=selector):
+                    command = f"cargo{selector} install {tool} --version {version} --locked --force"
+                    candidate = workflow.replace(original, command)
+                    self.assertEqual([], POLICY.validate_workflow("release-tagged.yml", candidate))
+                    wrong = workflow.replace(original, command.replace(f"--version {version}", "--version 0.0.0"))
+                    self.assertTrue(any(f"{tool} must be pinned" in v for v in POLICY.validate_workflow("release-tagged.yml", wrong)))
+                    missing = workflow.replace(original, command.replace(f" --version {version}", ""))
+                    self.assertTrue(any(f"{tool} must be pinned" in v for v in POLICY.validate_workflow("release-tagged.yml", missing)))
+            for suffix in (f" # --version {version}", f" ; echo --version {version}"):
+                wrong_with_borrowed_pin = workflow.replace(original, f"cargo +{POLICY.PINNED_RUST} install {tool} --version 0.0.0 --locked --force{suffix}")
+                self.assertTrue(any(f"{tool} must be pinned" in v for v in POLICY.validate_workflow("release-tagged.yml", wrong_with_borrowed_pin)))
+            lookalike = workflow.replace(original, f"cargo +{POLICY.PINNED_RUST} install {tool}-other --version {version} --locked --force")
+            self.assertTrue(any("unrecognized pinned Cargo tool" in v for v in POLICY.validate_workflow("release-tagged.yml", lookalike)))
+            wrong_rust = workflow.replace(original, f"cargo +stable install {tool} --version {version} --locked --force")
+            self.assertTrue(any("install Rust must be pinned" in v for v in POLICY.validate_workflow("release-tagged.yml", wrong_rust)))
+
+    def test_install_tool_pins_inspect_each_adjacent_command(self) -> None:
+        workflow = (ROOT / ".github/workflows/release-tagged.yml").read_text()
+        original = f"cargo +{POLICY.PINNED_RUST} install cargo-audit --version {POLICY.PINNED_CARGO_AUDIT} --locked --force"
+        tools = (("cargo-audit", POLICY.PINNED_CARGO_AUDIT), ("cargo-llvm-cov", POLICY.PINNED_CARGO_LLVM_COV))
+        for first, second in (tools, tools[::-1]):
+            for separator in (";", "&&", "|"):
+                for selector in ("", f" +{POLICY.PINNED_RUST}"):
+                    with self.subTest(first=first, separator=separator, selector=selector):
+                        commands = f"cargo{selector} install {first[0]} --version {first[1]} {separator} cargo{selector} install {second[0]} --version 0.0.0"
+                        violations = POLICY.validate_workflow("release-tagged.yml", workflow.replace(original, commands))
+                        self.assertTrue(any(f"{second[0]} must be pinned" in v for v in violations))
+
     def test_repository_satisfies_ci_policy(self) -> None:
         self.assertEqual([], POLICY.collect_violations(ROOT))
 
