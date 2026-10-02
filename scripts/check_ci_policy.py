@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 import sys
 from pathlib import Path
 
@@ -295,14 +296,44 @@ def validate_workflow(name: str, text: str) -> list[str]:
 
     if not is_canary and "rust-toolchain@" in text and f"toolchain: {PINNED_RUST}" not in text:
         violations.append(f"{name}: Rust must be pinned to {PINNED_RUST}")
-    if "cargo install cargo-audit" in text and (
-        f"cargo-audit --version {PINNED_CARGO_AUDIT}" not in text
+    # Parse one shell command so comments/adjacent commands cannot lend a pin.
+    installed_tool_pins = {
+        "cargo-audit": PINNED_CARGO_AUDIT,
+        "cargo-llvm-cov": PINNED_CARGO_LLVM_COV,
+    }
+    for install in re.finditer(
+        r"\bcargo(?:[ \t]+\+\S+)?[ \t]+install[ \t]+(?:cargo-audit|cargo-llvm-cov)",
+        text,
     ):
-        violations.append(f"{name}: cargo-audit must be pinned to {PINNED_CARGO_AUDIT}")
-    if "cargo install cargo-llvm-cov" in text and (
-        f"cargo-llvm-cov --version {PINNED_CARGO_LLVM_COV}" not in text
-    ):
-        violations.append(f"{name}: cargo-llvm-cov must be pinned to {PINNED_CARGO_LLVM_COV}")
+        command = text[install.start():].splitlines()[0]
+        lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+        lexer.whitespace_split = True
+        tokens = []
+        try:
+            for token in lexer:
+                if token and all(char in ";&|" for char in token):
+                    break
+                tokens.append(token)
+        except ValueError:
+            violations.append(f"{name}: invalid Cargo tool install command")
+            continue
+        toolchain = tokens[1][1:] if tokens[1].startswith("+") else None
+        tool_index = 3 if toolchain is not None else 2
+        if len(tokens) <= tool_index:
+            violations.append(f"{name}: incomplete Cargo tool install command")
+            continue
+        tool = tokens[tool_index]
+        if tool not in installed_tool_pins:
+            violations.append(f"{name}: unrecognized pinned Cargo tool {tool}")
+            continue
+        expected = installed_tool_pins[tool]
+        arguments = tokens[tool_index + 1:]
+        positions = [index for index, token in enumerate(arguments) if token == "--version"]
+        if (len(positions) != 1 or positions[0] + 1 >= len(arguments)
+                or arguments[positions[0] + 1] != expected):
+            violations.append(f"{name}: {tool} must be pinned to {expected}")
+        if toolchain is not None and toolchain != PINNED_RUST:
+            violations.append(f"{name}: {tool} install Rust must be pinned to {PINNED_RUST}")
 
     return violations
 
