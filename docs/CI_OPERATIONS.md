@@ -26,6 +26,14 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - Related Tests: `test_ci_contract_requires_both_windows_gnu_updater_variants_regression`。
 - Notes for Future Changes: updater variantを追加または改名する場合はworkflow、trusted checker、各tokenのnegative testを同一変更で更新する。
 
+### Regression Guard: explicit Rust selector and independent Cargo install pins
+
+- Scenario: release auditをproject toolchain directoryでinstallすると、暗黙のdefault toolchainをproject pinがoverrideする警告が出る。一方、`cargo +1.97.1 install`をliteral `cargo install`だけの検査へ追加するとtool pinを検査しなくなる。また行末を一度に消費するparserは同じ行の後続installを見落とす。
+- Expected Behavior: release audit installはRust `1.97.1`とcargo-audit `0.22.2`を明示し、警告を抑制せず原因を除く。trusted checkerはimplicit/explicit selectorを検査し、誤ったRust/tool版、欠落・重複したversion、comment/隣接commandから借りたpin、tool名のlookalikeを拒否する。同一行の各installを独立に検査し、`;` / `&&` / `|`とtool順序で判定が変わらない。
+- Non-goals: auditのskip、warning filter、Actionのvendor patch、branch protectionの恒久的変更、release warning例外の一般化。
+- Related Tests: `test_install_tool_pins_cover_explicit_rust_selector`, `test_install_tool_pins_inspect_each_adjacent_command`。
+- Notes for Future Changes: Rust/tool pin promotionではexplicit install commandも揃える。workflow/checkerの構造変更は通常のpin例外へ正規化せず、controlled trusted-policy rolloutと復元後のprotected proofで検証する。
+
 ### Regression Guard: fail-closed documentation skip and updater DAG
 
 - Scenario: docs-only変更でも全platform release buildとupdater E2Eが約18-19分走る一方、単純なRust path denylistへ置き換えるとunknown/rename/deleteを誤ってskipできる。またE2EがGNU artifactだけを使うのにnative matrix全体を待つとcritical pathが直列化する。
