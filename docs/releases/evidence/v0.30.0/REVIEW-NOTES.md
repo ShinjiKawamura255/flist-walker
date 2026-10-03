@@ -25,3 +25,13 @@ Blocking/major: none; updated PR CI may proceed, not publication GO. Reviewer co
 Two minor documentation findings fixed: removed a blank line that split the H-03/H-04 findings table; corrected replay log references to include `0x` in seed names. Main inspected these documentation-only fixes and cached diff check passed. No runtime input changed, so existing final tests remain applicable. The post-remediation snapshot and committed head/tree are retained in the PR.
 
 Still NOT RUN: updated exact-head CI; Linux bundle self-test/real validator; signed candidate/actual manifest N-1; candidate native GUI/Windows/input/liveness prerequisites; tagged build and publication/download/hash. CUA availability subsequently reported the Mac locked, so native launch has not occurred; user operation required before native execution. Historical waivers do not apply.
+
+## Final source, native and publication reviews
+
+Recorded 2026-10-03. The independent read-only reviewer had no implementation authorship or file/Git/release mutations. Exact GUI patch, post-replay source/selection and accepted candidate reviews reported0 blocking/major/minor findings. Source/render patch and later Markdown-only changes were reconciled without repeated full tests or GUI launches.
+
+Tag-stage review confirmed the one run candidate warning approval, clean owner-worktree synchronization, annotated tag identity, whole18-commit classification and final-body preparation. Completed tagged bundle/draft review checked source `129ec84…`/run 37116511150, actual ZIP/API digest, all 11 jobs and full warnings,28 assets, signature/N-1/PE records, selected Mac reuse, Windows NOT RUN/deviation and TC-193 reuse.
+
+One major draft issue was found: Downloads copied28 temporary `untagged-*` links. The owner replaced only those links with stable v0.30.0 URLs using actual attached names, preserved the initial body/check and verified exact body readback plus unchanged asset IDs/names/sizes/digests. Focused independent re-review resolved the major finding with no new findings. Final reviewed body SHA256 is `00f8c9fd28e16efacc31490dc41124f0dc0a1e98249ca4a557c6befba3085ae7`.
+
+The reviewer did not approve warnings on the user's behalf. Candidate DEP0005 one emission and tagged two emission exceptions were separately granted by the user for their exact runs before the dependent actions. Public download/identity readback was then performed by the owner and retained in [PUBLICATION-VALIDATION.md](PUBLICATION-VALIDATION.md). The closure PR carries its separate exact-diff independent review and required-check evidence.
