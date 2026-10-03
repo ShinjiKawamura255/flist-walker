@@ -2173,3 +2173,107 @@ fn follow_links_gui_surface_snapshot_exposes_active_tab_setting() {
     assert!(app.gui_surface_snapshot().follow_links);
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn regression_narrow_results_header_and_rows_stay_inside_client_area() {
+    for size in [
+        egui::vec2(760.0, 560.0),
+        egui::vec2(640.0, 400.0),
+        egui::vec2(1200.0, 800.0),
+    ] {
+        for preview in [true, false] {
+            for count in [8, 1, 10_000] {
+                let mut harness = ResultsNavigationHarness::new(false);
+                harness.size = size;
+                harness
+                    .app
+                    .shell
+                    .runtime
+                    .committed_for_test_mut()
+                    .results
+                    .truncate(count);
+                harness
+                    .app
+                    .shell
+                    .runtime
+                    .committed_for_test_mut()
+                    .total_match_count = count;
+                harness.app.shell.ui.set_show_preview(preview);
+                let probe = harness.settle();
+                let (_, _, viewport) = probe.scroll.expect("result viewport");
+                let bounds = probe.header_bounds.expect("Results pane bounds");
+                assert_eq!(probe.header_controls.len(), 2);
+                for (label, rect) in &probe.header_controls {
+                    assert!(rect.left() >= bounds.left() && rect.right() <= bounds.right(),
+                    "header control must stay in Results pane: size={size:?}, preview={preview}, label={label}, rect={rect:?}, bounds={bounds:?}");
+                }
+                assert!(viewport.left() >= 0.0 && viewport.right() <= size.x,
+                "results viewport must remain inside client area: size={size:?}, preview={preview}, viewport={viewport:?}");
+                for (_, rect) in probe.row_rects {
+                    assert!(
+                        rect.left() >= viewport.left() - 1.0,
+                        "row prefix must remain visible: rect={rect:?}, viewport={viewport:?}"
+                    );
+                }
+                fs::remove_dir_all(&harness.root).expect("cleanup");
+            }
+        }
+    }
+}
+
+#[test]
+fn regression_long_root_text_does_not_cover_controls_at_minimum_width() {
+    fn text_shape<'a>(shape: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_shape(shape, label)),
+            _ => None,
+        }
+    }
+    let root = test_root(&format!("narrow-root-{}", "long-root-".repeat(12)));
+    fs::create_dir_all(&root).expect("fixture root");
+    let mut app = FlistWalkerApp::new(root.clone(), 30, String::new());
+    let ctx = egui::Context::default();
+    for size in [egui::vec2(640.0, 400.0), egui::vec2(760.0, 560.0)] {
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+        let mut output = egui::FullOutput::default();
+        for _ in 0..4 {
+            output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+        }
+        let browse = output
+            .shapes
+            .iter()
+            .find_map(|shape| text_shape(&shape.shape, "Browse..."))
+            .expect("Browse button");
+        let root_shape = output
+            .shapes
+            .iter()
+            .find(|shape| text_shape(&shape.shape, &app.root_display_text()).is_some())
+            .expect("selected root");
+        assert!(
+            root_shape.clip_rect.right() < browse.pos.x,
+            "long selected root must be clipped before adjacent actions: clip={:?}, browse={:?}",
+            root_shape.clip_rect,
+            browse.pos
+        );
+        let preview = output
+            .shapes
+            .iter()
+            .find_map(|shape| text_shape(&shape.shape, "Preview"))
+            .expect("Preview toggle");
+        assert!(
+            screen.contains_rect(egui::Rect::from_min_size(
+                preview.pos,
+                preview.galley.size()
+            )),
+            "Preview toggle must fit"
+        );
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}

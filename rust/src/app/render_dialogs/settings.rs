@@ -22,7 +22,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     let ime_composition_active = app.shell.ui.ime_composition_active;
     let mut action = None;
     egui::Modal::new(egui::Id::new("gui-settings-modal")).show(ctx, |ui| {
-        ui.set_min_width(540.0);
+        let viewport = ctx.content_rect();
+        let width = 540.0_f32.min((viewport.width() - 32.0).max(0.0));
+        ui.set_width(width);
+        // Reserve space for the title, notices, and all footer actions, including
+        // the dirty-draft confirmation. Only the editable body scrolls.
+        let body_height = 430.0_f32.min((viewport.height() - 200.0).max(0.0));
         ui.heading("Settings");
         ui.label("Saved changes take effect the next time FlistWalker starts.");
         ui.add_space(8.0);
@@ -47,7 +52,9 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 ui.label("Saving settings...");
             }
             SettingsView::Failed(error) => {
-                ui.colored_label(ui.visuals().error_fg_color, error);
+                egui::ScrollArea::vertical().max_height(body_height).show(ui, |ui| {
+                    ui.colored_label(ui.visuals().error_fg_color, error);
+                });
                 if ui.button("Retry").clicked() {
                     action = Some(Action::Retry);
                 }
@@ -59,7 +66,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 error,
                 confirm_reload,
             } => {
-                egui::ScrollArea::vertical().max_height(430.0).show(ui, |ui| {
+                egui::ScrollArea::vertical().max_height(body_height).show(ui, |ui| {
                     ui.heading("Startup and history");
                     ui.checkbox(&mut draft.restore_tabs_enabled, "Restore previous tabs");
                     ui.label("Explicit startup options take priority over restored tabs.");
@@ -129,7 +136,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 });
                 let dirty = draft != &baseline.values
                     || limit_text.trim() != baseline.values.walker_max_entries.to_string();
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     let label = if dirty && *confirm_reload {
                         "Discard changes and reload JSON"
                     } else {

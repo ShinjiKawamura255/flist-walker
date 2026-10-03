@@ -603,3 +603,89 @@ fn gui_filelist_auto_check_checkbox_persists_opt_out_for_next_launch() {
     };
     assert!(!draft.filelist_auto_check_enabled);
 }
+
+#[test]
+fn regression_narrow_settings_title_and_footer_stay_inside_client_area() {
+    fn text_rect(shape: &egui::Shape, label: &str) -> Option<egui::Rect> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                Some(egui::Rect::from_min_size(text.pos, text.galley.size()))
+            }
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_rect(shape, label)),
+            _ => None,
+        }
+    }
+    for size in [
+        egui::vec2(760.0, 560.0),
+        egui::vec2(640.0, 400.0),
+        egui::vec2(1200.0, 800.0),
+    ] {
+        let scope = test_settings_scope("settings-client-bounds");
+        fs::write(scope.runtime_config_path(), "{}").expect("seed config");
+        let mut app = scope.app(test_root("settings-client-bounds-root"), 30, String::new());
+        app.open_settings_dialog();
+        settle_settings_dialog(&mut app);
+        let ctx = egui::Context::default();
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+        for state in 0..4 {
+            if let SettingsView::Editing {
+                baseline,
+                draft,
+                error,
+                confirm_reload,
+                ..
+            } = &mut app.settings_dialog.view
+            {
+                if state == 1 {
+                    draft.restore_tabs_enabled = !baseline.values.restore_tabs_enabled;
+                    *confirm_reload = true;
+                } else if state == 2 {
+                    *error = Some("Settings were changed by another process. ".repeat(30));
+                }
+            }
+            if state == 3 {
+                app.settings_dialog.view =
+                    SettingsView::Failed("Invalid settings JSON. ".repeat(100));
+            }
+            let mut output = egui::FullOutput::default();
+            for _ in 0..4 {
+                output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        ..Default::default()
+                    },
+                    |ui| app.run_ui_frame(ui),
+                );
+            }
+            let labels: &[&str] = if state == 3 {
+                &["Settings", "Retry", "Open settings JSON", "Close"]
+            } else if state == 0 {
+                &[
+                    "Settings",
+                    "Save",
+                    "Cancel",
+                    "Reset displayed settings to defaults",
+                    "Reload JSON",
+                    "Open settings JSON",
+                ]
+            } else {
+                &[
+                    "Settings",
+                    "Save",
+                    "Cancel",
+                    "Reset displayed settings to defaults",
+                    "Discard changes and reload JSON",
+                    "Open settings JSON",
+                ]
+            };
+            for label in labels {
+                let rect = output
+                    .shapes
+                    .iter()
+                    .find_map(|shape| text_rect(&shape.shape, label))
+                    .unwrap_or_else(|| panic!("missing {label}: size={size:?}, state={state}"));
+                assert!(screen.contains_rect(rect), "settings control must fit: size={size:?}, state={state}, label={label}, rect={rect:?}");
+            }
+        }
+    }
+}
