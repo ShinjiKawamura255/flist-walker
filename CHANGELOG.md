@@ -24,7 +24,7 @@
 ### Known issues
 - なし。
 
-## [0.30.0] - 2026-10-01
+## [0.30.0] - 2026-10-03
 ### Added
 - GUI に preview の keyboard control mode を追加した。Primary+Shift+L で切り替え、ページ移動・scroll・Color 操作を keyboard から行える。
 - snapshot の取得時刻と経過時間を表示し、root の FileList 変更を検出して更新を案内するようにした。
@@ -35,6 +35,7 @@
 - `semver` を 1.0.28、`serde_json` を 1.0.151 へ更新した。
 
 ### Fixed
+- 狭いウィンドウで Results の先頭表示と設定画面の末尾操作が欠ける問題、および Preview 操作ボタンが画面外に隠れる問題を修正した。
 - 復元した query の cancel と空 query の増分結果表示を修正し、古い検索状態が最新の入力や結果を巻き戻さないようにした。
 - Ignore Case checkbox、入力補助、undo 後に ignore membership を直ちに再評価するようにした。
 - index 完了時の scratch を UI thread 外で解放し、retirement queue の満杯・切断時も所有権と終端状態を保つようにした。
