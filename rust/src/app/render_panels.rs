@@ -29,6 +29,8 @@ pub(super) struct ResultRenderProbe {
     pub(super) rendered_rows: Vec<usize>,
     pub(super) action_rows: Vec<usize>,
     pub(super) row_rects: Vec<(usize, egui::Rect)>,
+    pub(super) header_controls: Vec<(&'static str, egui::Rect)>,
+    pub(super) header_bounds: Option<egui::Rect>,
     pub(super) scroll: Option<(egui::Id, egui::Vec2, egui::Rect)>,
 }
 
@@ -437,7 +439,7 @@ fn render_paged_preview(
     view.scroll_offset = scroll_output.state.offset.y;
     ui.separator();
     let mut action = None;
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         let status = match document.state() {
             PreviewPageState::More => "More available",
             PreviewPageState::Eof => "End of file",
@@ -459,7 +461,7 @@ fn render_paged_preview(
         FlistWalkerApp::primary_shortcut_label()
     );
     ui.weak(&focus_hint);
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         for candidate in PreviewAction::ALL {
             let label = match candidate {
                 PreviewAction::ToggleColor => if color_enabled { "Color: on" } else { "Color: off" },
@@ -474,6 +476,9 @@ fn render_paged_preview(
             });
             let response = ui.add_enabled(candidate.available(document, busy, error), button)
                 .on_hover_text(format!("{focus_hint}\nLeft / Right: select; Enter / Space: activate; Esc: return to search"));
+            if selected && !ui.clip_rect().contains_rect(response.rect) {
+                response.scroll_to_me(Some(egui::Align::Center));
+            }
             #[cfg(test)]
             PREVIEW_CONTROL_PROBE.with(|probe| {
                 if let Some(controls) = probe.borrow_mut().as_mut() {
@@ -518,8 +523,20 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                     egui::Frame::NONE.fill(frame_fill).show(ui, |ui| {
                         ui.set_min_size(egui::vec2(preview_width, preview_height));
                         if let Some(document) = paged_document.as_ref() {
-                            preview_action =
-                                render_paged_preview(ui, document, &mut app.paged_preview_view);
+                            egui::ScrollArea::vertical()
+                                .id_salt((
+                                    "preview-details",
+                                    app.paged_preview_view.display_generation,
+                                ))
+                                .max_height(preview_height)
+                                .auto_shrink([false, false])
+                                .show(ui, |ui| {
+                                    preview_action = render_paged_preview(
+                                        ui,
+                                        document,
+                                        &mut app.paged_preview_view,
+                                    );
+                                });
                         } else {
                             egui::ScrollArea::both()
                                 .auto_shrink([false, false])
@@ -570,8 +587,47 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
     app.clear_scroll_to_current();
 }
 
+fn labeled_results_combo(
+    ui: &mut egui::Ui,
+    label: &str,
+    combo_width: f32,
+    render_combo: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    let label_width = ui
+        .painter()
+        .layout_no_wrap(
+            label.to_owned(),
+            egui::TextStyle::Button.resolve(ui.style()),
+            ui.visuals().text_color(),
+        )
+        .size()
+        .x;
+    // ComboBox builds its own horizontal UI. Reserve the complete labeled group
+    // in the wrapping parent before rendering it, so its button cannot overflow
+    // into Preview when the current line has too little remaining space.
+    ui.allocate_ui_with_layout(
+        egui::vec2(
+            label_width + ui.spacing().item_spacing.x + combo_width,
+            ui.spacing().interact_size.y,
+        ),
+        egui::Layout::left_to_right(egui::Align::Center),
+        |ui| {
+            centered_top_panel_label(ui, label);
+            render_combo(ui)
+        },
+    )
+    .inner
+}
+
 pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
+    #[cfg(test)]
+    RESULT_RENDER_PROBE.with(|probe| {
+        if let Some(active) = probe.borrow_mut().as_mut() {
+            active.result.header_bounds = Some(ui.available_rect_before_wrap());
+        }
+    });
+    // Labeled controls wrap as bounded groups within the Results pane.
+    ui.horizontal_wrapped(|ui| {
         ui.heading("Results");
         let total = app.shell.runtime.total_match_count;
         let shown = app.shell.runtime.results.len();
@@ -580,28 +636,15 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         } else {
             ui.label(format!("{shown} shown"));
         }
-        let row_height = ui.spacing().interact_size.y;
-        let row_width = ui.available_width();
-        ui.allocate_ui_with_layout(
-            egui::vec2(row_width, row_height),
-            egui::Layout::right_to_left(egui::Align::Center),
+        let original_scope = app.shell.runtime.result_sort_scope;
+        let mut selected_scope = original_scope;
+        let mut selected = app.shell.runtime.result_sort_mode;
+        let sort_response = labeled_results_combo(
+            ui,
+            "Sorted by",
+            FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH,
             |ui| {
-                let original_scope = app.shell.runtime.result_sort_scope;
-                let mut selected_scope = original_scope;
-                let scope_response = egui::ComboBox::from_id_salt("results-sort-scope-selector")
-                    .width(126.0)
-                    .selected_text("")
-                    .show_ui(ui, |ui| {
-                        ui.set_min_width(126.0);
-                        for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
-                            ui.selectable_value(&mut selected_scope, scope, scope.label());
-                        }
-                    })
-                    .response;
-                paint_compact_combo_selected_text(ui, &scope_response, selected_scope.label());
-                centered_top_panel_label(ui, "Scope");
-                let mut selected = app.shell.runtime.result_sort_mode;
-                let sort_response = egui::ComboBox::from_id_salt("results-sort-selector")
+                egui::ComboBox::from_id_salt("results-sort-selector")
                     .width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH)
                     .selected_text("")
                     .show_ui(ui, |ui| {
@@ -622,17 +665,49 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                             ui.selectable_value(&mut selected, mode, mode.label());
                         }
                     })
-                    .response;
-                paint_compact_combo_selected_text(ui, &sort_response, selected.label());
-                centered_top_panel_label(ui, "Sorted by");
-                if selected != app.shell.runtime.result_sort_mode {
-                    app.select_result_sort_mode(selected);
-                }
-                if selected_scope != original_scope {
-                    app.set_result_sort_scope(selected_scope);
-                }
+                    .response
             },
         );
+        #[cfg(test)]
+        RESULT_RENDER_PROBE.with(|probe| {
+            if let Some(active) = probe.borrow_mut().as_mut() {
+                active
+                    .result
+                    .header_controls
+                    .push(("sort", sort_response.rect));
+            }
+        });
+        paint_compact_combo_selected_text(ui, &sort_response, selected.label());
+
+        let scope_response = labeled_results_combo(ui, "Scope", 126.0, |ui| {
+            egui::ComboBox::from_id_salt("results-sort-scope-selector")
+                .width(126.0)
+                .selected_text("")
+                .show_ui(ui, |ui| {
+                    ui.set_min_width(126.0);
+                    for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
+                        ui.selectable_value(&mut selected_scope, scope, scope.label());
+                    }
+                })
+                .response
+        });
+        #[cfg(test)]
+        RESULT_RENDER_PROBE.with(|probe| {
+            if let Some(active) = probe.borrow_mut().as_mut() {
+                active
+                    .result
+                    .header_controls
+                    .push(("scope", scope_response.rect));
+            }
+        });
+        paint_compact_combo_selected_text(ui, &scope_response, selected_scope.label());
+
+        if selected != app.shell.runtime.result_sort_mode {
+            app.select_result_sort_mode(selected);
+        }
+        if selected_scope != original_scope {
+            app.set_result_sort_scope(selected_scope);
+        }
     });
     if app.shell.runtime.result_sort_mode.uses_metadata()
         && app.shell.runtime.result_sort_scope == ResultSortScope::ShownResults

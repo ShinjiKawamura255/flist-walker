@@ -1397,3 +1397,92 @@ fn regression_preview_focus_exit_held_escape_does_not_refocus_behind_modal() {
     assert_eq!(app.shell.runtime.pinned_paths, pins);
     fs::remove_dir_all(root).expect("cleanup");
 }
+
+#[test]
+fn regression_short_preview_scroll_reaches_all_controls() {
+    use crate::app::render_panels::{begin_preview_control_probe, take_preview_control_probe};
+    for (size, width) in [
+        (egui::vec2(640.0, 400.0), 440.0),
+        (egui::vec2(760.0, 560.0), 220.0),
+    ] {
+        let (mut app, ctx, root) =
+            preview_focus_fixture(&format!("short-preview-{}", "long-".repeat(15)));
+        app.shell.ui.set_preview_panel_width(width);
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+        let pointer = egui::pos2(size.x - 80.0, size.y - 90.0);
+        let mut controls = Vec::new();
+        for frame in 0..12 {
+            begin_preview_control_probe();
+            let events = if frame < 3 {
+                Vec::new()
+            } else {
+                vec![
+                    egui::Event::PointerMoved(pointer),
+                    egui::Event::MouseWheel {
+                        unit: egui::MouseWheelUnit::Point,
+                        phase: egui::TouchPhase::Move,
+                        delta: egui::vec2(0.0, -600.0),
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ]
+            };
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    time: Some(frame as f64 * 0.1),
+                    events,
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+            controls = take_preview_control_probe();
+        }
+        assert_eq!(controls.len(), 3);
+        for control in controls {
+            assert!(screen.contains_rect(control.rect), "short/narrow Preview controls must be reachable by scrolling: size={size:?}, width={width}, action={:?}, rect={:?}", control.action, control.rect);
+        }
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+}
+
+#[test]
+fn regression_short_preview_keyboard_focus_reveals_selected_control() {
+    use crate::app::render_panels::{begin_preview_control_probe, take_preview_control_probe};
+    let (mut app, ctx, root) = preview_focus_fixture("short-preview-keyboard-control");
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 400.0));
+    let mut controls = Vec::new();
+    for frame in 0..8 {
+        begin_preview_control_probe();
+        let events = if frame == 2 {
+            vec![egui::Event::Key {
+                key: egui::Key::L,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: gui_shortcut_modifiers(true),
+            }]
+        } else {
+            Vec::new()
+        };
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                time: Some(frame as f64 * 0.1),
+                events,
+                ..Default::default()
+            },
+            |ui| app.run_ui_frame(ui),
+        );
+        controls = take_preview_control_probe();
+    }
+    let selected = controls
+        .iter()
+        .find(|control| control.selected)
+        .expect("preview focused control");
+    assert!(
+        screen.contains_rect(selected.rect),
+        "application keyboard route must reveal selected Preview control: {:?}",
+        selected.rect
+    );
+    fs::remove_dir_all(root).expect("cleanup");
+}

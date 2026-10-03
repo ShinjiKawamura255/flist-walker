@@ -58,6 +58,7 @@ fn paint_root_selector_button(
     );
     let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
     ui.painter()
+        .with_clip_rect(text_rect.intersect(ui.clip_rect()))
         .galley(text_pos.min, galley, visuals.text_color());
 }
 
@@ -255,7 +256,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             }
         });
 
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             let use_filelist_changed =
                 centered_checkbox(ui, &mut app.shell.runtime.use_filelist, "Use FileList")
                     .changed();
