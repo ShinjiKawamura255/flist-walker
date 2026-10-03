@@ -33,11 +33,11 @@
 - 起動、検索、選択、プレビュー、実行/オープン、再読込を `docs/GUI-TESTPLAN.md` の `GSM-*` 手順で検証する。
 - GUI smoke fixture は `scripts/gui-smoke-fixture.sh` で作成し、証跡は `rust/target/gui-smoke/evidence/` に記録する。手動で報告を作る場合は `docs/GUI-TESTREPORT.template.md` を雛形にする。
 - release candidate または VM-002 対象の GUI-adjacent 変更では、該当 `GSM-*` の Deterministic / Native interaction / Liveness 各軸について PASS / FAIL / SKIPPED / NOT RUN と証跡パスを必ず記録する。単なる「手元で見た」だけでは gate 完了扱いにしない。
-- per-candidate core は全deterministic group、native startup/input/liveness baseline、変更・回帰感度のあるGSMを対象とする。full platform certificationはrelease planが要求するexact candidateで実施し、residual addendumは同一source/binaryの未解決axisだけを追加する。既存PASSを理由なく再実行しない。
-- native sessionの前にOS、display/DPI、IME、UNC、owned external handler、clipboard gate、loopback/signing、scale fixture、isolated restart profileのprerequisiteを一括確認する。release-requiredなFAIL/NOT RUNは、formal statusを維持したversion-specific deviationがない限りpublicationをblockする。
+- リリースは [Release Validation Selection](release-validation.md) の毎回gateと変更時gateで判定する。変更時の有効な証跡を再利用し、新binaryだけを理由に全deterministic group/native matrixを反復しない。full platform certificationは広い影響範囲または明示依頼がある場合だけ選ぶ。
+- native sessionの前に選択されたaxisだけのOS/display/DPI/IME/UNC/handler/clipboard/loopback/signing/scale/restart条件を一括確認する。release-requiredなFAIL/NOT RUNは、formal statusを維持したversion-specific deviationがない限りpublicationをblockする。
 - cross-process restartは`SavedTabState`の永続fieldだけを対象とする。sort/PIN/selection/results/preview/lifecycle/heavy snapshotは、owned contractが追加されない限りcross-process期待へ含めず、in-process closed-tab/Recent-Inactive検証と分ける。
 - GUI Headful Smoke:
-- release candidate / nightly では `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で native window 起動の早期クラッシュを検出し、`rust/target/gui-smoke/evidence/GUI-HEADFUL-SMOKE.local.md` に記録する。通常 PR の required gate にはしない。
+- 起動/GUI backend/bundle/subsystem/build経路が変わった候補とnightlyでは `scripts/gui-headful-smoke.sh` または `scripts/gui-headful-smoke.ps1` で早期クラッシュを検出する。無関係な通常リリースでfresh headfulを必須にせず、影響評価済み証跡を再利用できる。通常PRのrequired CI gateにはしない。
 - Perf/Sec:
 - Perf: 10万件相当ダミー候補で検索時間計測。
 - Perf: 軽量 PR gate は `perf_filelist_stream_is_faster_than_metadata_probe_baseline` とし、include_files/include_dirs 両有効の FileList stream で line-only fast path を metadata-probe baseline に対して維持する。hosted Linux runner の揺れを吸収するため、CI の下限は 1.20x とする。encoding preflight 追加後は metadata-probe control と allocating-lines control の両方が production と同じ preflight を実行して差分要因を維持し、threshold は変更しない。TC-161 evidence は validation-only と total parse elapsed も別々に記録する。heavy suite は `perf_walker_classification_is_faster_than_eager_metadata_resolution` と `perf_adaptive_walker_reports_local_dataset_metrics` として分離し、walker 側の現行 control baseline は 1.25x を下限としつつ、adaptive の件数一致・実行時間・read_dir 制御指標も継続計測する。

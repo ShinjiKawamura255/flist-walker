@@ -8,6 +8,7 @@ This file is the entry point for FlistWalker test planning. Detailed test strate
 | [Test Strategy and Levels](testplan/strategy-levels.md) | Scope, priority, unit/integration/manual/perf/sec levels |
 | [Test Cases](testplan/test-cases.md) | TC ID table and related SP mapping |
 | [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Change-type checklist, VM routing, and commands |
+| [Release Validation Selection](testplan/release-validation.md) | Every-release gates, change-triggered checks and evidence reuse |
 | [Validation Details](testplan/validation/) | Per-VM required, conditional, platform, and manual checks |
 | [Regression Guards](testplan/regression-guards.md) | Defect-specific behavior, related tests, and future-change rules |
 | [Manual Regression and Traceability](testplan/manual-regression-traceability.md) | Environment, manual self-update, diagnostics trace smoke, structural GUI smoke, later regression guards, traceability excerpt |
@@ -64,7 +65,8 @@ For documentation-only restructuring, apply VM-001:
 - `scripts/gui-deterministic-scenarios.tsv` is the canonical nonzero owner-test inventory used by both platform wrappers.
 - Headful smoke MUST launch only a fresh BaseDir-owned staged executable with isolated settings, the exact binary/ignore/sample allowlist, and no `.flistwalker-update*` artifact. External actions, clipboard mutation, network update checks, and live updater activation are not validation defaults.
 - Windows `-ScriptedQueryProbe` extends the staged headful smoke with PID-bound visible-window responsiveness, Unicode query initialization, and isolated trace verification. It is not physical input focus, IME composition, Copy Path, Open/Reveal, or multi-display evidence.
-- Apply VM-006 after changing the GUI plan/template, deterministic wrappers/inventory, fixture, or headful scripts; this includes the exact 75% llvm-cov command and parser/fixture/reference checks.
+- Apply VM-006 after changing the GUI plan/template, deterministic wrappers/inventory, fixture, or headful scripts; select its text/coverage/tooling branch. Plan/template text alone requires reference and selection review, not coverage or native execution.
+- Routine releases use [Release Validation Selection](testplan/release-validation.md); required affected axes and prior evidence are reconciled rather than rerunning every GSM flow.
 
 ## Traceability (excerpt)
 - Full excerpt: [Manual Regression and Traceability](testplan/manual-regression-traceability.md)

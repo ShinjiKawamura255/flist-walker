@@ -22,7 +22,7 @@ This document is the durable current-state snapshot for maintainers. It does not
 
 - Paged preview has an application-owned control mode via Primary+Shift+L, with normal-render-path regression tests. Native OS key delivery and IME remain separate manual evidence axes.
 - Native Japanese IME composition, alternate-DPI display movement, real UNC access, and explicitly authorized external Open/Reveal behavior require suitable platform sessions and remain conditional manual evidence.
-- Native headful GUI launch is not a normal pull-request gate. GUI-adjacent changes and release candidates follow [GUI-TESTPLAN.md](GUI-TESTPLAN.md).
+- Releases reconcile change-time checks under [Release Validation Selection](testplan/release-validation.md); unaffected functional/native evidence can be reused. Full native evaluation is not required for every release. Changed GUI flows follow [GUI-TESTPLAN.md](GUI-TESTPLAN.md); known native failures still require fix confirmation or explicit acceptance.
 - macOS release artifacts may remain unnotarized under the temporary release posture; the public release note must disclose that condition.
 
 ## Maintenance Priorities

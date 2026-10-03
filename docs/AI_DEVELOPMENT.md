@@ -50,11 +50,11 @@ python3 scripts/validate_change.py --base origin/master --full
 
 - `--plan` classifies committed and worktree changes and prints every selected intent checklist and VM detail.
 - `--quick` runs repository-contract checks and agent-tooling unit tests when applicable.
-- `--full` adds locally runnable format, Rust regression, and clippy checks for non-doc validation classes.
+- `--full` is an explicitly broad local helper: it adds format, Rust regression and clippy for non-doc VM IDs. It is not the mandatory scope; documentation can select VM-005/006/009. Use `--plan` and their text-only branches for such changes instead of calling `--full` solely from the VM list.
 - Platform, GUI, release, security, and external evidence remain governed by the selected checklist and VM detail. A local command never upgrades `NOT RUN` evidence from another axis.
 - Unknown non-document paths fail closed to the general application validation class; every `scripts/` change also selects the agent/CI workflow class, while release/build/update/signing-like names additionally select release validation.
 
-`scripts/validation-rules.json` owns mechanical path-to-VM routing and the checklist/detail pointers emitted for each VM. The [Validation Matrix](testplan/validation-matrix.md#change-type-checklist) owns intent-dependent supplemental checks; `docs/testplan/validation/` owns the VM baseline, conditional/manual requirements, and evidence interpretation. Changes to those validation-policy documents select VM-009 so routing and link-anchor contract tests cannot be skipped.
+`scripts/validation-rules.json` owns mechanical path-to-VM routing and the checklist/detail pointers emitted for each VM. The [Validation Matrix](testplan/validation-matrix.md#change-type-checklist) owns intent-dependent supplemental checks; `docs/testplan/validation/` owns the VM baseline, conditional/manual requirements, and evidence interpretation. Validation-policy text changes select VM-009 and require focused `python3 -m unittest scripts.tests.test_validate_change scripts.tests.test_check_repo_contract`, repository contract, reference/diff review and independent review of release-gate changes. Product, coverage, platform and native runs are not required for text alone; implementation/workflow/trusted-policy changes retain their applicable full VM checks. [Release Validation Selection](testplan/release-validation.md) owns release evidence reuse.
 
 ## Durable Evidence And Current State
 

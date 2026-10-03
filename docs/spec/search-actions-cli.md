@@ -233,7 +233,7 @@
 - MUST: batch CLI は metadata 付き index entry を path へ戻して再分類せず、一回限りの検索で prefix cache の lookup/store と cache 用 full-result clone/sort を行わない。検索結果、score、order、filter、limit は従来経路と一致させる。
 - MUST: updater は process entrypoint で universal/CLI variant を明示し、同じ variant の standalone binary asset のみを選択する。variant 間の version skew は許容する。release 上の version 付き README/LICENSE/THIRD_PARTY_NOTICES asset は共有するが、自己更新後のローカル配置は universal の `README.txt` / `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.README.txt` / `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` に分離する。
 - MUST: release は既存 archive と macOS app asset を universal-only のまま維持し、Windows/Linux/macOS x86_64/macOS arm64 の `fw` standalone asset を追加する。統合集約後は厳密に 28 asset、`SHA256SUMS` は 26 distribution entry とする。
-- MUST: NFR-014 の性能測定を満たす。2回目の全測定でも未達の場合は release を停止する。
+- MUST: NFR-014 の性能基準を満たす。測定の変更trigger/有効な既存PASS再利用は [Release Validation Selection](../testplan/release-validation.md) に従う。必要な測定の2回目でも未達ならreleaseを停止する。
 - MUST: Windows `fw.exe` は CLI の open/reveal 契約に必要な Shell32/User32 を許容する一方、GUI framework/rendering/window 系 import（GDI32、OpenGL32、imm32、psapi、dwmapi、uxtheme）を持たない。
 
 ### Edge / Error

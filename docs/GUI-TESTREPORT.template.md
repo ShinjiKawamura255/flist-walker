@@ -5,7 +5,8 @@
 - Tester:
 - Build/version:
 - Commit:
-- Scope:
+- Scope (selected subflows/axes, not automatically the entire matrix):
+- Release selection record: link/table per `testplan/release-validation.md`
 - Execution profile: change-focused candidate / platform certification / residual addendum
 - OS/display:
 - Fixture command: `scripts/gui-smoke-fixture.sh`
@@ -20,9 +21,16 @@
 - Axis overall: NOT RUN (required axis NOT RUN)
 - Release outcome: BLOCKED / PASS / ACCEPTED WITH DEVIATION
 
+## Release Selection
+
+Complete before execution. Each result keeps its original identity/status; disposition is RUN / REUSE / NOT REQUIRED / DEVIATION. A reused PASS is not a fresh execution on the current binary.
+
+| Check / GSM subflow and axis | Trigger / contract / OS | Disposition | Original result and identity | Tested-source to candidate comparison / no-impact reason | Fresh result / remaining action |
+| --- | --- | --- | --- | --- | --- |
+
 ## Session Prerequisites
 
-Complete this table before the first native launch. Add exact prerequisites required by the selected scope.
+Complete this table before the first native launch for selected required axes only. Remove unselected rows; their historical NOT RUN does not imply a release blocker.
 
 | Prerequisite | Available | Evidence / reason unavailable | Affected axes |
 | --- | --- | --- | --- |
@@ -36,7 +44,7 @@ Complete this table before the first native launch. Add exact prerequisites requ
 | Isolated restart profile | No | | |
 
 ## Results
-Each axis cell uses `STATUS — reason — evidence — reproduction`.
+This is the case inventory, not a mandatory full run. Mark selected subflows in Release Selection; keep unselected history as NOT RUN or its original result with NOT REQUIRED disposition. Each axis cell uses `STATUS — reason — evidence — reproduction`. Reused evidence links its original tested identity.
 
 | ID | Deterministic | Native interaction | Liveness | Notes |
 | --- | --- | --- | --- | --- |

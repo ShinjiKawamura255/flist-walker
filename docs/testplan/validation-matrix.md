@@ -4,6 +4,10 @@
 
 Detailed defect-specific contracts are kept in [Regression Guards](regression-guards.md). Read them when a selected VM or touched test references the guarded behavior.
 
+## Release Selection
+
+[Release Validation Selection](release-validation.md) owns every-release checks, change-time evaluation and evidence reuse. Selected VM IDs route the review; execute only the applicable requirements within each detail. Documentation/policy text alone does not trigger product runs. Existing CI enforcement and Rust-change regressions remain unchanged.
+
 ## Change-Type Checklist
 Use this checklist before selecting runner commands. The VM table below remains the normative validation matrix; this section is an operator-friendly entrypoint for common change intents.
 
@@ -21,7 +25,7 @@ The `Typical Targets` in each VM detail are human guidance, not an exhaustive pa
 - Keep heavy I/O and long computation out of the egui frame path.
 - Preserve request routing, stale response handling, tab/background response ownership, and the invariant that visible empty Results has no row while visible non-empty Results always has a valid current row.
 - Add focused tests under `rust/src/app/tests/` that match the owner module touched.
-- Run GUI smoke evidence when rendering, focus, tabs, dialogs, result drawing, or responsiveness changes.
+- Run affected GUI subflows/axes when rendering, focus, tabs, dialogs, result drawing, or responsiveness changes; use the release-selection reuse rules instead of repeating the complete matrix.
 - For tab ownership transfer, run TC-154 and TC-203 through TC-211 plus `tab_contract`, `tab_lifecycle`, `tab_result_cache`, `tab_background_responses`, `query_history`, `session_restore`, and `filelist_lifecycle`; cover non-sparse/sparse allocation identity, lifecycle+committed combinations, Query empty/non-empty × FileList/Walker, active-scratch stale-routing, live/closed LRU, meaningful/instantaneous active tenure, Recent Inactive grace/hard pressure, reclaimer pressure, and the release-mode transition fixture. Ready and protected Recent Inactive activation retain Results; Refreshing/Failed keeps last-good; Evicted reloads without synchronous compaction/drop.
 
 ### Bounded Worker Scheduling or Shutdown Changes
@@ -60,13 +64,13 @@ The `Typical Targets` in each VM detail are human guidance, not an exhaustive pa
 
 ### CI Coverage, GUI Validation Docs, or Smoke Script Changes
 - Apply: VM-006.
-- Validate shell/PowerShell scripts with the parser checks listed in VM-006.
+- Plan/template text alone: doc/reference/selection review. Coverage command/threshold changes: fresh coverage. Changed shell/PowerShell/fixture/inventory: only the applicable VM-006 parser/fixture/wrapper checks.
 - Keep GUI test plan IDs, report template fields, smoke script names, and workflow references synchronized.
 - Treat coverage threshold changes as quality-policy changes that require fresh baseline measurement and docs updates.
 
 ### CI Reliability, Version Pins, Security Audit, or Merge Policy Changes
 - Apply: VM-009 in addition to VM-005/VM-006 when their release or coverage surfaces are affected.
-- Run `python -m unittest discover -s scripts/tests`, `python scripts/check_repo_contract.py`, and parse every `.github/workflows/*.yml` file.
+- Policy/procedure text alone: repository contract, references and independent policy review. When scripts/workflows/trusted policy or CI behavior change, run `python -m unittest discover -s scripts/tests`, repository contract and workflow parses plus the applicable VM-009 behavioral gates.
 - Verify required workflows use numbered runner generations, Rust/tool versions, full Action SHAs, least permissions, timeout/concurrency, image-version evidence, and download-only Cargo caches; read-only trusted-base guardian以外の`pull_request_target`は禁止する。
 - Exercise TC-056/TC-056B negative cases: audit-relevant pathのskipped auditは失敗し、非audit pathだけskipped auditを許容する。heavy CIはallowlisted documentation `A`/`M`だけ全対象jobの`skipped`を許容し、Rust/scripts/workflow/policy、rename/delete、unknown path、base SHA不明、diff失敗では全対象jobの`success`を要求する。GNU E2Eの`needs`が専用GNU producerとchange detectionだけであることを確認する。
 - Review `CI Gate` aggregation, scheduled audit/canary issue tracking, exact Dependabot rebase auto-merge registration, and the pin promotion/rollback rules in `docs/CI_OPERATIONS.md`. For local rebase lifecycle changes, use a disposable Git repository to verify that a clean `master == origin/master` can start a feature branch and a rebase-equivalent, PR-identified branch is eligible for the constrained cleanup. Verify that dirty state, divergent master, PR identity mismatch, patch difference, feature-branch merge commit, `master` target, and worktree use stop the operation.
@@ -113,7 +117,7 @@ The `Typical Targets` in each VM detail are human guidance, not an exhaustive pa
 - `cd rust`
 - `source ~/.cargo/env`
 - `cargo test`
-- release 前 warning gate: localでは`cargo clippy --locked --all-targets -- -D warnings`を実行し、heavy PR CIではmacOS/Windows native job、tag workflowではLinux/macOS/Windows nativeの全preflight jobが同じlocked clippyを実行すること、release asset build logsにwarningが残っていないことを確認する（TC-198）
+- release warning gate: 同一ソース/build条件のcurrent CIでlocked clippy成功済みならlocal重複実行を省く。heavy PRのmacOS/Windows、tagのLinux/macOS/Windows全native preflightの実行契約とrelease build warning gateは維持する（TC-198）
 - `cargo audit`
 - Windows release ZIP regression: `powershell -ExecutionPolicy Bypass -File .\scripts\test-prepare-release-archive.ps1 -ArchivePath .\dist\vX.Y.Z\FlistWalker-X.Y.Z-windows-x86_64.zip`
 - audit warning posture: `docs/OSS_COMPLIANCE.md` の accepted transitive warning を確認し、release candidate ごとに `cd rust && cargo audit` を再実行する
