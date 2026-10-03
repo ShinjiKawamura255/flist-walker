@@ -26,6 +26,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | Where does the implementation live? | [STRUCTURE.md](STRUCTURE.md), then [ARCHITECTURE.md](ARCHITECTURE.md) |
 | How does a runtime flow or module work internally? | [DETAILED_DESIGN.md](DETAILED_DESIGN.md) |
 | Which checks are required for my change? | [TESTPLAN.md](TESTPLAN.md), then the [Validation Matrix](testplan/validation-matrix.md) |
+| Which release checks need rerunning or can reuse prior evidence? | [Release Validation Selection](testplan/release-validation.md) |
 | How is a release built and published? | [RELEASE.md](RELEASE.md) |
 | How do I recover from an ambiguous local updater state? | [UPDATER_RECOVERY.md](UPDATER_RECOVERY.md) |
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |

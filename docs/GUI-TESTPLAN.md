@@ -8,7 +8,7 @@
 ## Ownership
 - Owner: release operator or the engineer changing GUI/app orchestration.
 - Frequency:
-  - before publishing a release candidate
+  - at change time for selected affected flows; reconcile evidence before publishing using [Release Validation Selection](testplan/release-validation.md)
   - after changes covered by VM-002 that affect render, dialog, focus, tab, search result, preview, or FileList GUI flows
   - after structural refactoring that touches GUI-adjacent app orchestration
 - Evidence location: `rust/target/gui-smoke/evidence/` (transient and Git-ignored).
@@ -28,21 +28,21 @@
 | Environment | Required When | Notes |
 | --- | --- | --- |
 | Linux desktop or WSLg | routine development smoke | Validates default developer path and fixture script. |
-| Windows 11 | release candidate or Windows-specific UI/input changes | Required for IME, window movement, Explorer/open behavior, and self-update dialog checks. |
-| macOS | release candidate or macOS-specific UI/input changes | Required for command-key behavior and app bundle/manual update expectations. |
+| Windows 11 | affected shared GUI behavior or Windows-specific changes | Run only selected input/IME/geometry/action/update axes; unrelated residuals are not mandatory. |
+| macOS | affected shared GUI behavior or macOS-specific changes | Run only selected command-key/rendering/bundle/launch axes. |
 
 ## Execution Profiles And Session Preflight
 
 | Profile | Required evidence | Use |
 | --- | --- | --- |
-| Change-focused candidate | All canonical deterministic groups, native startup/input/liveness baseline, every changed or regression-sensitive `GSM-*` flow, and exact candidate identity | Default candidate feedback loop after a bounded change |
-| Platform certification | Full applicable `GSM-*` matrix and every available residual safety gate on the exact candidate | Final native platform evidence when the release plan requires a fresh full matrix |
-| Residual addendum | Only axes that were previously `NOT RUN`, `FAIL`, or `INCONCLUSIVE`, with the earlier result retained | Close a specific evidence gap without repeating already valid axes |
+| Change-focused candidate | Selected changed/regression-sensitive GSM subflows, affected deterministic checks and native axes; eligible earlier evidence plus current identity | Default release/PR scope; no automatic full matrix or all-group rerun |
+| Platform certification | Full applicable matrix for a broad affected platform/backend/architecture scope | Concrete broad-impact reason or explicit user request |
+| Residual addendum | Selected unresolved axes, retaining earlier results and valid unaffected evidence | Close a specific gap; may reconcile a changed binary through the reuse rules |
 
 - Before launch, freeze the exact source SHA, executable path/hash, fixture/profile paths, selected profile, affected `GSM-*` rows, and required cleanup.
-- Build one prerequisite table covering native OS availability, display/DPI count, IME, authorized UNC fixture, owned external handler, clipboard emptiness gate, loopback/updater signing material, scale fixture, and restart profile. Mark each as available or unavailable before interacting with the app.
+- Build one prerequisite table for the selected axes (native OS, relevant display/DPI, IME, UNC, handler, clipboard, loopback/signing, scale or restart conditions). Mark required conditions available/unavailable; omit unselected conditions.
 - Batch all unavailable release-required axes into one proposed release deviation. Approval is release/version specific and preserves each axis as `NOT RUN`; it does not make the evidence PASS.
-- A new binary or source SHA invalidates candidate-native evidence. A residual addendum may reuse the same binary only when path and SHA-256 are reread and unchanged.
+- A new binary/source requires [impact reconciliation](testplan/release-validation.md#evidence-reuse), not blanket invalidation of native evidence. Retain original tested identity; artifact-specific and affected checks need new evidence. Select required axes before enumerating prerequisites; unselected residuals do not require deviation approval.
 
 ## Test Data
 1. Run `scripts/gui-smoke-fixture.sh`. It copies the checked-in UTF-8 fixture, validates its hash manifest and expected FileList entries, and preserves an existing local report.
@@ -53,13 +53,13 @@
 
 ## Pass / Fail Policy
 - Each `GSM-*` row has three independent axes: Deterministic, Native interaction, and Liveness. Each axis records `PASS`, `FAIL`, `SKIPPED`, or `NOT RUN`, plus reason, evidence, and reproduction procedure.
-- PASS: every required axis for every required `GSM-*` case is PASS or explicitly SKIPPED with an accepted reason. Overall cannot be PASS when a required native axis is NOT RUN.
+- PASS: selected required subflows/axes are satisfied by fresh PASS, eligible earlier PASS (`REUSE`), or an OS-inapplicable SKIPPED. This means the selected scope passed, not full matrix certification. Overall cannot be PASS when a selected required native axis remains NOT RUN.
 - FAIL: any product behavior mismatch, UI freeze, stale dialog, wrong action target, broken selection, or missing evidence for a required case.
 - SKIPPED: allowed only for environment-specific cases that cannot apply to the current OS, and the reason must be recorded.
 - NOT RUN: the axis was not executed. The report must state the exact unmet prerequisite or scope reason and what automated coverage, if any, partially covers it. It never means PASS.
 - Release outcome is separate from axis status: `PASS` has no required `FAIL` or `NOT RUN`; `ACCEPTED WITH DEVIATION` keeps every formal status and records exact version, approver decision, workaround or substitute evidence, and follow-up; `BLOCKED` forbids publication. A release-required `FAIL` or `NOT RUN` is `BLOCKED` until an explicit version-scoped deviation is approved.
 - Collect the complete candidate or tagged-run log before requesting a warning decision. Present one inventory per exact run, with counts, source, impact, downstream validation and follow-up; never request approval once per duplicate log line. Candidate dispositions do not carry to the tagged run.
-- Flake policy: manual GUI smoke may be retried once for clear environment/display instability. A repeated failure is product or test-plan debt and must be tracked before release.
+- Flake policy: manual GUI smoke may be retried once for clear environment/display instability. Repeated tool/environment errors remain NOT RUN and tool debt, not product FAIL. Repeated observed product mismatches remain FAIL; record the actual layer and do not repeat unlock requests when the user reports an unlocked device.
 
 ## Test Cases
 | ID | Flow | Steps | Expected |
@@ -84,7 +84,7 @@
 - The headless GUI surface snapshot MUST cover the visible app contract that can be asserted without opening a native window: active root, query text, filter toggles, maximum-depth label/state, ignore-list toggle, result sort mode, result count/current row target, pinned selection count, tab count/active tab, preview visibility/width, top actions, status line, and FileList/update dialog labels/buttons.
 - When adding GUI controls whose state is visible without native platform interaction, add or update a headless snapshot assertion before relying on manual `GSM-*` smoke coverage.
 - When adding GUI controls that require native platform interaction, update the relevant `GSM-*` case and the report template before accepting manual-only coverage.
-- Headful automation is a release/nightly smoke gate only. It launches a fresh BaseDir-owned staged copy against the standard fixture, treats early process exit as FAIL, records the staged path/settings isolation/pre- and post-launch allowlist and `.flistwalker-update*` absence in `GUI-HEADFUL-SMOKE.local.md`, and then stops the process after the configured duration.
+- Headful automation is a changed-startup/backend/packaging candidate or nightly smoke check. It launches a fresh BaseDir-owned staged copy against the standard fixture, treats early process exit as FAIL, records the staged path/settings isolation/pre- and post-launch allowlist and `.flistwalker-update*` absence in `GUI-HEADFUL-SMOKE.local.md`, and then stops the process after the configured duration.
 - On Windows, `-ScriptedQueryProbe` additionally launches the staged GUI with the fixed Unicode query `alpha 日本`, finds a visible top-level window by the staged process ID (not its title), checks responsiveness with `WM_NULL`, and requires the isolated window trace to report only the expected query shape. It never sends global keystrokes or changes the foreground window.
 - The scripted query probe covers native launch, query initialization, and a responsive PID-bound window. It does not replace `GSM-*` manual checks for physical input focus, visual highlight quality, platform open behavior, IME conversion/composition, or window movement.
 - Pull-request CI does not require native GUI launch unless a deterministic platform harness is explicitly added later.
@@ -123,4 +123,4 @@ The `ime-window-geometry` group is cross-cutting evidence for GSM-001/002/007/01
 - Manual evidence can be skipped under time pressure.
   - Mitigation: release candidates require a generated local report or a report based on `docs/GUI-TESTREPORT.template.md` to be filled with environment, `GSM-*` status, and evidence paths before publish.
 - Environment-specific behavior may be under-tested on non-release changes.
-  - Mitigation: Windows/macOS are required for release candidates and platform-specific UI/input changes.
+  - Mitigation: selected shared GUI changes require affected Windows/macOS evidence; platform-specific changes require that platform. Reuse eligible change-time evidence under Release Validation Selection.

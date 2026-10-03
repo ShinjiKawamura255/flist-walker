@@ -35,7 +35,7 @@ This file is the concise project policy entrypoint. The current user request has
 
 ## 5. Release And CI
 
-- `docs/RELEASE.md` owns release assets, checksums, notarization posture, build scripts, and publication procedure. Use `skills/flistwalker-release-preflight/` before any tag/release/publish task and `skills/flistwalker-release-notes/` for CHANGELOG or release text.
+- `docs/RELEASE.md` owns release assets and publication; `docs/testplan/release-validation.md` owns change-triggered checks and evidence reuse. Routine releases do not require full native evaluation. Use `skills/flistwalker-release-preflight/` before tag/release/publish and `skills/flistwalker-release-notes/` for CHANGELOG or release text.
 - `docs/CI_OPERATIONS.md` owns CI pins, trusted-policy rollout, branch protection, canary/audit response, rollback, and proof-PR requirements.
 - Required PR checks are `CI Gate` and `CI Policy Guardian`. Do not use `pull_request_target` outside the read-only trusted guardian, execute PR code there, weaken permissions, or bypass required checks.
 - Do not create/push tags or publish/edit/delete a release unless the user explicitly requested that release operation and all release gates are complete.

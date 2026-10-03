@@ -186,9 +186,13 @@
 - `SHA256SUMS.sig`（`FLISTWALKER_UPDATE_SIGNING_KEY_HEX` を設定して生成した場合）
 - `.app` bundle 自体は notarization / staple 用に `dist/` へ保持するが、GitHub Releases には添付しない。
 
+## 検証範囲と証跡の再利用
+
+[Release Validation Selection](testplan/release-validation.md) を検証範囲の正本とする。直前公開tagから候補までの全変更を照合し、毎回必要な配布・署名・N-1・current CIと、変更時にだけ必要なGUI/性能/platform評価を分ける。変更対応時の有効なPASSは元identityと無影響根拠を添えて再利用し、リリースのたびにフル評価しない。既知の製品FAILの修正確認は残し、対象外の未実施residualは新たなgateにしない。
+
 ## GitHub Actions 自動リリース
 
-候補 workflow を dispatch する前に、GitHub の最新公開 release version を読み戻し、その version が `scripts/check-updater-n-minus-one-compatibility.py` の `SHIPPED_FAMILY_CAPABILITIES` に明示登録され、`scripts/test-updater-n-minus-one-compatibility.py` に直前公開版から候補版への exact 26-entry inventory 回帰ケースがあることを確認する。self-test を実行し、未登録・ケース欠落・失敗なら候補を作らず修正する。これは既知の前提を早く確認する手順であり、生成後の実物 `SHA256SUMS` に対する N-1 検証の代用にはならない。
+候補 workflow を dispatch する前に、GitHub の最新公開 release version を読み戻し、その version が `scripts/check-updater-n-minus-one-compatibility.py` の `SHIPPED_FAMILY_CAPABILITIES` に明示登録され、`scripts/test-updater-n-minus-one-compatibility.py` に直前公開版から候補版への exact 26-entry inventory 回帰ケースがあることを確認する。checker/capability/case変更時はself-testを実行し、不変なら有効なPASSを再利用する。未登録・ケース欠落・有効PASSなし・失敗なら候補を作らず修正する。これは既知の前提を早く確認する手順であり、生成後の実物 `SHA256SUMS` に対する N-1 検証の代用にはならない。
 
 1. version / changelog / release note の準備を protected PR で merge し、clean な `master == origin/master` と対象 commit SHA を確認する。
 2. tag 作成前に、default branch の workflow だけを使って候補を生成する: `gh workflow run release-tagged.yml --ref master -f version=vX.Y.Z`。`workflow_dispatch` は `master` 以外を拒否し、候補モードでは release/tag を作成・更新しない。
@@ -207,14 +211,14 @@
 
 - 候補や GUI gate が失敗したら、実行 SHA、run/artifact、対象バイナリの SHA-256 と停止した gate を一つの現行判断記録に固定する。roadmap は状態とその記録へのリンク、work-item manifest は依存関係と進行状態を持つ。同じ判断文や証跡を複数の計画・snapshot に複製しない。reviewer が同じ checkout を参照できるときは、正確な ref・path・diff を指定する。
 - native GUI の不一致は、既存の `GUI-TESTREPORT.template.md` の FAIL と dated addendum に、隔離 profile、使い捨て fixture の変更前後の内容・byte 数、操作、待機時間、画面結果、記録時刻、証跡パスを残す。クリック dispatch、request ID、worker 応答を観測できたかも分け、観測できない段階は `unknown` と書く。決定論的テストの PASS を native FAIL の解消とみなさず、通常経路で原因を示す証拠がないまま製品修正や判定目的の同条件再試行を始めない。原因切り分けのための再観測は、目的・観測方法・exact binary/session 承認を先に固定し、旧 FAIL を保持したまま別の dated addendum に結果を記録する。
-- 失敗した候補から別の候補へ進むときは、修正の protected merge SHA と新候補の SHA/run を対応付ける。旧候補の GUI PASS や例外承認は新候補へ引き継がない。
+- 別候補へ進むときは修正のprotected merge SHAと新SHA/runを対応付け、[証跡再利用条件](testplan/release-validation.md#evidence-reuse)でaffected gateだけを再評価する。旧GUI PASSは元identityのまま無影響範囲に再利用できる。既存のversion/scope限定deviationは差分と適用理由を記録する場合に限り維持し、別version・対象外の新defect・exact-run warningへ拡張しない。
 
 ### Release execution packet
 
 - 実行開始時に `Preparation → Candidate → Native GUI → Tag/Tagged build → Draft review → Publish/readback → Closure PR` のgateを一つのpacketへ固定する。各gateは入力identity、必要証跡、停止条件、外部変更、完了readbackを1箇所だけに持ち、同じ判断を複数のplanへ複製しない。
-- GUI開始前に `docs/GUI-TESTPLAN.md` のexecution profileとsession prerequisite表を完成させる。利用不能なnative OS、display/DPI、IME、UNC、owned handler、clipboard、loopback/signing、scale fixtureは初回launch前にまとめ、release-requiredな`NOT RUN`のdeviation判断を1回に集約する。
+- GUI開始前に変更影響によりrequired subflow/axisを選び、`docs/GUI-TESTPLAN.md` のexecution profileと選択範囲だけのprerequisite表を完成させる。利用不能なrequired条件のdeviation判断は1回に集約する。対象外residualの環境準備や承認を要求しない。
 - candidateとtagged runは別identityなのでwarning dispositionを共有しない。ただし各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、1 runにつき1つの承認判断として提示する。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
-- 同じsource SHAと同じbinary hashのresidual addendumは、失敗または未実行axisだけを追加検証する。既に有効なPASSを理由なく反復しない。sourceまたはbinaryが変わった場合は関連するcandidate証跡を無効化する。
+- residual addendumは選択済みの失敗/未実行axisだけを追加検証する。source/binary変更時は全変更と依存境界を照合し、affectedな証跡だけを無効化する。digest/signature/inventoryなど新artifact固有の確認は毎回実施する。
 - 公開後はrelease URL、release/tag/source identity、本文、asset count/name/size/digestを直ちにread backし、versioned release recordと検証processの恒久修正を同じclosure PRへまとめる。release公開とclosure PR mergeを別の完了条件として追跡する。
 
 ## Release 前チェック
@@ -228,7 +232,7 @@
 - `scripts/validate-release-bundle.sh vX.Y.Z <bundle-dir>` が成功し、期待28 asset、26 checksum entry、既存archive不変、archive/sidecarのlicense/noticeが揃うこと。
 - checker self-testとは別に、直前の公開release versionと生成済みcandidate `SHA256SUMS`を`check-updater-n-minus-one-compatibility.py`へ渡し、candidateがstrictに新しくmanifest互換であること。非増加version、非互換の例外・acknowledgementは禁止し、失敗時はrelease blockerとする。
 - tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
-- Windows release build の固定 shallow 200-file fixture で TC-193（5 warmup + 25 sample、`fw` median / universal direct-process median ≤ 0.70、Shell32/User32を許容しGDI32/OpenGL32/imm32/psapi/dwmapi/uxthemeのGUI framework/rendering/window系importなし）が成功すること。
+- TC-193性能は [変更triggerと再利用条件](testplan/release-validation.md) に従う。CLI/startup/shared engine/build等の影響変更時に固定200-file fixture、5 warmup+25 sample、ratio≤0.70を満たし、無影響なら既存PASSを再利用する。新Windows assetのsubsystem/import検査は維持する。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
 - release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。外部 Action 由来を含め warning が 1 件でもあれば停止し、出所・影響・follow-up を記録する。例外扱いには version と exact run を限定したユーザの明示承認が必要であり、理由の記載だけでは解除できない。例外は次の候補や tag workflow に引き継がない。
 - tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。

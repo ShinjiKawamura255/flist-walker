@@ -27,11 +27,11 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 - 更新手順を毎回同じ順序で実施する。
 
 ## 手順
-1. 対象 version を `vX.Y.Z` 形式で確定する。
+1. 対象versionを確定し、[Release Validation Selection](../../docs/testplan/release-validation.md) に従って直前公開tag→候補全差分のRUN/REUSE/NOT REQUIRED/DEVIATION表を既存packetへ記録する。毎回の配布identity/署名/N-1/current CIと、変更時の機能/GUI/性能検証を分ける。
 2. tag をまだ作っていないことを確認する。tag 済みなら、version 不一致を黙認せずユーザへ明示する。
-2a. 候補 dispatch 前に GitHub の最新公開 release version を読み戻し、その版が `SHIPPED_FAMILY_CAPABILITIES` に登録され、直前公開版から候補版への exact 26-entry self-test ケースが存在することを確認する。self-test を実行し、いずれか欠ければ候補作成を止める。生成後の実物 manifest に対する手順 13a は省略しない。
+2a. 候補 dispatch 前に GitHub の最新公開 release version を読み戻し、その版が `SHIPPED_FAMILY_CAPABILITIES` に登録され、直前公開版から候補版への exact 26-entry self-test ケースが存在することを確認する。self-testの有効なPASSを照合し、checker/capability/case変更時に実行する。登録・case・有効PASSのいずれかが欠ければ候補作成を止める。生成後の実物 manifest に対する手順 13a は省略しない。
 3. 前回 release tag を確認し、`git diff --name-only <前回tag>..HEAD` と `git diff --stat <前回tag>..HEAD` で release 対象差分を分類する。
-4. 差分を `docs/TESTPLAN.md` の Validation Matrix に対応付け、VM-001 から VM-008 のどれを実行・確認すべきか決める。
+4. 全release差分を現行Validation Matrixと `validate_change.py --base <前回公開tag> --plan` に対応付け、選択された全VMの適用分岐を確認する。固定ID範囲でVM-009/010などを落とさない。
 5. `rust/Cargo.toml` の `[package].version` を `X.Y.Z` へ更新する。
 6. `rust/Cargo.lock` 内の `name = "flist-walker"` 節の `version = "X.Y.Z"` を確認し、不一致なら更新する。
 7. `CHANGELOG.md` に対象 version の節と日付、主要変更を反映する。
@@ -40,12 +40,12 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 10. release / updater / asset / workflow / packaging を変えた差分では、`docs/RELEASE.md`、`.github/release-template.md`、`.github/workflows/release-tagged.yml`、`scripts/prepare-release*.sh|ps1` の asset 名、対象 OS、sidecar、`SHA256SUMS` / `SHA256SUMS.sig` の記述が一致しているか確認する。
 11. 依存関係、release script、workflow、updater、sidecar、archive 同梱物を変えた差分では、`docs/OSS_COMPLIANCE.md` に従い `THIRD_PARTY_NOTICES.txt` と配布導線を確認する。
 12. 公開向け文書へ開発・手動試験専用 update override 名が混入していないことを確認する。
-13. `python scripts/test-updater-n-minus-one-compatibility.py` を実行し、旧/新 parser capability と公開生成順の exact 26-entry inventory の checker self-test を確認する。直前公開版をcheckerの明示的なshipped capability表へ登録し、未知versionの能力を大小比較で推測しない。互換性例外や acknowledgement は禁止し、非互換は常に release blocker とする。
+13. checker self-testの有効なPASSを確認し、checker/capability表/fixture変更・新predecessor-case追加時に再実行する。直前公開版をcheckerの明示的なshipped capability表へ登録し、未知versionの能力を大小比較で推測しない。互換性例外や acknowledgement は禁止し、非互換は常に release blocker とする。
 13a. candidate asset を生成した後、tag push 前に `python scripts/check-updater-n-minus-one-compatibility.py --previous-version <latest-public-version> --candidate-version <candidate-version> --manifest <candidate-SHA256SUMS>` を実行する。self-testだけをcandidate manifest検証の代用にしない。
-14. `cargo test --locked` を実行し、少なくとも version 更新と release 対象差分で壊れていないことを確認する。
-15. `cargo clippy --locked --all-targets -- -D warnings` を実行し、Rust warning / clippy warning が残っていないことを確認する。tag workflowではLinux/macOS/Windows nativeの全preflight jobが同じlocked clippyを実行することも確認する。
+14. `cargo test --locked` のrequired CI/候補run結果を確認する。同一ソース/build条件で成功済みならlocalで重複実行しない。Rust変更対応時はselected VMの回帰を実行する。
+15. locked clippy all-targets -D warningsのcurrent CI/候補結果を確認し、成功済みのlocal再実行を省く。tag workflowのLinux/macOS/Windows native全preflightでlocked clippy実行を確認する。
 16. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
-17. release candidate では coverage gate と GUI headful smoke / `GSM-*` 証跡の要否を確認し、必要な PASS / FAIL / SKIPPED と証跡パスを残す。
+17. current CI coverage結果と選択されたGUI/headful/性能のRUN/REUSEを確認する。対象外residualはgate化せず、full matrixや全wrapperを毎candidateで反復しない。三軸の元PASS/FAIL/SKIPPED/NOT RUN、元identity、再利用根拠を残す。known defectの修正native確認はheadlessで代用しない。
 17a. native GUI が FAIL なら、`docs/RELEASE.md` の「候補の停止要因と GUI 失敗の記録」に従い、正確なバイナリ・fixture・操作・時刻と、クリック dispatch / request / worker 応答の観測有無を dated addendum に残す。未観測の因果は unknown とし、headless PASS で FAIL を上書きしない。
 18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。外部 Action の warning も停止条件とし、例外には version と exact run を限定したユーザの明示承認を要する。理由と follow-up だけで承認を代用せず、後続候補・tag run に継承しない。
 19. tag 名 `vX.Y.Z`、`CHANGELOG.md`、`rust/Cargo.toml`、`rust/Cargo.lock` の version が一致していることを確認する。
