@@ -88,6 +88,16 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 
 [Historical evidence](history/ci-rollouts.md#first-hosted-proof-and-scale-baseline-2026-08-20).
 
+## Indexing contention observations
+
+`Heavy Weekly Perf Regression` retains its four standalone indexer/search commands and runs the maintained indexing collector in three independent `ubuntu-24.04` jobs on the same weekly schedule. Manual dispatch defaults to the legacy checks; explicitly set `indexing_calibration=true` to select the three indexing jobs. Each group uses fixed100,000 entries, seven paired samples and runtime defaults: `f1` contains eight indexing/filter cells, `matched` three search/filter cells, and `stable` six Active-search/Warm-index cells. The [measurement contract](testplan/indexing-contention.md#maintained-collector) owns their work, overlap, source and cleanup admission.
+
+Collection failures fail the job; matrix failures do not cancel sibling groups. Each job allows90 minutes, with30-minute build and45-minute measurement resource bounds. Always-uploaded `indexing-contention-<run_id>-<attempt>-<group>` artifacts retain raw/build/discovery logs, receipts and successful summaries for14days; release binaries and fixture trees are excluded. A canceled or incomplete run cannot supply accepted calibration evidence, even if a partial artifact exists.
+
+Timing is observation-only (`timing_gate=null`). Work/request/overlap/oracle/physical-return and process/source/fixture checks remain enforced. Retain all seven paired values and phase-specific median/maximum/range; do not pool different exact sources, images, hardware or settings. Candidate-branch dispatch observations and the rebase-merged source keep their actual identities. A small repeat count does not justify a percentile guarantee or an arbitrary timing multiplier. Per-profile ceilings require a separately reviewed specification supported by stable repeated intended-runner evidence.
+
+Workflow/checker structure is immutable trusted policy. Prepare candidate validation and manually dispatched baseline evidence before activation; merge through the controlled rollout below with exact approval, full settings snapshot/restoration, independent watchdog and protected proof. Ordinary collector source changes do not change a required check or authorize that rollout.
+
 ## Pin update triggers and promotion
 
 次のいずれかで pin 更新を検討する。

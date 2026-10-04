@@ -760,6 +760,90 @@ def validate_monitor_issue_contract(name: str, text: str, title: str) -> list[st
     return violations
 
 
+def validate_indexing_perf_contract(text: str) -> list[str]:
+    """Freeze the observation route and failure evidence, without timing ceilings."""
+    # A commented-out trigger/step cannot supply an active contract token.
+    text = "\n".join(line for line in text.split("\n") if not line.lstrip().startswith("#"))
+    violations: list[str] = []
+
+    def require(ok: bool, label: str) -> None:
+        if not ok:
+            violations.append("perf-regression.yml: " + label)
+
+    jobs = dict(_job_blocks(text))
+    legacy, indexing = jobs.get("perf-regression", ""), jobs.get("indexing-contention", "")
+    require(set(jobs) == {"perf-regression", "indexing-contention"}, "exact legacy/indexing jobs")
+    require("    if: ${{ github.event_name == 'schedule' || !inputs.indexing_calibration }}\n" in legacy,
+            "legacy schedule/default-manual route")
+    require("    if: ${{ github.event_name == 'schedule' || inputs.indexing_calibration }}\n" in indexing,
+            "indexing schedule/explicit-manual route")
+    require(re.search(r"(?m)^  workflow_dispatch:\n    inputs:\n      indexing_calibration:\n"
+                      r"        description: [^\n]+\n        type: boolean\n"
+                      r"        required: false\n        default: false\n", text) is not None,
+            "explicit boolean dispatch with legacy default")
+    require('    - cron: "0 18 * * 1"\n' in text, "existing weekly schedule")
+    require("    runs-on: ubuntu-24.04\n" in indexing and
+            "    timeout-minutes: 90\n" in indexing, "numbered runner/bounded indexing job")
+    require("    strategy:\n      fail-fast: false\n      matrix:\n"
+            "        group: [f1, matched, stable]\n    defaults:\n" in indexing,
+            "all three fixed groups and independent failure evidence")
+    require(re.search(r"(?m)^    continue-on-error:", indexing) is None, "indexing job cannot hide failure")
+
+    def step(block: str, name: str) -> str:
+        matches = _named_step_blocks(block, name)
+        require(len(matches) == 1, "one " + name + " step")
+        return matches[0] if len(matches) == 1 else ""
+
+    def command(block: str) -> list[str]:
+        multiline = re.search(r"(?m)^        run: \|\n((?:          .*\n|\n)*)", block)
+        line = re.search(r"(?m)^        run: ([^\n]+)$", block)
+        body = multiline[1] if multiline else line[1] if line else ""
+        try:
+            return shlex.split(body.replace("\\\n", ""), comments=True)
+        except ValueError:
+            return []
+
+    legacy_tests = (
+        ("Run heavy FileList perf regression test", "perf_filelist_stream_is_faster_than_metadata_probe_baseline", False),
+        ("Run heavy walker perf regression test", "perf_walker_classification_is_faster_than_eager_metadata_resolution", False),
+        ("Run adaptive walker metrics perf test", "perf_adaptive_walker_reports_local_dataset_metrics", False),
+        ("Run TC-156 search cold warm query-shape regression", "perf_search_100k_cold_warm_query_shapes", True),
+    )
+    require("        working-directory: rust\n" in legacy, "legacy Rust working directory")
+    for label, name, release in legacy_tests:
+        block = step(legacy, label)
+        expected = ["cargo", "test"] + (["--release", "--locked"] if release else [])
+        expected += [name, "--lib", "--", "--ignored", "--nocapture"]
+        require(command(block) == expected and "        if:" not in block and
+                "continue-on-error:" not in block, "unchanged mandatory " + name)
+
+    block = step(indexing, "Collect fixed indexing observations")
+    expected = ["python3", "scripts/indexing_perf.py", "collect", "--root", "$GITHUB_WORKSPACE",
+                "--group", "$INDEXING_GROUP", "--revision", "$GITHUB_SHA", "--output",
+                "$RUNNER_TEMP/indexing-contention-$INDEXING_GROUP", "--build-timeout", "1800",
+                "--measurement-timeout", "2700"]
+    require(command(block) == expected and "continue-on-error:" not in block and
+            "        if:" not in block, "source-bound bounded collection cannot hide failure")
+    require("        env:\n          INDEXING_GROUP: ${{ matrix.group }}\n        run:" in block,
+            "actual matrix selector without local/runtime overrides")
+    artifact = step(indexing, "Retain indexing evidence")
+    require("        if: ${{ always() }}\n" in artifact and
+            re.search(r"(?m)^        uses: actions/upload-artifact@[0-9a-f]{40}", artifact) is not None,
+            "always retain success/failure evidence")
+    paths = ("          path: |\n"
+             "            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/receipt.json\n"
+             "            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/summary.json\n"
+             "            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/*.log\n"
+             "          if-no-files-found: error\n          retention-days: 14\n")
+    require(paths in artifact and "continue-on-error:" not in artifact, "raw/receipt/log evidence retained for14days")
+    for job in (legacy, indexing):
+        cache = step(job, "Cache Cargo downloads")
+        require("          path: |\n            ~/.cargo/registry/index\n"
+                "            ~/.cargo/registry/cache\n            ~/.cargo/git/db\n          key:" in cache,
+                "cache only Cargo download data")
+    return violations
+
+
 def collect_violations(root: Path) -> list[str]:
     workflows = root / ".github" / "workflows"
     violations: list[str] = []
@@ -774,6 +858,8 @@ def collect_violations(root: Path) -> list[str]:
         violations.extend(validate_workflow(path.name, text))
         if path.name == "ci-cross-platform.yml":
             violations.extend(validate_ci_contract(text))
+        elif path.name == "perf-regression.yml":
+            violations.extend(validate_indexing_perf_contract(text))
         elif path.name == "release-tagged.yml":
             violations.extend(validate_release_contract(text))
         elif path.name == "ci-policy-guardian.yml":
