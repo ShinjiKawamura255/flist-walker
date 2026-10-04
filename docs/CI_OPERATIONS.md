@@ -96,6 +96,16 @@ Collection failures fail the job; matrix failures do not cancel sibling groups. 
 
 Timing is observation-only (`timing_gate=null`). Work/request/overlap/oracle/physical-return and process/source/fixture checks remain enforced. Retain all seven paired values and phase-specific median/maximum/range; do not pool different exact sources, images, hardware or settings. Candidate-branch dispatch observations and the rebase-merged source keep their actual identities. A small repeat count does not justify a percentile guarantee or an arbitrary timing multiplier. Per-profile ceilings require a separately reviewed specification supported by stable repeated intended-runner evidence.
 
+### Maintainer procedure
+
+1. Resolve the exact workflow run/head/event/attempt and each matrix job; distinguish whole workflow success from valid sibling data in a failed workflow. Preserve artifacts before their14day expiry.
+2. Download one group artifact to a fresh directory: `gh run download <run-id> --name indexing-contention-<run-id>-<attempt>-<group> --dir <new-directory>`. Validate it with `python3 scripts/indexing_perf.py validate --group <group> <new-directory>`. Keep raw/receipt/build/discovery together; no successful summary can replace missing or rejected raw data.
+3. Classify failure as build/tool/image, incomplete process/cleanup receipt, work/request/overlap/oracle admission, or a timing observation. Retain invalid/canceled/partial evidence and identify the first failed condition. Do not accept partial work as faster throughput, suppress a failure, or repeat an unchanged product/admission failure.
+4. Compare phases within an admitted identical source/hardware/image/settings cohort with `python3 scripts/indexing_perf.py summarize-runs --group <group> --output <new-summary.json> <run-directories...>`. Retain AA variability, AB cost, all seven pairs and producer/index/result/stall phases. Different cohort/source identities remain separate; candidate observations cannot be relabeled after rebase.
+5. The [hosted observation record](history/indexing-perf-hosted-2026-10-05.md) retains the initial candidate/failure raw data and demonstrates insufficient coherent repeated evidence for time ceilings. Timing stays observation-only; propose future case ceilings as a separately reviewed specification on stable repeated intended-runner data. Keep the existing standalone commands and all semantic/work/cleanup guards.
+
+For an approved diagnostic collection, dispatch `gh workflow run perf-regression.yml --ref master -f indexing_calibration=true`, record the returned exact run/head and await its whole result before another dispatch. Default manual inputs continue to select the standalone checks. A collected rebase-merged/master source has its own identity and is not pooled with pre-merge sessions. Weekly operation and failure handling belong to this document; point-in-time values belong to the retained history record.
+
 Workflow/checker structure is immutable trusted policy. Prepare candidate validation and manually dispatched baseline evidence before activation; merge through the controlled rollout below with exact approval, full settings snapshot/restoration, independent watchdog and protected proof. Ordinary collector source changes do not change a required check or authorize that rollout.
 
 ## Pin update triggers and promotion

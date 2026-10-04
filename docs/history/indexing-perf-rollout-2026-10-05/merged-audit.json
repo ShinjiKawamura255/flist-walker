@@ -1,0 +1,36 @@
+{
+  "base": "956976e2d5d0e717b2b4200e2342120621692a4a",
+  "controller_exit": 0,
+  "full_policy_restore": "verified by main and independent watchdog and fresh readback",
+  "merged_at": "2026-10-04T21:03:02Z",
+  "merged_head": "3823a0c861c46900616b4f84b09c5aa9f2f1db06",
+  "ordered_commit_pairs": [
+    {
+      "merged": "94f7eb0f980c024010e08742b1ac83797bdb6c79",
+      "message_author_tree_single_parent": "equal",
+      "source": "1bd6b356c474a09c259d4049e1dd8583253fe329",
+      "stable_patch_id": "cfc0443c90c3aa0efd7e59459e0ac0801ef0ab3e",
+      "tree": "0d64c48e4313ba1905156e9addcf5c590cce2550"
+    },
+    {
+      "merged": "dcb1eca2e52d6fafb0e186bce7a78682cdc8a452",
+      "message_author_tree_single_parent": "equal",
+      "source": "6e95f527a2fb56b097292d80d8c8e08016ec0dee",
+      "stable_patch_id": "00d7e115fed81735ba11ef550fa3d9ef508130bc",
+      "tree": "79c823bb6a3b2d7c78d264f748a4f9b536a0fc81"
+    },
+    {
+      "merged": "3823a0c861c46900616b4f84b09c5aa9f2f1db06",
+      "message_author_tree_single_parent": "equal",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "stable_patch_id": "500e9876b3f4e0e21d0abb28fa45429ad6509d27",
+      "tree": "08a513cdfa96d842f8df0a75353ce1abb7f79585"
+    }
+  ],
+  "pr": 169,
+  "registration": "single reviewed controller invocation",
+  "remote_branch_automatically_deleted": true,
+  "source_head": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+  "state": "MERGED",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/pull/169"
+}

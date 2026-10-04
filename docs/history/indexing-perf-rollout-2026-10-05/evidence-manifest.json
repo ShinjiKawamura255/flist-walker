@@ -1,0 +1,104 @@
+{
+  "scope": "Historical exact-authority controller/review/actual restoration; not instructions or authority for future settings changes",
+  "archive": "reviewed-control-and-restoration.tar.gz",
+  "archive_sha256": "93d528600b3b40edc5fe9e5b63f9fa5139ad3ff19b19c1e1d29da7fabe1d6fe8",
+  "original_files": {
+    "activation-approval.json": {
+      "bytes": 304,
+      "sha256": "a1d5b92f8ab52b2bc7664091779fc88262376bd87819811b9dbb201071406788"
+    },
+    "activation-authority-record.json": {
+      "bytes": 433,
+      "sha256": "3354eaa7499222ca17a651ae31e4d1eb08c53b42bd065373cc89d631a6bc0805"
+    },
+    "activation-control-final-validation.json": {
+      "bytes": 1410,
+      "sha256": "a8288ea2d5872af7f7cc2caf18e84b0998b520f00d09646e8b76b8bc136dbb79"
+    },
+    "bundle/controller.py": {
+      "bytes": 21853,
+      "sha256": "1576925c2af81349bb64532790458814f57d63ee6f192d4d749a4265d91380ae"
+    },
+    "bundle/guardian.json": {
+      "bytes": 464,
+      "sha256": "e50ff8efb1a21678a52fa6ec22bc2dc30c5940dc8ad9092e6876f38b7c4e1605"
+    },
+    "bundle/manifest.json": {
+      "bytes": 582,
+      "sha256": "7c1c5d62593690602c38e2d3fbf5023bbf4cf70b52e00023a2da9d87a243e09d"
+    },
+    "bundle/restore.json": {
+      "bytes": 176,
+      "sha256": "e6680f072cb6273052c8bea9a14a089a00272d6caf48535e0428601769e388e2"
+    },
+    "bundle/snapshot.json": {
+      "bytes": 240084,
+      "sha256": "fca0dbd4082c13ab1b1474d2813b8cae47c1e79e3dbf34cb0667a2a01ad7d40d"
+    },
+    "bundle/temporary.json": {
+      "bytes": 102,
+      "sha256": "f294caef2eaa97f3c7a0801416ab727621cf32c02541b236409f63873eac146b"
+    },
+    "fake_gh_rollout.py": {
+      "bytes": 1428,
+      "sha256": "e3c3702c4364c6c17b8e7d03553b03344b9edd89d1a0430daf61e249cd5cff07"
+    },
+    "live/merged-audit.json": {
+      "bytes": 1507,
+      "sha256": "072c6a4227a2df59a6dbf245fd1bf0a2a85500a0d81e96296a60e3ff19d9becc"
+    },
+    "live/post-restore-state.json": {
+      "bytes": 184534,
+      "sha256": "ae8c7ba4757218dd4600ca56de9779200c692461ae34ae56351cc260ca88b887"
+    },
+    "live/registration-admitted.json": {
+      "bytes": 129,
+      "sha256": "56dfc7b8b6a0726457a5290caa70848e30543387aa1c28242c8479aa3b12b1d7"
+    },
+    "live/temporary-admitted.json": {
+      "bytes": 129,
+      "sha256": "56dfc7b8b6a0726457a5290caa70848e30543387aa1c28242c8479aa3b12b1d7"
+    },
+    "live/verified-restored.json": {
+      "bytes": 3044,
+      "sha256": "8808e643f65734ddc9e4dc8c3fa8ce1a521239f2e8e922dd92448e9745af0e42"
+    },
+    "live/watchdog-complete.json": {
+      "bytes": 44,
+      "sha256": "78d77ca97f321cb0302a35930aa0de50a282ca4b127162969f876bc54e3f3a78"
+    },
+    "live/watchdog-ready.json": {
+      "bytes": 171,
+      "sha256": "00067de2704880a38355837549e55f1392db9e59b4558edee704e0601b50a578"
+    },
+    "review/main-disposition.json": {
+      "bytes": 1005,
+      "sha256": "ffefa7c562449eba05091dc5bf8a69f20cfdbc9d1a02bf2ff57d559788f6719a"
+    },
+    "review/reviewer-report.md": {
+      "bytes": 5023,
+      "sha256": "420c3ede8dc79d0e5f9acf389e671dcadc03e019af7b4dcb5ab82a7119546857"
+    },
+    "review/subject.json": {
+      "bytes": 25626,
+      "sha256": "5c1c166ce26b3cad71f70194526f638121327bc56e1e0b38d0e4d2656659c7eb"
+    },
+    "rollout-final-corrected-test_rollout_control.py.log": {
+      "bytes": 117,
+      "sha256": "b89dc1c8e77c79517bf58fa5eb96a4312b302061a6fb534c891332ca78ff2099"
+    },
+    "rollout-final-host-process.log": {
+      "bytes": 676,
+      "sha256": "5bd6c577c7bbd181c5ca6d73128a5d56e0eeb77e8f0cb1dfe6f9b27cf16cb99e"
+    },
+    "rollout_process_tests.py": {
+      "bytes": 8525,
+      "sha256": "5bfb128c60549a72940a8c3e6e5770a256a7ccd933257d7a01c0a9c10061a212"
+    },
+    "test_rollout_control.py": {
+      "bytes": 15980,
+      "sha256": "9cfb29d60e73f3ea396e1ca27321bdbd3b75ccfbafc6e46f8122fe78effff93e"
+    }
+  },
+  "current_proof": "normal protected two meaningful documentation commits; exact CI and rebase outcomes are owned by the proof PR record"
+}
