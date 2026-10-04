@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect source-bound extended indexing observations; never infer timing gates.
+"""Collect source-bound indexing observations and same-run reference comparisons.
 
 The process wrapper supports POSIX. validate/summarize-runs use only retained
 JSON/text and work on other systems. Receipts describe execution, not signatures
@@ -39,7 +39,11 @@ REQUIRED_SOURCES = {
 CONTROLS = {"AGENTS.md", "docs/EXECUTION-PLAN-20261004-roadmap-indexing-perf-rollout.md",
             "docs/EXECUTION-PLAN-20261004-slice-a-indexing-perf-rollout.md",
             "docs/EXECUTION-PLAN-20261004-slice-b-indexing-perf-calibration.md",
-            "docs/EXECUTION-WORK-ITEMS-20261004-indexing-perf-rollout.json"}
+            "docs/EXECUTION-WORK-ITEMS-20261004-indexing-perf-rollout.json",
+            "docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+            "docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+            "docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+            "docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json"}
 
 
 def sha(path):
@@ -271,9 +275,16 @@ def validate_hardware_record(hardware):
     contract.integer(storage["total_bytes"],"storage total bytes",1)
 
 
-def validate_runner_record(runner, source, hardware):
+def validate_runner_record(runner, source, hardware, collector_source=None):
     contract.require(type(runner) is dict, "runner schema")
     kind=runner["kind"]
+    if kind == "same-job-reference":
+        contract.require(collector_source is not None, "reference collector provenance missing")
+        validate_source_record(collector_source)
+        execution_runner = dict(runner, kind="intended-ubuntu-24.04")
+        validate_runner_record(execution_runner, collector_source, hardware)
+        contract.require(not source["local_controls"], "reference source must be clean")
+        return
     if kind == "local-observation":
         contract.require(set(runner)=={"kind","image_os","image_version"} and
                          runner["image_os"] is None and runner["image_version"] is None, "local runner schema")
@@ -345,7 +356,13 @@ def validate_receipt(receipt, text, group):
         contract.require(receipt["test_leaf"] == TEST, "test discovery identity")
         contract.require(receipt["toolchain"]["rustc"].startswith("rustc 1.97.1 ") and
                          receipt["toolchain"]["cargo"].startswith("cargo 1.97.1 "), "actual toolchain")
-        validate_runner_record(receipt["runner"],before,receipt["hardware"])
+        executor = receipt.get("collector_source")
+        if executor is not None:
+            validate_source_record(executor)
+            contract.require("scripts/indexing_perf_gate.py" in executor["files"], "comparison collector missing")
+            if receipt["runner"]["kind"] != "same-job-reference":
+                contract.require(executor == before, "candidate collector/source mismatch")
+        validate_runner_record(receipt["runner"],before,receipt["hardware"],executor)
         result=contract.validate_log(text,group)
         identity=result["metadata"]["environment_identity"]
         contract.require(identity["os"] == receipt["hardware"]["os"] and
@@ -396,13 +413,23 @@ def summarize_runs(folders, group):
                 timing_gate=None,limitation="No timing threshold or statistical guarantee; all seven pairs retained. Different work and platform observations remain separate.")
 
 
-def collect(args):
+def collect_once(args):
     root=Path(args.root).resolve();out=Path(args.output).resolve()
     contract.require(os.name == "posix", "collection requires POSIX")
     contract.require(not out.exists(), "output already exists")
     source=source_identity(root,args.revision,args.allow_local_controls)
     runner=runner_identity(os.environ,args.local_observation)
-    contract.require(runner["kind"] == "local-observation" or runner["GITHUB_SHA"] == source["head"], "CI source mismatch")
+    executor = getattr(args, "collector_source", None)
+    if executor is not None:
+        validate_source_record(executor)
+        executing_root = Path(__file__).resolve().parents[1]
+        contract.require(source_identity(executing_root, executor["head"]) == executor,
+                         "executing collector source changed")
+        if source["head"] != executor["head"]:
+            contract.require(runner["kind"] == "intended-ubuntu-24.04", "reference requires real hosted context")
+            runner = dict(runner, kind="same-job-reference")
+    execution_head = executor["head"] if executor is not None else source["head"]
+    contract.require(runner["kind"] == "local-observation" or runner["GITHUB_SHA"] == execution_head, "CI source mismatch")
     out.mkdir(parents=True)
     fixtures=out/"fixtures";fixtures.mkdir()
     build_temp=out/"compiler-temp";build_temp.mkdir()
@@ -413,28 +440,36 @@ def collect(args):
                  build_profile=dict(release=True,locked=True,default_features=True,additional_features=[],incremental=False),
                  processes={},fixtures_before=sorted(p.name for p in fixtures.iterdir()),test_leaf=TEST,
                  compiler_temp_before=sorted(p.name for p in build_temp.iterdir()))
+    if executor is not None:
+        receipt.update(collector_source=executor, collection_interval_ns={"started":time.monotonic_ns()})
     try:
         rust=root/"rust"
-        receipt.update(hardware=hardware_identity(out),rust_root=str(rust),build_target=str(out/"build"),
+        build_target = Path(getattr(args, "build_target", out/"build")).resolve()
+        receipt.update(hardware=hardware_identity(out),rust_root=str(rust),build_target=str(build_target),
                        cargo_config_before=build_config_identity(root,build_env))
         receipt["toolchain"]={"rustc":capture(["rustc","--version","--verbose"],rust,build_env),
                               "cargo":capture(["cargo","--version"],rust,build_env)}
         build=["cargo","test","--release","--locked","--lib","--no-run","--message-format=json",
-               "--target-dir",str(out/"build")]
-        receipt["processes"]["build"]=run_owned_process(build,rust,build_env,out/"build.log",args.build_timeout)
+               "--target-dir",str(build_target)]
+        budget = getattr(args, "budget", None)
+        def stage(kind, argv, env, log, bound):
+            if budget is None:
+                return run_owned_process(argv,rust,env,log,bound)
+            return budget.run(kind,argv,rust,env,log)
+        receipt["processes"]["build"]=stage("build",build,build_env,out/"build.log",args.build_timeout)
         contract.require(receipt["processes"]["build"]["success"], "build did not exit cleanly")
         binary=discover_executable(out/"build.log")
-        contract.require(binary.is_relative_to(out/"build"), "artifact outside owned build")
+        contract.require(binary.is_relative_to(build_target), "artifact outside owned build")
         receipt["executable_sha256"]=sha(binary)
         receipt["executable"]=str(binary)
         receipt["artifact_features"]=next(contract.parse_json(line)["features"] for line in
             (out/"build.log").read_text(encoding="utf-8").splitlines() if line.startswith("{") and
             contract.parse_json(line).get("executable") == str(binary))
-        receipt["processes"]["discovery"]=run_owned_process([str(binary),TEST,"--exact","--list","--ignored"],rust,env,out/"discovery.log",30)
+        receipt["processes"]["discovery"]=stage("discovery",[str(binary),TEST,"--exact","--list","--ignored"],env,out/"discovery.log",30)
         contract.require(receipt["processes"]["discovery"]["success"],"test discovery failed")
         listed=(out/"discovery.log").read_text(encoding="utf-8").splitlines()
         contract.require([s for s in listed if s.endswith(": test")] == [TEST+": test"],"missing/duplicate exact test")
-        receipt["processes"]["measurement"]=run_owned_process([str(binary),TEST,"--exact","--ignored","--nocapture","--test-threads=1"],rust,env,out/"measurement.log",args.measurement_timeout)
+        receipt["processes"]["measurement"]=stage("measurement",[str(binary),TEST,"--exact","--ignored","--nocapture","--test-threads=1"],env,out/"measurement.log",args.measurement_timeout)
         text=(out/"measurement.log").read_bytes().decode("utf-8")
         receipt.update(raw_sha256=sha(out/"measurement.log"),source_after=source_identity(root,args.revision,args.allow_local_controls),
                        cargo_config_after=build_config_identity(root,env),
@@ -449,8 +484,24 @@ def collect(args):
         receipt["error"]=type(error).__name__+": "+str(error)
         raise
     finally:
+        if executor is not None:
+            receipt["collection_interval_ns"]["finished"] = time.monotonic_ns()
         receipt["compiler_temp_after"]=sorted(p.name for p in build_temp.iterdir())
         write_json(out/"receipt.json",receipt)
+
+
+def comparison_module():
+    if __package__:
+        from . import indexing_perf_gate
+    else:
+        import indexing_perf_gate
+    return indexing_perf_gate
+
+
+def collect(args):
+    if args.local_observation:
+        return collect_once(args)
+    return comparison_module().collect_triplet(args)
 
 
 def main(argv=None):
@@ -468,6 +519,10 @@ def main(argv=None):
     validate=commands.add_parser("validate")
     validate.add_argument("--group",choices=contract.GROUPS,required=True)
     validate.add_argument("folder")
+    comparison=commands.add_parser("compare-proposal")
+    comparison.add_argument("--group",choices=contract.GROUPS,required=True)
+    comparison.add_argument("--output",required=True)
+    comparison.add_argument("folder")
     summary=commands.add_parser("summarize-runs")
     summary.add_argument("--group",choices=contract.GROUPS,required=True)
     summary.add_argument("--output",required=True)
@@ -482,8 +537,22 @@ def main(argv=None):
         if args.command == "collect":
             collect(args)
         elif args.command == "validate":
-            _,result=load_run(args.folder,args.group)
-            print(json.dumps(dict(status="observed-valid",rows=len(result["rows"]))))
+            receipt=contract.parse_json((Path(args.folder)/"receipt.json").read_text(encoding="utf-8"))
+            if "comparison" in receipt:
+                report=comparison_module().load_comparison(args.folder,args.group)
+                print(json.dumps(report,ensure_ascii=False,allow_nan=False))
+                if receipt["comparison"]["enforced"]:
+                    contract.require(report["status"] == "pass", "numeric gate " + report["status"])
+            else:
+                contract.require(not (receipt.get("runner",{}).get("kind") == "intended-ubuntu-24.04" and
+                    "scripts/indexing_perf_gate.py" in receipt.get("source_before",{}).get("files",{})),
+                    "hosted comparison receipt missing")
+                _,result=load_run(args.folder,args.group)
+                print(json.dumps(dict(status="observed-valid",rows=len(result["rows"]))))
+        elif args.command == "compare-proposal":
+            report=comparison_module().load_comparison(args.folder,args.group,proposal=True)
+            write_json(args.output,report)
+            contract.require(report["status"] == "pass", "proposal " + report["status"])
         else:
             write_json(args.output,summarize_runs(args.folders,args.group))
     except (contract.ValidationError,OSError,subprocess.SubprocessError) as error:

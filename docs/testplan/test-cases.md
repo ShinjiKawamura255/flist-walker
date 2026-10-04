@@ -249,3 +249,5 @@
 | TC-230 | unit+integration | controlled reclaimer Fullを消費再開後のdeadlineで収束させるpositive guardと、進捗停止を検出するnegative guardを分離し、retry/cancel/旧snapshotを建設的進捗として数えない | SP-007, SP-010 |
 | TC-231 | unit+integration+perf | finite preview selection、内部follow-linksの明示workload、deep/wide Walker、truncated terminalの件数・部分集合・duplicate・reasonを検証する。global limitはordinary parallel testsへ漏らさず、入力量を変える比較は性能保証に使わない | SP-007, SP-010, SP-021 |
 | TC-232 | unit+integration+perf | empty A/B setupからAの確定済み10万件検索とBのWarm indexingを併走し、BのGUI取込み10/25/50%で固定query列を適用する。Aの候補identity、Bの成功terminal/finalizer debt、A最新結果、S1の実10万件評価とS2の異なる実評価requestを確認し、同設定の旧版比較でNON_ELIGIBLEを速度判定へ転用しない | SP-007, SP-010 |
+
+| TC-233 | tooling+perf | fixed-reference R1→candidate→R2 source/work/job/physical admission、全17cell/B0/conditionのt2/t3 median/max136比較、flat証跡再構成、共有deadline、synthetic numeric-only CLI exit1を検証する。校正完了まではcomparison-calibrationであり製品速度保証ではない | SP-007, SP-010 |
