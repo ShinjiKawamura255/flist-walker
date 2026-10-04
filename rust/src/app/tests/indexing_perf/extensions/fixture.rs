@@ -744,6 +744,24 @@ impl Drop for ExtendedFixture {
 }
 
 #[test]
+fn tc_229_nested_manifest_reference_accepts_native_separators_only() {
+    for reference in ["child/FileList.txt", "child\\FileList.txt"] {
+        assert!(is_nested_manifest_reference(reference), "{reference}");
+    }
+    for other in [
+        "child/MyFileList.txt",
+        "child/FileList.txt.old",
+        "child\\FileList.txt\\entry",
+    ] {
+        assert!(!is_nested_manifest_reference(other), "{other}");
+    }
+}
+
+fn is_nested_manifest_reference(reference: &str) -> bool {
+    reference.rsplit(['/', '\\']).next() == Some("FileList.txt")
+}
+
+#[test]
 fn tc_229_extended_fixture_nested_expected_replaces_old_subtree() {
     for shape in [Shape::NestedEarly, Shape::NestedLate] {
         let f = ExtendedFixture::new(4096, shape);
@@ -756,7 +774,7 @@ fn tc_229_extended_fixture_nested_expected_replaces_old_subtree() {
             .collect::<Vec<_>>();
         let reference = root_lines
             .iter()
-            .position(|p| p.ends_with("/FileList.txt"))
+            .position(|p| is_nested_manifest_reference(p))
             .unwrap();
         if shape == Shape::NestedEarly {
             assert_eq!(reference, 0);
