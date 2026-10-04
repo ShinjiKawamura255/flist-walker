@@ -7,50 +7,120 @@ mod oracle;
 mod runner;
 mod supplementary;
 
-#[test]
-fn tc_229_real_worker_extended_profiles_smoke() {
-    if crate::app::tests::indexing_perf::harness::child_process::isolate(
-        module_path!(),
-        "tc_229_real_worker_extended_profiles_smoke",
-    ) {
-        return;
-    }
-    use cases::Profile;
-    use fixture::{ExtendedFixture, Shape};
-    let mut fixtures = Vec::new();
-    for profile in Profile::ALL
+fn normal_smoke_profiles_for(shape: fixture::Shape) -> Vec<cases::Profile> {
+    cases::Profile::ALL
         .into_iter()
-        .filter(|p| !p.parser() && *p != Profile::Truncated)
-    {
-        if !fixtures.iter().any(|(shape, _)| *shape == profile.shape()) {
-            fixtures.push((profile.shape(), ExtendedFixture::new(4096, profile.shape())));
+        .filter(|p| !p.parser() && *p != cases::Profile::Truncated && p.shape() == shape)
+        .collect()
+}
+#[test]
+fn tc_229_normal_smoke_shape_partition_preserves_all_42_cells() {
+    let expected = cases::Profile::ALL
+        .into_iter()
+        .filter(|p| !p.parser() && *p != cases::Profile::Truncated)
+        .flat_map(|p| {
+            p.sources()
+                .into_iter()
+                .map(move |source| (p.name(), source.name()))
+        })
+        .collect::<HashSet<_>>();
+    assert_eq!(expected.len(), 42, "declared normal GUI cell inventory");
+    let mut actual = HashSet::new();
+    for &shape in NORMAL_SMOKE_SHAPES {
+        let profiles = normal_smoke_profiles_for(shape);
+        assert!(!profiles.is_empty(), "every owned shape leaf performs work");
+        for profile in profiles {
+            assert_eq!(profile.shape(), shape, "leaf creates only its owned shape");
+            for source in profile.sources() {
+                assert!(
+                    actual.insert((profile.name(), source.name())),
+                    "cell must run exactly once"
+                );
+            }
         }
     }
-    let b = ExtendedFixture::new(4096, Shape::FlatFiles);
-    let c = ExtendedFixture::new(4096, Shape::FlatFiles);
-    for profile in Profile::ALL
-        .into_iter()
-        .filter(|p| !p.parser() && *p != Profile::Truncated)
-    {
-        let f = &fixtures
-            .iter()
-            .find(|(shape, _)| *shape == profile.shape())
-            .unwrap()
-            .1;
+    assert_eq!(actual, expected, "no omitted or extra normal GUI cells");
+}
+
+fn run_normal_smoke_shape(shape: fixture::Shape) {
+    use cases::Profile;
+    use fixture::{ExtendedFixture, Shape};
+    let begin = Instant::now();
+    let phase = |name, profile: Option<Profile>, source: Option<Source>| {
+        eprintln!(
+            "INDEX_PERF_NORMAL_PHASE {}",
+            serde_json::json!({
+                "shape":format!("{shape:?}"),"phase":name,"elapsed_ms":ms(begin.elapsed()),
+                "profile":profile.map(Profile::name),"source":source.map(Source::name),"entries":4096
+            })
+        );
+    };
+    let profiles = normal_smoke_profiles_for(shape);
+    assert!(!profiles.is_empty(), "owned leaf has declared work");
+    phase("fixtures-started", None, None);
+    // This leaf owns only its shape and companions required by these profiles.
+    // The 180s physical-child watchdog and every per-request guard stay intact.
+    let f = ExtendedFixture::new(4096, shape);
+    let b = profiles
+        .iter()
+        .any(|p| p.tabs())
+        .then(|| ExtendedFixture::new(4096, Shape::FlatFiles));
+    let c = profiles
+        .contains(&Profile::TabChain)
+        .then(|| ExtendedFixture::new(4096, Shape::FlatFiles));
+    phase("fixtures-ready", None, None);
+    for profile in profiles {
         let others = if profile == Profile::TabChain {
-            vec![&b, &c]
+            vec![b.as_ref().unwrap(), c.as_ref().unwrap()]
         } else if profile.tabs() {
-            vec![&b]
+            vec![b.as_ref().unwrap()]
         } else {
             vec![]
         };
         for source in profile.sources() {
-            eprintln!("EXTENSION_SMOKE {} {}", profile.name(), source.name());
-            let row = driver::run(f, &others, profile, source, true, false);
+            phase("profile-started", Some(profile), Some(source));
+            let row = driver::run(&f, &others, profile, source, true, false);
             assert_eq!(row["correct"], true);
+            phase("profile-completed", Some(profile), Some(source));
         }
     }
 }
+macro_rules! normal_smoke_leaves {
+    ($(($name:ident, $shape:ident)),+ $(,)?) => {
+        const NORMAL_SMOKE_SHAPES: &[fixture::Shape] = &[$(fixture::Shape::$shape),+];
+        $(
+            #[test]
+            fn $name() {
+                if crate::app::tests::indexing_perf::harness::child_process::isolate(module_path!(), stringify!($name)) {
+                    return;
+                }
+                run_normal_smoke_shape(fixture::Shape::$shape);
+            }
+        )+
+    };
+}
+// The coverage guard and real test registrations share this single inventory.
+normal_smoke_leaves!(
+    (tc_229_real_worker_extended_profiles_smoke, FlatMixed),
+    (
+        tc_229_real_worker_extended_profiles_smoke_flat_files,
+        FlatFiles
+    ),
+    (
+        tc_229_real_worker_extended_profiles_smoke_nested_early,
+        NestedEarly
+    ),
+    (
+        tc_229_real_worker_extended_profiles_smoke_nested_late,
+        NestedLate
+    ),
+    (
+        tc_229_real_worker_extended_profiles_smoke_internal_links,
+        InternalLinks
+    ),
+    (tc_229_real_worker_extended_profiles_smoke_deep, Deep),
+    (tc_229_real_worker_extended_profiles_smoke_wide, Wide),
+);
 
 const STABLE_EDIT_INPUT_POLICY: &str = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing";
 
