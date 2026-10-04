@@ -1,0 +1,85 @@
+{
+  "status": "PASS",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "total_raw_rows": 630,
+  "assets": [
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.log.gz",
+      "sha256": "bd943a73e2728bf9963c3bc1dfae78560c1913eb54e034fbdfe3a7763d64aae5",
+      "uncompressed_sha256": "da576b4141fcb6b03b9ff14bd2a483f4940119dbeaff3c1449ae2d4fba460d45",
+      "bytes": 3324696
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.sidecar.json",
+      "sha256": "9e97b49fb5ec4c5907b730dd5a438e07d35777e7ff892e83c787949fd95a84b5",
+      "uncompressed_sha256": "9e97b49fb5ec4c5907b730dd5a438e07d35777e7ff892e83c787949fd95a84b5",
+      "bytes": 53681
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.summary.json",
+      "sha256": "2a06fa51ede9d63ee1244c1cf6f0070d2406fb2b682991117b9a278b6f98aba5",
+      "uncompressed_sha256": "2a06fa51ede9d63ee1244c1cf6f0070d2406fb2b682991117b9a278b6f98aba5",
+      "bytes": 213755
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.collector.log.gz",
+      "sha256": "4062e60704b5c7cb2aa12e4debfbbf228e99706435fc493ad727cf6b9a262a89",
+      "uncompressed_sha256": "ee8d283d1f552ae0f6fb5b84913cb537db964f3b1edbd0d87fe15b00870dd5f1",
+      "bytes": 27
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-extra-full-raw.jsonl.gz",
+      "sha256": "547c8bc41a6cd449526964dc5efd816e84f981a178b02bfdeef6d9c64146988d",
+      "uncompressed_sha256": "742e19e4056ac780b29ecd039f49ffaaa5f9e3f2a117684e2b85289a8dcfb744",
+      "bytes": 3212474
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.log.gz",
+      "sha256": "56ace59d239ba3203eda2cb63adf7891e2ed32d26d80643dec25aa4bb8620f3a",
+      "uncompressed_sha256": "c9847b0d134e135ec0a7f1cf318ee7a633427db797f7d1f983fe2018bf04e79f",
+      "bytes": 12643
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.sidecar.json",
+      "sha256": "0e03c9192f22a214d74197dc906416f4fe871638ef60661c2e170b904cde7773",
+      "uncompressed_sha256": "0e03c9192f22a214d74197dc906416f4fe871638ef60661c2e170b904cde7773",
+      "bytes": 47938
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.summary.json",
+      "sha256": "efcff9db3bab6f44c6ac9a0b328db46d275170a6b2bda3513ef16dcfa25de889",
+      "uncompressed_sha256": "efcff9db3bab6f44c6ac9a0b328db46d275170a6b2bda3513ef16dcfa25de889",
+      "bytes": 5317
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.collector.log.gz",
+      "sha256": "5bb61d5c2353d9f416a869403a2ccc2148fc80595d5c14e31778a66a807dfbad",
+      "uncompressed_sha256": "0f7cb1da35d53f8696b49bf5c177b74907117672623bc4ede7cf3b8f9c42ef41",
+      "bytes": 25
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-truncated-raw.jsonl.gz",
+      "sha256": "02677924dfea41790e7e1c564d811bc36d86880e185180ac4c70d333faec0347",
+      "uncompressed_sha256": "a0ea84e5d0fc21c7fb856c447d7a95a92f2f49321a15cb2356119826293d8fdc",
+      "bytes": 11752
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-full-packet.json",
+      "sha256": "d6f7fabf5172d745ea1e5f1582aa7413c59ff90903dc00234233442aee1bc1da",
+      "uncompressed_sha256": "d6f7fabf5172d745ea1e5f1582aa7413c59ff90903dc00234233442aee1bc1da",
+      "bytes": 22013
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/integration-e2efece3-full-check.json",
+      "sha256": "19a4e6a910daa35f165c3f6b1abd2a9f13f5ef31ddc1083cbbc0a04c9013b15c",
+      "uncompressed_sha256": "19a4e6a910daa35f165c3f6b1abd2a9f13f5ef31ddc1083cbbc0a04c9013b15c",
+      "bytes": 5070
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/integration-e2efece3-full630-check.json",
+      "sha256": "3b49bb628f9b801b172729e80249df7cc6d2ac96e21f942c0845deb437fb0a44",
+      "uncompressed_sha256": "3b49bb628f9b801b172729e80249df7cc6d2ac96e21f942c0845deb437fb0a44",
+      "bytes": 1263
+    }
+  ]
+}

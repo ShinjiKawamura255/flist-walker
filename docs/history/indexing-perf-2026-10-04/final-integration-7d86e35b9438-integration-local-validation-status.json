@@ -1,0 +1,68 @@
+{
+  "scope": "Task-local selected validation; point in time, incomplete until extension and historical comparison finish",
+  "base": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "selected": [
+    "VM-001",
+    "VM-002",
+    "VM-003",
+    "VM-004",
+    "VM-008",
+    "VM-009"
+  ],
+  "accepted": [
+    "defaultparallel host cargo test --locked --offline:1548 lib +8 main+3 architecture+47 CLI+2 path;19 ignored",
+    "scoped normal63/search9/order10/TC20782/pipeline152/fmt/clippy",
+    "100k7pair basic84 and observer14",
+    "Python repository contract/change selection19 tests and check_repo_contract",
+    "Current extension full616+truncated14; main independent source/hash/log/strictcollector/META/ABBA/cleanup verification",
+    "Existing VM003 FileList andWalker ignored guards plus TC156/185 release search andTC154 release coordinator guards, exact1PASS each"
+  ],
+  "pending": [
+    "Four-tag same-settings extended comparison",
+    "Final docs/trace/evidence integration",
+    "Fresh independent final review",
+    "Task-owned localcommit anddurablecheckout/closure"
+  ],
+  "not_applicable": {
+    "FileList encoding/readbuffer/write/rollback": "No production changes to decoder/preflight/linebuffer/writer/rollback",
+    "Walker adaptive/frontier": "No traversal scheduler/frontier/softlimit/openframe change; default adaptive traversal retained",
+    "Persistence/settings storage": "Known settings are per-owned-test-process; no production persistence/history/session merge change",
+    "CI policy/workflow/audit/rollout": "Only docs/tempAGENTS and new locally ignored entrypoints; no workflow/dependency/pins/checks/repository-setting change",
+    "TC120": "Production observable window/index trace unchanged",
+    "Render facade": "No render facade/module boundary change"
+  },
+  "not_run": {
+    "Native GUI large-root/manual input": "No native application launch included in approved local scope; headless actual-worker productionframes automated",
+    "Windows/Linux timing": "Currenthost macOS/aarch64",
+    "External SIGINT/SIGKILL": "Not part of request-body/ownedchild positive cleanup evidence",
+    "Individual worker joins": "Currentperf bodies/zero sender/release evidence do not prove native thread join",
+    "Weekly activation": "Trusted-policy external rollout separate authority, not activated"
+  },
+  "artifacts": [
+    {
+      "path": "rust/target/indexing-perf-study/integration-selected-validation-plan.txt",
+      "sha256": "982438495b398fb5e5f1250f610516b38bc3c803e6d22bfee1f9d4bcec4796bb"
+    },
+    {
+      "path": "rust/target/indexing-perf-study/integration-python-contract-tests.log",
+      "sha256": "049c6d919dbb09b2f9775bcc881fb74010c53dd49722c8995168fd1aabd8313d"
+    },
+    {
+      "path": "rust/target/indexing-perf-study/integration-repo-contract.log",
+      "sha256": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3"
+    },
+    {
+      "path": "rust/target/indexing-perf-study/integration-e2efece3-full630-check.json",
+      "sha256": "3b49bb628f9b801b172729e80249df7cc6d2ac96e21f942c0845deb437fb0a44"
+    },
+    {
+      "path": "rust/target/indexing-perf-study/integration-e2efece3-selected-vm-check.json",
+      "sha256": "73558783e302024e2abb472595af79e2f30802b9540d9c5f1bbbaeb7a56b411c"
+    },
+    {
+      "path": "rust/target/indexing-perf-study/integration-e2efece3-selected-normal-coverage.json",
+      "sha256": "a4bfe74aeb9ac2029e0c7fa7b6c2d1453341326bfa7a3464babd2d7519e2e1c2"
+    }
+  ]
+}

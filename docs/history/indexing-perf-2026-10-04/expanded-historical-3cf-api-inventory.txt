@@ -1,0 +1,120 @@
+3cf frozen-to-tag adapter API/delta inventory (read-only supplement)
+Date 2026-10-04; workspace /private/tmp/flistwalker-indexing-perf-20261003.
+Input: warm-ack-final-source/src/ (main-declared exact frozen 3cf corpus). This memo does not update the former 213 inventory or assert current full acceptance.
+Read original tags using git show, not modified basic exports. No Rust/adapter/script/code, clone/tag, baseline patch, durable doc or build/test/perf change.
+Current full616/trunc14 remains main/driver-owned; historical port remains NOT RUN pending acceptance, sole-heavy handoff and independent adapter review.
+
+A. Frozen 3cf actual Warm-removal + switch acknowledgment
+- Current index_coordinator.rs:140 IndexPerfWarmRemoval {at, removed_request_id, previous_warm_tab, replacement_warm_tab, route_tab}; coordinator:175 default-off perf_observe_history; :183/185 bounded events plus sticky overflow.
+- Current replace_warm_tab:783 observes nonzero latest[oldWarm] and request_tabs[id]==oldWarm while locked; clock is taken after scalar identity capture immediately before the unchanged latest.remove/filter; drops latest before appending, capacity128 sticky/panic. Disabled branch allocates/timestamps no event. Every original tag has these actual fields and the same replace/remove body; apply only exact cfg hunks. Original production removal semantics must remain unchanged.
+- Current extensions/driver.rs:277 acknowledge_tabchain_switch reads actual current_tab_id/root/pending_activation after real activation, before dependent input. Stage <=2 and dependent_input_allowed must hold. No declared victim still permits a successful real switch acknowledgment without inventing removal.
+- Current extensions/mod.rs:992 VictimDeclaration and :1187 warm_removal_cause bind exact fixed actor permutation, IDs/route/oldWarm/replacementWarm, seed source/root acquisition, permission or genuine Finished-predecessor publication, declaration<=remove<=ack<=closed, actual ack root/tab and no pending activation.
+- All four tags support current_tab_id(), shell.runtime.root and shell.tabs.pending_activation_tab_id. Normal switch has setActive/load before replaceWarm; restore and background-refresh callers do not. Keep ACTIVE_AT_REMOVAL=NOT_DIRECTLY_OBSERVED and exact fixed-switch binding; do not populate privileged false Active/root fields or add a production parameter.
+- Current driver.rs:2025-2030 emits declared edges, actual switch ack, actual preemptions and actual Warm removals separately. Port the same output and proof roles. marker priorlatest=None can match a prior real removal; missing/foreign/duplicate/overflow witness is failure. Ordinary intermediate Finished race and latestB Canceled/seed role remain distinct. LatestA8/C7 cannot reuse predecessor proof.
+- Exact original method/caller hashes and anchors already retained in expanded-historical-warm-removal-addendum.txt SHA ea6e74e888d2b715cd16fe05616abe25ee9b013bd15c3bd2572bcb135ea6bfbf. No Warm-removal API absence was found.
+
+B. Actual committed generation: absent production fields cannot be backported
+- v27/28/29 have no index SnapshotFreshness; preview/action fields named freshness in v28/29 are unrelated and cannot witness index commit. v30 has real SnapshotFreshness and acquired_index_snapshot; retain its actual record_snapshot_started/completed worker hooks, never copy those current/v30 calls into v27/28/29.
+- Existing successful Active finalizer: finish_active_index_request original pipeline.rs:1436 v27 / :1579 v28 / :1594 v29 / :1657 v30. Actual all_entries publication is :1460-1461 / :1603-1604 / :1618-1619 / :1691-1692. v27 assigns Arc directly; v28+ uses replace_all_entries. Capture after real publication and successful resource transition, not on response receipt/cleanup/refresh call.
+- Existing successful background publication: original tabs.rs:693-701 v27 / :751-759 v28/29 / :763-771 v30. The real request_id/finalization.tab_id/tab.root/pending_finish.source or now-assigned build.source are in scope; source capture must follow existing ownership moves without altering production clone/merge behavior. v30 actual freshness is assigned at :762.
+- Minimal oldtag-only witness: requestID/tab/root/actual source/Instant plus Weak<Vec<Entry>> from the real newly committed all_entries Arc. This is cfg(test) observation state, not production generation state. Keep latest successful witness per tab or an explicitly bounded finite registry; do not clone payload or retain strong ownership.
+- For setup, seed, final latest and canceled-victim lastGood checks, upgrade that exact Weak transiently and Arc::ptr_eq current committed all_entries. A dead Weak/different allocation rejects. A predecessor witness cannot certify successor even if paths/count match. Visible Arc may legitimately change during filter/sort; independent oracle validates visible contents, while index generation binds all_entries.
+- Production v30 freshness must be used with actual current all_entries/own latest request gates; observations supplement it rather than overwrite its state. No new record_snapshot_started/completed calls in old worker bodies.
+- Oldtags missing active_filter continuation (v27/28) permits removing only nonexistent debt/cursor fields; retain all real pendingFinish/backgroundFinalization/requestTabs/pending_request/reclaimer/worker/search/kind/sort debts. Original order/filter failures stay observed FAIL, not unsupported.
+
+C. Exact same-root/source setup and rollback
+- Frozen driver.rs:808 EmptyRootPublication -> Driver rebinding -> same Broot actual empty request -> actual Started+Finished sources -> empty committed publication -> physical/debt settlement -> A seed -> real Bactive -> full B fixture restore at :1019-1024 immediately before t0, with no frame/input after restore.
+- Replace every oldtag freshness access in empty B (:845), untimed seed (:953-982) and prepublication B (:1014) by the reviewed exact commit Weak witness, not startup empty state or assumed configured source. Require actual empty own request and same lexical Broot/source, plus all_entries/visible both empty.
+- GenerationChange and EmptyRootPublication are shared frozen fixture code. They preserve names/manifest and owned backup recovery. App declared after rollback guard ensures App shutdown before normal/unwind restore. Same-root generations keep item/needle/SKIP markers and independent oracle; no source/root/fixture mutation in timed trace.
+- Per-cell wrapper must verify physical owned paths plus exact source manifest/recovery status after rollback, not rely on fixture signature. Unresolved backup/restore or a live worker prevents continuation. Windows existing-handle absence remains required before rename; Windows/Linux historical execution NOT RUN.
+- v27 actual IgnoreList UI operation is apply_entry_filters(false); v28+ uses maybe_reindex(...ignore_changed=true). v27-29 IgnoreCase replays real legacy checkbox/invalidation/update_results path; any resulting fixed oracle failure remains correctness FAIL. Absent setter does not mean absent user operation.
+
+D. Positive failed-cell cleanup remains an additional reviewed cfg seam
+- Frozen actual shutdown API is App::shutdown_workers_with_timeout -> Option<WorkerJoinSummary>, not a hypothetical stop_workers API. None denotes no runtime and is not a positive successful join.
+- Original worker/runtime.rs real join result point :201 v27 / :218 v28/29 / :230 v30; method entry :189 / :206 / :218. Summary fields joined,total,pending,panicked exist all4. Observe the actual returned summary with exact cell/runtime identity; keep first real result, do not overwrite it with later None/zero-handle Drop. Maintain original250ms timeout/join-helper algorithm.
+- Current frozen source does not already provide historical catch-unwind continuation proof. An App Drop that logs no error is insufficient. Future historical-only bounded external cleanup recorder must survive Driver unwind, bind the known spawned runtime count, and retain actual joined==total, pending empty and panic outcome. Worker panic remains original failure even when all workers joined.
+- Owned request physical return/closed-unsent exact proof remains mandatory separately. Summary cannot certify sample t2/t3 or search evaluation. No request-map cleanup/load0 alone certifies return.
+- Frozen supplementary.rs:1-39 ParserWorkerCleanup can detach unfinished workers after5s during unwind. Future wrapper must observe original spawned/finished/joined/panicked/timedout counts and preserve first stop outcome; subsequent Drop with no handles is not proof. Do not change timeout or silently continue after catch_unwind.
+- Per whole cell: first failure retained, partial rows excluded, continue only after actual runtime/parser quiescence + owned root restoration; uncertain cleanup stops process and remaining intended cells become NOT_RUN. Any failed cell keeps finalexit101. No failed role/panic reclassified API-unsupported.
+
+E. Source separation and next-ready gates
+- Fresh expanded exports from exact tags plus immutable frozen-basic patch, separate tag targets/locks. Copy shared TEST harness/fixture/oracle/helpers; port scalar observation hunks at each actual operation site. NEVER reuse a compatibility script that replaces the entire current index worker or its production body.
+- Original tag scheduling/filter/finalization/order remain original. Exclude current ordered-handoff production fix, VecDeque/barriers/ReplaceAll repair and any freshness/sort/filter fixes. Existing historical basic11 assets stay unchanged.
+- Record exact tag-to-expanded full diff + basic-to-expanded additive diff, source/test/hash/lock identities. Independently review actualcommit/emptyB/Warmcause/physicalcleanup seams before compile/measurement.
+- Default44 nontruncated cells x14=616 plus truncated14 =>630/tag; catch wrappers retain complete45-cell status ledger, not fabricated successful row cardinality. Unsupported only actual absent workload/API; neither legacy defer nor observed correctness failure is unsupported. No performance conclusion follows from this inventory.
+
+F. Exact input identities
+Hashes below are SHA256 of exact frozen or git-show file bytes. Current only scoped14 files listed; all213 source-corpus verification remains main-owned.
+{
+  "current_corpus": "warm-ack-final-source/src exact 3cf source as provided by main",
+  "current_files": {
+    "app/index_coordinator.rs": "398dbba9b990147adb21c8e1fea8b3e6874a6e0b898bdacde3739f4920844982",
+    "app/index_mailbox.rs": "cfb6f860ed0a6febd470abc3fd3072304424a9ff37b17f6f864a0e157e45851f",
+    "app/index_worker.rs": "98a72cd347af3ab232f5943045cb473b4f269788929d461b1b8299db1b2d9eab",
+    "app/pipeline.rs": "e2fd23b9f2eb72222da952c87f18241090e7c5868abf5ead48d01f55579d1e6d",
+    "app/tabs.rs": "31e019de5f1d363680c24c6e8daa3dba65bc8e5ed5b1f1227f5ad6c9bd05beaf",
+    "app/worker/runtime.rs": "b7888224558e9ef527be4d4362ec9c76f13308ca3af5c8b91910d94f6d46e3dd",
+    "app/tests/indexing_perf/harness.rs": "b4345e5b98444137cdf10208d03a91305bd02c1b54dc6c3fcffffae58113fa67",
+    "app/tests/indexing_perf/extensions/mod.rs": "e222d99788356a324a29f95354c326604c1b87d41d54896c0bf467b41a9da37d",
+    "app/tests/indexing_perf/extensions/driver.rs": "154d244ac3b3a446ac9f2038d1f8b02cc53dc83ce7e568bb0ef5b5268c1d07bd",
+    "app/tests/indexing_perf/extensions/runner.rs": "45a0ecb359316d5ab569bd32c8839bf76760c524a5673d0da0cc5f71bfcb6b70",
+    "app/tests/indexing_perf/extensions/cases.rs": "0bdee561b352d7e8bfd90ca993daff5e09e8b20e980386345ded46904f2d509a",
+    "app/tests/indexing_perf/extensions/fixture.rs": "98cc9d2f9206d7aac5844af13b27671217118e93f6ae2f770c344ae5a887f56c",
+    "app/tests/indexing_perf/extensions/oracle.rs": "b4298bafc5445a4e51f02d064dbd514ae80b7adbd0b100bf233940048caaa5dc",
+    "app/tests/indexing_perf/extensions/supplementary.rs": "d2f20ef9008bf802c0bea7d96661fc8d9461562cabbb45abc00497293a8af6ae"
+  },
+  "tags": {
+    "v0.27.0": {
+      "commit": "37195d639338f10549efabb1abad729546230914",
+      "files": {
+        "app/index_coordinator.rs": "995148780f48bc63387b93229ccbebde90131495ec904435345cf90172a0224b",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_worker.rs": "27bf2da1bc94131deaa52a2859f9423d75c03de42be34e9f624268fdc441d889",
+        "app/pipeline.rs": "c8f91252fdad889d3501e52b6386799a978231f349f59066cdf179466238df08",
+        "app/tabs.rs": "03d807ee68dfffc827f5bb34de697e1536060f786a2b4694494dc411099b0a5f",
+        "app/worker/runtime.rs": "5ace79eaa9ecff14d954f9bb7bb9d12baa23b9d7aa93506f4a137648d36fdaf9",
+        "app/session.rs": "e2ce6ce15eaa184e332e07489ff9e2654dc5d10ed59284c20b56ca38cb91551e",
+        "app/tab_state.rs": "8c614d34a93cb7b557a55f23f46858bb9faf78d66d5b8e4849f011359f436066"
+      }
+    },
+    "v0.28.0": {
+      "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+      "files": {
+        "app/index_coordinator.rs": "b6c18b854aced14d04934b823f4666b0abf6e07260bcd58901da7a8c5e04abc2",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_worker.rs": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "app/pipeline.rs": "7e383c2b9101a00e9ff9818bb1b27c92ac43f4f8843833081b544203e22d6431",
+        "app/tabs.rs": "e599682a7f3e54ecb5cc898ab4d85ec0ef1a03a427a97dfa8d599dea1c05af87",
+        "app/worker/runtime.rs": "e7b4472c2e73abe385c99f37be2e1e0919a502b4532d8eea3a946ac5189430e2",
+        "app/session.rs": "adcc32629dbaa5344c3228fef4fb1a588ba5eab6f90c960b0117602f59f328ad",
+        "app/tab_state.rs": "6f4f86f550ba3072b647dbefac1be276d4004cb0f8906c31fba6c536d4a46525"
+      }
+    },
+    "v0.29.0": {
+      "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+      "files": {
+        "app/index_coordinator.rs": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_worker.rs": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "app/pipeline.rs": "f7151dc1c57bc78550299bc168f786915baff41a4c9b992fff187dd986aaa270",
+        "app/tabs.rs": "7d0a8ab63b5b323aa4918934f923706fd77dda660b2fa18ac93ec168074b7fd9",
+        "app/worker/runtime.rs": "2e2b338454db0df4cc8947db15fd70323f0c7477e7d3ffb806e0f9c58ced09e0",
+        "app/session.rs": "36ca7cbb561304de0150154e3864e2d6bf50a9417698f54895ba00888dc901f4",
+        "app/tab_state.rs": "335dc38379848b487e085e41ff625b099dc9fca552481a8976fc33a4056d1467"
+      }
+    },
+    "v0.30.0": {
+      "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+      "files": {
+        "app/index_coordinator.rs": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+        "app/index_mailbox.rs": "deda23d1cd36653ba50f7dcc6867e9e406debae0eb606e7f98c24f554f5852d7",
+        "app/index_worker.rs": "bac9aeabd11baa426721c4c69d6a4956a4c3cc45b07da99d983f52559c781f12",
+        "app/pipeline.rs": "32329c4cb2d46cc8c8b7ba30d48fa9cd00dd5f43944bc42eb54e744e72a36c69",
+        "app/tabs.rs": "6bd7fca2e4af562faef501d5353457427e978acc2d67083d753be0c3db74a74b",
+        "app/worker/runtime.rs": "b7888224558e9ef527be4d4362ec9c76f13308ca3af5c8b91910d94f6d46e3dd",
+        "app/session.rs": "36ca7cbb561304de0150154e3864e2d6bf50a9417698f54895ba00888dc901f4",
+        "app/tab_state.rs": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598"
+      }
+    }
+  }
+}

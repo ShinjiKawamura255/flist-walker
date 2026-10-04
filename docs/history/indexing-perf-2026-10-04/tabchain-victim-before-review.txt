@@ -1,0 +1,98 @@
+Independent focused BEFORE checkpoint: TabChain victim-role contract
+
+Decision: PASS WITH IMPLEMENTATION ACCEPTANCE CONDITIONS.
+Findings: blocking 0 / major 0 / minor 0.
+Reviewer: /root/plan_review, independent read-only reviewer. Prior involvement was
+plan and focused checkpoint review only; no Rust implementation or test authorship.
+Scope: isolated /private/tmp/flistwalker-indexing-perf-20261003, base/head
+8a452b3858c80f70a5f3064834c8add4d9b1d347, uncommitted task-owned changes.
+This is a BEFORE design checkpoint, not implementation AFTER or fresh final review.
+
+Evidence inspected
+- tabchain-stall-diagnostic-final-packet.json and tabchain-stall-actual-state.json.
+- tabchain-victim-role-minimal-design.txt and main's precise final refinement.
+- Production pipeline::preempt_background_for_active_request and its base version.
+- TC205 tc_205_active_request_preempts_only_the_non_preferred_warm_generation.
+- SP010 Active/Warm cancellation, DES runtime scheduler, TC205/229/232,
+  SP007 measurement contract and indexing-contention runner interpretation.
+- Existing extension driver completion/oracle/ledger and runner output ordering.
+
+Causal conclusion
+The fixed A->B->C->A trace can legitimately cancel low-priority generations under
+the existing deterministic Active+Warm scheduler. The observed B6 had prior
+Warm-eviction permission, Started with its own root/source, then Canceled with
+false-current. All measured requests returned/released and sender/index/result
+debt was zero. A8 and C7 finished with independent correct latest snapshots. B
+retained independently correct seed3. The old benchmark all-tab latest-success
+condition rejects that existing production behavior. A benchmark-only explicit
+victim role is justified; production cancellation semantics must remain intact.
+
+Accepted minimal design and conditions
+1. Restrict victim roles to the fixed TabChain trace. Declare typed old-Warm
+   candidates BEFORE the owned switch; select maximum owned measured planned
+   allocation. Do not infer a role from an eventual cancellation or authorize it
+   retroactively. Stage B->C targets old A; stage C->A targets old B.
+2. Use a cfg(test), default-off, bounded scalar preemption event at the real
+   mutation. Record after victim/return-false checks while the latest lock is held,
+   immediately before latest.insert so the timestamp precedes worker visibility.
+   Match exact victim ID/tab, prior latest ID, replacement0, active/current-Warm
+   roles, and the exact owned queued/pending Active trigger request from that
+   operation's allocation/deferred-activation graph. Current preferred Warm is
+   the outgoing Active, not necessarily the old-Warm victim.
+3. Require permission <= actual preemption <= Canceled offer <= body return.
+   Every event must match one declared typed edge and interval. Missing cause,
+   duplicate/unexplained event, wrong stage/victim/trigger, replacement nonzero,
+   future/missing/wrong permission or overflow rejects. No payload/mailbox/Entry
+   Arc retention or per-entry observer work; no production protocol/schedule fix.
+4. Latest canceled B is accepted only as explicit LastGoodVictim with its actual
+   admitted/Started root/source, Canceled false-current, nonzero emitted work,
+   unchanged B10% checkpoint, physical return, release, route absence, no successor,
+   and zero sender/GUI/result/deferred debt. Failed, closed-only, unsent, pre-start
+   canceled or inferred map0 cannot establish this role.
+5. A5->A8 retains its ordinary successor/revocation path. Required A8/C7 always
+   need Finished and latest own generation/root/source/freshness/full oracle.
+   Finished B requires generation6/full oracle, never the older seed fallback.
+   Stable Active/Warm profiles retain their successful measured-B requirement.
+   Maximum-planned identity remains intact; required-success and explicit-victim
+   acceptance are typed separate decisions, not a generic latest-cancel exemption.
+6. Verify seeded snapshots before t0 and retain only scalar root/source/request,
+   count and membership/order signature witnesses, without an Arc pin. Tentative
+   t2/t3 checks use the usual fast identity/count/debt gates plus exact victim
+   cause and seed identity. Preserve candidate B scalar identity/generation and
+   require them to match at final validation.
+7. After tentative t3, without another GUI frame or input, validate the retained
+   B seed's complete independent membership/kind/order/signature once. Do not
+   scan100k every frame or add a new oracle cache. Reject corrupted seed even
+   when all fast scalars are ready, before returning/emitting any correct:true
+   sample. Final oracle failure is a failed sample, never a faster accepted row.
+8. Raw evidence explicitly records victim/required roles, exact cause and actual
+   emitted work. TabChain time is finite-lifecycle scenario completion, not proof
+   that canceled B completed100k indexing or equal-work throughput improved.
+   Historical comparisons retain identical initial settings/trace, inspect role
+   and terminal pattern, and disclose cancellation/workcount differences.
+9. Update SDD/runner wording to every REQUIRED latest generation succeeds, with
+   only these predeclared and causally proven victims separately classified.
+   Replace draft per-frame cached-oracle/candidate-t2 alternatives with the
+   decided one-time post-t3 validation seam. Keep workloads/deadlines/fixed inputs.
+
+Required TDD and AFTER evidence
+- First red reproduces the old rejection of A5 revoked->A8 Finished, C7 Finished,
+  and B6 declared actual victim retaining correct seed3; then focused green.
+- Negatives cover missing/wrong event/role/stage/permission/trigger, duplicates,
+  overflow, required latest A/C cancellation, Failed/closed-only/pre-start,
+  wrong admitted/Started root/source, missing return/release/routes/load/debt,
+  newer successor, wrong seed generation/source/root/count/member/kind/order,
+  and Finished B incorrectly falling back to old seed.
+- Corrupted seed despite all fast scalar readiness must reject without a sample.
+- Verify opt-in actual event and default-disabled observer, full scoped hash/diff,
+  relevant ordered-handoff/TC207/index_pipeline/indexing/search-observer controls,
+  required fmt/clippy/fullhost and independently reviewed frozen source.
+- Real100k targeted TabChain confirmation precedes pilot/full; parent owns gates.
+
+NOT RUN / residual boundaries
+No Rust build, test, perf, source edit or Git mutation was performed by reviewer.
+Only this ignored checkpoint record was saved at the parent's explicit request.
+Implementation AFTER, real100k repair confirmation, full profile/tag matrix,
+observer-cost timing, native/platform/signal cleanup and CI activation remain
+unverified here. Existing diagnostic/partial failures are retained, not converted
+to accepted samples. A final fresh independent review is still required.

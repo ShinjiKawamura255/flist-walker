@@ -1,0 +1,13 @@
+{
+  "status": "Read-only actual FAIL/work classification; no whole speed verdict",
+  "scope": "39 sealed PASS and5 true untimed-warmup FAIL; 3-way common33 and v28/v29 common37 declared contracts",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/v29-r5-failed-cells-and-declared-work-addendum.txt",
+      "path": "historical-diagnostic-998d0b5f2073-v29-r5-failed-cells-and-declared-work-addendum.txt",
+      "sha256": "998d0b5f2073a2171a0c032c0fdaebdfb59774e50e2b60ae85ac968d221857cd",
+      "bytes": 64529,
+      "encoding": "unchanged"
+    }
+  ]
+}

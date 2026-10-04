@@ -1,0 +1,257 @@
+{
+  "status": "all4 selected performance gates PASS; STOP before historical handoff pending main acceptance",
+  "created_utc": "2026-10-04T01:51:22.746573+00:00",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source-hashes.json",
+    "sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source",
+  "full630_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-full-packet.json",
+    "sha256": "d6f7fabf5172d745ea1e5f1582aa7413c59ff90903dc00234233442aee1bc1da"
+  },
+  "records": [
+    {
+      "stage": "filelist",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "perf_filelist_stream_is_faster_than_metadata_probe_baseline",
+        "--lib",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "environment_overrides": {},
+      "inherited_runtime_environment": {
+        "FLISTWALKER_WALKER_MAX_ENTRIES": null,
+        "FLISTWALKER_SEARCH_THREADS": null,
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": null
+      },
+      "provenance": "Original ignored test setup unchanged; no runtime/env overrides",
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:50:35.761993+00:00",
+      "ended_utc": "2026-10-04T01:50:40.034625+00:00",
+      "elapsed_seconds": 4.146294416001183,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 3.67s"
+      ],
+      "metric_lines": [
+        "FileList perf control_baseline lines=30000 validation_only_ms=2.247 metadata_probe_total_ms=199.045 current_total_ms=93.479 speedup=2.13x metadata_probe_count=30000 current_count=30000"
+      ],
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-filelist.log",
+        "sha256": "864e5bb8d124b7cd3a69083b22870fef1677b33afa77d7641aec1b0e8c4265a3"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-filelist.sidecar.json",
+        "sha256": "f56cacdb827e4120aa959356decc4c64fa33590491d01df16112fa9c61ac8332"
+      }
+    },
+    {
+      "stage": "walker",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "perf_walker_classification_is_faster_than_eager_metadata_resolution",
+        "--lib",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "environment_overrides": {},
+      "inherited_runtime_environment": {
+        "FLISTWALKER_WALKER_MAX_ENTRIES": null,
+        "FLISTWALKER_SEARCH_THREADS": null,
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": null
+      },
+      "provenance": "Original ignored test setup unchanged; no runtime/env overrides",
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:50:40.042461+00:00",
+      "ended_utc": "2026-10-04T01:50:43.045815+00:00",
+      "elapsed_seconds": 2.9684331669996027,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 2.84s"
+      ],
+      "metric_lines": [
+        "Walker perf control_baseline samples=7 eager_metadata_median_ms=82.138 fast_classify_median_ms=13.431 speedup=6.12x entries=33025"
+      ],
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-walker.log",
+        "sha256": "18b4cf0d567c6fbc7cee84938e786108ac3194cac79b5bb554499251580838ca"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-walker.sidecar.json",
+        "sha256": "05162454cfe1d0b994ec44335eacd8db93feabf9a5313564d5137532ecfd63d4"
+      }
+    },
+    {
+      "stage": "search",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "perf_search_100k_cold_warm_query_shapes",
+        "--lib",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "environment_overrides": {},
+      "inherited_runtime_environment": {
+        "FLISTWALKER_WALKER_MAX_ENTRIES": null,
+        "FLISTWALKER_SEARCH_THREADS": null,
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": null
+      },
+      "provenance": "Original ignored test setup unchanged; no runtime/env overrides",
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:50:43.054957+00:00",
+      "ended_utc": "2026-10-04T01:50:47.207767+00:00",
+      "elapsed_seconds": 4.11586166699999,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 3.88s"
+      ],
+      "metric_lines": [
+        "tc_156 shape=selective-fuzzy candidates=100000 evaluated=100000 matches=8146 compile_us=2 median_ms=11 max_ms=11",
+        "tc_156 shape=dense-fuzzy candidates=100000 evaluated=100000 matches=100000 compile_us=2 median_ms=15 max_ms=16",
+        "tc_156 shape=multi-and candidates=100000 evaluated=100000 matches=8146 compile_us=5 median_ms=11 max_ms=11",
+        "tc_156 shape=exact candidates=100000 evaluated=100000 matches=1000 compile_us=3 median_ms=10 max_ms=10",
+        "tc_156 shape=inverse candidates=100000 evaluated=100000 matches=8146 compile_us=3 median_ms=12 max_ms=12",
+        "tc_156 shape=anchor candidates=100000 evaluated=100000 matches=8146 compile_us=1 median_ms=12 max_ms=12",
+        "tc_156 shape=or candidates=100000 evaluated=100000 matches=14670 compile_us=5 median_ms=12 max_ms=12",
+        "tc_156 shape=field-and candidates=100000 evaluated=100000 matches=3125 compile_us=1 median_ms=10 max_ms=11",
+        "tc_156 shape=regex candidates=100000 evaluated=100000 matches=10000 compile_us=412 median_ms=13 max_ms=13",
+        "tc_156 shape=unknown-kind-ext candidates=100000 evaluated=100000 matches=1000 median_ms=11 max_ms=11",
+        "tc_156 shape=prefix-warm candidates=100000 evaluated=8146 matches=856 median_ms=3 max_ms=3",
+        "tc_185 rss_phase=before_fixture physical_bytes=50266112",
+        "tc_185 rss_phase=after_fixture physical_bytes=146538496",
+        "tc_185 shape=selective-fuzzy candidates=1000000 samples=7 evaluated=1000000 matches=1270 results=100 p50_ms=121 p95_ms=130 p99_ms=130",
+        "tc_185 shape=dense-fuzzy candidates=1000000 samples=7 evaluated=1000000 matches=1000000 results=100 p50_ms=178 p95_ms=181 p99_ms=181",
+        "tc_185 rss_phase=peak_search physical_bytes=451264512",
+        "tc_185 rss_phase=after_drop_quiescence physical_bytes=178798592"
+      ],
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-search.log",
+        "sha256": "ccad8d2affe262bc299ad9c1cd10a52b6251bd6d9d547b64475753d94f4e7270"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-search.sidecar.json",
+        "sha256": "92e84f152d1d6d92e0caf489fab3541c286bcf586c3d266d794f64decb2c06dd"
+      }
+    },
+    {
+      "stage": "tab-transition",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "perf_tc_154_tab_transition_coordinator_p95_stays_below_hard_ceiling",
+        "--lib",
+        "--",
+        "--ignored",
+        "--nocapture"
+      ],
+      "environment_overrides": {},
+      "inherited_runtime_environment": {
+        "FLISTWALKER_WALKER_MAX_ENTRIES": null,
+        "FLISTWALKER_SEARCH_THREADS": null,
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": null
+      },
+      "provenance": "Original ignored test setup unchanged; no runtime/env overrides",
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:50:47.225322+00:00",
+      "ended_utc": "2026-10-04T01:50:47.400785+00:00",
+      "elapsed_seconds": 0.13391791700269096,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.01s"
+      ],
+      "metric_lines": [
+        "TC-154 tab transition: entries=100000 samples=50 p95_ms=0.001"
+      ],
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-tab-transition.log",
+        "sha256": "3c99b82cdcfb7634eae75a93e2569d6bc827f94b09c848896166dc390234b491"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-tab-transition.sidecar.json",
+        "sha256": "5bdd2155f20a2615dd17ec717b1c1b7fee854f9ab3f80223769bc9656b87a411"
+      }
+    }
+  ],
+  "aggregate": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-selected-vm-regates.json",
+    "sha256": "84fe7f8135317db2bb4740db743ec1e04494e7eeb914943fbb8856af29e1c145"
+  },
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "no_competing_heavy_jobs": true,
+  "original_test_settings_preserved": true,
+  "source_edits": false,
+  "collector_edits": false,
+  "selected_metrics": {
+    "filelist_lines": 30000,
+    "filelist_speedup": 2.13,
+    "filelist_existing_gate": 1.2,
+    "walker_entries": 33025,
+    "walker_samples": 7,
+    "walker_speedup": 6.12,
+    "walker_existing_gate": 1.25,
+    "tc156_query_shapes": 11,
+    "tc156_cold_warm_consistency_assertions_passed": true,
+    "tc156_max_ms": 16,
+    "tc156_existing_median_and_max_gate_ms": 250,
+    "tc185_scale_candidates": 1000000,
+    "tc185_scale_shapes": 2,
+    "tc185_samples_per_shape": 7,
+    "tc185_total_scale_samples": 14,
+    "tc185_order_count_consistency_assertions_passed": true,
+    "tc185_selective_p50_p95_p99_ms": [
+      121,
+      130,
+      130
+    ],
+    "tc185_dense_p50_p95_p99_ms": [
+      178,
+      181,
+      181
+    ],
+    "tc185_rss_phase_physical_bytes": {
+      "before_fixture": 50266112,
+      "after_fixture": 146538496,
+      "peak_search": 451264512,
+      "after_drop_quiescence": 178798592
+    },
+    "tc154_entries": 100000,
+    "tc154_samples": 50,
+    "tc154_p95_ms": 0.001,
+    "tc154_existing_gate_ms": 50
+  },
+  "limitations": [
+    "Existing ignored test timing gates only; nativeGUI/Windows/Linux/CIactivation NOT RUN.",
+    "No new matching owned test roots after each subprocess exit; native signals/individual worker join unobserved.",
+    "TC185 has 2scale shapes and14samples, not14query shapes. RSS is observation, not a newly introduced gate.",
+    "Historical port/build jobs remain unexecuted and require main handoff."
+  ]
+}

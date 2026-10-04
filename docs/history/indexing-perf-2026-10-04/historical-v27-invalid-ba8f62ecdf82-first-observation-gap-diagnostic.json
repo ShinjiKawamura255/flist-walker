@@ -1,0 +1,146 @@
+{
+  "captured_utc": "2026-10-04T05:16:50.830488+00:00",
+  "log_prefix_sha256": "bc885e401600c2f711006462487a019e13936aae6dadf302e8962c8759dfb75b",
+  "log_prefix_bytes": 54652,
+  "root_projection_four_tags": {
+    "v0.27.0": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/index_worker/root_projection.rs",
+      "sha256": "d2fa45c228962ace028c29c9cddf8ae6abe1f342d0c518df22be841a93d6832c",
+      "impl_line": 48,
+      "observe_started_root_present": false,
+      "observe_nested_input_present": false,
+      "methods": [
+        "project",
+        "send",
+        "fold_ascii",
+        "root_projection_preserves_aliases_and_unrelated_absolute_paths_without_io",
+        "root_projection_rewrites_batches_and_replacements_but_preserves_identity_and_source",
+        "root_projection_accepts_windows_drive_and_unc_namespaces_without_lossy_conversion",
+        "linked_root_results",
+        "linked_root_walker_results_use_relative_display",
+        "linked_root_filelist_results_use_relative_display"
+      ]
+    },
+    "v0.28.0": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0/rust/src/app/index_worker/root_projection.rs",
+      "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+      "impl_line": 48,
+      "observe_started_root_present": false,
+      "observe_nested_input_present": false,
+      "methods": [
+        "project",
+        "send",
+        "fold_ascii",
+        "root_projection_preserves_aliases_and_unrelated_absolute_paths_without_io",
+        "root_projection_rewrites_batches_and_replacements_but_preserves_identity_and_source",
+        "root_projection_accepts_windows_drive_and_unc_namespaces_without_lossy_conversion",
+        "linked_root_results",
+        "linked_root_walker_results_use_relative_display",
+        "linked_root_filelist_results_use_relative_display"
+      ]
+    },
+    "v0.29.0": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0/rust/src/app/index_worker/root_projection.rs",
+      "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+      "impl_line": 48,
+      "observe_started_root_present": false,
+      "observe_nested_input_present": false,
+      "methods": [
+        "project",
+        "send",
+        "fold_ascii",
+        "root_projection_preserves_aliases_and_unrelated_absolute_paths_without_io",
+        "root_projection_rewrites_batches_and_replacements_but_preserves_identity_and_source",
+        "root_projection_accepts_windows_drive_and_unc_namespaces_without_lossy_conversion",
+        "linked_root_results",
+        "linked_root_walker_results_use_relative_display",
+        "linked_root_filelist_results_use_relative_display"
+      ]
+    },
+    "v0.30.0": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust/src/app/index_worker/root_projection.rs",
+      "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+      "impl_line": 48,
+      "observe_started_root_present": false,
+      "observe_nested_input_present": false,
+      "methods": [
+        "project",
+        "send",
+        "fold_ascii",
+        "root_projection_preserves_aliases_and_unrelated_absolute_paths_without_io",
+        "root_projection_rewrites_batches_and_replacements_but_preserves_identity_and_source",
+        "root_projection_accepts_windows_drive_and_unc_namespaces_without_lossy_conversion",
+        "linked_root_results",
+        "linked_root_walker_results_use_relative_display",
+        "linked_root_filelist_results_use_relative_display"
+      ]
+    }
+  },
+  "first_event_extract": [
+    {
+      "line": 6,
+      "text": "INDEX_PERF_CELL_START {\"case\":\"F1-files\",\"entries\":100000,\"expected_rows\":14,\"pairs\":7,\"source\":\"Walker\"}"
+    },
+    {
+      "line": 7,
+      "text": "INDEX_PERF_RUN_START {\"condition\":false,\"entries\":100000,\"profile\":\"F1-files\",\"role\":\"untimed-warmup\",\"source\":\"Walker\"}"
+    },
+    {
+      "line": 8,
+      "text": "INDEX_PERF_STALL {\"actual_switch_acks\":[],\"case\":\"F1-files\",\"condition\":false,\"current_tab\":1,\"deferred_allocations\":{},\"done_inputs\":true,\"elapsed_ms\":30817.360375,\"frame\":1389,\"index_debt\":false,\"inflight\":[],\"input_trace\":[],\"last_progress_ms\":812.540416,\"latest_map\":\"{}\",\"load\":{\"capacity\":2,\"inflight\":0,\"queued\":0},\"pending_request\":null,\"pending_transition\":null,\"planned\":[{\"completed_predecessor\":false,\"id\":2,\"permission_at\":\"None\",\"permission_reason\":null,\"requires_latest_generation\":true,\"revoked_by\":null,\"tab\":1}],\"plans_valid\":false,\"preemption_diagnostics\":[],\"preemption_overflow\":false,\"preemption_set_valid\":true,\"primary\":2,\"proofs\":[{\"finished\":true,\"id\":2,\"last_good_victim\":false,\"physical_complete\":true,\"revoked_abort\":false,\"source_root_correct\":false,\"tab\":1}],\"queue\":[],\"request_tabs\":{},\"requests\":[{\"id\":2,\"observation\":\"IndexPerfObservation { stale_full_data_abort: None, stale_full_data_abort_duplicate: false, batches: 313, entries_emitted: 80000, replacements: 0, full_wait: 775.457371ms, full_retries: 515, blocked_batches: 39, data_publish_end: Some(Instant { tv_sec: 80376, tv_nsec: 466990500 }), terminal_published: Some(Instant { tv_sec: 80376, tv_nsec: 466990833 }), terminal_kind: Some(\\\"finished\\\"), truncated_limit: None, started_source: Some(\\\"Walker\\\"), started_published: Some(Instant { tv_sec: 80375, tv_nsec: 671146416 }), terminal_source: Some(\\\"Walker\\\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 80376, tv_nsec: 466990791 }), terminal_offer_kind: Some(\\\"finished\\\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 80376, tv_nsec: 466991000 }), request_processing_returned: Some(Instant { tv_sec: 80376, tv_nsec: 466991666 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 80376, tv_nsec: 483508791 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 80375, tv_nsec: 671094625 }), admitted_root: Some(\\\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\\\"), started_root: None, skipped_closed_before_start: false }\",\"physical_complete\":true,\"released\":true,\"tab\":1}],\"result_debt\":false,\"snapshots\":[{\"active\":true,\"all_count\":80000,\"expected_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_request\":2,\"freshness_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_source\":\"Walker\",\"lifecycle\":\"Dormant\",\"oracle_valid\":false,\"signature\":\"45dddc7bffbcb359\",\"tab\":1,\"visible_count\":80000}],\"source\":\"Walker\",\"stage\":0,\"transition_trace\":[],\"victim_diagnostics\":[],\"warm_removal_overflow\":false,\"warm_removals\":\"[]\"}"
+    },
+    {
+      "line": 13,
+      "text": "INDEX_PERF_CELL_STATUS {\"accepted_rows\":0,\"actual_partial_rows\":0,\"case\":\"F1-files\",\"cleanup_evidence\":\"CellProof { runtimes: {509336289296: ((Weak), JoinProof { expected: 15, first: Some((15, 15, [], [], Instant { tv_sec: 80406, tv_nsec: 650582375 })), duplicate: false, requires_physical: true, physical: {\\\"action-0\\\": true, \\\"action-1\\\": true, \\\"config-open\\\": true, \\\"filelist\\\": true, \\\"index-0\\\": true, \\\"index-1\\\": true, \\\"kind-resolver\\\": true, \\\"preview\\\": true, \\\"root-validation\\\": true, \\\"search\\\": true, \\\"search-catalog\\\": true, \\\"sort-metadata\\\": true, \\\"tab-reclaimer\\\": true, \\\"tab-shutdown-drain\\\": true, \\\"update\\\": true} })}, parsers: {}, writers: {\\\"/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791090641529815000/.flistwalker_ui_state.json\\\": WriterProof { spawned: 1, handle: None, first_stop: Some((true, Some(Ok(())), false, Instant { tv_sec: 80406, tv_nsec: 650602333 })), first_wait: Some((true, Instant { tv_sec: 80406, tv_nsec: 650630333 })), physical_join: Some((true, Instant { tv_sec: 80406, tv_nsec: 650622041 })), duplicate: false }}, invalid: false }\",\"panic\":\"constructive stall F1-files\",\"positive_cleanup\":true,\"root_restored\":true,\"source\":\"Walker\",\"status\":\"FAIL\"}"
+    },
+    {
+      "line": 14,
+      "text": "INDEX_PERF_CELL_START {\"case\":\"F1-folders\",\"entries\":100000,\"expected_rows\":14,\"pairs\":7,\"source\":\"Walker\"}"
+    },
+    {
+      "line": 15,
+      "text": "INDEX_PERF_RUN_START {\"condition\":false,\"entries\":100000,\"profile\":\"F1-folders\",\"role\":\"untimed-warmup\",\"source\":\"Walker\"}"
+    },
+    {
+      "line": 16,
+      "text": "INDEX_PERF_STALL {\"actual_switch_acks\":[],\"case\":\"F1-folders\",\"condition\":false,\"current_tab\":1,\"deferred_allocations\":{},\"done_inputs\":true,\"elapsed_ms\":30218.621666,\"frame\":1368,\"index_debt\":false,\"inflight\":[],\"input_trace\":[],\"last_progress_ms\":214.273958,\"latest_map\":\"{}\",\"load\":{\"capacity\":2,\"inflight\":0,\"queued\":0},\"pending_request\":null,\"pending_transition\":null,\"planned\":[{\"completed_predecessor\":false,\"id\":2,\"permission_at\":\"None\",\"permission_reason\":null,\"requires_latest_generation\":true,\"revoked_by\":null,\"tab\":1}],\"plans_valid\":false,\"preemption_diagnostics\":[],\"preemption_overflow\":false,\"preemption_set_valid\":true,\"primary\":2,\"proofs\":[{\"finished\":true,\"id\":2,\"last_good_victim\":false,\"physical_complete\":true,\"revoked_abort\":false,\"source_root_correct\":false,\"tab\":1}],\"queue\":[],\"request_tabs\":{},\"requests\":[{\"id\":2,\"observation\":\"IndexPerfObservation { stale_full_data_abort: None, stale_full_data_abort_duplicate: false, batches: 79, entries_emitted: 20000, replacements: 0, full_wait: 55.815958ms, full_retries: 37, blocked_batches: 8, data_publish_end: Some(Instant { tv_sec: 80407, tv_nsec: 621213416 }), terminal_published: Some(Instant { tv_sec: 80407, tv_nsec: 621213666 }), terminal_kind: Some(\\\"finished\\\"), truncated_limit: None, started_source: Some(\\\"Walker\\\"), started_published: Some(Instant { tv_sec: 80407, tv_nsec: 412688250 }), terminal_source: Some(\\\"Walker\\\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 80407, tv_nsec: 621213583 }), terminal_offer_kind: Some(\\\"finished\\\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 80407, tv_nsec: 621213708 }), request_processing_returned: Some(Instant { tv_sec: 80407, tv_nsec: 621214041 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 80407, tv_nsec: 626817083 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 80407, tv_nsec: 412636583 }), admitted_root: Some(\\\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\\\"), started_root: None, skipped_closed_before_start: false }\",\"physical_complete\":true,\"released\":true,\"tab\":1}],\"result_debt\":false,\"snapshots\":[{\"active\":true,\"all_count\":20000,\"expected_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_request\":2,\"freshness_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_source\":\"Walker\",\"lifecycle\":\"Dormant\",\"oracle_valid\":false,\"signature\":\"d64f881158da29b1\",\"tab\":1,\"visible_count\":20000}],\"source\":\"Walker\",\"stage\":0,\"transition_trace\":[],\"victim_diagnostics\":[],\"warm_removal_overflow\":false,\"warm_removals\":\"[]\"}"
+    },
+    {
+      "line": 20,
+      "text": "INDEX_PERF_CELL_STATUS {\"accepted_rows\":0,\"actual_partial_rows\":0,\"case\":\"F1-folders\",\"cleanup_evidence\":\"CellProof { runtimes: {509336289808: ((Weak), JoinProof { expected: 15, first: Some((15, 15, [], [], Instant { tv_sec: 80437, tv_nsec: 716775833 })), duplicate: false, requires_physical: true, physical: {\\\"action-0\\\": true, \\\"action-1\\\": true, \\\"config-open\\\": true, \\\"filelist\\\": true, \\\"index-0\\\": true, \\\"index-1\\\": true, \\\"kind-resolver\\\": true, \\\"preview\\\": true, \\\"root-validation\\\": true, \\\"search\\\": true, \\\"search-catalog\\\": true, \\\"sort-metadata\\\": true, \\\"tab-reclaimer\\\": true, \\\"tab-shutdown-drain\\\": true, \\\"update\\\": true} })}, parsers: {}, writers: {\\\"/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791090673281735000/.flistwalker_ui_state.json\\\": WriterProof { spawned: 1, handle: None, first_stop: Some((true, Some(Ok(())), false, Instant { tv_sec: 80437, tv_nsec: 716784625 })), first_wait: Some((true, Instant { tv_sec: 80437, tv_nsec: 716814291 })), physical_join: Some((true, Instant { tv_sec: 80437, tv_nsec: 716807500 })), duplicate: false }}, invalid: false }\",\"panic\":\"constructive stall F1-folders\",\"positive_cleanup\":true,\"root_restored\":true,\"source\":\"Walker\",\"status\":\"FAIL\"}"
+    },
+    {
+      "line": 21,
+      "text": "INDEX_PERF_CELL_START {\"case\":\"F1-ignore-list\",\"entries\":100000,\"expected_rows\":14,\"pairs\":7,\"source\":\"FileList\"}"
+    },
+    {
+      "line": 22,
+      "text": "INDEX_PERF_RUN_START {\"condition\":false,\"entries\":100000,\"profile\":\"F1-ignore-list\",\"role\":\"untimed-warmup\",\"source\":\"FileList\"}"
+    },
+    {
+      "line": 23,
+      "text": "INDEX_PERF_STALL {\"actual_switch_acks\":[],\"case\":\"F1-ignore-list\",\"condition\":false,\"current_tab\":1,\"deferred_allocations\":{},\"done_inputs\":true,\"elapsed_ms\":30269.59675,\"frame\":1371,\"index_debt\":false,\"inflight\":[],\"input_trace\":[],\"last_progress_ms\":256.57516699999996,\"latest_map\":\"{}\",\"load\":{\"capacity\":2,\"inflight\":0,\"queued\":0},\"pending_request\":null,\"pending_transition\":null,\"planned\":[{\"completed_predecessor\":false,\"id\":2,\"permission_at\":\"None\",\"permission_reason\":null,\"requires_latest_generation\":true,\"revoked_by\":null,\"tab\":1}],\"plans_valid\":false,\"preemption_diagnostics\":[],\"preemption_overflow\":false,\"preemption_set_valid\":true,\"primary\":2,\"proofs\":[{\"finished\":true,\"id\":2,\"last_good_victim\":false,\"physical_complete\":true,\"revoked_abort\":false,\"source_root_correct\":false,\"tab\":1}],\"queue\":[],\"request_tabs\":{},\"requests\":[{\"id\":2,\"observation\":\"IndexPerfObservation { stale_full_data_abort: None, stale_full_data_abort_duplicate: false, batches: 98, entries_emitted: 100000, replacements: 0, full_wait: 186.247293ms, full_retries: 123, blocked_batches: 12, data_publish_end: Some(Instant { tv_sec: 80438, tv_nsec: 387146541 }), terminal_published: Some(Instant { tv_sec: 80438, tv_nsec: 387146750 }), terminal_kind: Some(\\\"finished\\\"), truncated_limit: None, started_source: Some(\\\"FileList\\\"), started_published: Some(Instant { tv_sec: 80438, tv_nsec: 145411083 }), terminal_source: Some(\\\"FileList\\\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 80438, tv_nsec: 387146666 }), terminal_offer_kind: Some(\\\"finished\\\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 80438, tv_nsec: 387146791 }), request_processing_returned: Some(Instant { tv_sec: 80438, tv_nsec: 387146958 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 80438, tv_nsec: 401759000 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 80438, tv_nsec: 145350000 }), admitted_root: Some(\\\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\\\"), started_root: None, skipped_closed_before_start: false }\",\"physical_complete\":true,\"released\":true,\"tab\":1}],\"result_debt\":false,\"snapshots\":[{\"active\":true,\"all_count\":100000,\"expected_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_request\":2,\"freshness_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_source\":\"FileList(\\\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000/FileList.txt\\\")\",\"lifecycle\":\"Dormant\",\"oracle_valid\":true,\"signature\":\"3e25b99c2ca2531d\",\"tab\":1,\"visible_count\":100000}],\"source\":\"FileList\",\"stage\":0,\"transition_trace\":[],\"victim_diagnostics\":[],\"warm_removal_overflow\":false,\"warm_removals\":\"[]\"}"
+    },
+    {
+      "line": 27,
+      "text": "INDEX_PERF_CELL_STATUS {\"accepted_rows\":0,\"actual_partial_rows\":0,\"case\":\"F1-ignore-list\",\"cleanup_evidence\":\"CellProof { runtimes: {509336289456: ((Weak), JoinProof { expected: 15, first: Some((15, 15, [], [], Instant { tv_sec: 80468, tv_nsec: 562961500 })), duplicate: false, requires_physical: true, physical: {\\\"action-0\\\": true, \\\"action-1\\\": true, \\\"config-open\\\": true, \\\"filelist\\\": true, \\\"index-0\\\": true, \\\"index-1\\\": true, \\\"kind-resolver\\\": true, \\\"preview\\\": true, \\\"root-validation\\\": true, \\\"search\\\": true, \\\"search-catalog\\\": true, \\\"sort-metadata\\\": true, \\\"tab-reclaimer\\\": true, \\\"tab-shutdown-drain\\\": true, \\\"update\\\": true} })}, parsers: {}, writers: {\\\"/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791090703986674000/.flistwalker_ui_state.json\\\": WriterProof { spawned: 1, handle: None, first_stop: Some((true, Some(Ok(())), false, Instant { tv_sec: 80468, tv_nsec: 562969583 })), first_wait: Some((true, Instant { tv_sec: 80468, tv_nsec: 562994791 })), physical_join: Some((true, Instant { tv_sec: 80468, tv_nsec: 562988250 })), duplicate: false }}, invalid: false }\",\"panic\":\"constructive stall F1-ignore-list\",\"positive_cleanup\":true,\"root_restored\":true,\"source\":\"FileList\",\"status\":\"FAIL\"}"
+    },
+    {
+      "line": 28,
+      "text": "INDEX_PERF_CELL_START {\"case\":\"F1-ignore-list\",\"entries\":100000,\"expected_rows\":14,\"pairs\":7,\"source\":\"Walker\"}"
+    },
+    {
+      "line": 29,
+      "text": "INDEX_PERF_RUN_START {\"condition\":false,\"entries\":100000,\"profile\":\"F1-ignore-list\",\"role\":\"untimed-warmup\",\"source\":\"Walker\"}"
+    },
+    {
+      "line": 30,
+      "text": "INDEX_PERF_STALL {\"actual_switch_acks\":[],\"case\":\"F1-ignore-list\",\"condition\":false,\"current_tab\":1,\"deferred_allocations\":{},\"done_inputs\":true,\"elapsed_ms\":30979.542208000003,\"frame\":1401,\"index_debt\":false,\"inflight\":[],\"input_trace\":[],\"last_progress_ms\":968.460667,\"latest_map\":\"{}\",\"load\":{\"capacity\":2,\"inflight\":0,\"queued\":0},\"pending_request\":null,\"pending_transition\":null,\"planned\":[{\"completed_predecessor\":false,\"id\":2,\"permission_at\":\"None\",\"permission_reason\":null,\"requires_latest_generation\":true,\"revoked_by\":null,\"tab\":1}],\"plans_valid\":false,\"preemption_diagnostics\":[],\"preemption_overflow\":false,\"preemption_set_valid\":true,\"primary\":2,\"proofs\":[{\"finished\":true,\"id\":2,\"last_good_victim\":false,\"physical_complete\":true,\"revoked_abort\":false,\"source_root_correct\":false,\"tab\":1}],\"queue\":[],\"request_tabs\":{},\"requests\":[{\"id\":2,\"observation\":\"IndexPerfObservation { stale_full_data_abort: None, stale_full_data_abort_duplicate: false, batches: 391, entries_emitted: 100000, replacements: 0, full_wait: 932.667753ms, full_retries: 617, blocked_batches: 48, data_publish_end: Some(Instant { tv_sec: 80469, tv_nsec: 961201625 }), terminal_published: Some(Instant { tv_sec: 80469, tv_nsec: 961201875 }), terminal_kind: Some(\\\"finished\\\"), truncated_limit: None, started_source: Some(\\\"Walker\\\"), started_published: Some(Instant { tv_sec: 80469, tv_nsec: 10127333 }), terminal_source: Some(\\\"Walker\\\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 80469, tv_nsec: 961201833 }), terminal_offer_kind: Some(\\\"finished\\\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 80469, tv_nsec: 961201958 }), request_processing_returned: Some(Instant { tv_sec: 80469, tv_nsec: 961202375 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 80469, tv_nsec: 978339250 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 80469, tv_nsec: 10078208 }), admitted_root: Some(\\\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\\\"), started_root: None, skipped_closed_before_start: false }\",\"physical_complete\":true,\"released\":true,\"tab\":1}],\"result_debt\":false,\"snapshots\":[{\"active\":true,\"all_count\":100000,\"expected_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_request\":2,\"freshness_root\":\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000\",\"freshness_source\":\"Walker\",\"lifecycle\":\"Dormant\",\"oracle_valid\":true,\"signature\":\"3e25b99c2ca2531d\",\"tab\":1,\"visible_count\":100000}],\"source\":\"Walker\",\"stage\":0,\"transition_trace\":[],\"victim_diagnostics\":[],\"warm_removal_overflow\":false,\"warm_removals\":\"[]\"}"
+    },
+    {
+      "line": 34,
+      "text": "INDEX_PERF_CELL_STATUS {\"accepted_rows\":0,\"actual_partial_rows\":0,\"case\":\"F1-ignore-list\",\"cleanup_evidence\":\"CellProof { runtimes: {509336289968: ((Weak), JoinProof { expected: 15, first: Some((15, 15, [], [], Instant { tv_sec: 80500, tv_nsec: 237786416 })), duplicate: false, requires_physical: true, physical: {\\\"action-0\\\": true, \\\"action-1\\\": true, \\\"config-open\\\": true, \\\"filelist\\\": true, \\\"index-0\\\": true, \\\"index-1\\\": true, \\\"kind-resolver\\\": true, \\\"preview\\\": true, \\\"root-validation\\\": true, \\\"search\\\": true, \\\"search-catalog\\\": true, \\\"sort-metadata\\\": true, \\\"tab-reclaimer\\\": true, \\\"tab-shutdown-drain\\\": true, \\\"update\\\": true} })}, parsers: {}, writers: {\\\"/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791090734831447000/.flistwalker_ui_state.json\\\": WriterProof { spawned: 1, handle: None, first_stop: Some((true, Some(Ok(())), false, Instant { tv_sec: 80500, tv_nsec: 237796833 })), first_wait: Some((true, Instant { tv_sec: 80500, tv_nsec: 237822250 })), physical_join: Some((true, Instant { tv_sec: 80500, tv_nsec: 237816208 })), duplicate: false }}, invalid: false }\",\"panic\":\"constructive stall F1-ignore-list\",\"positive_cleanup\":true,\"root_restored\":true,\"source\":\"Walker\",\"status\":\"FAIL\"}"
+    }
+  ],
+  "stop_contract": "Runner has no cell boundary stop or external marker API. Only existing stop predicate is cleanup/root restoration unproven; watchdog abort is process termination and cannot prove product cleanup. No signal or source edit performed."
+}

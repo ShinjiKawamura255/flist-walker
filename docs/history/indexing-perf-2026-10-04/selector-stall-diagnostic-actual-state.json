@@ -1,0 +1,430 @@
+{
+  "case": "T1-A-B-C-A",
+  "condition": true,
+  "current_tab": 1,
+  "deferred_allocations": {},
+  "done_inputs": true,
+  "elapsed_ms": 31401.722208,
+  "frame": 1420,
+  "index_debt": false,
+  "inflight": [],
+  "input_trace": [
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 2,
+      "at_ms": 60.15825,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+      "requested_tab": 2,
+      "stage": 0
+    },
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 3,
+      "at_ms": 109.668083,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000",
+      "requested_tab": 3,
+      "stage": 1
+    },
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 1,
+      "at_ms": 176.006292,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+      "requested_tab": 1,
+      "stage": 2
+    }
+  ],
+  "last_progress_ms": 1389.123083,
+  "latest_map": "{2: 0}",
+  "load": {
+    "capacity": 2,
+    "inflight": 0,
+    "queued": 0
+  },
+  "pending_request": null,
+  "pending_transition": null,
+  "planned": [
+    {
+      "completed_predecessor": false,
+      "id": 5,
+      "permission_at": "Some(Instant { tv_sec: 55343, tv_nsec: 535946500 })",
+      "permission_reason": "switch-evicts-previous-Warm",
+      "requires_latest_generation": false,
+      "revoked_by": 8,
+      "tab": 1
+    },
+    {
+      "completed_predecessor": false,
+      "id": 6,
+      "permission_at": "Some(Instant { tv_sec: 55343, tv_nsec: 602284708 })",
+      "permission_reason": "switch-evicts-previous-Warm",
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 2
+    },
+    {
+      "completed_predecessor": false,
+      "id": 7,
+      "permission_at": "None",
+      "permission_reason": null,
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 3
+    },
+    {
+      "completed_predecessor": false,
+      "id": 8,
+      "permission_at": "None",
+      "permission_reason": null,
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 1
+    }
+  ],
+  "plans_valid": false,
+  "preemption_diagnostics": [
+    {
+      "active_tab": 3,
+      "at": "Instant { tv_sec: 55343, tv_nsec: 535959083 }",
+      "inflight_count": 2,
+      "latest_active_id": 7,
+      "pending_active_id": 7,
+      "prior_latest": null,
+      "queued_active_ids": [
+        7
+      ],
+      "replacement_id": 0,
+      "victim_id": 5,
+      "victim_tab": 1,
+      "warm_tab": 2
+    },
+    {
+      "active_tab": 1,
+      "at": "Instant { tv_sec: 55343, tv_nsec: 602296750 }",
+      "inflight_count": 2,
+      "latest_active_id": 8,
+      "pending_active_id": 8,
+      "prior_latest": null,
+      "queued_active_ids": [
+        8
+      ],
+      "replacement_id": 0,
+      "victim_id": 6,
+      "victim_tab": 2,
+      "warm_tab": 3
+    }
+  ],
+  "preemption_overflow": false,
+  "preemption_set_valid": false,
+  "primary": 8,
+  "proofs": [
+    {
+      "finished": false,
+      "id": 5,
+      "last_good_victim": false,
+      "physical_complete": true,
+      "revoked_abort": true,
+      "source_root_correct": false,
+      "tab": 1
+    },
+    {
+      "finished": false,
+      "id": 6,
+      "last_good_victim": false,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": false,
+      "tab": 2
+    },
+    {
+      "finished": true,
+      "id": 7,
+      "last_good_victim": false,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": true,
+      "tab": 3
+    },
+    {
+      "finished": true,
+      "id": 8,
+      "last_good_victim": false,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": true,
+      "tab": 1
+    }
+  ],
+  "queue": [],
+  "request_tabs": {},
+  "requests": [
+    {
+      "id": 5,
+      "observation": "IndexPerfObservation { batches: 49, entries_emitted: 50176, replacements: 0, full_wait: 81.606627ms, full_retries: 54, blocked_batches: 6, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 538154875 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 426388208 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 538154833 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 538154958 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 538155125 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55343, tv_nsec: 553175083 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 426290041 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 1
+    },
+    {
+      "id": 6,
+      "observation": "IndexPerfObservation { batches: 57, entries_emitted: 58368, replacements: 0, full_wait: 73.314375ms, full_retries: 49, blocked_batches: 7, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 604566541 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 486510875 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 604566500 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 604566625 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 604566833 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55343, tv_nsec: 642530791 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 486448583 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 2
+    },
+    {
+      "id": 7,
+      "observation": "IndexPerfObservation { batches: 98, entries_emitted: 100000, replacements: 0, full_wait: 144.810749ms, full_retries: 96, blocked_batches: 12, data_publish_end: Some(Instant { tv_sec: 55343, tv_nsec: 765308708 }), terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 765351000 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 553244666 }), terminal_source: Some(\"FileList\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 765308833 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 765351125 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 765351375 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55344, tv_nsec: 814934833 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 553161041 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 3
+    },
+    {
+      "id": 8,
+      "observation": "IndexPerfObservation { batches: 98, entries_emitted: 100000, replacements: 0, full_wait: 169.331999ms, full_retries: 112, blocked_batches: 12, data_publish_end: Some(Instant { tv_sec: 55343, tv_nsec: 853261666 }), terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 853298916 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 619311041 }), terminal_source: Some(\"FileList\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 853261750 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 853298958 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 853299250 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55343, tv_nsec: 873705791 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 619234500 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 1
+    }
+  ],
+  "result_debt": false,
+  "snapshots": [
+    {
+      "active": true,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+      "freshness_request": 8,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000/FileList.txt\")",
+      "lifecycle": "Dormant",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 1,
+      "visible_count": 100000
+    },
+    {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+      "freshness_request": 3,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 2,
+      "visible_count": 100000
+    },
+    {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000",
+      "freshness_request": 7,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 3,
+      "visible_count": 100000
+    }
+  ],
+  "source": "FileList",
+  "stage": 3,
+  "transition_trace": [
+    {
+      "actual_activated_ms": 60.163624999999996,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+      "stage": 0,
+      "tab_id": 2
+    },
+    {
+      "explicit_refresh_ms": 60.171542,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+      "stage": 0,
+      "tab_id": 2
+    },
+    {
+      "actual_activated_ms": 109.67475,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000",
+      "stage": 1,
+      "tab_id": 3
+    },
+    {
+      "explicit_refresh_ms": 109.68216699999999,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000",
+      "stage": 1,
+      "tab_id": 3
+    },
+    {
+      "actual_activated_ms": 176.014542,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+      "stage": 2,
+      "tab_id": 1
+    },
+    {
+      "explicit_refresh_ms": 176.019917,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+      "stage": 2,
+      "tab_id": 1
+    }
+  ],
+  "victim_diagnostics": [
+    {
+      "completed_predecessor_observed_at": "None",
+      "declaration": {
+        "active_tab": 3,
+        "closed_at": "Some(Instant { tv_sec: 55343, tv_nsec: 602283791 })",
+        "current_warm_tab": 2,
+        "declared_at": "Instant { tv_sec: 55343, tv_nsec: 535945875 }",
+        "incoming_ids": [
+          7
+        ],
+        "old_warm_tab": 1,
+        "profile": "T1-A-B-C-A",
+        "stage": 1,
+        "trace_tabs": [
+          1,
+          2,
+          3
+        ],
+        "victim_id": 5,
+        "victim_tab": 1
+      },
+      "fast_state": {
+        "counts_match": true,
+        "index_debt_zero": true,
+        "latest_without_successor": false,
+        "released": true,
+        "result_debt_zero": true,
+        "root_source_match": true,
+        "route_absent": true,
+        "seed_id": 8,
+        "worker_load_zero": true
+      },
+      "id": 5,
+      "matching_events": [
+        {
+          "cause_valid": false,
+          "chronology": {
+            "admitted_before_started": true,
+            "mutation_before_offer": true,
+            "offer_before_published": true,
+            "published_before_return": true,
+            "started_before_mutation": true
+          },
+          "event": {
+            "active_tab": 3,
+            "at": "Instant { tv_sec: 55343, tv_nsec: 535959083 }",
+            "inflight_count": 2,
+            "latest_active_id": 7,
+            "pending_active_id": 7,
+            "prior_latest": null,
+            "queued_active_ids": [
+              7
+            ],
+            "replacement_id": 0,
+            "victim_id": 5,
+            "victim_tab": 1,
+            "warm_tab": 2
+          },
+          "execution_valid": false,
+          "last_good_fast_valid": false
+        }
+      ],
+      "observation": "IndexPerfObservation { batches: 49, entries_emitted: 50176, replacements: 0, full_wait: 81.606627ms, full_retries: 54, blocked_batches: 6, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 538154875 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 426388208 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 538154833 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 538154958 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 538155125 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55343, tv_nsec: 553175083 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 426290041 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000\"), skipped_closed_before_start: false }",
+      "seed": {
+        "all_count": 100000,
+        "all_signature": "aba2cba2c08e2afd",
+        "id": 2,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000",
+        "source": "FileList",
+        "verified": true,
+        "visible_count": 100000,
+        "visible_signature": "aba2cba2c08e2afd"
+      },
+      "tab": 1
+    },
+    {
+      "completed_predecessor_observed_at": "None",
+      "declaration": {
+        "active_tab": 1,
+        "closed_at": "None",
+        "current_warm_tab": 3,
+        "declared_at": "Instant { tv_sec: 55343, tv_nsec: 602283791 }",
+        "incoming_ids": [
+          8
+        ],
+        "old_warm_tab": 2,
+        "profile": "T1-A-B-C-A",
+        "stage": 2,
+        "trace_tabs": [
+          1,
+          2,
+          3
+        ],
+        "victim_id": 6,
+        "victim_tab": 2
+      },
+      "fast_state": {
+        "counts_match": true,
+        "index_debt_zero": true,
+        "latest_without_successor": true,
+        "released": true,
+        "result_debt_zero": true,
+        "root_source_match": true,
+        "route_absent": true,
+        "seed_id": 3,
+        "worker_load_zero": true
+      },
+      "id": 6,
+      "matching_events": [
+        {
+          "cause_valid": false,
+          "chronology": {
+            "admitted_before_started": true,
+            "mutation_before_offer": true,
+            "offer_before_published": true,
+            "published_before_return": true,
+            "started_before_mutation": true
+          },
+          "event": {
+            "active_tab": 1,
+            "at": "Instant { tv_sec: 55343, tv_nsec: 602296750 }",
+            "inflight_count": 2,
+            "latest_active_id": 8,
+            "pending_active_id": 8,
+            "prior_latest": null,
+            "queued_active_ids": [
+              8
+            ],
+            "replacement_id": 0,
+            "victim_id": 6,
+            "victim_tab": 2,
+            "warm_tab": 3
+          },
+          "execution_valid": false,
+          "last_good_fast_valid": false
+        }
+      ],
+      "observation": "IndexPerfObservation { batches: 57, entries_emitted: 58368, replacements: 0, full_wait: 73.314375ms, full_retries: 49, blocked_batches: 7, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 55343, tv_nsec: 604566541 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 55343, tv_nsec: 486510875 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 55343, tv_nsec: 604566500 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 55343, tv_nsec: 604566625 }), request_processing_returned: Some(Instant { tv_sec: 55343, tv_nsec: 604566833 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 55343, tv_nsec: 642530791 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 55343, tv_nsec: 486448583 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000\"), skipped_closed_before_start: false }",
+      "seed": {
+        "all_count": 100000,
+        "all_signature": "aba2cba2c08e2afd",
+        "id": 3,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000",
+        "source": "FileList",
+        "verified": true,
+        "visible_count": 100000,
+        "visible_signature": "aba2cba2c08e2afd"
+      },
+      "tab": 2
+    }
+  ]
+}

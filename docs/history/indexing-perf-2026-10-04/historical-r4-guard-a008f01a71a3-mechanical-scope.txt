@@ -1,0 +1,1 @@
+R2 v29 compile3 preserved. R3 v27-29 restores the exact ecc58 cfg set_ignore_case adapter and adds None to existing test fixture literals; v28/29 purpose-only cfg commit recorder writes identical weak witness at identical actual publish point. v30 source unchanged from R2. No native access, behavior, deadline, dependency, or current source changes.

@@ -1,0 +1,54 @@
+[
+  {
+    "tag": "v0.27.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0/rust/src/app/historical_perf.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0/rust/src/app/tests/tab_contract.rs"
+    ],
+    "exit_code": 0
+  },
+  {
+    "tag": "v0.28.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0/rust/src/app/state.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0/rust/src/app/pipeline.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0/rust/src/app/historical_perf.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0/rust/src/app/tests/tab_contract.rs"
+    ],
+    "exit_code": 0
+  },
+  {
+    "tag": "v0.29.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0/rust/src/app/state.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0/rust/src/app/pipeline.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0/rust/src/app/historical_perf.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0/rust/src/app/tests/tab_contract.rs"
+    ],
+    "exit_code": 0
+  }
+]

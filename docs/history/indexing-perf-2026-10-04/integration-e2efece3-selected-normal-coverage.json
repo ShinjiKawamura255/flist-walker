@@ -1,0 +1,16 @@
+{
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "actual_matching_test_passes": {
+    "tab_contract": 7,
+    "tab_lifecycle": 60,
+    "tab_result_cache": 7,
+    "tab_background_responses": 52,
+    "query_history": 16,
+    "session_restore": 19,
+    "filelist_lifecycle": 42,
+    "tc_155": 9,
+    "tc_057b": 5,
+    "tc_163": 11
+  },
+  "zero_named_tc_note": "No specific TC203-206/208 names inferred; owner/lifecycle/pipeline actual modules andTC154/207/209-211 carry the coverage. Counts overlap library1548, not additive."
+}

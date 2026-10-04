@@ -1,0 +1,63 @@
+{
+  "status": "accepted basic and observer only; extension and final integration pending",
+  "files": [
+    {
+      "file": "final-current-driver-packet.json",
+      "sha256": "e335806090a36dd445ae2938d2a82093923b8db3977ae4a9e5e1ce59955bbc9d",
+      "bytes": 2947
+    },
+    {
+      "file": "normal-child-isolation-final-source-hashes.json",
+      "sha256": "eb4953f9b2a2761cc5fb026c0c92abe0d4139ece9444226b6af833b03f00caff",
+      "bytes": 25099
+    },
+    {
+      "file": "final-current-basic.sidecar.json",
+      "sha256": "6c20616b302e8d83510f03e3db96b0fe4a4eb997592a1aac5b4e119ba5556cc6",
+      "bytes": 25539
+    },
+    {
+      "file": "final-current-observer.sidecar.json",
+      "sha256": "445d64db88d8120e197c5be722310e3db382f763837c62fc94d7b8cb39bd9af4",
+      "bytes": 23795
+    },
+    {
+      "file": "final-current-basic.log.gz",
+      "sha256": "524f4c8ca286ba05bac74c48c31aae38d3c5e38c3e5cd324cebd31c7d8cc29f2",
+      "bytes": 13662,
+      "uncompressed_sha256": "5703cdd7801ce6d6d7abb450ce9928d4ae2c9f3823e6b1498cf3ab9e06dcc786",
+      "uncompressed_bytes": 134249,
+      "decompression": "gzip -dc final-current-basic.log.gz"
+    },
+    {
+      "file": "final-current-observer.log.gz",
+      "sha256": "f853aed74d083848a6bded13ea24b01800f015e17d002084d36fd03ea6515033",
+      "bytes": 522,
+      "uncompressed_sha256": "448e1506afa241d095a5bd17f4708bb663dffa988a52872cbec40dbbe6de7b36",
+      "uncompressed_bytes": 2621,
+      "decompression": "gzip -dc final-current-observer.log.gz"
+    },
+    {
+      "file": "current-basic.jsonl",
+      "sha256": "3087b118c956630065138fd895c4ef302f79d18998349a8d69dbd4f98fafc82b",
+      "bytes": 131828,
+      "rows": 84
+    },
+    {
+      "file": "current-observer.jsonl",
+      "sha256": "2d7de7887382e421c8f6dc65ed9f3905b030d812817c3126c8c53e90e0ee05b8",
+      "bytes": 2006,
+      "rows": 14
+    },
+    {
+      "file": "current-basic-source-overlay.tar.gz",
+      "sha256": "b1f5bebcfae83fe8a176297ff6d74e0f20bd44993ffe3f1fa3fdcc57ae45e3ee",
+      "bytes": 750387,
+      "uncompressed_sha256": "6f1e696cfba551eb0b034cb0a5c5a572faafaa5d0517423d85988204578f3ea5",
+      "uncompressed_bytes": 4741120,
+      "files": 213,
+      "purpose": "Exact measured Rustsrc content at5248837e manifest; overlay on base8a452b3 with unchanged Cargo.lock/defaultfeatures",
+      "decompression": "tar -xzf current-basic-source-overlay.tar.gz -C <owned-base-export>"
+    }
+  ]
+}

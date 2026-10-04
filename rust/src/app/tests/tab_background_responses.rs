@@ -1,5 +1,977 @@
 use super::*;
 
+#[test]
+fn tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order() {
+    use crate::app::index_response_effects::{IndexResponseApplicationOwner, RoutedIndexResponse};
+    let settings = test_settings_scope("tc-207-handoff-order");
+    let root = test_root("tc-207-handoff-order-root");
+    fs::create_dir(&root).unwrap();
+    fs::write(root.join("FileList.txt"), "").unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = false;
+    app.filelist_auto_check_enabled = false;
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    for tab in &mut app.shell.tabs {
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    }
+    app.shell
+        .indexing
+        .apply_resource_transition(crate::app::tab_state::TabResourceTransition::Success);
+    app.switch_to_tab_index(0);
+    let tab_id = app.current_tab_id().unwrap();
+    let request_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    app.shell.indexing.pending_request_id = Some(request_id);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.inflight_requests.insert(request_id);
+    let mailbox = app.shell.indexing.response_mailboxes.lock().unwrap()[&request_id].clone();
+    let source = IndexSource::FileList(root.join("FileList.txt"));
+    let batch = |range: std::ops::Range<usize>| IndexResponse::Batch {
+        request_id,
+        entries: range
+            .map(|i| IndexEntry {
+                path: root.join(format!("e{i}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect(),
+    };
+    mailbox
+        .try_publish(IndexResponse::Started {
+            request_id,
+            source: source.clone(),
+        })
+        .unwrap();
+    mailbox.try_publish(batch(0..2)).unwrap();
+    app.poll_index_response();
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 2);
+    // Consume the next real mailbox batch but leave its active drain pending.
+    mailbox.try_publish(batch(2..3)).unwrap();
+    let response = mailbox.try_recv().unwrap();
+    IndexResponseApplicationOwner::new(&mut app).apply(RoutedIndexResponse {
+        route: IndexResponseRoute::Active,
+        response,
+        active_mailbox_blocked: false,
+        from_shared_response_queue: false,
+    });
+    app.switch_to_tab_index(1);
+    assert_eq!(app.shell.indexing.warm_tab_id, Some(tab_id));
+    mailbox.try_publish(batch(3..5)).unwrap();
+    app.poll_index_response();
+    assert_eq!(
+        app.shell.indexing.background_states[&request_id]
+            .entries
+            .len(),
+        2
+    );
+    app.switch_to_tab_index(0);
+    assert_eq!(app.current_tab_id(), Some(tab_id));
+    mailbox.try_publish(batch(5..7)).unwrap();
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id,
+            source: source.clone(),
+        })
+        .unwrap();
+    poll_background_index_until(&mut app, "ordered promoted terminal", |app| {
+        app.shell.indexing.pending_request_id.is_none()
+            && !app
+                .shell
+                .indexing
+                .background_states
+                .contains_key(&request_id)
+            && !app
+                .shell
+                .indexing
+                .background_finalizations
+                .contains_key(&request_id)
+    });
+    let expected = (0..7)
+        .map(|i| root.join(format!("e{i}.txt")))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        app.shell
+            .runtime
+            .all_entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(
+        app.shell
+            .runtime
+            .entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(
+        app.shell
+            .runtime
+            .results
+            .iter()
+            .map(|(p, _)| p.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    let freshness = app.shell.runtime.freshness.as_ref().unwrap();
+    assert_eq!(freshness.request_id, request_id);
+    assert_eq!(freshness.root, root);
+    assert_eq!(app.shell.indexing.build.index.source, source);
+    assert!(!app.shell.indexing.request_tabs.contains_key(&request_id));
+    assert!(!app.shell.indexing.inflight_requests.contains(&request_id));
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+fn handoff_test_batch(
+    root: &Path,
+    request_id: u64,
+    range: std::ops::Range<usize>,
+) -> IndexResponse {
+    IndexResponse::Batch {
+        request_id,
+        entries: range
+            .map(|i| IndexEntry {
+                path: root.join(format!("e{i}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect(),
+    }
+}
+
+fn handoff_test_app(
+    started_active: bool,
+) -> (
+    super::support::TestSettingsScope,
+    PathBuf,
+    FlistWalkerApp,
+    u64,
+    Arc<crate::app::index_mailbox::IndexResponseMailbox>,
+) {
+    use crate::app::index_response_effects::{IndexResponseApplicationOwner, RoutedIndexResponse};
+    let settings = test_settings_scope("tc-207-handoff-guards");
+    let root = test_root("tc-207-handoff-guards-root");
+    fs::create_dir(&root).unwrap();
+    fs::write(root.join("FileList.txt"), "").unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = false;
+    app.filelist_auto_check_enabled = false;
+    app.create_new_tab();
+    reset_index_request_state_for_test(&mut app);
+    for tab in &mut app.shell.tabs {
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+    }
+    app.shell
+        .indexing
+        .apply_resource_transition(crate::app::tab_state::TabResourceTransition::Success);
+    app.switch_to_tab_index(0);
+    app.shell.runtime.use_filelist = true;
+    app.shell.runtime.include_files = true;
+    app.shell.runtime.include_dirs = true;
+    app.shell.ui.ignore_list_enabled = false;
+    let tab_id = app.current_tab_id().unwrap();
+    let id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    app.shell.indexing.pending_request_id = Some(id);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.inflight_requests.insert(id);
+    app.shell.indexing.build.index.source = IndexSource::None;
+    let mailbox = app.shell.indexing.response_mailboxes.lock().unwrap()[&id].clone();
+    if started_active {
+        mailbox
+            .try_publish(IndexResponse::Started {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            })
+            .unwrap();
+    }
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 0..2))
+        .unwrap();
+    app.poll_index_response();
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 2..3))
+        .unwrap();
+    IndexResponseApplicationOwner::new(&mut app).apply(RoutedIndexResponse {
+        route: IndexResponseRoute::Active,
+        response: mailbox.try_recv().unwrap(),
+        active_mailbox_blocked: false,
+        from_shared_response_queue: false,
+    });
+    app.switch_to_tab_index(1);
+    if !started_active {
+        mailbox
+            .try_publish(IndexResponse::Started {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            })
+            .unwrap();
+    }
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 3..7))
+        .unwrap();
+    app.poll_index_response();
+    assert_eq!(
+        app.shell.indexing.background_states[&id].source.is_none(),
+        started_active
+    );
+    app.switch_to_tab_index(0);
+    (settings, root, app, id, mailbox)
+}
+
+fn handoff_fill_reclaimer(app: &mut FlistWalkerApp, root: &Path) {
+    app.shell.tabs.pause_resource_reclaimer();
+    for i in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut resources = RetiredIndexBuildResources::empty();
+        resources.set_stale_index_entries(vec![IndexEntry {
+            path: root.join(format!("held{i}")),
+            kind: EntryKind::file(),
+            kind_known: true,
+        }]);
+        app.shell
+            .tabs
+            .try_retire_index_build_resources(resources)
+            .unwrap_or_else(|_| panic!("fill paused reclaimer"));
+    }
+}
+
+fn handoff_assert_paths(entries: &[Entry], root: &Path, count: usize) {
+    assert_eq!(
+        entries.iter().map(|e| e.path.clone()).collect::<Vec<_>>(),
+        (0..count)
+            .map(|i| root.join(format!("e{i}.txt")))
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        entries
+            .iter()
+            .map(|e| &e.path)
+            .collect::<HashSet<_>>()
+            .len(),
+        count
+    );
+    assert!(entries.iter().all(|e| e.kind == Some(EntryKind::file())));
+}
+
+#[test]
+fn tc_207_promoted_handoff_multiple_partial_switches_preserve_both_terminal_routes() {
+    for started_active in [false, true] {
+        for terminal_active in [false, true] {
+            let (_settings, root, mut app, id, mailbox) = handoff_test_app(started_active);
+            assert!(app.drain_queued_index_entries(id, 1));
+            assert_eq!(app.shell.indexing.build.index.entries.len(), 3);
+            assert_eq!(app.shell.indexing.background_states[&id].entries.len(), 4);
+            assert!(app.drain_queued_index_entries(id, 1));
+            assert_eq!(app.shell.indexing.build.index.entries.len(), 4);
+            assert_eq!(
+                app.shell.indexing.background_states[&id]
+                    .entries
+                    .front()
+                    .unwrap()
+                    .path,
+                root.join("e4.txt")
+            );
+            app.switch_to_tab_index(1);
+            mailbox
+                .try_publish(handoff_test_batch(&root, id, 7..9))
+                .unwrap();
+            app.poll_index_response();
+            assert_eq!(app.shell.indexing.background_states[&id].entries.len(), 5);
+            app.switch_to_tab_index(0);
+            assert!(app.drain_queued_index_entries(id, 1));
+            assert_eq!(app.shell.indexing.build.index.entries.len(), 5);
+            assert_eq!(app.shell.indexing.background_states.len(), 1);
+            if !terminal_active {
+                app.switch_to_tab_index(1);
+            }
+            mailbox
+                .try_publish(handoff_test_batch(&root, id, 9..11))
+                .unwrap();
+            mailbox
+                .try_publish(IndexResponse::Finished {
+                    request_id: id,
+                    source: IndexSource::FileList(root.join("FileList.txt")),
+                })
+                .unwrap();
+            poll_background_index_until(&mut app, "repeated handoff finish", |app| {
+                !app.shell.indexing.request_tabs.contains_key(&id)
+            });
+            let snapshot = if terminal_active {
+                &app.shell.runtime.all_entries
+            } else {
+                &app.shell
+                    .tabs
+                    .get(0)
+                    .unwrap()
+                    .result_state
+                    .committed
+                    .all_entries
+            };
+            handoff_assert_paths(snapshot, &root, 11);
+            let visible = if terminal_active {
+                &app.shell.runtime.entries
+            } else {
+                &app.shell
+                    .tabs
+                    .get(0)
+                    .unwrap()
+                    .result_state
+                    .committed
+                    .entries
+            };
+            handoff_assert_paths(visible, &root, 11);
+            assert!(!app.shell.indexing.background_states.contains_key(&id));
+            assert!(!app.shell.indexing.inflight_requests.contains(&id));
+            drop(app);
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
+}
+
+#[test]
+fn tc_207_promoted_handoff_full_restores_empty_owner_and_bounds_new_mailbox_data() {
+    use crate::app::index_mailbox::INDEX_MAILBOX_DATA_CAPACITY;
+    for started_active in [false, true] {
+        let (_settings, root, mut app, id, mailbox) = handoff_test_app(started_active);
+        let original_capacity = app.shell.indexing.background_states[&id].entries.capacity();
+        let original_source = app.shell.indexing.background_states[&id].source.clone();
+        handoff_fill_reclaimer(&mut app, &root);
+        assert!(app.drain_queued_index_entries(id, 100));
+        let state = &app.shell.indexing.background_states[&id];
+        assert!(state.entries.is_empty());
+        assert_eq!(state.entries.capacity(), original_capacity);
+        assert_eq!(state.source, original_source);
+        assert!(!state.replaced);
+        let owner = (
+            state.entries.as_slices().0.as_ptr(),
+            state.entries.capacity(),
+        );
+        assert!(!app.drain_queued_index_entries(id, 1));
+        let state = &app.shell.indexing.background_states[&id];
+        assert_eq!(
+            (
+                state.entries.as_slices().0.as_ptr(),
+                state.entries.capacity()
+            ),
+            owner
+        );
+        for i in 0..INDEX_MAILBOX_DATA_CAPACITY {
+            mailbox
+                .try_publish(handoff_test_batch(&root, id, 7 + i..8 + i))
+                .unwrap();
+        }
+        assert!(mailbox
+            .try_publish(handoff_test_batch(&root, id, 99..100))
+            .is_err());
+        mailbox
+            .try_publish(IndexResponse::Finished {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            })
+            .unwrap();
+        app.poll_index_response();
+        assert_eq!(app.shell.indexing.build.index.entries.len(), 7);
+        assert!(mailbox.has_terminal_response());
+        // Publishing a terminal releases the producer's capacity slot; the UI
+        // request/owner/terminal must still remain pending behind the handoff.
+        assert!(!app.shell.indexing.inflight_requests.contains(&id));
+        assert_eq!(app.shell.indexing.pending_request_id, Some(id));
+        assert!(app.shell.indexing.request_tabs.contains_key(&id));
+        assert!(app.shell.indexing.pending_finish.is_none());
+        assert!(app
+            .shell
+            .runtime
+            .freshness
+            .as_ref()
+            .is_none_or(|f| f.request_id != id));
+        assert_eq!(
+            app.shell.indexing.background_states[&id].source,
+            original_source
+        );
+        app.shell.tabs.resume_resource_reclaimer();
+        poll_background_index_until(&mut app, "Full handoff resume", |app| {
+            !app.shell.indexing.request_tabs.contains_key(&id)
+        });
+        handoff_assert_paths(
+            &app.shell.runtime.all_entries,
+            &root,
+            7 + INDEX_MAILBOX_DATA_CAPACITY,
+        );
+        handoff_assert_paths(
+            &app.shell.runtime.entries,
+            &root,
+            7 + INDEX_MAILBOX_DATA_CAPACITY,
+        );
+        assert_eq!(
+            app.shell.indexing.build.index.source,
+            IndexSource::FileList(root.join("FileList.txt"))
+        );
+        drop(app);
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
+fn tc_207_promoted_handoff_deferred_all_categories_wait_before_terminal_mutation() {
+    for category in 0..7 {
+        let (_settings, root, mut app, id, _mailbox) = handoff_test_app(true);
+        handoff_fill_reclaimer(&mut app, &root);
+        app.drain_queued_index_entries(id, 100);
+        let response = match category {
+            0 => IndexResponse::Started {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+            1 => IndexResponse::Truncated {
+                request_id: id,
+                limit: 7,
+            },
+            2 => handoff_test_batch(&root, id, 7..8),
+            3 => IndexResponse::ReplaceAll {
+                request_id: id,
+                entries: vec![IndexEntry {
+                    path: root.join("new.txt"),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }],
+            },
+            4 => IndexResponse::Finished {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            },
+            5 => IndexResponse::Failed {
+                request_id: id,
+                error: "controlled failure".into(),
+            },
+            _ => IndexResponse::Canceled { request_id: id },
+        };
+        app.shell.indexing.deferred_response = Some(response);
+        for _ in 0..2 {
+            app.poll_index_response();
+            assert!(
+                app.shell.indexing.deferred_response.is_some(),
+                "category{category}"
+            );
+            assert!(app.shell.indexing.inflight_requests.contains(&id));
+            assert_eq!(app.shell.indexing.pending_request_id, Some(id));
+            assert!(app.shell.indexing.pending_finish.is_none());
+            assert!(app.shell.indexing.request_tabs.contains_key(&id));
+            assert_eq!(app.shell.indexing.build.index.entries.len(), 7);
+        }
+        app.shell.tabs.resume_resource_reclaimer();
+        poll_background_index_until(
+            &mut app,
+            "deferred category admitted after owner release",
+            |app| app.shell.indexing.deferred_response.is_none(),
+        );
+        if matches!(category, 4..=6) {
+            poll_background_index_until(&mut app, "deferred terminal settled", |app| {
+                !app.shell.indexing.request_tabs.contains_key(&id)
+            });
+        }
+        drop(app);
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
+fn tc_207_promoted_handoff_combines_pending_and_remainder_in_fallback_budget() {
+    let (_settings, root, mut app, id, mailbox) = handoff_test_app(true);
+    app.switch_to_tab_index(1);
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 7..100))
+        .unwrap();
+    app.poll_index_response();
+    app.switch_to_tab_index(0);
+    assert!(!app.drain_queued_index_entries_with_budget(
+        id,
+        Instant::now(),
+        Duration::ZERO,
+        32_000
+    ));
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 2);
+    app.poll_index_response_with_budget_for_test(Duration::ZERO);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 34);
+    assert!(app.shell.indexing.build.pending_entries.is_empty());
+    assert_eq!(app.shell.indexing.background_states[&id].entries.len(), 66);
+    handoff_assert_paths(&app.shell.indexing.build.index.entries, &root, 34);
+    app.poll_index_response_with_budget_for_test(Duration::ZERO);
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 66);
+    assert_eq!(app.shell.indexing.background_states[&id].entries.len(), 34);
+    handoff_assert_paths(&app.shell.indexing.build.index.entries, &root, 66);
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .unwrap();
+    poll_background_index_until(&mut app, "fallback handoff terminal", |app| {
+        !app.shell.indexing.request_tabs.contains_key(&id)
+    });
+    handoff_assert_paths(&app.shell.runtime.all_entries, &root, 100);
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn tc_207_promoted_handoff_full_preserves_real_warm_quota_and_stale_cleanup() {
+    use crate::app::{
+        index_mailbox::INDEX_MAILBOX_DATA_CAPACITY, index_response_arbitration::WARM_MAILBOX_QUOTA,
+    };
+    let (_settings, root, mut app, id, active_mailbox) = handoff_test_app(true);
+    handoff_fill_reclaimer(&mut app, &root);
+    app.drain_queued_index_entries(id, 100);
+    active_mailbox
+        .try_publish(handoff_test_batch(&root, id, 7..8))
+        .unwrap();
+    let tab_id = app.shell.tabs.get(1).unwrap().id;
+    let stale_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    let warm_id = app.shell.indexing.allocate_request_id(Some(tab_id));
+    app.shell.indexing.inflight_requests.insert(warm_id);
+    app.shell.indexing.warm_tab_id = Some(tab_id);
+    {
+        let tab = app.shell.tabs.get_mut(1).unwrap();
+        tab.index_state.pending_index_request_id = Some(warm_id);
+        tab.index_state.index_in_progress = true;
+    }
+    let warm_mailbox = app.shell.indexing.response_mailboxes.lock().unwrap()[&warm_id].clone();
+    warm_mailbox
+        .try_publish(IndexResponse::Started {
+            request_id: warm_id,
+            source: IndexSource::Walker,
+        })
+        .unwrap();
+    for i in 0..INDEX_MAILBOX_DATA_CAPACITY {
+        warm_mailbox
+            .try_publish(handoff_test_batch(&root, warm_id, i..i + 1))
+            .unwrap();
+    }
+    app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
+    assert_eq!(
+        app.shell.indexing.background_states[&warm_id].entries.len(),
+        WARM_MAILBOX_QUOTA - 1
+    );
+    assert!(warm_mailbox.has_payload());
+    assert!(active_mailbox.has_payload());
+    assert_eq!(app.shell.indexing.build.index.entries.len(), 7);
+    assert_eq!(app.shell.indexing.pending_request_id, Some(id));
+    // An actual superseded request is selected independently of both active
+    // and Warm owners; its terminal must retain cleanup ownership on Full.
+    app.shell.indexing.superseded_request_ids.insert(stale_id);
+    app.shell.indexing.inflight_requests.insert(stale_id);
+    let stale_mailbox = app.shell.indexing.response_mailboxes.lock().unwrap()[&stale_id].clone();
+    stale_mailbox
+        .try_publish(handoff_test_batch(&root, stale_id, 90..91))
+        .unwrap();
+    stale_mailbox
+        .try_publish(IndexResponse::Canceled {
+            request_id: stale_id,
+        })
+        .unwrap();
+    app.poll_index_response_with_budget_for_test(Duration::from_secs(1));
+    assert!(stale_mailbox.has_terminal_response());
+    assert!(app.shell.indexing.pending_stale_build_reclaim.is_some());
+    assert!(app.shell.indexing.request_tabs.contains_key(&stale_id));
+    assert!(!app.shell.indexing.inflight_requests.contains(&stale_id));
+    assert_eq!(app.shell.indexing.pending_request_id, Some(id));
+    assert!(active_mailbox.has_payload());
+    app.shell.tabs.resume_resource_reclaimer();
+    active_mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .unwrap();
+    warm_mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: warm_id,
+            source: IndexSource::Walker,
+        })
+        .unwrap();
+    poll_background_index_until(&mut app, "Warm and stale handoff settlement", |app| {
+        [id, warm_id, stale_id]
+            .iter()
+            .all(|id| !app.shell.indexing.request_tabs.contains_key(id))
+    });
+    handoff_assert_paths(&app.shell.runtime.all_entries, &root, 8);
+    handoff_assert_paths(
+        &app.shell
+            .tabs
+            .get(1)
+            .unwrap()
+            .result_state
+            .committed
+            .all_entries,
+        &root,
+        INDEX_MAILBOX_DATA_CAPACITY,
+    );
+    assert!(!app.shell.indexing.background_states.contains_key(&stale_id));
+    assert!(!app
+        .shell
+        .indexing
+        .superseded_request_ids
+        .contains(&stale_id));
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn tc_207_promoted_handoff_replace_all_full_restores_old_owner_then_exact_new_order() {
+    let (_settings, root, mut app, id, mailbox) = handoff_test_app(true);
+    app.drain_queued_index_entries(id, 100);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while app.shell.tabs.reclaimer_pending() != 0 {
+        assert!(Instant::now() < deadline);
+        thread::yield_now();
+    }
+    handoff_fill_reclaimer(&mut app, &root);
+    let old_owner = (
+        app.shell.indexing.build.index.entries.as_ptr(),
+        app.shell.indexing.build.index.entries.capacity(),
+    );
+    let entries = match handoff_test_batch(&root, id, 100..102) {
+        IndexResponse::Batch { entries, .. } => entries,
+        _ => unreachable!(),
+    };
+    mailbox
+        .try_publish(IndexResponse::ReplaceAll {
+            request_id: id,
+            entries,
+        })
+        .unwrap();
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 102..103))
+        .unwrap();
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .unwrap();
+    app.poll_index_response();
+    assert!(app.shell.indexing.pending_replace_all.is_some());
+    assert_eq!(
+        (
+            app.shell.indexing.build.index.entries.as_ptr(),
+            app.shell.indexing.build.index.entries.capacity()
+        ),
+        old_owner
+    );
+    handoff_assert_paths(&app.shell.indexing.build.index.entries, &root, 7);
+    assert!(app
+        .shell
+        .runtime
+        .freshness
+        .as_ref()
+        .is_none_or(|f| f.request_id != id));
+    app.shell.tabs.resume_resource_reclaimer();
+    poll_background_index_until(&mut app, "replacement Full settlement", |app| {
+        !app.shell.indexing.request_tabs.contains_key(&id)
+    });
+    let expected = (100..103)
+        .map(|i| root.join(format!("e{i}.txt")))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        app.shell
+            .runtime
+            .all_entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(
+        app.shell
+            .runtime
+            .entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert!(app.shell.runtime.all_entries.iter().all(|e| !e
+        .path
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .starts_with("e0.")));
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn tc_207_promoted_handoff_background_replace_all_marker_survives_repeated_switches() {
+    for started_active in [false, true] {
+        let (_settings, root, mut app, id, mailbox) = handoff_test_app(started_active);
+        app.drain_queued_index_entries(id, 1);
+        app.switch_to_tab_index(1);
+        let entries = match handoff_test_batch(&root, id, 100..102) {
+            IndexResponse::Batch { entries, .. } => entries,
+            _ => unreachable!(),
+        };
+        mailbox
+            .try_publish(IndexResponse::ReplaceAll {
+                request_id: id,
+                entries,
+            })
+            .unwrap();
+        app.poll_index_response();
+        assert!(app.shell.indexing.background_states[&id].replaced);
+        app.switch_to_tab_index(0);
+        assert!(app.drain_queued_index_entries(id, 1));
+        assert!(!app.shell.indexing.background_states[&id].replaced);
+        assert_eq!(app.shell.indexing.build.index.entries.len(), 1);
+        assert_eq!(
+            app.shell.indexing.build.index.entries[0].path,
+            root.join("e100.txt")
+        );
+        app.switch_to_tab_index(1);
+        mailbox
+            .try_publish(handoff_test_batch(&root, id, 102..103))
+            .unwrap();
+        app.poll_index_response();
+        app.switch_to_tab_index(0);
+        assert!(app.drain_queued_index_entries(id, 1));
+        assert_eq!(
+            app.shell.indexing.build.index.entries[1].path,
+            root.join("e101.txt")
+        );
+        mailbox
+            .try_publish(IndexResponse::Finished {
+                request_id: id,
+                source: IndexSource::FileList(root.join("FileList.txt")),
+            })
+            .unwrap();
+        poll_background_index_until(&mut app, "background replacement handoff", |app| {
+            !app.shell.indexing.request_tabs.contains_key(&id)
+        });
+        let expected = (100..103)
+            .map(|i| root.join(format!("e{i}.txt")))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            app.shell
+                .runtime
+                .all_entries
+                .iter()
+                .map(|e| e.path.clone())
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert_eq!(
+            app.shell
+                .runtime
+                .entries
+                .iter()
+                .map(|e| e.path.clone())
+                .collect::<Vec<_>>(),
+            expected
+        );
+        drop(app);
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
+fn tc_207_promoted_handoff_restored_replace_marker_full_is_transactional() {
+    let (_settings, root, mut app, id, mailbox) = handoff_test_app(true);
+    // Model a restored replacement owner coexisting with the old active build
+    // and pending prefix. Admission must retire both before the first new entry.
+    let state = app.shell.indexing.background_states.get_mut(&id).unwrap();
+    state.entries = (100..102)
+        .map(|i| file_entry(root.join(format!("e{i}.txt"))))
+        .collect();
+    state.replaced = true;
+    let replacement_owner = (
+        state.entries.as_slices().0.as_ptr(),
+        state.entries.capacity(),
+        state.source.clone(),
+    );
+    let build_owner = (
+        app.shell.indexing.build.index.entries.as_ptr(),
+        app.shell.indexing.build.index.entries.capacity(),
+    );
+    let pending_owner = (
+        app.shell
+            .indexing
+            .build
+            .pending_entries
+            .as_slices()
+            .0
+            .as_ptr(),
+        app.shell.indexing.build.pending_entries.capacity(),
+    );
+    let source = app.shell.indexing.build.index.source.clone();
+    handoff_fill_reclaimer(&mut app, &root);
+    assert!(!app.drain_queued_index_entries(id, 1));
+    assert_eq!(
+        (
+            app.shell.indexing.build.index.entries.as_ptr(),
+            app.shell.indexing.build.index.entries.capacity()
+        ),
+        build_owner
+    );
+    assert_eq!(
+        (
+            app.shell
+                .indexing
+                .build
+                .pending_entries
+                .as_slices()
+                .0
+                .as_ptr(),
+            app.shell.indexing.build.pending_entries.capacity()
+        ),
+        pending_owner
+    );
+    assert_eq!(app.shell.indexing.pending_entries_request_id, Some(id));
+    handoff_assert_paths(&app.shell.indexing.build.index.entries, &root, 2);
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .pending_entries
+            .front()
+            .unwrap()
+            .path,
+        root.join("e2.txt")
+    );
+    let state = &app.shell.indexing.background_states[&id];
+    assert_eq!(
+        (
+            state.entries.as_slices().0.as_ptr(),
+            state.entries.capacity(),
+            state.source.clone()
+        ),
+        replacement_owner
+    );
+    assert!(state.replaced);
+    assert_eq!(state.entries.front().unwrap().path, root.join("e100.txt"));
+    assert_eq!(app.shell.indexing.build.index.source, source);
+    app.shell.tabs.resume_resource_reclaimer();
+    poll_background_index_until(&mut app, "replacement marker first ordered entry", |app| {
+        app.shell
+            .indexing
+            .build
+            .index
+            .entries
+            .first()
+            .is_some_and(|e| e.path == root.join("e100.txt"))
+    });
+    mailbox
+        .try_publish(handoff_test_batch(&root, id, 102..103))
+        .unwrap();
+    mailbox
+        .try_publish(IndexResponse::Finished {
+            request_id: id,
+            source: IndexSource::FileList(root.join("FileList.txt")),
+        })
+        .unwrap();
+    poll_background_index_until(&mut app, "restored replacement marker finish", |app| {
+        !app.shell.indexing.request_tabs.contains_key(&id)
+    });
+    let expected = (100..103)
+        .map(|i| root.join(format!("e{i}.txt")))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        app.shell
+            .runtime
+            .all_entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(
+        app.shell
+            .runtime
+            .entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        expected
+    );
+    assert_eq!(app.shell.indexing.build.index.source, source);
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn tc_207_promoted_handoff_real_refresh_full_restores_then_retires_old_request() {
+    let (_settings, root, mut app, id, mailbox) = handoff_test_app(true);
+    let state = &app.shell.indexing.background_states[&id];
+    let owner = (
+        state.entries.as_slices().0.as_ptr(),
+        state.entries.capacity(),
+        state.source.clone(),
+    );
+    let build_owner = (
+        app.shell.indexing.build.index.entries.as_ptr(),
+        app.shell.indexing.build.index.entries.capacity(),
+    );
+    handoff_fill_reclaimer(&mut app, &root);
+    app.request_index_refresh();
+    assert_eq!(app.shell.indexing.pending_request_id, Some(id));
+    assert!(!app.shell.indexing.is_superseded_request(id));
+    assert!(app.shell.indexing.build_reclaim_pending);
+    assert_eq!(app.shell.indexing.build_reclaim_request_id, Some(id));
+    assert!(app.shell.indexing.refresh_after_pending_finish.is_some());
+    assert_eq!(
+        (
+            app.shell.indexing.build.index.entries.as_ptr(),
+            app.shell.indexing.build.index.entries.capacity()
+        ),
+        build_owner
+    );
+    let state = &app.shell.indexing.background_states[&id];
+    assert_eq!(
+        (
+            state.entries.as_slices().0.as_ptr(),
+            state.entries.capacity(),
+            state.source.clone()
+        ),
+        owner
+    );
+    assert_eq!(
+        state
+            .entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        (3..7)
+            .map(|i| root.join(format!("e{i}.txt")))
+            .collect::<Vec<_>>()
+    );
+    app.shell.tabs.resume_resource_reclaimer();
+    poll_background_index_until(&mut app, "real replacement request committed", |app| {
+        app.shell
+            .runtime
+            .freshness
+            .as_ref()
+            .is_some_and(|f| f.request_id != id)
+            && app.shell.indexing.pending_request_id.is_none()
+    });
+    let freshness = app.shell.runtime.freshness.as_ref().unwrap();
+    assert_eq!(freshness.root, root);
+    assert_eq!(
+        app.shell.indexing.build.index.source,
+        IndexSource::FileList(root.join("FileList.txt").canonicalize().unwrap())
+    );
+    assert!(!app.shell.indexing.request_tabs.contains_key(&id));
+    assert!(!app.shell.indexing.background_states.contains_key(&id));
+    assert!(!app.shell.indexing.inflight_requests.contains(&id));
+    assert!(app.shell.runtime.all_entries.is_empty());
+    assert!(mailbox
+        .try_publish(IndexResponse::Canceled { request_id: id })
+        .is_err());
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
 fn collect_drop_threads_until(
     drop_rx: &mpsc::Receiver<String>,
     expected: &str,
@@ -1828,7 +2800,7 @@ fn tc_207_background_finish_waits_for_reclaimer_without_dropping_old_snapshot() 
         407,
         BackgroundIndexState {
             source: Some(IndexSource::Walker),
-            entries: vec![new.clone()],
+            entries: vec![new.clone()].into(),
             replaced: true,
         },
     );
@@ -2984,6 +3956,8 @@ fn tc_207_promotion_before_terminal_uses_active_finalization_barrier() {
                 .indexing
                 .background_finalizations
                 .contains_key(&request_id)
+            && app.shell.indexing.pending_request_id != Some(request_id)
+            && !app.shell.indexing.request_tabs.contains_key(&request_id)
         {
             settled = true;
             break;
@@ -3040,7 +4014,7 @@ fn tc_207_replace_all_discarded_build_moves_to_reclaimer_without_ui_drop() {
         request_id,
         BackgroundIndexState {
             source: Some(IndexSource::FileList(root.join("FileList.txt"))),
-            entries: vec![file_entry(root.join("replacement.txt"))],
+            entries: vec![file_entry(root.join("replacement.txt"))].into(),
             replaced: true,
         },
     );
@@ -3478,7 +4452,7 @@ fn tc_207_multigeneration_background_close_rolls_back_every_owner_when_full() {
             request_id,
             BackgroundIndexState {
                 source: Some(IndexSource::Walker),
-                entries: vec![file_entry(root.join(format!("state-{request_id}.txt")))],
+                entries: vec![file_entry(root.join(format!("state-{request_id}.txt")))].into(),
                 replaced: false,
             },
         );

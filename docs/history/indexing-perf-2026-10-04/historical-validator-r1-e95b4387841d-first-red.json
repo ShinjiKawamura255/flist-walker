@@ -1,0 +1,23 @@
+{
+  "classification": "meaningful synthetic failed-cell admission first-red; not a live historical run",
+  "expected_controls": 1,
+  "actual_pass": 0,
+  "actual_failed": 1,
+  "exit_code": 1,
+  "source": {
+    "collect_historical.py": "7237b7870f107fe456260177f37ab87dd23ee6694cde8496bee92f874b0ce829",
+    "test_historical.py": "977469d6f923dc4ad09d12f65fe66d69babc58ef5c1ef185b972872f1c3571a7"
+  },
+  "log_sha256": "daa078d3de2a1074f054060cb47a1b1d70f4df6b33027765f108467321f494d9",
+  "exit_note": "Actual subprocess returncode observed",
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "rust/target/indexing-perf-study/historical-validator-r1",
+    "-p",
+    "test_historical.py"
+  ]
+}

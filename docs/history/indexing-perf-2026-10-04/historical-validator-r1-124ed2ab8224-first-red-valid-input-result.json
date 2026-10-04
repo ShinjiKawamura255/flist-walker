@@ -1,0 +1,14 @@
+{
+  "scope": "meaningful valid-selection failed-cell exclusion RED",
+  "exit_code": 1,
+  "assertion": "42 accepted !=28; FAIL14 raw must be excluded",
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input.py"
+  ],
+  "original_stub_sha256": "7237b7870f107fe456260177f37ab87dd23ee6694cde8496bee92f874b0ce829",
+  "events_sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+  "log_sha256": "5818185f4f948e5b075188d30cf9ce1143409b6569cf55aa76b4d74d09122321",
+  "initial_control_caveat": "Initial smallest bag-of-rows RED had independent source selection missing one selected source cell. Initial log retained; this supplemental valid selection is the meaningful final protocol RED.",
+  "real_historical_run": false
+}

@@ -1,0 +1,80 @@
+{
+  "status": "fresh-basic-and-observer-passed-awaiting-parent-reacceptance",
+  "source_identity": "normal-child-isolation-final-source-hashes.json",
+  "source_manifest_sha256": "5248837e270a08df8fc644cfe391434e9bce5838225af941e6e81c39146b0fa8",
+  "source_unchanged": true,
+  "basic": {
+    "log": "final-current-basic.log",
+    "sidecar": "final-current-basic.sidecar.json",
+    "exit_code": 0,
+    "ignored_entrypoint_passed": 1,
+    "raw_rows": 84,
+    "unique_rows": 84,
+    "correct_rows": 84,
+    "eligible_rows": 84,
+    "meta_rows": 1,
+    "test_summary": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1554 filtered out; finished in 93.55s"
+    ],
+    "metrics_median_paired_case_to_B0": {
+      "FileList/S1-selective": {
+        "index_ready_ms": 1.0448578769750294,
+        "results_ready_ms": 1.1145873600730587,
+        "data_publish_end_ms": 1.0531497340302782,
+        "max_frame_ms": 1.0723093317095447
+      },
+      "FileList/S1-dense": {
+        "index_ready_ms": 1.1153267928149706,
+        "results_ready_ms": 1.2060320694437208,
+        "data_publish_end_ms": 1.1193406271981696,
+        "max_frame_ms": 1.3165636891325376
+      },
+      "FileList/S2": {
+        "index_ready_ms": 1.068895221478738,
+        "results_ready_ms": 1.068895221478738,
+        "data_publish_end_ms": 1.1065569836412896,
+        "max_frame_ms": 3.720790948522959
+      },
+      "Walker/S1-selective": {
+        "index_ready_ms": 0.9893914592148613,
+        "results_ready_ms": 1.0350795261472796,
+        "data_publish_end_ms": 1.001660037655124,
+        "max_frame_ms": 1.0595875086384694
+      },
+      "Walker/S1-dense": {
+        "index_ready_ms": 1.0372887136418782,
+        "results_ready_ms": 1.0735721570480738,
+        "data_publish_end_ms": 1.0336250211312172,
+        "max_frame_ms": 1.0119845217847987
+      },
+      "Walker/S2": {
+        "index_ready_ms": 1.009652105704909,
+        "results_ready_ms": 1.009652105704909,
+        "data_publish_end_ms": 1.0155056771788666,
+        "max_frame_ms": 1.0935228316948589
+      }
+    }
+  },
+  "observer": {
+    "log": "final-current-observer.log",
+    "sidecar": "final-current-observer.sidecar.json",
+    "exit_code": 0,
+    "ignored_entrypoint_passed": 1,
+    "raw_rows": 14,
+    "unique_rows": 14,
+    "correct_rows": 14,
+    "meta_rows": 0,
+    "meta_provenance": "sidecar explicit runner configuration",
+    "test_summary": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1554 filtered out; finished in 14.66s"
+    ],
+    "median_on_to_off_ratio": 0.9739746286695075
+  },
+  "limitations": [
+    "headless actual workers; native rendering not measured",
+    "observer ratio is observational, no new speed gate",
+    "runtime default settings provenance from exact entrypoint/source, not live per-request META",
+    "fresh current measurements only; coldtag historical logs untouched"
+  ],
+  "finished_at": "2026-10-03T19:25:21.349346+00:00"
+}

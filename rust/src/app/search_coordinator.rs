@@ -10,9 +10,26 @@ pub(super) enum SearchResponseRoute {
     Stale,
 }
 
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct SearchPerfEvent {
+    pub(super) request_id: u64,
+    pub(super) at: std::time::Instant,
+    pub(super) event: &'static str,
+    pub(super) candidates: usize,
+    pub(super) query: String,
+}
+
 pub(super) struct SearchCoordinator {
     pub(super) tx: Sender<SearchRequest>,
     pub(super) rx: Receiver<SearchResponse>,
+    #[cfg(test)]
+    pub(super) perf_enabled: bool,
+    #[cfg(test)]
+    pub(super) perf_events: Vec<SearchPerfEvent>,
+    #[cfg(test)]
+    pub(super) perf_workers:
+        HashMap<u64, Arc<std::sync::Mutex<super::worker::search_perf::SearchPerfObservation>>>,
     next_request_id: u64,
     pending_request_id: Option<u64>,
     in_progress: bool,
@@ -27,6 +44,12 @@ impl SearchCoordinator {
         Self {
             tx,
             rx,
+            #[cfg(test)]
+            perf_enabled: false,
+            #[cfg(test)]
+            perf_events: Vec::new(),
+            #[cfg(test)]
+            perf_workers: HashMap::new(),
             next_request_id: 1,
             pending_request_id: None,
             in_progress: false,
@@ -34,6 +57,27 @@ impl SearchCoordinator {
             request_tabs: HashMap::new(),
             request_cancellations: HashMap::new(),
             latest_tab_requests: HashMap::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn observe_perf_dispatch(
+        &mut self,
+        request_id: u64,
+        candidates: usize,
+        cancel: &Arc<AtomicBool>,
+        query: &str,
+    ) {
+        if self.perf_enabled {
+            self.perf_workers
+                .insert(request_id, super::worker::search_perf::register(cancel));
+            self.perf_events.push(SearchPerfEvent {
+                request_id,
+                at: std::time::Instant::now(),
+                event: "dispatch",
+                candidates,
+                query: query.into(),
+            });
         }
     }
 
@@ -106,6 +150,20 @@ impl SearchCoordinator {
 
     pub(super) fn route_response(&mut self, request_id: u64) -> SearchResponseRoute {
         let is_active = Some(request_id) == self.pending_request_id;
+        #[cfg(test)]
+        if self.perf_enabled {
+            self.perf_events.push(SearchPerfEvent {
+                request_id,
+                at: std::time::Instant::now(),
+                event: if is_active {
+                    "response_active"
+                } else {
+                    "response_stale"
+                },
+                candidates: 0,
+                query: String::new(),
+            });
+        }
         let tab_id = self.take_request_tab(request_id);
         self.finish_request(request_id, tab_id);
         if is_active {
@@ -163,6 +221,16 @@ impl SearchCoordinator {
 
     fn cancel_request(&mut self, request_id: u64) {
         if let Some(cancel) = self.request_cancellations.remove(&request_id) {
+            #[cfg(test)]
+            if self.perf_enabled {
+                self.perf_events.push(SearchPerfEvent {
+                    request_id,
+                    at: std::time::Instant::now(),
+                    event: "cancel_requested",
+                    candidates: 0,
+                    query: String::new(),
+                });
+            }
             cancel.store(true, Ordering::Release);
         }
     }

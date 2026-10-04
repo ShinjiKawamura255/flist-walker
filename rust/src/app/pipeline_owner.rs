@@ -52,6 +52,43 @@ impl<'a> PipelineOwner<'a> {
         self.app.refresh_status_line();
 
         let req = self.build_active_search_request(request_id, cancel);
+        #[cfg(test)]
+        self.app.shell.search.observe_perf_dispatch(
+            request_id,
+            req.entries.len(),
+            &req.cancel,
+            &req.query,
+        );
+        #[cfg(test)]
+        if self.app.shell.indexing.perf_observe_aux {
+            self.app.shell.indexing.perf_search_bindings.push(
+                super::index_coordinator::SearchDispatchBinding {
+                    request_id,
+                    tab_id: current_tab_id.unwrap_or_default(),
+                    root: req.root.clone(),
+                    query: req.query.clone(),
+                    candidates: req.entries.len(),
+                    candidate_ptr: Arc::as_ptr(&req.entries) as usize,
+                    sort_mode: req.sort_mode,
+                    sort_scope: req.sort_scope,
+                    epoch: self.app.shell.indexing.kind_resolution_epoch,
+                    at: std::time::Instant::now(),
+                },
+            );
+        }
+        #[cfg(test)]
+        if req.sort_scope == super::ResultSortScope::AllMatches
+            && req.sort_mode != super::ResultSortMode::Score
+        {
+            self.app.shell.indexing.perf_aux_dispatch(
+                "search-sort",
+                request_id,
+                current_tab_id.unwrap_or_default(),
+                self.app.shell.indexing.kind_resolution_epoch,
+                None,
+                req.entries.len(),
+            );
+        }
         if self.app.shell.search.worker_unavailable() || self.app.shell.search.tx.send(req).is_err()
         {
             self.poll_search_response();
@@ -100,7 +137,63 @@ impl<'a> PipelineOwner<'a> {
                     break;
                 }
             };
-            match self.app.shell.search.route_response(response.request_id) {
+            #[cfg(test)]
+            if self.app.shell.indexing.perf_observe_aux {
+                if let Some(binding) = self
+                    .app
+                    .shell
+                    .indexing
+                    .perf_search_bindings
+                    .iter()
+                    .find(|b| b.request_id == response.request_id)
+                {
+                    let epoch = binding.epoch;
+                    let tab = self.app.current_tab_id().unwrap_or_default();
+                    let successful = response.sort_mode == self.app.shell.runtime.result_sort_mode
+                        && response.sort_scope == self.app.shell.runtime.result_sort_scope
+                        && self.app.shell.indexing.perf_search_sort_owned(
+                            &response,
+                            super::index_coordinator::PerfSearchSortIdentity {
+                                tab,
+                                epoch,
+                                root: &self.app.shell.runtime.root,
+                                query: &self.app.shell.runtime.query_state.query,
+                            },
+                        );
+                    self.app.shell.indexing.perf_aux_delivered(
+                        "search-sort",
+                        response.request_id,
+                        tab,
+                        epoch,
+                        None,
+                        successful,
+                    );
+                    if let Some(o) =
+                        self.app.shell.indexing.perf_aux.iter_mut().find(|o| {
+                            o.flow == "search-sort" && o.request_id == response.request_id
+                        })
+                    {
+                        o.received_kind_epoch = Some(self.app.shell.indexing.kind_resolution_epoch);
+                    }
+                }
+            }
+            let route = self.app.shell.search.route_response(response.request_id);
+            #[cfg(test)]
+            if let Some(o) = self
+                .app
+                .shell
+                .indexing
+                .perf_aux
+                .iter_mut()
+                .find(|o| o.flow == "search-sort" && o.request_id == response.request_id)
+            {
+                o.route = Some(match &route {
+                    SearchResponseRoute::Active => "Active",
+                    SearchResponseRoute::Background(_) => "Background",
+                    SearchResponseRoute::Stale => "Stale",
+                });
+            }
+            match route {
                 SearchResponseRoute::Active => {
                     result_reducer::apply_active_search_response(self.app, response);
                 }

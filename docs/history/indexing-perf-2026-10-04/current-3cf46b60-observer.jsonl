@@ -1,0 +1,14 @@
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 0, "results_ready_ms": 256.91858299999996, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 0, "results_ready_ms": 258.081625, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 1, "results_ready_ms": 255.77824999999999, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 1, "results_ready_ms": 264.520917, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 2, "results_ready_ms": 248.253292, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 2, "results_ready_ms": 243.158917, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 3, "results_ready_ms": 255.98566699999998, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 3, "results_ready_ms": 258.37158300000004, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 4, "results_ready_ms": 251.60058400000003, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 4, "results_ready_ms": 258.699, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 5, "results_ready_ms": 254.854917, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 5, "results_ready_ms": 258.505542, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": false, "pair": 6, "results_ready_ms": 256.129, "sample_entries": 100000, "schema_version": 1}
+{"correct": true, "full_profile": true, "observer_enabled": true, "pair": 6, "results_ready_ms": 280.108708, "sample_entries": 100000, "schema_version": 1}

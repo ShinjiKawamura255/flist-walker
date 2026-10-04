@@ -1,0 +1,50 @@
+{
+  "scope": "Main independent frozen R4 hash, exact original-tag/full-patch replay, current-source and actual guard sidecar/log/count readback; no performance acceptance",
+  "packet_sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+  "references": 172,
+  "tags": [
+    {
+      "tag": "v0.27.0",
+      "source": "668d0360bf236bc26870297ad16345f3c9ae792c00e7b2ae4e9bfc10be400358",
+      "source_files": 187,
+      "original_and_full_patch_replay": true,
+      "Cargo_original": true,
+      "guards": 31,
+      "actual_wait_and_group_absence": true,
+      "warnings": 0
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "2f358965a0c044d1845a5b78338f0bcbf72bee3fb8573f2eeb9d9df636ef8b24",
+      "source_files": 199,
+      "original_and_full_patch_replay": true,
+      "Cargo_original": true,
+      "guards": 31,
+      "actual_wait_and_group_absence": true,
+      "warnings": 0
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "a1355e91507aae4b5fa585b1f4b406f82358d7dc9bfb09389cfca22d3e0b593d",
+      "source_files": 207,
+      "original_and_full_patch_replay": true,
+      "Cargo_original": true,
+      "guards": 31,
+      "actual_wait_and_group_absence": true,
+      "warnings": 0
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+      "source_files": 214,
+      "original_and_full_patch_replay": true,
+      "Cargo_original": true,
+      "guards": 31,
+      "actual_wait_and_group_absence": true,
+      "warnings": 0
+    }
+  ],
+  "total_guard_passes": 124,
+  "current213_unchanged": true,
+  "historical_performance": "NOT_RUN"
+}

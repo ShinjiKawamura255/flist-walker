@@ -1,0 +1,198 @@
+{
+  "status": "ACTUAL-mixed-FAILED-ordinary/PASS-cap",
+  "scope": "v0.28.0 R5/R3 source/process/cleanup/collector verified; speed comparisons pending",
+  "packet_sha256": "685d3e9aff43a689e07466dc092f7b075804dff1b65ee550f7832f39f51348f8",
+  "ordinary_status_counts": {
+    "PASS": 37,
+    "FAIL": 7,
+    "NOT_RUN": 0
+  },
+  "ordinary_actual_exit": 101,
+  "ordinary_admitted_rows": 518,
+  "failed_partial_rows": 0,
+  "cap_actual_exit": 0,
+  "cap_admitted_rows": 14,
+  "old_interrupted11_roots": "untouched baseline",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full-collector-sidecar.json",
+      "path": "historical-v28-r5-live-7bc34ec4d293-v28-ordinary-full-collector-sidecar.json",
+      "sha256": "7bc34ec4d2939f40aaa61368fe1135f27ad5804929299d5d2d23298aeda983ff",
+      "bytes": 6641,
+      "uncompressed_sha256": "7bc34ec4d2939f40aaa61368fe1135f27ad5804929299d5d2d23298aeda983ff",
+      "uncompressed_bytes": 6641,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full-collector-sidecar.json",
+      "path": "historical-v28-r5-live-761ceb61c457-v28-cap-full-collector-sidecar.json",
+      "sha256": "761ceb61c457852c0b3b438a7742b0e5c700e1238327f8de8e487d618d37b59d",
+      "bytes": 2707,
+      "uncompressed_sha256": "761ceb61c457852c0b3b438a7742b0e5c700e1238327f8de8e487d618d37b59d",
+      "uncompressed_bytes": 2707,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/run_v28.py",
+      "path": "historical-v28-r5-live-d29210d02928-run_v28.py",
+      "sha256": "d29210d029287458873b64856fb337e469b4c4e05a07812e934a8f15a696da54",
+      "bytes": 12730,
+      "uncompressed_sha256": "d29210d029287458873b64856fb337e469b4c4e05a07812e934a8f15a696da54",
+      "uncompressed_bytes": 12730,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/wrapper-preparation.json",
+      "path": "historical-v28-r5-live-7ee39517f9e5-wrapper-preparation.json",
+      "sha256": "7ee39517f9e54436ca1f59470ee2f9875a7fae6453a516172518dd2fc2ce15f8",
+      "bytes": 22211,
+      "uncompressed_sha256": "7ee39517f9e54436ca1f59470ee2f9875a7fae6453a516172518dd2fc2ce15f8",
+      "uncompressed_bytes": 22211,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full-validated.json",
+      "path": "historical-v28-r5-live-326817b37b8b-v28-cap-full-validated.json",
+      "sha256": "326817b37b8b2461ce75b2e2cbd803c52037cec3e241f67dd061d9c99948bf1f",
+      "bytes": 40633,
+      "uncompressed_sha256": "326817b37b8b2461ce75b2e2cbd803c52037cec3e241f67dd061d9c99948bf1f",
+      "uncompressed_bytes": 40633,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full.json",
+      "path": "historical-v28-r5-live-fd2b2094d43a-v28-ordinary-full.json",
+      "sha256": "fd2b2094d43a034a50151dd959d5bf6c1ad90edf781935091680ef2e89a90cd9",
+      "bytes": 628840,
+      "uncompressed_sha256": "fd2b2094d43a034a50151dd959d5bf6c1ad90edf781935091680ef2e89a90cd9",
+      "uncompressed_bytes": 628840,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full.json",
+      "path": "historical-v28-r5-live-ae88bc2dacea-v28-cap-full.json",
+      "sha256": "ae88bc2dacea6b4b1966c1aac8c35d92d7da292ad830c7a8ef5ad903a68c19da",
+      "bytes": 64084,
+      "uncompressed_sha256": "ae88bc2dacea6b4b1966c1aac8c35d92d7da292ad830c7a8ef5ad903a68c19da",
+      "uncompressed_bytes": 64084,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-release-build.json",
+      "path": "historical-v28-r5-live-58a894e98f69-v28-release-build.json",
+      "sha256": "58a894e98f6946087a0a24ffb2e6d8423270fcb39a8600bad4bdf3cf6dca7e4a",
+      "bytes": 46061,
+      "uncompressed_sha256": "58a894e98f6946087a0a24ffb2e6d8423270fcb39a8600bad4bdf3cf6dca7e4a",
+      "uncompressed_bytes": 46061,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-discovery.json",
+      "path": "historical-v28-r5-live-758695f8c076-v28-ordinary-discovery.json",
+      "sha256": "758695f8c076d277999c18c98bb34121c8c975a7dfdc77e39f1a25d578ada721",
+      "bytes": 46235,
+      "uncompressed_sha256": "758695f8c076d277999c18c98bb34121c8c975a7dfdc77e39f1a25d578ada721",
+      "uncompressed_bytes": 46235,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-release-build.log",
+      "path": "historical-v28-r5-live-0ce1dbf605ae-v28-release-build.log.gz",
+      "sha256": "bca0ea02172a7a83445043134f552810d8a7ced7f8db515ac2d50ffbe23983ac",
+      "bytes": 2583,
+      "uncompressed_sha256": "0ce1dbf605aed1ed75d81dafb8cabd43016952ae1f3b72ae911698740b83f6d5",
+      "uncompressed_bytes": 8838,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-discovery.log",
+      "path": "historical-v28-r5-live-f0d41e3698d2-v28-ordinary-discovery.log.gz",
+      "sha256": "d598969d2038ad59a2540fc5264c749cfe7b3699cda7f468ba0fefd2392fcafa",
+      "bytes": 268,
+      "uncompressed_sha256": "f0d41e3698d2f90f38a5ae92ea5df47bcc04b0945f0dbd666be4e790d2642022",
+      "uncompressed_bytes": 375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full.log",
+      "path": "historical-v28-r5-live-728991b4f0a5-v28-ordinary-full.log.gz",
+      "sha256": "892c4a0ebee4422b4f0628cc04fbeab856bc12850b62a01ce5f361b40a4873c9",
+      "bytes": 170038,
+      "uncompressed_sha256": "728991b4f0a5a9cf0461e2e1e526e3f59b56dd1c787062c14e987f310b73f588",
+      "uncompressed_bytes": 3380151,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-discovery.log",
+      "path": "historical-v28-r5-live-d35d95cd59cb-v28-cap-discovery.log.gz",
+      "sha256": "ee8f8ba8ea8f310b2035d5aba1c69d8fa610b75517190ad5be6e014ac89f3153",
+      "bytes": 270,
+      "uncompressed_sha256": "d35d95cd59cbcabee581ca9c434328b154eb7d1b5578267beae8560500c56878",
+      "uncompressed_bytes": 376,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-discovery.json",
+      "path": "historical-v28-r5-live-c35a46f4ddc4-v28-cap-discovery.json",
+      "sha256": "c35a46f4ddc4ade46bf3e38467068fb9935ec23c53051333af05183a24ab50ca",
+      "bytes": 46232,
+      "uncompressed_sha256": "c35a46f4ddc4ade46bf3e38467068fb9935ec23c53051333af05183a24ab50ca",
+      "uncompressed_bytes": 46232,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full-validated.json",
+      "path": "historical-v28-r5-live-604d2693ee98-v28-ordinary-full-validated.json",
+      "sha256": "604d2693ee98d73708e036bf89a7e12a9f65b75035744c53b54dde22f529e3f0",
+      "bytes": 4390029,
+      "uncompressed_sha256": "604d2693ee98d73708e036bf89a7e12a9f65b75035744c53b54dde22f529e3f0",
+      "uncompressed_bytes": 4390029,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full.log",
+      "path": "historical-v28-r5-live-d105cfaaba6e-v28-cap-full.log.gz",
+      "sha256": "8f503edaf128538e356fe2fdda56f9516973c805549238afab6f7c7f6a2fcb07",
+      "bytes": 3519,
+      "uncompressed_sha256": "d105cfaaba6e8a43990d2e66a21d445ea50ff9bb7ce36d1b80be0971f6c21b7f",
+      "uncompressed_bytes": 30107,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-final-execution-packet.json",
+      "path": "historical-v28-r5-live-685d3e9aff43-v28-final-execution-packet.json",
+      "sha256": "685d3e9aff43a689e07466dc092f7b075804dff1b65ee550f7832f39f51348f8",
+      "bytes": 7568,
+      "uncompressed_sha256": "685d3e9aff43a689e07466dc092f7b075804dff1b65ee550f7832f39f51348f8",
+      "uncompressed_bytes": 7568,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-v28-live-r1/v28-final-independent-readback.json",
+      "path": "historical-v28-r5-live-3d0144cd16a8-v28-final-independent-readback.json",
+      "sha256": "3d0144cd16a83ecf1963ae1beac9188dea7edee69613be2f50903c7db45446d2",
+      "bytes": 5335,
+      "uncompressed_sha256": "3d0144cd16a83ecf1963ae1beac9188dea7edee69613be2f50903c7db45446d2",
+      "uncompressed_bytes": 5335,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-historical-v28-r5-check.json",
+      "path": "historical-v28-r5-live-2b2fbfa5548f-integration-historical-v28-r5-check.json",
+      "sha256": "2b2fbfa5548f74aaf0caf06612a161d5aa1d41779321c292722751f99561f67a",
+      "bytes": 1577,
+      "uncompressed_sha256": "2b2fbfa5548f74aaf0caf06612a161d5aa1d41779321c292722751f99561f67a",
+      "uncompressed_bytes": 1577,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-historical-main-readback.py",
+      "path": "historical-v28-r5-live-aff1f1c11d1d-integration-historical-main-readback.py",
+      "sha256": "aff1f1c11d1d923c379963245fd0da824d089dccc6b70cb1eafdba0dc6edc672",
+      "bytes": 4683,
+      "uncompressed_sha256": "aff1f1c11d1d923c379963245fd0da824d089dccc6b70cb1eafdba0dc6edc672",
+      "uncompressed_bytes": 4683,
+      "encoding": "unchanged"
+    }
+  ]
+}

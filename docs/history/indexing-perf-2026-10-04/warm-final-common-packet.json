@@ -1,0 +1,253 @@
+{
+  "status": "all common final-source gates PASS; awaiting parent reacceptance; additional perf stopped",
+  "created_utc": "2026-10-03T23:18:48.006154+00:00",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+    "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source",
+  "implementation_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-packet.json",
+    "sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef"
+  },
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+  "no_competing_heavy_jobs": true,
+  "records": [
+    {
+      "stage": "cargo-host",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline"
+      ],
+      "environment_overrides": {},
+      "exec_authority": "require_escalated known Unixsocket sandbox boundary",
+      "started_utc": "2026-10-03T23:13:21.638701+00:00",
+      "ended_utc": "2026-10-03T23:13:59.953636+00:00",
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 0.02s",
+        "test result: ok. 1547 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 30.09s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "raw_rows": 0,
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-cargo-host.log",
+        "sha256": "7a7df157bb86c050ea9f489bc5889d8d2ac84698744f5519da6f559ca452419e"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-cargo-host.sidecar.json",
+        "sha256": "56e9b7e8dbf6b60c44f0cbe3248e86e9a8eaf6a41c0fa31f1350a0a7c2d2f8d4"
+      },
+      "owned_fixture_remaining": []
+    },
+    {
+      "stage": "basic",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_contention_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FW_INDEX_PERF_CASES": "S1-selective,S1-dense,S2",
+        "FW_INDEX_PERF_SOURCES": "FileList,Walker"
+      },
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-03T23:14:12.117834+00:00",
+      "ended_utc": "2026-10-03T23:17:16.355140+00:00",
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 93.17s"
+      ],
+      "raw_rows": 84,
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-basic.log",
+        "sha256": "a6fdaaa1ae39bad0ac7e92d28808ce6e501cad3b4340c26280c87c43847b466e"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-basic.sidecar.json",
+        "sha256": "225b05f95fcf2c403779cc269d794c561f6fce96b223cf9bac2ad5c44e62f9e4"
+      },
+      "owned_fixture_remaining": []
+    },
+    {
+      "stage": "observer",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_observer_overhead",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000"
+      },
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-03T23:17:31.097034+00:00",
+      "ended_utc": "2026-10-03T23:17:46.051484+00:00",
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 14.76s"
+      ],
+      "raw_rows": 14,
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-observer.log",
+        "sha256": "d38c06935819e5ccd50e999d70aac774d04bce2dafb027610ef1ca64cfa72f7a"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-observer.sidecar.json",
+        "sha256": "c17cc1abc1519d3174e2c157bf61f6aec392aadb402fc7889178425e06c295b0"
+      },
+      "owned_fixture_remaining": []
+    }
+  ],
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "host_settings": {
+    "os": "darwin",
+    "machine": "arm64",
+    "cpu_count": 12,
+    "normal_known_settings": {
+      "walker_max_entries": 500000,
+      "search_threads": 12,
+      "search_parallel_threshold": 25000
+    },
+    "perf_settings_provenance": "Command.env explicit values; fresh isolated libtest process"
+  },
+  "basic": {
+    "raw_rows": 84,
+    "unique_expected_keys": 84,
+    "all_correct": true,
+    "all_contention_eligible": true,
+    "ABBA_valid": true,
+    "chronology_valid": true,
+    "metadata": [
+      {
+        "arch": "aarch64",
+        "cargo_profile": "release",
+        "cases": [
+          "S1-selective",
+          "S1-dense",
+          "S2"
+        ],
+        "cpu_parallelism": 12,
+        "fixture": "flat-real-files-ascii-japanese-v2",
+        "fixture_signature": "68ffba3edf24a1d5",
+        "frame_period_ms": 16,
+        "full_profile": true,
+        "host": "macos",
+        "native": false,
+        "observer": "cfg-test-opt-in-batch-phase-v2",
+        "package_version": "0.30.0",
+        "pairs": 7,
+        "sample_entries": 100000,
+        "schema_version": 1,
+        "sources": [
+          "FileList",
+          "Walker"
+        ],
+        "trace": "empty-startup-held10-edit25-clear50-v4"
+      }
+    ],
+    "snapshot_signatures": [
+      "68ffba3edf24a1d5"
+    ],
+    "metrics_observations_only": [
+      {
+        "source": "FileList",
+        "case": "S1-selective",
+        "median_paired_results_ratio": 1.1318193513471688,
+        "B0_median_index_ms": 259.741,
+        "condition_median_index_ms": 272.234,
+        "condition_max_frame_ms": 0.9790000000000001
+      },
+      {
+        "source": "FileList",
+        "case": "S1-dense",
+        "median_paired_results_ratio": 1.2165267559756154,
+        "B0_median_index_ms": 248.6155,
+        "condition_median_index_ms": 278.393708,
+        "condition_max_frame_ms": 1.00225
+      },
+      {
+        "source": "FileList",
+        "case": "S2",
+        "median_paired_results_ratio": 1.0409206200039776,
+        "B0_median_index_ms": 256.710292,
+        "condition_median_index_ms": 270.61062499999997,
+        "condition_max_frame_ms": 1.0825
+      },
+      {
+        "source": "Walker",
+        "case": "S1-selective",
+        "median_paired_results_ratio": 1.0565603765053557,
+        "B0_median_index_ms": 986.642208,
+        "condition_median_index_ms": 992.19875,
+        "condition_max_frame_ms": 27.839334
+      },
+      {
+        "source": "Walker",
+        "case": "S1-dense",
+        "median_paired_results_ratio": 1.0439397400138832,
+        "B0_median_index_ms": 994.057125,
+        "condition_median_index_ms": 977.357875,
+        "condition_max_frame_ms": 28.630084
+      },
+      {
+        "source": "Walker",
+        "case": "S2",
+        "median_paired_results_ratio": 0.9951505468645508,
+        "B0_median_index_ms": 1003.248792,
+        "condition_median_index_ms": 994.4516669999999,
+        "condition_max_frame_ms": 26.934666999999997
+      }
+    ]
+  },
+  "observer": {
+    "raw_rows": 14,
+    "unique_keys": 14,
+    "all_correct": true,
+    "all_full_profile": true,
+    "alternating_on_off_order_valid": true,
+    "median_paired_on_off_results_ratio": 0.9907655634095021,
+    "ratio_is_observation_not_speed_gate": true
+  },
+  "cleanup": "No new matching owned indexing-perf fixture/settings/empty-root paths after each subprocess exit; no individual worker join/native signal guarantee claimed.",
+  "limitations": [
+    "Headless production update cycle only; nativeGUI/Windows/Linux/CIactivation NOT RUN.",
+    "No native SIGINT/SIGKILL cleanup proof; AppDrop250ms unchanged.",
+    "No new additional TabChain/matrix/truncated measurements; stop pending parent reacceptance.",
+    "Old historical/basic point-in-time logs and source identities unchanged; no relabeling."
+  ]
+}

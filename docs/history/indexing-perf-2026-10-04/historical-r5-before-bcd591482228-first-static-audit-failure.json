@@ -1,0 +1,7 @@
+{
+  "phase": "lightweight preparation cfg erasure",
+  "classification": "audit helper limitation, not Rust compile/test or TDD RED",
+  "error": "R4 erasure utility did not support standalone #[cfg(test)] mod tests when newly edited root_projection is audited. R4 unchanged root_projection never required this path.",
+  "repair": "Compare production prefix before exact trailing cfg(test) test-module marker, then use same method cfg erasure; test-module code is entirely cfg(test).",
+  "source_changed": false
+}

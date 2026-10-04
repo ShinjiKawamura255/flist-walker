@@ -1,0 +1,139 @@
+v0.30.0 native filter path 補足（低影響read-only）
+
+元レポートの位置付け
+v29-filter-full-focused-source-analysis.txt SHA caddb3233a6ad173e8f9025fd4168c83e16b0ab31b6230d5737db6a3f9478f28 は凍結のまま。本補足はcurrent e2efに確認したfilter改善経路のうち、実際のv0.30.0 tagに既に存在した部分を限定して確認する。current overlay全体をv30tagと呼ばない。actual v30 R5 perfは本分析では NOT_RUN、改善量・原因寄与・version順位を測定したものではない。
+
+provenance（accepted R5 packetの原版識別＋独立readback）
+original peeled commit: 129ec84cbf24ffb02bba1cade5b75fa042fd0c45
+original uncompressed archive: /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-original.tar
+archive SHA256: 5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652
+R5 export: /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0/rust/src
+R5 source subjects: 214
+R5 source manifest: b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487
+accepted packet: /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json
+packet SHA256: 04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7
+packetは original_native_runtime_unchanged=true、production_cfg_disabled_equivalence=true、full_original_patch_replay_matches_source=true。今回も元uncompressed .tarの対象3source memberをメモリでreadしただけで、展開先作成/圧縮/ビルド/テストを実施していない。元archive SHAも一致。R5 full patchにはactive_filter.rsの変更headerが無く、pipeline/pipeline_ownerの追加はcfg-test観測等。以下の具体filter関数は元archiveとR5のbytes一致を直接確認したため、単なるboolの伝聞だけに依存しない。
+
+確認結果
+1. app/active_filter.rsは原版archive・R5・current e2efで全ファイル完全byte一致。
+R5 app/active_filter.rs:11–15 はunknown budget512、known max32768、time budget4ms。
+同file:21–73のIncrementalFilterIdentityはtab/root/request・source/filtered len・include flags・IgnoreList/case/source・kind epoch/revision等のidentityをcapture/match。
+同file:152–163はincremental current判定/mark、166–232は空query＋Score＋live prefixとpolicy一致ならincremental_filtered_entriesまたはlive buildからcount/limit結果をpublishするfastpath。
+同file:297–299はlive/needs_filter/current identity時のreuse_incremental、374–387はpoll budgetとfastpath、405–455はknown32768/time4ms loopとunknown512 cap、およびidentity付きincremental候補のmembership再利用。
+これはcurrentだけの新overlayではなく、実peeled v30tagに元からあるnative経路である。unknown-kind制限を単純に32768へ拡大したという意味ではない。
+
+2. pipeline_ownerのcaller経路も原版tagにある。
+update_results / apply_incremental_empty_query_resultsの関数全bytesは原版archive=R5=current e2ef。R5行212と249（current211/248）は先にtry_publish_live_empty_query_results(false/true)を試みる。filterが必要な空queryのnative fastpathがR5 adapterでbackportされたものではないことを確認。
+
+3. ingestによるidentity更新も原版tagにあるが、currentのdrain全体は別物。
+元tag/R5のingest_index_entry、drain_queued_index_entries、drain_queued_index_entries_with_budgetは各関数全bytes一致。R5 app/pipeline.rs:1286–1302はingest時filter membershipをincremental_filtered_entriesへ蓄積、1316–1336と1354–1374はincremental_currentをcaptureしてdrain後markする。従ってfilter identity付きfastpathを有効にするnative更新が原版v30に存在する。
+一方、R5→current diffのproduction差はactive handoff mailbox gate、ingest_ordered_index_entry / drain_ordered_index_entries、background prefixの順序付きdrain/retirement、handoff完了までのfinish延期等。current app/pipeline.rs:1184以降、1285以降、1332–1460、1590以降にその差がある。これらordered handoff修復を元tagへ帰属させない。pipeline_ownerのR5→current全体差はblankline1行だが、pipeline全体は同一ではなくcurrentの全perf結果を原tag結果へ付け替えない。
+
+限定した結論
+v29に対して候補として挙げた、空query filter replayの回避・incremental membership identity・known-candidate32768/4ms budgetは、actual v30tagのnative sourceに存在することを確認した。これはv30の測定改善の証明ではない。v29で実際に何回replay/retirement retryしたか、各phaseの因果寄与は依然未観測。actualv30tag expanded perfは重い担当の正式結果を待つ。
+
+source / function bytes proof（行はactualarchive memberとR5 exportで別に記載）
+{
+  "file_hashes": {
+    "app/active_filter.rs": {
+      "peeled_native_archive_sha256": "b276ccd789d59da7e6cb5062e94d5a432df5eafe1cdf85f323b744215bccd377",
+      "R5_export_sha256": "b276ccd789d59da7e6cb5062e94d5a432df5eafe1cdf85f323b744215bccd377",
+      "current_e2ef_sha256": "b276ccd789d59da7e6cb5062e94d5a432df5eafe1cdf85f323b744215bccd377"
+    },
+    "app/pipeline_owner.rs": {
+      "peeled_native_archive_sha256": "ef3636b0bf34aeae374f5020c2ab9133834bbdccdc2fe7660bd24faef03479ea",
+      "R5_export_sha256": "b6b98d76e04af9effba07cc7637707143d140461555a656f43637ef85901a273",
+      "current_e2ef_sha256": "a6fb92d9b52be71299a570727ed094e83e05bfecf1de7fe1cd0aaa03e5486161"
+    },
+    "app/pipeline.rs": {
+      "peeled_native_archive_sha256": "32329c4cb2d46cc8c8b7ba30d48fa9cd00dd5f43944bc42eb54e744e72a36c69",
+      "R5_export_sha256": "065454fd1d885b92cafa62eafb487f40e291adceb2d6855a62c8c2097a958c37",
+      "current_e2ef_sha256": "e2fd23b9f2eb72222da952c87f18241090e7c5868abf5ead48d01f55579d1e6d"
+    }
+  },
+  "function_proofs": [
+    {
+      "file": "app/pipeline_owner.rs",
+      "function": "update_results",
+      "original_native_member_lines": [
+        115,
+        148
+      ],
+      "R5_export_lines": [
+        209,
+        242
+      ],
+      "original_native_equals_R5_function_bytes": true,
+      "function_sha256": "04453a9ce67f5e5355be01c7a760a8e64bb650a8408b3fe5d5f97621f2ccec76",
+      "current_e2ef_lines": [
+        208,
+        241
+      ],
+      "all_three_function_bytes_equal": true
+    },
+    {
+      "file": "app/pipeline_owner.rs",
+      "function": "apply_incremental_empty_query_results",
+      "original_native_member_lines": [
+        154,
+        170
+      ],
+      "R5_export_lines": [
+        248,
+        264
+      ],
+      "original_native_equals_R5_function_bytes": true,
+      "function_sha256": "65a414c19c936162b84624c5f38e31ca7b27f3d369cfce7b7c4495f36620cf18",
+      "current_e2ef_lines": [
+        247,
+        263
+      ],
+      "all_three_function_bytes_equal": true
+    },
+    {
+      "file": "app/pipeline.rs",
+      "function": "ingest_index_entry",
+      "original_native_member_lines": [
+        1223,
+        1248
+      ],
+      "R5_export_lines": [
+        1278,
+        1303
+      ],
+      "original_native_equals_R5_function_bytes": true,
+      "function_sha256": "d1898d2f7426db89b4541d56b84cb0c3d6a7abee3f4c411b6e11b2dfaa55e16b"
+    },
+    {
+      "file": "app/pipeline.rs",
+      "function": "drain_queued_index_entries",
+      "original_native_member_lines": [
+        1250,
+        1284
+      ],
+      "R5_export_lines": [
+        1305,
+        1339
+      ],
+      "original_native_equals_R5_function_bytes": true,
+      "function_sha256": "2ac313bbe853c8be4b45ab248b0f417918f9ef9380eb199546dbc9845fb66cbc"
+    },
+    {
+      "file": "app/pipeline.rs",
+      "function": "drain_queued_index_entries_with_budget",
+      "original_native_member_lines": [
+        1286,
+        1322
+      ],
+      "R5_export_lines": [
+        1341,
+        1377
+      ],
+      "original_native_equals_R5_function_bytes": true,
+      "function_sha256": "28eb50e22746c06baaf091a30a10f2f55c10cbd68701e366f267ea54ef77e4fc"
+    }
+  ]
+}
+current e2ef source213 manifest: e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d
+作成UTC: 2026-10-04T08:47:03.829844+00:00
+変更は本NEW ignored addendumのみ。元report/Rust/source/collector/shared docs/plan/manifest/Git/archiveは変更なし。Cargo/test/perf/圧縮は行っていない。

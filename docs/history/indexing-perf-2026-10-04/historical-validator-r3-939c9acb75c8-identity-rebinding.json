@@ -1,0 +1,7 @@
+{
+  "raw_checkpoint_sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+  "canonical_checkpoint_sha256": "6bd31e2619bf751ecc6b9b83d7858468114f39259a5202cb73a2f6c4e7cb763c",
+  "guard_packet": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json",
+  "scope": "only accepted checkpoint pins, source path and comments; control donor/protocol/assertions unchanged",
+  "fbd9_module_sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429"
+}

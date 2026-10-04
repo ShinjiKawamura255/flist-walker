@@ -1,0 +1,7 @@
+{
+  "frozen_collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+  "victim_text_sha256": "e29506d574c35d3b0a64262d1c17f1363a540f2c3b7d6aa78db7a1bdb2ac9fa1",
+  "row_and_aggregation_text_sha256": "11793dc1fb7655edf508e947d933dc1f4b3bf5a8c5500a17aca3adfd5b3db560",
+  "adaptation": "Only function wrapper + indentation plus metas=[sealed_cell_meta]; original assertions/typed victim/ABBA/chronology/pair/zero-denominator aggregation body unchanged. Raw whole-log success gate is independently enforced by historical process FSM, never spoofed.",
+  "generated_module_sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429"
+}

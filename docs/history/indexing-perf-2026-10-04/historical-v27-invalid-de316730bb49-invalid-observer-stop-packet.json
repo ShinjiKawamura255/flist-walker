@@ -1,0 +1,753 @@
+{
+  "schema_version": 1,
+  "classification": "invalid-observer diagnostic; no accepted performance comparison",
+  "freeze_utc": "2026-10-04T05:21:07.014790+00:00",
+  "supersedes_interpretation_only": "first-observation-gap-diagnostic.json raw method presence is preserved. v30 has no started-root trait and records root on native Started send; root-forwarding gap is only v27/28/29, nested-forwarding gap all four.",
+  "build_exit": 0,
+  "exact_discovery_exit": 0,
+  "exact_discovered_count": 1,
+  "ordinary_actual_exit": -15,
+  "outer_wrapper_actual_exit": 2,
+  "ordinary_elapsed_seconds": 541.7058512910007,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "watchdog_expired": false,
+  "owned_stop_actual_signals": [
+    {
+      "signal": "SIGTERM",
+      "utc": "2026-10-04T05:18:42.100781+00:00"
+    }
+  ],
+  "stop_helper_outcome": "TERM sent after exact PID/cmd/cwd/pgid check. Subsequent killpg(pgid,0) raised PermissionError before further signals. No KILL. Wrapper actual wait/group absence plus separate ps PID absence confirmed.",
+  "independent_ps_after": {
+    "command": [
+      "ps",
+      "-p",
+      "19148,19149",
+      "-o",
+      "pid=,ppid=,pgid=,command="
+    ],
+    "exit_code": 1,
+    "matching_output": ""
+  },
+  "raw_counts": {
+    "CELL_START": 16,
+    "CELL_STATUS": 15,
+    "SAMPLE": 0
+  },
+  "matrix_counts": {
+    "actual_FAIL": 15,
+    "canceled_incomplete_stage": 1,
+    "NOT_RUN": 28
+  },
+  "matrix": [
+    {
+      "case": "F1-files",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-folders",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-ignore-case",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-ignore-case",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "S1-ignore",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "S1-ignore",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "S2-files",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-name-shown",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-name-shown",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-modified-shown",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-modified-shown",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_origin": "actual raw CELL_STATUS",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-name-all",
+      "source": "FileList",
+      "status": "CANCELED_STAGE",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-name-all",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-active-warm",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-active-warm",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-promotion",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-promotion",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-A-B-C-A",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-A-B-C-A",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S1-selective",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S1-selective",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S1-dense",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S1-dense",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S2",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-S2",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "R1-natural",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "R1-natural",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-natural-reclaim",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "T1-natural-reclaim",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "H1-early",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "H1-late",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "P1-preview",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "P1-preview",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "W1-follow-links",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "W1-deep",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "W1-wide",
+      "source": "Walker",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-filelist-parser-files",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    },
+    {
+      "case": "F1-filelist-parser-folders",
+      "source": "FileList",
+      "status": "NOT_RUN",
+      "status_origin": "execution coverage annotation; no synthesized runner STATUS",
+      "positive_cleanup": null,
+      "root_restored": null,
+      "accepted_rows": 0
+    }
+  ],
+  "accepted_rows": 0,
+  "expected_ordinary_rows": 616,
+  "cap": {
+    "status": "NOT_RUN",
+    "reason": "parent-authorized diagnostic stop; protocol has incomplete cells and signal exit",
+    "expected_rows": 14,
+    "selector_note": "Dedicated cap runner ignores ordinary entries/case selectors; its fixed cap+1 contract was not executed."
+  },
+  "next_tags": "NOT_RUN; not authorized",
+  "cleanup_truth": "15 prior completed cells have actual positive cleanup/root_restored. Interrupted cell has no STATUS/cleanup proof. Process reap is not product SIG cleanup. No root/settings deletion or restoration after stop.",
+  "retained_root_candidates": [
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+    "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+  ],
+  "retained_root_readback": [
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+      "exists": true,
+      "is_dir": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000",
+      "exists": true,
+      "is_dir": true
+    }
+  ],
+  "settings_saved_content_readback": "NOT_RUN; interrupted owned settings retained, not inspected/rewritten",
+  "first3_summary": [
+    {
+      "case": "F1-files",
+      "source": "Walker",
+      "condition": false,
+      "elapsed_ms": 30817.360375,
+      "source_root_correct": false,
+      "snapshots": [
+        {
+          "active": true,
+          "all_count": 80000,
+          "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_request": 2,
+          "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_source": "Walker",
+          "lifecycle": "Dormant",
+          "oracle_valid": false,
+          "signature": "45dddc7bffbcb359",
+          "tab": 1,
+          "visible_count": 80000
+        }
+      ]
+    },
+    {
+      "case": "F1-folders",
+      "source": "Walker",
+      "condition": false,
+      "elapsed_ms": 30218.621666,
+      "source_root_correct": false,
+      "snapshots": [
+        {
+          "active": true,
+          "all_count": 20000,
+          "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_request": 2,
+          "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_source": "Walker",
+          "lifecycle": "Dormant",
+          "oracle_valid": false,
+          "signature": "d64f881158da29b1",
+          "tab": 1,
+          "visible_count": 20000
+        }
+      ]
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "condition": false,
+      "elapsed_ms": 30269.59675,
+      "source_root_correct": false,
+      "snapshots": [
+        {
+          "active": true,
+          "all_count": 100000,
+          "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_request": 2,
+          "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000/FileList.txt\")",
+          "lifecycle": "Dormant",
+          "oracle_valid": true,
+          "signature": "3e25b99c2ca2531d",
+          "tab": 1,
+          "visible_count": 100000
+        }
+      ]
+    }
+  ],
+  "F1_oracle_caveat": "80000/20000 oracle_valid=false is the stall diagnostic quiet_oracle, constructed with default_filter at driver.rs914-930. It does not establish active filter-oracle or kind/membership failure. Actual paths/kinds were not logged; separate cause remains undetermined, no kindNone allowance or oracle change.",
+  "tag_source_checks": [
+    {
+      "tag": "v0.27.0",
+      "source_unchanged": true,
+      "source_files": 187,
+      "lock_unchanged": true,
+      "root_sink": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/index_worker/root_projection.rs",
+        "sha256": "d2fa45c228962ace028c29c9cddf8ae6abe1f342d0c518df22be841a93d6832c",
+        "bytes": 12677
+      },
+      "worker": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/index_worker.rs",
+        "sha256": "043c2c379108aa7f940419138f832d3fc9b5b2509527ec1b435260c6c2f45ffa",
+        "bytes": 44421
+      },
+      "started_root_trait_exists": true,
+      "root_callback_forward_present": false,
+      "root_callback_gap": true,
+      "nested_callback_gap": true,
+      "v30_native_root_capture_line": null
+    },
+    {
+      "tag": "v0.28.0",
+      "source_unchanged": true,
+      "source_files": 199,
+      "lock_unchanged": true,
+      "root_sink": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0/rust/src/app/index_worker/root_projection.rs",
+        "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+        "bytes": 12722
+      },
+      "worker": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0/rust/src/app/index_worker.rs",
+        "sha256": "329bd843c6756af62836928882e5a2df53746a436e27c0e0197ad52e78bc4e7f",
+        "bytes": 44661
+      },
+      "started_root_trait_exists": true,
+      "root_callback_forward_present": false,
+      "root_callback_gap": true,
+      "nested_callback_gap": true,
+      "v30_native_root_capture_line": null
+    },
+    {
+      "tag": "v0.29.0",
+      "source_unchanged": true,
+      "source_files": 207,
+      "lock_unchanged": true,
+      "root_sink": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0/rust/src/app/index_worker/root_projection.rs",
+        "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+        "bytes": 12722
+      },
+      "worker": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0/rust/src/app/index_worker.rs",
+        "sha256": "329bd843c6756af62836928882e5a2df53746a436e27c0e0197ad52e78bc4e7f",
+        "bytes": 44661
+      },
+      "started_root_trait_exists": true,
+      "root_callback_forward_present": false,
+      "root_callback_gap": true,
+      "nested_callback_gap": true,
+      "v30_native_root_capture_line": null
+    },
+    {
+      "tag": "v0.30.0",
+      "source_unchanged": true,
+      "source_files": 214,
+      "lock_unchanged": true,
+      "root_sink": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust/src/app/index_worker/root_projection.rs",
+        "sha256": "8763abd4d9e6e6ac6ceff12f497b4f2877c5b70af2f9c0adba5d9287ba5970b8",
+        "bytes": 12722
+      },
+      "worker": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust/src/app/index_worker.rs",
+        "sha256": "c18f18e19d011ddfda4170fd40b3d6cf14fd12e7daab34578767689e7052eb1f",
+        "bytes": 44804
+      },
+      "started_root_trait_exists": false,
+      "root_callback_forward_present": false,
+      "root_callback_gap": false,
+      "nested_callback_gap": true,
+      "v30_native_root_capture_line": 173
+    }
+  ],
+  "current213_unchanged": true,
+  "current_collector_unchanged": true,
+  "R2_validator_unchanged": true,
+  "v27_original_precleanup_Flush": "Unobserved. Prior positive evidence covers added final owned cleanup Flush only.",
+  "references": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/first-observation-gap-diagnostic.json",
+      "sha256": "ba8f62ecdf82b4c434245f1065aa31e8b6842d493163a842c13f8b5275d4b01f",
+      "bytes": 23447
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/first3-stall-extract.json",
+      "sha256": "60803cc9445732c38af5ca3a57ed4969e3bb7bcd46b3423b27712f915046c3e5",
+      "bytes": 8914
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/owned-early-stop.json",
+      "sha256": "c967153a6a2a7ec09b1e0d608a0fefd5ce28190cda99ee7d6855571e19880e1f",
+      "bytes": 1541
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/run_v27.py",
+      "sha256": "25f3309b9b3a99d861aa68d79197df072d1e415ca4bd3362711fbe7e5f2116fb",
+      "bytes": 12720
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-final-execution-packet.json",
+      "sha256": "7c9a850f2723fe068b5173161088ef06c4fd583a80648a6058f1001a793c7077",
+      "bytes": 5598
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-discovery.json",
+      "sha256": "7cbdb2b30e05ca6ba69f0a91cb5495a67d0fcc557e761458cee7bba74ddc93da",
+      "bytes": 41267
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-discovery.log",
+      "sha256": "c81c7054bbfbc49ced60d87865b3a8d1bde406af2203df721e2002d66697f695",
+      "bytes": 375
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-full-collector-sidecar.json",
+      "sha256": "def292126819daaf31cf74837fce00d6b1b5e5262791e80c2803a6fa7d4cf64d",
+      "bytes": 6641
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-full-validator-rejection.json",
+      "sha256": "d4ce2c5c629f2be19b8505a689c161ef3b0582d1a6e01b41c2fd59e315b12566",
+      "bytes": 286
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-full.json",
+      "sha256": "b408b02ee1f3108525b73895865b171de6cab3d8f55dd2e3a36015504788d2a0",
+      "bytes": 63269
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-ordinary-full.log",
+      "sha256": "fc5496aa02551e4755896a02e766014b551e96e099196f8ac20e4e0898e629c6",
+      "bytes": 73154
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-release-build.json",
+      "sha256": "92c8a22a962b981c7ba054439f7234549710dc93b4986fcb94ffb7f16fac6c5e",
+      "bytes": 41092
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/v27-release-build.log",
+      "sha256": "55e857ac4c276dce64ab1c312351da3aa266aa87bff1d5aba3e3b5929b63171d",
+      "bytes": 8838
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/wrapper-preparation.json",
+      "sha256": "c5e436fd83b55f426e053ca442f05ad72057892696b0c55748d0e1678284f23e",
+      "bytes": 353
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "status": "PASS-evidence-calculation-only",
+  "scope": "Actual four tags; every ordinary whole runner remains FAILED/101; only sealed PASS cells are compared",
+  "condition_halves": 304,
+  "ordinary_cells_per_tag": 44,
+  "pass_cells": [
+    33,
+    37,
+    39,
+    43
+  ],
+  "accepted_ordinary_rows": [
+    462,
+    518,
+    546,
+    602
+  ],
+  "common_pass_cells": 33,
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-four-tag-comparison.py",
+      "path": "four-tag-comparison-d60dc17d47a6-integration-four-tag-comparison.py",
+      "sha256": "d60dc17d47a6d1c7518dec0ddc1228208d3d5dab868bfc49ae4968477be6f2b3",
+      "bytes": 6173,
+      "uncompressed_sha256": "d60dc17d47a6d1c7518dec0ddc1228208d3d5dab868bfc49ae4968477be6f2b3",
+      "uncompressed_bytes": 6173,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/four-tag-r5-comparison.json",
+      "path": "four-tag-comparison-ceb40e0f07f0-four-tag-r5-comparison.json.gz",
+      "sha256": "0ae179063231dc8ab8c844ee62558d1b58baa6501ec7559a331c34f7793fa309",
+      "bytes": 123454,
+      "uncompressed_sha256": "ceb40e0f07f0bb458534ea390280d05dc95e98739122e7d8d3e90e9cafa6172c",
+      "uncompressed_bytes": 1243488,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/four-tag-r5-comparison.csv",
+      "path": "four-tag-comparison-5ed17fe90001-four-tag-r5-comparison.csv",
+      "sha256": "5ed17fe9000132b963facc8000708f9c495b6354a68d4f59e5c0f6d2c60f28ad",
+      "bytes": 236722,
+      "uncompressed_sha256": "5ed17fe9000132b963facc8000708f9c495b6354a68d4f59e5c0f6d2c60f28ad",
+      "uncompressed_bytes": 236722,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/four-tag-calculation-first-failure.txt",
+      "path": "four-tag-comparison-bddfed1fff01-four-tag-calculation-first-failure.txt",
+      "sha256": "bddfed1fff01b1d0c70fb470b62b7e23a975f4c9f35fa764cc450bf2a503fcef",
+      "bytes": 660,
+      "uncompressed_sha256": "bddfed1fff01b1d0c70fb470b62b7e23a975f4c9f35fa764cc450bf2a503fcef",
+      "uncompressed_bytes": 660,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/four-tag-calculation-check.json",
+      "path": "four-tag-comparison-8ea4adb04bd0-four-tag-calculation-check.json",
+      "sha256": "8ea4adb04bd0809170589820d4dda03b4e4ce5114a0c2135dc4f5352f8214f88",
+      "bytes": 718,
+      "uncompressed_sha256": "8ea4adb04bd0809170589820d4dda03b4e4ce5114a0c2135dc4f5352f8214f88",
+      "uncompressed_bytes": 718,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/four-tag-final-fail-and-declared-work-addendum.txt",
+      "path": "four-tag-comparison-098da2d52159-four-tag-final-fail-and-declared-work-addendum.txt",
+      "sha256": "098da2d5215920fe19c3a7ea901b4a21f94d82fcaa6a4944ac07a5e7d7dff708",
+      "bytes": 81610,
+      "uncompressed_sha256": "098da2d5215920fe19c3a7ea901b4a21f94d82fcaa6a4944ac07a5e7d7dff708",
+      "uncompressed_bytes": 81610,
+      "encoding": "unchanged"
+    }
+  ]
+}

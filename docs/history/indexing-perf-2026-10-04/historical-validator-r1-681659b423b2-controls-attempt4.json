@@ -1,0 +1,14 @@
+{
+  "exit_code": 0,
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "rust/target/indexing-perf-study/historical-validator-r1",
+    "-p",
+    "test_historical.py"
+  ],
+  "log_sha256": "4b03230b47728118920a71b5d71390b33aebc168daa85ab7e6a05f801e775dae"
+}

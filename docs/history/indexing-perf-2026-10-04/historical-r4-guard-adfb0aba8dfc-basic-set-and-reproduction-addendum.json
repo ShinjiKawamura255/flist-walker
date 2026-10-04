@@ -1,0 +1,146 @@
+{
+  "packet_sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+  "clarification": "Frozen packet key basic_11_assets_unchanged misleadingly names11 but its numeric10 is len(prior prepared ten-file directory set). The omitted eleventh subject is baseline report outside that directory; original packet proves only ten compared paths. Do not read numeric10 as11. No frozen packet modified.",
+  "actual_packet_compared_set": {
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-comparisons.json": "7a744ad8757795601a7e3490d4dcc904ba9d46045deb05986147c7e5662b8902",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-environment.json": "8299120c65de751fdc8ab73fdd063a0e11f3bb9f2e9e0ef8739b72a8d48f6f1c",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-identities.json": "4a3936770e86b800afd56ed59d8ddced3a355288b1c576c8d85947b449ac62c6",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-matrix.json": "3b1dfd040e6f61bcfe46d9e0bf71cb85c76e2a58750bf67517712dcb405029ad",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-observer.jsonl": "38c36fbf1b3ef01a0fd4207f26af27cd0bc45f8702f7606bc5b54809a8040cd6",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-raw.jsonl": "97bb314613559179d930db0d8dfd3f13b1956be370d5eaf58b148b45d8b6b119",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.27.0-basic.patch": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.28.0-basic.patch": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.29.0-basic.patch": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953",
+    "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.30.0-basic.patch": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f"
+  },
+  "separate_now_verified_11_subjects": [
+    {
+      "path": "docs/history/indexing-perf-baseline-2026-10-03.md",
+      "sha256": "d40eb920a72c6f9c9756cbbdbc1a91508d3a20c2bc28f2ffdf3bf58ccb317c32"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-comparisons.json",
+      "sha256": "7a744ad8757795601a7e3490d4dcc904ba9d46045deb05986147c7e5662b8902"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-environment.json",
+      "sha256": "8299120c65de751fdc8ab73fdd063a0e11f3bb9f2e9e0ef8739b72a8d48f6f1c"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-identities.json",
+      "sha256": "4a3936770e86b800afd56ed59d8ddced3a355288b1c576c8d85947b449ac62c6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-matrix.json",
+      "sha256": "3b1dfd040e6f61bcfe46d9e0bf71cb85c76e2a58750bf67517712dcb405029ad"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-observer.jsonl",
+      "sha256": "38c36fbf1b3ef01a0fd4207f26af27cd0bc45f8702f7606bc5b54809a8040cd6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-raw.jsonl",
+      "sha256": "97bb314613559179d930db0d8dfd3f13b1956be370d5eaf58b148b45d8b6b119"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.27.0-basic.patch",
+      "sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.28.0-basic.patch",
+      "sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.29.0-basic.patch",
+      "sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.30.0-basic.patch",
+      "sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f"
+    }
+  ],
+  "previously_omitted": [
+    {
+      "path": "docs/history/indexing-perf-baseline-2026-10-03.md",
+      "sha256": "d40eb920a72c6f9c9756cbbdbc1a91508d3a20c2bc28f2ffdf3bf58ccb317c32"
+    }
+  ],
+  "reproduction": [
+    {
+      "tag": "v0.27.0",
+      "original_archive": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-original.tar",
+      "original_archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-final-full.patch",
+        "sha256": "06c81776285aa7958cbe01b2667e43bd7bd448e8b30db070f5e4eb68e28efdab",
+        "bytes": 479768
+      },
+      "steps": [
+        "Create a fresh owned destination; extract exact original archive there.",
+        "Apply retained full patch with patch --no-backup-if-mismatch -p1 -i <absolute-full-patch> in archive root.",
+        "Compare final source hashes to retained source_map; confirm original Cargo.toml/Cargo.lock bytes.",
+        "Set tag-specific CARGO_TARGET_DIR; FLISTWALKER_SEARCH_THREADS=12 FLISTWALKER_SEARCH_PARALLEL_THRESHOLD=25000 FLISTWALKER_WALKER_MAX_ENTRIES=500000.",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --list",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --nocapture --test-threads=1"
+      ],
+      "executed_exact_paths_commands": "Guard packet per-stage sidecars pin live R4 paths and dedicated targets; no performance command authorized here."
+    },
+    {
+      "tag": "v0.28.0",
+      "original_archive": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-original.tar",
+      "original_archive_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-final-full.patch",
+        "sha256": "80476a380231e52c75d3737232c4f035f9538a7117f611a882e1042c86a96cba",
+        "bytes": 478530
+      },
+      "steps": [
+        "Create a fresh owned destination; extract exact original archive there.",
+        "Apply retained full patch with patch --no-backup-if-mismatch -p1 -i <absolute-full-patch> in archive root.",
+        "Compare final source hashes to retained source_map; confirm original Cargo.toml/Cargo.lock bytes.",
+        "Set tag-specific CARGO_TARGET_DIR; FLISTWALKER_SEARCH_THREADS=12 FLISTWALKER_SEARCH_PARALLEL_THRESHOLD=25000 FLISTWALKER_WALKER_MAX_ENTRIES=500000.",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --list",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --nocapture --test-threads=1"
+      ],
+      "executed_exact_paths_commands": "Guard packet per-stage sidecars pin live R4 paths and dedicated targets; no performance command authorized here."
+    },
+    {
+      "tag": "v0.29.0",
+      "original_archive": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-original.tar",
+      "original_archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-final-full.patch",
+        "sha256": "a44ea742d6b5f3237f5977338832ca62344b5b37f3d29be95118ce6bc07469fa",
+        "bytes": 479284
+      },
+      "steps": [
+        "Create a fresh owned destination; extract exact original archive there.",
+        "Apply retained full patch with patch --no-backup-if-mismatch -p1 -i <absolute-full-patch> in archive root.",
+        "Compare final source hashes to retained source_map; confirm original Cargo.toml/Cargo.lock bytes.",
+        "Set tag-specific CARGO_TARGET_DIR; FLISTWALKER_SEARCH_THREADS=12 FLISTWALKER_SEARCH_PARALLEL_THRESHOLD=25000 FLISTWALKER_WALKER_MAX_ENTRIES=500000.",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --list",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --nocapture --test-threads=1"
+      ],
+      "executed_exact_paths_commands": "Guard packet per-stage sidecars pin live R4 paths and dedicated targets; no performance command authorized here."
+    },
+    {
+      "tag": "v0.30.0",
+      "original_archive": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-original.tar",
+      "original_archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-final-full.patch",
+        "sha256": "9fa2a5f57ee063c74612d53b19ae7f152b6a743f057577ce6b9ab0994873462b",
+        "bytes": 474747
+      },
+      "steps": [
+        "Create a fresh owned destination; extract exact original archive there.",
+        "Apply retained full patch with patch --no-backup-if-mismatch -p1 -i <absolute-full-patch> in archive root.",
+        "Compare final source hashes to retained source_map; confirm original Cargo.toml/Cargo.lock bytes.",
+        "Set tag-specific CARGO_TARGET_DIR; FLISTWALKER_SEARCH_THREADS=12 FLISTWALKER_SEARCH_PARALLEL_THRESHOLD=25000 FLISTWALKER_WALKER_MAX_ENTRIES=500000.",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --list",
+        "cargo +1.97.1 test --locked --offline --lib historical_ -- --nocapture --test-threads=1"
+      ],
+      "executed_exact_paths_commands": "Guard packet per-stage sidecars pin live R4 paths and dedicated targets; no performance command authorized here."
+    }
+  ]
+}

@@ -1,0 +1,356 @@
+{
+  "status": "source frozen; focused AFTER pending; performance stopped",
+  "created_utc": "2026-10-03T23:05:35.487017+00:00",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+    "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source",
+  "changed_since_diagnostic_c219": [
+    "src/app/index_coordinator.rs",
+    "src/app/tests/indexing_perf/extensions/driver.rs",
+    "src/app/tests/indexing_perf/extensions/mod.rs"
+  ],
+  "reversible_ack_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final.patch",
+    "sha256": "3612bb0fed3b0fbef5c63c2323e34b715dc1e2252b2df4dc89318880854383d9"
+  },
+  "reversible_removal_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-final.patch",
+    "sha256": "e6fbc036e33c89c0d8a25883ddff77642323a54ff9573c0862765fbec88031a8"
+  },
+  "normal_actual_worker_leaf_callers": 11,
+  "implementation": [
+    "Opt-in cfg(test) mutex-local route-owned nonzero Warm removal scalars; append after unlock; total128 sticky overflow; no payload pins.",
+    "Fixed TabChain expected target/root acknowledgement requires actual active tab/root and pending activation None; immediate before dependent refresh and deferred before same postframe owner selection. No oldWarm declaration acknowledges only; it creates no cause/identity proof.",
+    "Exact current-max allocated+ledger owner derives live None exception only from actual removal+ack; physical return/debt still independently required. Standalone removal is sufficient; every optional priorNone marker must pair exactly. Direct priorSome proof remains strict.",
+    "Preserve first real publishedFinished classification observation timestamp across later rereads. Required A/C/latest and BFinished newest-generation truth unchanged; B canceled exception requires exact cause/seed/chronology plus full independent seed oracle once after tentative t3."
+  ],
+  "raw_additions": [
+    "actual_warm_removal_events",
+    "warm_removal_observer_limit",
+    "warm_removal_observer_overflow",
+    "active_at_removal",
+    "index_requests.actual_cause_kind",
+    "index_requests.invalidating_mutation_ms",
+    "index_requests.followup_preempt_ms",
+    "declared_eviction_edges.expected_active_root",
+    "declared_eviction_edges.actual_switch_ack",
+    "actual_preemption_events.warm_removal_mutation_ms"
+  ],
+  "first_reds": [
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-first-red.log",
+        "sha256": "4173f445ba20af6018be22756a85ab8b1ce559437fc282fb56b0839397e7651c"
+      },
+      "count": "0 passed; 1 failed (leaf and parent summaries refer to same test)",
+      "kind": "actual replace_warm_tab observation absent"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-old-selector-regression-red.log",
+        "sha256": "0377f0601590a984a8a512eb2fe11993d5836c7654d7f29d6790e190f2592cdc"
+      },
+      "count": "0 passed; 1 failed (leaf and parent summaries refer to same test)",
+      "kind": "differential exact old None-release-only predicate inside new actual composed guard; not unmodified whole old source"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-repeated-finished-observation-red.log",
+        "sha256": "fc1629a9e42eb3764f3d7c65de2b386a73b0197553b6f2271160ec0aad5c670a"
+      },
+      "count": "0 passed; 1 failed (leaf and parent summaries refer to same test)",
+      "kind": "actual repeated permit_revocation erased first classification time"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-no-victim-first-red.log",
+        "sha256": "e5c88372a32ba2f8632721b4df0fba03498ccc11178a8f256fedb54ce3116d59"
+      },
+      "count": "0 passed; 1 failed (leaf and parent summaries refer to same test)",
+      "kind": "actual switch with no oldWarm declaration wrongly rejected"
+    }
+  ],
+  "collector_differential_red": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-collector-original-red.log",
+    "sha256": "4768a409248c33a69a5ab7a75f9fa277cb0f776aa59fe3d10ac9af7261a1cfa4"
+  },
+  "retained_normal_failure": {
+    "log": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-final-indexing-normal-v2.log",
+      "sha256": "aeba81e098d436a38fa74b838b688f51a395c38c1f78c33e8b9de3838a1a754f"
+    },
+    "summary": "61 passed; 1 failed; 4 ignored",
+    "cause": "repeated classification overwrote genuine first Finished observation after earliest mutation; repaired monotonicity"
+  },
+  "regates": [
+    {
+      "stage": "composed",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_229_preemption_observer_is_opt_in_bounded_and_scalar",
+        "--",
+        "--nocapture"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 0.13s"
+      ],
+      "started_utc": "2026-10-03T22:58:12.588240+00:00",
+      "ended_utc": "2026-10-03T22:58:15.629649+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-composed.log",
+        "sha256": "1d98e601ccb2e6c4756f0e8a85834165801401d0ee6ed9afa06e094bf83e7ea3"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-composed.sidecar.json",
+        "sha256": "de0df1b514b33d640e76c8b5e9d8f655713d07f93c7ec252568f6d24fdb6c307"
+      }
+    },
+    {
+      "stage": "indexing-normal",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "indexing_perf",
+        "--",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 62 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.34s"
+      ],
+      "started_utc": "2026-10-03T22:58:15.635782+00:00",
+      "ended_utc": "2026-10-03T22:58:54.111554+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-indexing-normal.log",
+        "sha256": "1a6f778d2a6c97cd2dc1b7dfeb9930018d3587ac5c633c291b89c148f04510c5"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-indexing-normal.sidecar.json",
+        "sha256": "e7ab91e32e96fcbddef79e4e5cc8efd36b0ef73dd40b41db2a7002cae487429f"
+      }
+    },
+    {
+      "stage": "search-observer",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "worker::search_perf::tests"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 0.00s"
+      ],
+      "started_utc": "2026-10-03T22:58:54.116729+00:00",
+      "ended_utc": "2026-10-03T22:58:54.250247+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-search-observer.log",
+        "sha256": "2c5b44c2e47c1e7f42028ab1b55fe4408d2b29d89fec4a383f02178f31a4c285"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-search-observer.sidecar.json",
+        "sha256": "46ad080de9362d205d11b9d82c3db3f8a9525ff48dc950b466ce4a4aa1a5b501"
+      }
+    },
+    {
+      "stage": "ordering",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1556 filtered out; finished in 0.20s"
+      ],
+      "started_utc": "2026-10-03T22:58:54.255139+00:00",
+      "ended_utc": "2026-10-03T22:58:54.590499+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-ordering.log",
+        "sha256": "b8879b3bb1fc050f8e0b53d0057d4f7820037f74eadb0f36b53e43623db605ad"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-ordering.sidecar.json",
+        "sha256": "b9e349d51472d54a9580bc1bdc7c577f4bb7376d22a2e5567420545eeda3c66b"
+      }
+    },
+    {
+      "stage": "tc207",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 1484 filtered out; finished in 1.39s"
+      ],
+      "started_utc": "2026-10-03T22:58:54.598643+00:00",
+      "ended_utc": "2026-10-03T22:58:56.133744+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-tc207.log",
+        "sha256": "e7b3eda05ff81beee1b871546396ee03d82fb77f7d7172a2ec40c3f83f2f4011"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-tc207.sidecar.json",
+        "sha256": "fc7bccb6951793b39e92ed190ca1f657f1112bef75cb64e7bde43cf54dcf8fca"
+      }
+    },
+    {
+      "stage": "pipeline",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::index_pipeline::",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 152 passed; 0 failed; 0 ignored; 0 measured; 1414 filtered out; finished in 0.11s"
+      ],
+      "started_utc": "2026-10-03T22:58:56.138788+00:00",
+      "ended_utc": "2026-10-03T22:58:56.379840+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-pipeline.log",
+        "sha256": "eb8dc7896801379c422b6f2b820d6d3273732ec28eab1f0c6ef2ca2a6bd55df5"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-pipeline.sidecar.json",
+        "sha256": "9476f8b38e5713d23f24a273e05a52ed9d99fc409a8236ca75e41040fa94d180"
+      }
+    },
+    {
+      "stage": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [],
+      "started_utc": "2026-10-03T22:58:56.384817+00:00",
+      "ended_utc": "2026-10-03T22:58:56.917180+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-fmt.sidecar.json",
+        "sha256": "082d0a3a57b5f327b241a5d0f26447705301855669090ac4573398e897c36c60"
+      }
+    },
+    {
+      "stage": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "summaries": [],
+      "started_utc": "2026-10-03T22:58:56.922196+00:00",
+      "ended_utc": "2026-10-03T22:58:59.635133+00:00",
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-clippy.log",
+        "sha256": "a3268a9288ed913febc60a91a5b588d13c6bc5701c61015091943f8ce735aeac"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-clippy.sidecar.json",
+        "sha256": "90d21cef18d659d4c79e2233d892ff8047e5b635c1188af572810c542add81df"
+      }
+    }
+  ],
+  "collector": {
+    "source": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+      "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f"
+    },
+    "test": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_warm_removal_collector.py",
+      "sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298"
+    },
+    "prerequisite": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_victim_final_collector_regression.py",
+      "sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1"
+    },
+    "log": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector.log",
+      "sha256": "6b86bd13d517ef8780b265ae8afdb37bb3a822e8f52ace18426a809534354578"
+    },
+    "sidecar": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector.sidecar.json",
+      "sha256": "8eb8ce78be8d8cdad43bed495752b0b38cd64b437e90768946199270bb1095fd"
+    },
+    "guards": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector-guards.json",
+      "sha256": "35a3ef856992ba73444a54a4bd3b02dee559b3202c19f1c7b5c005b4103c3da9"
+    },
+    "checks": 41,
+    "synthetic_accepts": 6,
+    "rejects": 35,
+    "claim": "synthetic schema/complete-log validation only; no performance evidence"
+  },
+  "review_before": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/tabchain-warm-removal-before-review.txt",
+    "sha256": "ae8b9f25a317bffb70d677730673b36b0e883b4a0f88d6c74b2a0eaa9bc544b4"
+  },
+  "SDD_checkpoint": "Parent updated required-latest spec and ownerNone/actualWarmremove+actualack/optionalmarker/earliest chronology testplan, TC229; no docs edited by driver.",
+  "preserved_points": [
+    "b89 accepted basic84/observer14 unchanged",
+    "c219 actualNone diagnostic raw0 unchanged",
+    "863 scoped regates unchanged"
+  ],
+  "limitations": [
+    "Actual test worker timestamps in synthetic controls are modeled, not perf measurements.",
+    "No new performance measurement; no native GUI, Windows, Linux, CI activation or SIGINT/SIGKILL cleanup execution.",
+    "AppDrop250ms remains unchanged; individual worker join/native signal guarantees unobserved.",
+    "Active at removal is not directly observed; this proof is fixed declared switch source ordering plus actual ack only."
+  ]
+}

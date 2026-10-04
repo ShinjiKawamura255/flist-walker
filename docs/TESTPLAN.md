@@ -7,6 +7,7 @@ This file is the entry point for FlistWalker test planning. Detailed test strate
 | --- | --- |
 | [Test Strategy and Levels](testplan/strategy-levels.md) | Scope, priority, unit/integration/manual/perf/sec levels |
 | [Test Cases](testplan/test-cases.md) | TC ID table and related SP mapping |
+| [Indexing Contention](testplan/indexing-contention.md) | Real-worker paired release observations and normal correctness guards |
 | [Validation Matrix and Runner Commands](testplan/validation-matrix.md) | Change-type checklist, VM routing, and commands |
 | [Release Validation Selection](testplan/release-validation.md) | Every-release gates, change-triggered checks and evidence reuse |
 | [Validation Details](testplan/validation/) | Per-VM required, conditional, platform, and manual checks |

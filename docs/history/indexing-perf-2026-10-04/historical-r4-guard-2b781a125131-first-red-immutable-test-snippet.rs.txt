@@ -1,0 +1,9 @@
+#[test]
+fn historical_startup_root_unknown_join_is_retained() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    let root=test_root("historical-startup-retained");fs::create_dir(&root).unwrap();
+    let owned=OwnedEmptyRoot(root.clone());
+    let result=std::panic::catch_unwind(|| {let _owned=owned;panic!("owned constructor/startup failure");});
+    assert!(result.is_err());assert!(root.is_dir());assert!(!cleanup.safe());
+    drop(cleanup);fs::remove_dir(&root).unwrap();
+}

@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "scope": "Accepted final3cf defaultparallel/full basic84 and observer14; current extensions still pending",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "packet_sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263",
+  "source_overlay": "current-3cf46b60-source-overlay.json",
+  "assets": [
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-3cf46b60-basic-check.json",
+      "path": "integration-3cf46b60-basic-check.json",
+      "sha256": "00928b6245dc6f455975164321889d959e3135563cb9deea295bef3c2d1fc960",
+      "bytes": 3278,
+      "uncompressed_sha256": "00928b6245dc6f455975164321889d959e3135563cb9deea295bef3c2d1fc960",
+      "uncompressed_bytes": 3278,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-3cf46b60-normal-coverage.json",
+      "path": "integration-3cf46b60-normal-coverage.json",
+      "sha256": "3a7e73d260c7bd5b2caf1cd8361635c6b58317aa79df42afcb9ca769ce3f6c54",
+      "bytes": 43883,
+      "uncompressed_sha256": "3a7e73d260c7bd5b2caf1cd8361635c6b58317aa79df42afcb9ca769ce3f6c54",
+      "uncompressed_bytes": 43883,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-3cf46b60-observer-check.json",
+      "path": "integration-3cf46b60-observer-check.json",
+      "sha256": "1d7546d560e3b01a623423708e6b551388aa069f0f7dfb13ec294741eca937b9",
+      "bytes": 953,
+      "uncompressed_sha256": "1d7546d560e3b01a623423708e6b551388aa069f0f7dfb13ec294741eca937b9",
+      "uncompressed_bytes": 953,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-packet.json",
+      "path": "warm-ack-final-packet.json",
+      "sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef",
+      "bytes": 16210,
+      "uncompressed_sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef",
+      "uncompressed_bytes": 16210,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+      "path": "warm-ack-final-source-hashes.json",
+      "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "bytes": 22284,
+      "uncompressed_sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "uncompressed_bytes": 22284,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-basic.log",
+      "path": "warm-final-basic.log.gz",
+      "sha256": "85f05b8112bf756279f675015b76a0a97d87b83f223a5a4c6e03b0ec9cb65b06",
+      "bytes": 13568,
+      "uncompressed_sha256": "a6fdaaa1ae39bad0ac7e92d28808ce6e501cad3b4340c26280c87c43847b466e",
+      "uncompressed_bytes": 134019,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-basic.sidecar.json",
+      "path": "warm-final-basic.sidecar.json",
+      "sha256": "225b05f95fcf2c403779cc269d794c561f6fce96b223cf9bac2ad5c44e62f9e4",
+      "bytes": 47770,
+      "uncompressed_sha256": "225b05f95fcf2c403779cc269d794c561f6fce96b223cf9bac2ad5c44e62f9e4",
+      "uncompressed_bytes": 47770,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-cargo-host.log",
+      "path": "warm-final-cargo-host.log.gz",
+      "sha256": "e0ec31e9ce11e82bcb7471721d7989d11378077faa7ea1c43839346529b854f1",
+      "bytes": 33630,
+      "uncompressed_sha256": "7a7df157bb86c050ea9f489bc5889d8d2ac84698744f5519da6f559ca452419e",
+      "uncompressed_bytes": 166595,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-cargo-host.sidecar.json",
+      "path": "warm-final-cargo-host.sidecar.json",
+      "sha256": "56e9b7e8dbf6b60c44f0cbe3248e86e9a8eaf6a41c0fa31f1350a0a7c2d2f8d4",
+      "bytes": 47232,
+      "uncompressed_sha256": "56e9b7e8dbf6b60c44f0cbe3248e86e9a8eaf6a41c0fa31f1350a0a7c2d2f8d4",
+      "uncompressed_bytes": 47232,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-common-packet.json",
+      "path": "warm-final-common-packet.json",
+      "sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263",
+      "bytes": 9737,
+      "uncompressed_sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263",
+      "uncompressed_bytes": 9737,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-observer.log",
+      "path": "warm-final-observer.log.gz",
+      "sha256": "1eff6c765f1380d2983013613c05d792b103d650a230739f00944f6c2ae60b4d",
+      "bytes": 535,
+      "uncompressed_sha256": "d38c06935819e5ccd50e999d70aac774d04bce2dafb027610ef1ca64cfa72f7a",
+      "uncompressed_bytes": 2658,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-observer.sidecar.json",
+      "path": "warm-final-observer.sidecar.json",
+      "sha256": "c17cc1abc1519d3174e2c157bf61f6aec392aadb402fc7889178425e06c295b0",
+      "bytes": 46960,
+      "uncompressed_sha256": "c17cc1abc1519d3174e2c157bf61f6aec392aadb402fc7889178425e06c295b0",
+      "uncompressed_bytes": 46960,
+      "encoding": "unchanged"
+    },
+    {
+      "path": "current-3cf46b60-basic.jsonl",
+      "sha256": "2cef0ef3b951c0d2af5ac26bc58c0e81494793aab870e0e2e4f421a9e5458fe3",
+      "bytes": 142434,
+      "rows": 84,
+      "encoding": "extracted exact JSON values"
+    },
+    {
+      "path": "current-3cf46b60-observer.jsonl",
+      "sha256": "7418b665cdc689bb6b0a1f8898fcead1a0f8f1a8bf3ed1776bd7a2b54b9b8e7f",
+      "bytes": 2225,
+      "rows": 14,
+      "encoding": "extracted exact JSON values"
+    }
+  ]
+}

@@ -1,0 +1,370 @@
+{
+  "status": "implementation_frozen_for_independent_after_review",
+  "base_commit": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+  "source": {
+    "rust/src/app/pipeline.rs": {
+      "sha256": "238d67d8c5929b6b077a8de74473150d8e32d634fc3d28c6cf726d9208c1e58b",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/pipeline.rs"
+    },
+    "rust/src/app/tabs.rs": {
+      "sha256": "31e019de5f1d363680c24c6e8daa3dba65bc8e5ed5b1f1227f5ad6c9bd05beaf",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/tabs.rs"
+    },
+    "rust/src/app/state.rs": {
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/state.rs"
+    },
+    "rust/src/app/tests/tab_background_responses.rs": {
+      "sha256": "61007140dfa9a9ff00d40c46decd76d8ef91f49fd589cc69734f88cd7a1e12f1",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/tests/tab_background_responses.rs"
+    },
+    "rust/src/app/tests/index_pipeline/filelist_background.rs": {
+      "sha256": "189381985d18e6518063e6f12931edec081ffd81cfe7f2ab9c9592a7d5524cda",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/tests/index_pipeline/filelist_background.rs"
+    },
+    "rust/src/app/tests/tab_ownership.rs": {
+      "sha256": "983dc61ea6da841c219bfb586f0b2c016a84ff688ab35356e457ffe4f3c3f118",
+      "snapshot": "rust/target/indexing-perf-study/promotion-order-final-source/app/tests/tab_ownership.rs"
+    }
+  },
+  "scoped_patch": {
+    "path": "rust/target/indexing-perf-study/promotion-order-repair-final-scoped.patch",
+    "sha256": "80bca5b070bc859efe466ec7e6adb41eaf4be4cf14014ffe6d6b12cf6c47ec55",
+    "includes": "all current scoped delta vs base, including preexisting accepted cfg-test observers; first-red before source patches retained separately"
+  },
+  "first_red_immutable_test": {
+    "path": "rust/target/indexing-perf-study/promotion-order-first-red-test-file.rs",
+    "sha256": "8c35a61abf301c5dd353db83b1189c8aa3384fd1228fa573f5f20961a88be6c0"
+  },
+  "results": [
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 101,
+      "source_sha256": {
+        "src/app/pipeline.rs": "3a7ec12ccafba1f19bcfb6e0ab263ac6c40123ec1f57f24e6c43699748e4541d",
+        "src/app/tabs.rs": "6bd7fca2e4af562faef501d5353457427e978acc2d67083d753be0c3db74a74b",
+        "src/app/state.rs": "2b78eab17407ee5bc611e8d1a56e10297564cba756ba59933b60cfa6676fd640",
+        "src/app/tests/tab_background_responses.rs": "8c35a61abf301c5dd353db83b1189c8aa3384fd1228fa573f5f20961a88be6c0"
+      },
+      "immutable_red_test_file": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/promotion-order-first-red-test-file.rs",
+        "sha256": "8c35a61abf301c5dd353db83b1189c8aa3384fd1228fa573f5f20961a88be6c0"
+      },
+      "baseline_commit": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+      "baseline_source_sha256": {
+        "rust/src/app/pipeline.rs": "32329c4cb2d46cc8c8b7ba30d48fa9cd00dd5f43944bc42eb54e744e72a36c69",
+        "rust/src/app/tabs.rs": "6bd7fca2e4af562faef501d5353457427e978acc2d67083d753be0c3db74a74b",
+        "rust/src/app/state.rs": "2b78eab17407ee5bc611e8d1a56e10297564cba756ba59933b60cfa6676fd640"
+      },
+      "log": "rust/target/indexing-perf-study/promotion-order-first-red.log",
+      "log_sha256": "83c6e4d1aa560b232a0a3b28b1a8c634d8158731aa2e05b6fbe3a8c1c192341f",
+      "summary": [
+        "0",
+        "1",
+        "0",
+        "0",
+        "1543",
+        "0.04"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "exit_code": 0,
+      "log": "rust/target/indexing-perf-study/promotion-order-first-green-2.log",
+      "log_sha256": "fb664481425cf8bb7c61d08ba1030e1e28704e9aad673f38308c5cebc139233a",
+      "summary": [
+        "1",
+        "0",
+        "0",
+        "0",
+        "1543",
+        "0.04"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 5.0395852080037,
+      "log": "rust/target/indexing-perf-study/promotion-order-neighbors-green-4.log",
+      "log_sha256": "7ee53ff78946ecc8edaec59042e8bce117178656961dcec2567fed87bbb0d62c",
+      "summary": [
+        "9",
+        "0",
+        "0",
+        "0",
+        "1543",
+        "0.24"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.7725894579998567,
+      "log": "rust/target/indexing-perf-study/promotion-order-focused-final-2.log",
+      "log_sha256": "c01b174afb89c54fc5a9bf72be659c892c0813e5279f784a4323679acbf26a5c",
+      "summary": [
+        "10",
+        "0",
+        "0",
+        "0",
+        "1543",
+        "0.27"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.4897870830027387,
+      "log": "rust/target/indexing-perf-study/promotion-order-tc207-regressions-final.log",
+      "log_sha256": "39817c20cd19f82ac0f9b1a21b0869f76c81322ca0287340c6487e7f274dec1e",
+      "summary": [
+        "82",
+        "0",
+        "0",
+        "0",
+        "1471",
+        "1.37"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::index_pipeline::",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.893986708004377,
+      "log": "rust/target/indexing-perf-study/promotion-order-index-pipeline-regressions.log",
+      "log_sha256": "fb3d6d862935b988327b0c779cdf2bf0ab0168c84ffce331fe91ad184db3d168",
+      "summary": [
+        "152",
+        "0",
+        "0",
+        "0",
+        "1400",
+        "0.14"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "name": "fmt",
+      "command": [
+        "rustfmt",
+        "+1.97.1",
+        "--edition",
+        "2021",
+        "--check",
+        "rust/src/app/pipeline.rs",
+        "rust/src/app/tabs.rs",
+        "rust/src/app/state.rs",
+        "rust/src/app/tests/tab_background_responses.rs",
+        "rust/src/app/tests/index_pipeline/filelist_background.rs",
+        "rust/src/app/tests/tab_ownership.rs"
+      ],
+      "exit_code": 0,
+      "log": "rust/target/indexing-perf-study/promotion-order-fmt-post-clippy.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "diff-check",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "rust/target/indexing-perf-study/promotion-order-diff-check-post-clippy.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "existing_test_change": {
+    "test": "tc_207_promotion_before_terminal_uses_active_finalization_barrier",
+    "approved_by": "main",
+    "change": "strengthen settlement predicate with pending_request_id ended and request_tabs cleanup",
+    "expected_count": 100000,
+    "existing_timeout_or_frames_changed": false,
+    "reason": "empty handoff owner retires at complete_frame while published Finished remains resident until next frame; old predicate prematurely reported settlement"
+  },
+  "mechanical_changes": [
+    "BackgroundIndexState Vec-to-VecDeque literal constructor .into()",
+    "tab_ownership allocation identity uses existing deque_allocation helper, keeps exact pointer/capacity checks"
+  ],
+  "new_guard_corrections": [
+    "published real Finished releases producer inflight capacity before UI application; deferred unpublished Finished stays inflight",
+    "stale Batch Full retains payload in pending_stale_build_reclaim and Canceled resident",
+    "real worker FileList expected source uses known owned fixture canonicalization"
+  ],
+  "not_run": [
+    "full cargo suite",
+    "selected full VM gates",
+    "VM-003 performance guards",
+    "postrepair 100k pilot/full",
+    "Windows/Linux",
+    "GUI",
+    "historical adapters"
+  ],
+  "production_changes": [
+    "pipeline ordered handoff admission barrier, single existing bounded combined drain, transactional empty owner/replaced owner retirement",
+    "state BackgroundIndexState entries VecDeque",
+    "tabs background Batch push_back"
+  ],
+  "protocol_thresholds_quotas_changed": false,
+  "global_sort_clone_unbounded_queue_added": false,
+  "commit_push_done": false,
+  "post_clippy_results": [
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.0376986670016777,
+      "log": "rust/target/indexing-perf-study/promotion-order-focused-post-clippy.log",
+      "log_sha256": "fa2c3b273290431b3596e78ad7e85b64c396e8cdfbd06f51e282975d7fc37012",
+      "summary": [
+        "10",
+        "0",
+        "0",
+        "0",
+        "1543",
+        "0.27"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.531107000002521,
+      "log": "rust/target/indexing-perf-study/promotion-order-tc207-post-clippy.log",
+      "log_sha256": "1f5ec45c24a02315ac3d32bdd5a4abb3cad5cc24ed080dabd1d4ac286497c73d",
+      "summary": [
+        "82",
+        "0",
+        "0",
+        "0",
+        "1471",
+        "1.38"
+      ]
+    },
+    {
+      "command": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::index_pipeline::",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.23185379200003808,
+      "log": "rust/target/indexing-perf-study/promotion-order-index-pipeline-post-clippy.log",
+      "log_sha256": "db0c9fe0161c4150baa1143b6a973786192d0468ec5627fab517fd52eac63ffa",
+      "summary": [
+        "152",
+        "0",
+        "0",
+        "0",
+        "1401",
+        "0.11"
+      ]
+    }
+  ],
+  "pre_clippy_packet": {
+    "path": "rust/target/indexing-perf-study/promotion-order-repair-final-packet-pre-clippy.json",
+    "sha256": "9d34a736002c39ffcf6e0f6086863b3400ffbafac43af341e8b2013cd5ee12c3",
+    "source_snapshots": "rust/target/indexing-perf-study/promotion-order-final-source-pre-clippy"
+  },
+  "mechanical_review_fix": {
+    "description": "remove 4 identity state_entries.into() conversions only (pipeline2/tabs2)",
+    "patch": "rust/target/indexing-perf-study/promotion-order-identity-conversions.patch",
+    "sha256": "2d39194dc9a6fd6e298c944e244cc79861b967741a5f6830a365ed0ad2e99734",
+    "production_predicate_expectation_trace_changed": false
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "purpose": "main independently checked exact full basic run; elapsed values observational",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "log_sha256": "a6fdaaa1ae39bad0ac7e92d28808ce6e501cad3b4340c26280c87c43847b466e",
+  "raw_rows": 84,
+  "metadata": {
+    "arch": "aarch64",
+    "cargo_profile": "release",
+    "cases": [
+      "S1-selective",
+      "S1-dense",
+      "S2"
+    ],
+    "cpu_parallelism": 12,
+    "fixture": "flat-real-files-ascii-japanese-v2",
+    "fixture_signature": "68ffba3edf24a1d5",
+    "frame_period_ms": 16,
+    "full_profile": true,
+    "host": "macos",
+    "native": false,
+    "observer": "cfg-test-opt-in-batch-phase-v2",
+    "package_version": "0.30.0",
+    "pairs": 7,
+    "sample_entries": 100000,
+    "schema_version": 1,
+    "sources": [
+      "FileList",
+      "Walker"
+    ],
+    "trace": "empty-startup-held10-edit25-clear50-v4"
+  },
+  "exact_runner_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 93.17s",
+  "paired_observations": [
+    {
+      "source": "FileList",
+      "case": "S1-dense",
+      "paired_t2_ratio_median": 1.074050661275222,
+      "paired_t2_ratios": [
+        1.074050661275222,
+        1.1393892697760197,
+        1.060849580901331,
+        0.989391132910524,
+        1.1290214868496582,
+        1.227526657131934,
+        1.0551043413449643
+      ]
+    },
+    {
+      "source": "FileList",
+      "case": "S1-selective",
+      "paired_t2_ratio_median": 1.0611597593412827,
+      "paired_t2_ratios": [
+        1.0719857392279737,
+        1.038847680613153,
+        1.080167700280985,
+        1.019113507931228,
+        1.0611597593412827,
+        1.129703614330339,
+        1.0276528657393327
+      ]
+    },
+    {
+      "source": "FileList",
+      "case": "S2",
+      "paired_t2_ratio_median": 1.0409206200039776,
+      "paired_t2_ratios": [
+        1.0258365907699984,
+        1.1749535328027834,
+        0.9786482732838776,
+        1.09018097083177,
+        1.0409206200039776,
+        1.0210321118427228,
+        1.0791933055865377
+      ]
+    },
+    {
+      "source": "Walker",
+      "case": "S1-dense",
+      "paired_t2_ratio_median": 0.9983490798908107,
+      "paired_t2_ratios": [
+        0.9922816837451371,
+        1.00673344781874,
+        0.9628166489928836,
+        1.029443660941281,
+        0.9869054946506645,
+        1.0004407397226893,
+        0.9983490798908107
+      ]
+    },
+    {
+      "source": "Walker",
+      "case": "S1-selective",
+      "paired_t2_ratio_median": 1.0142958999382479,
+      "paired_t2_ratios": [
+        0.9508022579942058,
+        1.0090784067141643,
+        1.0142958999382479,
+        1.056055757990847,
+        1.0205796231587179,
+        0.9522486802463807,
+        1.0212011171125572
+      ]
+    },
+    {
+      "source": "Walker",
+      "case": "S2",
+      "paired_t2_ratio_median": 0.9951505468645508,
+      "paired_t2_ratios": [
+        0.9955489281755203,
+        1.00914208450701,
+        1.012322636802283,
+        0.9897922279462782,
+        0.944862054616262,
+        0.9184460507634283,
+        0.9951505468645508
+      ]
+    }
+  ],
+  "metadata_expected_rows_present": false,
+  "expected_rows_derivation": "7pairs * 2sources * 3cases * 2conditions =84"
+}

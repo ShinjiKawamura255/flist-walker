@@ -46,6 +46,10 @@ impl<'a, S> RootProjectionSink<'a, S> {
 }
 
 impl<S: IndexResponseSink> IndexResponseSink for RootProjectionSink<'_, S> {
+    #[cfg(test)]
+    fn observe_nested_input(&self, reused: bool) {
+        self.inner.observe_nested_input(reused);
+    }
     fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
         if let IndexResponse::Batch { entries, .. } | IndexResponse::ReplaceAll { entries, .. } =
             &mut response

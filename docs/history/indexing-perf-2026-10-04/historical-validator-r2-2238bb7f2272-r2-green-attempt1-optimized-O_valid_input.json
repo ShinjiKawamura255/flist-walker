@@ -1,0 +1,22 @@
+{
+  "evidence_kind": "synthetic-control",
+  "mode": "O_valid_input",
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-O",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2/collect_historical.py",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2/optimized-control-ytbqjtms/events.log",
+    "--sidecar",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2/optimized-control-ytbqjtms/side.json",
+    "--identity-packet",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/guard-execution-packet.json",
+    "--output",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2/optimized-control-ytbqjtms/admitted.json"
+  ],
+  "PYTHONOPTIMIZE": null,
+  "exit_code": 2,
+  "stdout": "REJECT evidence protocol: optimized Python is forbidden; required fbd9 assertions must remain enabled\n",
+  "stderr": "",
+  "admission_output_created": false,
+  "actual_child_returned": true
+}

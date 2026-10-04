@@ -1,0 +1,20 @@
+{
+  "scope": "Main invalid observer diagnostic readback only; no accepted benchmark",
+  "packet_sha256": "de316730bb4964aa5e62f9a18a15fb2742cfaab0ef8a5c49827d91384485789d",
+  "references": 14,
+  "raw_start_status_sample": [
+    16,
+    15,
+    0
+  ],
+  "actual_process_exit": -15,
+  "wrapper_exit": 2,
+  "accepted_rows": 0,
+  "raw_completed_FAIL_with_cleanup_and_rootrestore": 15,
+  "interrupted_without_cellproof": 1,
+  "not_run_cells": 28,
+  "cap": "NOT_RUN",
+  "retained_candidates_still_present": 11,
+  "R4_current213_unchanged": true,
+  "no_product_signal_cleanup_claim": true
+}

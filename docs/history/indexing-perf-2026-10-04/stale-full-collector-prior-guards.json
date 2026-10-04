@@ -1,0 +1,212 @@
+{
+  "purpose": "synthetic raw schema controls only; not performance evidence",
+  "collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+  "results": [
+    {
+      "name": "valid-direct-some-victim",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "valid-standalone-warm-removal",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "valid-marker-before-offer",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "valid-marker-after-offer-and-body",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "valid-observed-finished-True",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "missing-observed-finished-True",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "valid-observed-finished-False",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "missing-observed-finished-False",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "lone-none-marker",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "duplicate-removal",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "overflow",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-removed-id",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-route",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-oldwarm",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-newwarm",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "missing-ack",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-ack-tab",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-ack-root",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "pending-ack",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "future-mutation",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "ack-after-window",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "permission-after-removal",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-stage",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "incoming-wrong-root",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "incoming-wrong-id",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "marker-before-removal",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "marker-wrong-link",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "offer-before-removal",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "cause-flag-alone",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "bad-marker-request-link",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "missing-body",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "required-A-canceled",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "canceled-A-mislabeled-predecessor",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "finished-B-oldseed-fallback",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "corrupt-full-seed",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "double-summary",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "zero-tests",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "partial-one-row",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-meta-cell",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "actual-retired-selector-accepted-tabchain-target.log",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "actual-retired-selector-stall-diagnostic-tabchain-target.log",
+      "exit_code": 1,
+      "accepted": false
+    }
+  ],
+  "passed": 41
+}

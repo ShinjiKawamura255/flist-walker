@@ -1,0 +1,7 @@
+Evidence arithmetic first attempt: exit 1; no comparison outputs were written.
+Traceback (most recent call last):
+  File "rust/target/indexing-perf-study/integration-four-tag-comparison.py", line 71, in <module>
+    "actual_request_count_range": [min(r.get("index_requests", 0) for r in rows), max(r.get("index_requests", 0) for r in rows)]}
+TypeError: '<' not supported between instances of 'dict' and 'dict'
+
+Cause: GUI index_requests is a list of observed request records, not a scalar count. Corrected arithmetic uses list length; absent worker-only ledger remains null. Raw records, collector, Rust, eligibility assertions and timing rules are unchanged.

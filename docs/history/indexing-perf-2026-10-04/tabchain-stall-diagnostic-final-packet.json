@@ -1,0 +1,80 @@
+{
+  "status": "diagnostic-complete-semantic-fix-not-started",
+  "source_identity": "tabchain-stall-diagnostic-source.json",
+  "source_manifest_sha256": "80858170f291c0bb80354eb15c084cb27492fe362358538bfe5e6320e8c43364",
+  "command": "env FW_INDEX_PERF_EXTRA_CASES=T1-A-B-C-A FW_INDEX_PERF_EXTRA_SOURCES=FileList FW_INDEX_PERF_EXTRA_ENTRIES=100000 FW_INDEX_PERF_EXTRA_PAIRS=1 cargo test --release --locked --offline --lib perf_indexing_extended_paired -- --ignored --nocapture --test-threads=1",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+  "exit_code": 101,
+  "summaries": [
+    "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 66.79s"
+  ],
+  "source_unchanged": true,
+  "raw_rows": 0,
+  "planned_ids": [
+    5,
+    6,
+    7,
+    8
+  ],
+  "all_request_physical_return_and_release": true,
+  "index_debt": false,
+  "result_debt": false,
+  "sender_load": {
+    "capacity": 2,
+    "inflight": 0,
+    "queued": 0
+  },
+  "actual_cause": "Latest B6 intentionally Warm-evicted without successor; retained B seed3 full oracle; strict all-tab latest-success requirement rejects B6",
+  "victim": {
+    "id": 6,
+    "tab": 2,
+    "permission_reason": "switch-evicts-previous-Warm",
+    "permission_at": "Some(Instant { tv_sec: 48281, tv_nsec: 274793500 })",
+    "successor": null,
+    "actual_ended": "Canceled; body return observed after permission and canceloffer",
+    "retained_seed": {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "freshness_request": 3,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 2,
+      "visible_count": 100000
+    }
+  },
+  "successful_required_tabs": [
+    {
+      "active": true,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "freshness_request": 8,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000/FileList.txt\")",
+      "lifecycle": "Dormant",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 1,
+      "visible_count": 100000
+    },
+    {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "freshness_request": 7,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 3,
+      "visible_count": 100000
+    }
+  ],
+  "authority": "Existing tc_205_active_request_preempts_only_the_non_preferred_warm_generation observes tombstone0 and Dormant victim behavior; benchmark must explicitly describe intentional victim and independent retained last-good oracle",
+  "cleanup": "AppDrop completed to libtest summary; individual joins not observed; existing bounded shutdown retained",
+  "next": "Independent BEFORE for typed planned eviction victim role/exact causal+last-good proof; no arbitrary latest cancellation allowance"
+}

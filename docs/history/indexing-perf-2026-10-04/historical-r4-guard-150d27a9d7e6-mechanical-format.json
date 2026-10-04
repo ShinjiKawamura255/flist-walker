@@ -1,0 +1,13 @@
+{
+  "command": [
+    "rustfmt",
+    "+1.97.1",
+    "--edition",
+    "2024",
+    "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/tests/indexing_perf/harness.rs",
+    "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/tests/indexing_perf/extensions/driver.rs",
+    "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust/src/app/tests/indexing_perf/extensions/oracle.rs"
+  ],
+  "exit": 0,
+  "stderr": ""
+}

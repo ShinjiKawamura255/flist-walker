@@ -1,0 +1,368 @@
+{
+  "scope": "Main independent frozen adapter preparation hash/object/lock/full patch replay; no compile/runtime/performance acceptance",
+  "packet_sha256": "ecc580a8f41d8ba273e904c91469ea6897dd59786fa2f6b7c8433979014a2982",
+  "historical_canonical_hash_formula": "sha256(json.dumps(map,sort_keys=True,separators=(comma,colon)).encode())",
+  "checks": [
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-basic-apply.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-prepare.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-basic-apply.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-format-preparation.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-basic-apply.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-review-protocol.txt",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-format-preparation.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-mailbox-current-reference.diff",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-format-preparation.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-format-preparation.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-basic-apply.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-matrix-intent.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-production-equivalence-audit.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-archive-identities.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-historical-perf.rs",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-format-preparation.log",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-audit.py",
+      "match": true
+    },
+    {
+      "label": "prep",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-prepare.py",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-guards.json",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-prior-guards.json",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-packet.json",
+      "match": true
+    },
+    {
+      "label": "current input",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-common-packet.json",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-comparisons.json",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-environment.json",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-identities.json",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-matrix.json",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-observer.jsonl",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/basic-raw.jsonl",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.27.0-basic.patch",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.28.0-basic.patch",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.29.0-basic.patch",
+      "match": true
+    },
+    {
+      "label": "frozen basic",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/docs/history/indexing-perf-2026-10-03/v0.30.0-basic.patch",
+      "match": true
+    },
+    {
+      "label": "v0.27.0 archive",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "v0.27.0 source_map",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "v0.27.0 full_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "v0.27.0 additive_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "tag": "v0.27.0",
+      "source_files": 187,
+      "actual_peeled_tag_commit": true,
+      "full_patch_replay": true,
+      "lock_and_cargo_identical_to_archive": true
+    },
+    {
+      "label": "v0.28.0 archive",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "v0.28.0 source_map",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "v0.28.0 full_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "v0.28.0 additive_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "tag": "v0.28.0",
+      "source_files": 199,
+      "actual_peeled_tag_commit": true,
+      "full_patch_replay": true,
+      "lock_and_cargo_identical_to_archive": true
+    },
+    {
+      "label": "v0.29.0 archive",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "v0.29.0 source_map",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "v0.29.0 full_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "v0.29.0 additive_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "tag": "v0.29.0",
+      "source_files": 207,
+      "actual_peeled_tag_commit": true,
+      "full_patch_replay": true,
+      "lock_and_cargo_identical_to_archive": true
+    },
+    {
+      "label": "v0.30.0 archive",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-original.tar",
+      "match": true
+    },
+    {
+      "label": "v0.30.0 source_map",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-source-hashes.json",
+      "match": true
+    },
+    {
+      "label": "v0.30.0 full_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-full.patch",
+      "match": true
+    },
+    {
+      "label": "v0.30.0 additive_patch",
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-additive.patch",
+      "match": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source_files": 214,
+      "actual_peeled_tag_commit": true,
+      "full_patch_replay": true,
+      "lock_and_cargo_identical_to_archive": true
+    }
+  ],
+  "errors": [],
+  "current_213_unchanged": true,
+  "all_execution": "NOT_RUN"
+}

@@ -1,0 +1,84 @@
+{
+  "status": "normal-isolation-green-awaiting-independent-after-review",
+  "source_identity": "normal-child-isolation-final-source-hashes.json",
+  "source_unchanged": true,
+  "normal_exact_targets": [
+    "app::tests::indexing_perf::tc_228_real_worker_headless_refresh_preserves_snapshot_and_query",
+    "app::tests::indexing_perf::harness::extensions::tc_229_real_worker_extended_profiles_smoke",
+    "app::tests::indexing_perf::harness::extensions::tc_229_empty_query_all_matches_sort_proves_successful_worker_response",
+    "app::tests::indexing_perf::harness::extensions::tc_229_search_sort_rejects_type_mode_stale_error_and_zero_candidates",
+    "app::tests::indexing_perf::harness::extensions::tc_229_unmeasured_promotion_control_is_empty_and_quiescent",
+    "app::tests::indexing_perf::harness::extensions::tc_229_all_tab_profile_controls_preserve_own_expected_state",
+    "app::tests::indexing_perf::harness::extensions::supplementary::tc_229_parser_kind_masks_are_real_worker_contracts",
+    "app::tests::indexing_perf::harness::extensions::supplementary::tc_229_controlled_full_blocks_then_resumes_with_fresh_deadline",
+    "app::tests::indexing_perf::harness::extensions::supplementary::tc_229_admitted_closed_mailbox_records_actual_skipped_worker_return",
+    "app::tests::indexing_perf::harness::extensions::driver::tc_229_observation_ledger_does_not_pin_closed_heavy_mailbox"
+  ],
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "log": "normal-child-isolation-final-fmt.log",
+      "exit_code": 0,
+      "summaries": []
+    },
+    {
+      "command": "cargo clippy --locked --offline --all-targets -- -D warnings",
+      "log": "normal-child-isolation-final-clippy.log",
+      "exit_code": 0,
+      "summaries": []
+    },
+    {
+      "command": "cargo test --locked --lib indexing_perf -- --test-threads=1",
+      "log": "normal-child-isolation-final-indexing.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 51 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.24s"
+      ]
+    },
+    {
+      "command": "cargo test --locked --lib worker::search_perf::tests",
+      "log": "normal-child-isolation-final-search-observer.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1546 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "command": "cargo test --locked --offline",
+      "log": "normal-child-isolation-final-cargo-host.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1554 filtered out; finished in 0.02s",
+        "test result: ok. 1536 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 30.11s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.92s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ]
+    }
+  ],
+  "first_red": {
+    "log": "normal-child-isolation-inherited-red.log",
+    "exit_code": 101,
+    "passed": 0,
+    "failed": 1,
+    "purpose": "controlled leaf known-config entrance; actual truncated12345/Finished/zero debt versus16384"
+  },
+  "initial_env_only": {
+    "log": "normal-child-isolation-inherited-uncontrolled.log",
+    "exit_code": 0,
+    "passed": 1,
+    "purpose": "not red: lazy process config initializes default independently of inherited env"
+  },
+  "original_parallel_regression_red": "integration-parallel-host-diagnostic.log",
+  "claim_limits": [
+    "no dynamic proof of mutable real parent config roundtrip",
+    "child command generation is setter-free reviewed structurally, isolated leaf simulation only",
+    "watchdog owned-child cleanup differs from untested external SIGINT/SIGKILL native GUI fixture cleanup",
+    "native GUI and Windows branch NOT_RUN"
+  ],
+  "performance_started": false,
+  "finished_at": "2026-10-03T19:10:29.362831+00:00"
+}

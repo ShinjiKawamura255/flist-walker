@@ -1,0 +1,19 @@
+{
+  "scope": "actual Python optimized-mode and shared/alias-target controlled first-red; no performance",
+  "exit_code": 1,
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "rust/target/indexing-perf-study/historical-validator-r2",
+    "-p",
+    "test_historical.py"
+  ],
+  "log_sha256": "310cf70f07913f8f263995813045a1709a58fc7551bee46275adc45b8e37fc9f",
+  "source": {
+    "collect_historical.py": "fe9252bdc8e5412ccbf0a6866b6b34b918a3f68c071c3e61c38741dda70a3c4c",
+    "test_historical.py": "a77892ee8b7d66c7f5c28d496e28a3b17c93d8b6ea5050dae65e6fc164f24ada"
+  }
+}

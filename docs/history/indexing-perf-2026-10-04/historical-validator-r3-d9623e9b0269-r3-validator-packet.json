@@ -1,0 +1,360 @@
+{
+  "schema_version": 1,
+  "status": "R3 validator identity-only SOURCE/controls FROZEN; STOP before historical measurement",
+  "frozen_utc": "2026-10-04T05:53:42.641855+00:00",
+  "parent_R2_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2/r2-validator-packet.json",
+    "sha256": "1f669c51a01d32d7727ed9f88fef38d338411ea4d2b228142af6f673cdf939f1",
+    "bytes": 28425
+  },
+  "parent_R2_77_refs_unchanged": true,
+  "R5_guard_checkpoint": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json",
+    "sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+    "bytes": 100296
+  },
+  "R5_all102_refs_unchanged": true,
+  "R5_original_Cargo_source_lock_unchanged": true,
+  "pins": {
+    "raw": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+    "canonical": "6bd31e2619bf751ecc6b9b83d7858468114f39259a5202cb73a2f6c4e7cb763c"
+  },
+  "copied_fbd9": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/fbd9_predicates.py",
+    "sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429",
+    "bytes": 11716
+  },
+  "current_fbd9": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+    "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+    "bytes": 12522
+  },
+  "logic_normalized_to_R2_exact_bytes": true,
+  "test_donor_and_assertions_normalized_to_R2_exact_bytes": true,
+  "source_diff": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py.from-r2.patch",
+    "sha256": "03d836d8f7686c60c4769f89d0555bd43f39452e75088459cf7a76f67db8309c",
+    "bytes": 1584
+  },
+  "tests_identity_diff": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/test_historical.py.from-r2.patch",
+    "sha256": "1870cd60901be51a7e8572a143f283f0e9a80f8ab66a0d51155778a3c0a5d228",
+    "bytes": 6565
+  },
+  "controls": {
+    "scope": "synthetic Python protocol controls only; no historical benchmark or libtest execution",
+    "actual_exit": 0,
+    "actual_tests": 145,
+    "passed": 145,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "same_exact145_names_as_R2": true,
+    "result": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-controls.json",
+      "sha256": "8cdf53eed15302c51cade88a323a55224dec5ffc669b7f22cddae7dcda2e6683",
+      "bytes": 20043
+    },
+    "log": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-controls.log",
+      "sha256": "d0bccbb83a91f05efdae93c16750706ea66ddd855335efa6313f980f5c3a5f99",
+      "bytes": 18142
+    }
+  },
+  "actual_optimized_interpreter_rejections": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-OO_corrupt_queued_debt.json",
+      "sha256": "10589b72a9c2280a0f15650155af71a4170c363020028b6c7015f539efaea9d3",
+      "bytes": 1180
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-OO_valid_input.json",
+      "sha256": "bed728cb8baeac40aa8c2d8d39dab6bcd82df99149f0f3e22f300e72b8f44b83",
+      "bytes": 1172
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-O_corrupt_queued_debt.json",
+      "sha256": "f94d303a13d27408051c20705a0cefd9584a2f8c7353b7b26e6a87a1edf48f2f",
+      "bytes": 1178
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-O_valid_input.json",
+      "sha256": "41c61f60df7d86122f22e5dff9e23e3f57f57205f5b39fb75b1940c1dab69dd1",
+      "bytes": 1170
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "sha256": "a6c72ce0c2e97d0cb8908dca299fb4fcab281c895914b433e08778f9c89b86d8",
+      "bytes": 1181
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "sha256": "7c8e67162d810d50635ea29c700a1605d5fa77db6afb8350fff5ab4df8132f77",
+      "bytes": 1173
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "sha256": "5c168aa44960e3213860212676e5757395caf0b1e7c1f655c6f1a27f86a29a22",
+      "bytes": 1181
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "sha256": "de15b1fa485fe6c18888046bcb1ec41c62d3d6ee275bdfb20bc00c26a1fe9307",
+      "bytes": 1173
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-imported_API_OO.json",
+      "sha256": "0ce8df748da22da517d825d9fcf42970f92012fe02c62fe3257df5c2b7d3b8a1",
+      "bytes": 1834
+    }
+  ],
+  "optimized_scope": "9 real child Python exits under10s watchdog, synthetic inputs; eight CLI exit2 and API exit1, no admission output",
+  "CLI_mixed_synthetic": {
+    "actual_validator_process_exit": 0,
+    "original_input_process_exit": 101,
+    "original_input_outcome": "FAILED",
+    "accepted_rows": 28,
+    "excluded_partial_rows": 14,
+    "historical_measurement": false,
+    "result": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-cli.json",
+      "sha256": "03b4df241cb4fec3b1dd5a3a4948c657d76ac68d531ee37264e64e77e9750306",
+      "bytes": 1193
+    },
+    "validated": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.validated.json",
+      "sha256": "4aeb7a44a4ebd18e4d60afee05c3b900beeeb916cbda5f4bce7468c4eab7bbdf",
+      "bytes": 270035
+    }
+  },
+  "fixed_canonical_target_mapping": {
+    "v0.27.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.27.0",
+    "v0.28.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.28.0",
+    "v0.29.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.29.0",
+    "v0.30.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.30.0"
+  },
+  "command_plan": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-exact-release-target-plan.json",
+    "sha256": "83d5dc2766b6b35afc1cf0a727af5e07f0e39d035eded89695574b770f922323",
+    "bytes": 10608
+  },
+  "current213_unchanged": true,
+  "frozen_basic_all11_unchanged": true,
+  "ambient11_roots_unchanged": [
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    }
+  ],
+  "Rust_build_and_performance": "NOT_RUN",
+  "protocol": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-protocol.txt",
+    "sha256": "c30ca6c7443da6c59cfdebe985b9db035e26d2ec2a6533206bbeb32d780e1bc5",
+    "bytes": 985
+  },
+  "first_red": "Not applicable: metadata pin/path update only; existing meaningful R2 RED evidence remains at immutable R2 checkpoint. Full145 controls validate exact unchanged behavior at new identity.",
+  "references": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py",
+      "sha256": "6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e",
+      "bytes": 25115
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py.from-r2.patch",
+      "sha256": "03d836d8f7686c60c4769f89d0555bd43f39452e75088459cf7a76f67db8309c",
+      "bytes": 1584
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/fbd9-reuse-identity.json",
+      "sha256": "4393754019f2a679c05d32ce523ac0050bb009edb290fc21c360b4a413a608e1",
+      "bytes": 674
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/fbd9_predicates.py",
+      "sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429",
+      "bytes": 11716
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/freeze-packet.py",
+      "sha256": "6b0723da11eee558f87e6e5d3d81bcc458372d0b674dbc092bc28d33d39c4a69",
+      "bytes": 9095
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/identity-rebinding.json",
+      "sha256": "939c9acb75c80472ccf0af6436600edc7a813834bca76aaf6b9be0f4e32db29c",
+      "bytes": 562
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-exact-release-target-plan.json",
+      "sha256": "83d5dc2766b6b35afc1cf0a727af5e07f0e39d035eded89695574b770f922323",
+      "bytes": 10608
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-controls.json",
+      "sha256": "8cdf53eed15302c51cade88a323a55224dec5ffc669b7f22cddae7dcda2e6683",
+      "bytes": 20043
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-controls.log",
+      "sha256": "d0bccbb83a91f05efdae93c16750706ea66ddd855335efa6313f980f5c3a5f99",
+      "bytes": 18142
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-OO_corrupt_queued_debt.json",
+      "sha256": "10589b72a9c2280a0f15650155af71a4170c363020028b6c7015f539efaea9d3",
+      "bytes": 1180
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-OO_valid_input.json",
+      "sha256": "bed728cb8baeac40aa8c2d8d39dab6bcd82df99149f0f3e22f300e72b8f44b83",
+      "bytes": 1172
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-O_corrupt_queued_debt.json",
+      "sha256": "f94d303a13d27408051c20705a0cefd9584a2f8c7353b7b26e6a87a1edf48f2f",
+      "bytes": 1178
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-O_valid_input.json",
+      "sha256": "41c61f60df7d86122f22e5dff9e23e3f57f57205f5b39fb75b1940c1dab69dd1",
+      "bytes": 1170
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "sha256": "a6c72ce0c2e97d0cb8908dca299fb4fcab281c895914b433e08778f9c89b86d8",
+      "bytes": 1181
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "sha256": "7c8e67162d810d50635ea29c700a1605d5fa77db6afb8350fff5ab4df8132f77",
+      "bytes": 1173
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "sha256": "5c168aa44960e3213860212676e5757395caf0b1e7c1f655c6f1a27f86a29a22",
+      "bytes": 1181
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "sha256": "de15b1fa485fe6c18888046bcb1ec41c62d3d6ee275bdfb20bc00c26a1fe9307",
+      "bytes": 1173
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-final-optimized-imported_API_OO.json",
+      "sha256": "0ce8df748da22da517d825d9fcf42970f92012fe02c62fe3257df5c2b7d3b8a1",
+      "bytes": 1834
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-protocol.txt",
+      "sha256": "c30ca6c7443da6c59cfdebe985b9db035e26d2ec2a6533206bbeb32d780e1bc5",
+      "bytes": 985
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-cli.json",
+      "sha256": "03b4df241cb4fec3b1dd5a3a4948c657d76ac68d531ee37264e64e77e9750306",
+      "bytes": 1193
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-cli.log",
+      "sha256": "9e99a4480d9867038f6fd63bc876164660635e8b1f3768c1c863652e56c71e5f",
+      "bytes": 128
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.events.log",
+      "sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "bytes": 200392
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.sidecar.json",
+      "sha256": "7e2ea11cfdd6a72c8cc5a2a593f2c8dd687696e6b956d88e57c9d98cbe86d9a4",
+      "bytes": 2990
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.validated.json",
+      "sha256": "4aeb7a44a4ebd18e4d60afee05c3b900beeeb916cbda5f4bce7468c4eab7bbdf",
+      "bytes": 270035
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/run-controls-r3.py",
+      "sha256": "8d74d140e1df94842ebd7eccc8c4900d852a906225d12eb6ee85dcd3499bf89b",
+      "bytes": 1965
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/run-synthetic-cli.py",
+      "sha256": "ddda49d6c24efce6897b4fabb3794574a5b153f197a979d083bdce06455f08d6",
+      "bytes": 1659
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/test_historical.py",
+      "sha256": "8ccd57ce60d4a5df2430e86257a3f34e8d4ec12a610ea12466fa14db05d7dbc2",
+      "bytes": 30993
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/test_historical.py.from-r2.patch",
+      "sha256": "1870cd60901be51a7e8572a143f283f0e9a80f8ab66a0d51155778a3c0a5d228",
+      "bytes": 6565
+    }
+  ]
+}

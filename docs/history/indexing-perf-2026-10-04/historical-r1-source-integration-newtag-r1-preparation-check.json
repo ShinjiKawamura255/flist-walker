@@ -1,0 +1,10 @@
+{
+  "scope": "Main independent r1 static byte/source/map/preparation readback only; no compile/guards/perf",
+  "packet_sha256": "e9fa00852a2e94c163a37b59477da13ef2eb0c38518ab8a6d78e2440bb32d49d",
+  "r1_references": 40,
+  "old_34_references_unchanged": true,
+  "four_r1_source_maps": true,
+  "red_candidate_map": true,
+  "current213_unchanged": true,
+  "execution": "NOT_RUN"
+}

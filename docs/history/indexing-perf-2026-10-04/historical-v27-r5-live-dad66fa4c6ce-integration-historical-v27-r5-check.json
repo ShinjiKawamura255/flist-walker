@@ -1,0 +1,50 @@
+{
+  "utc": "2026-10-04T06:48:07.369196+00:00",
+  "packet_sha256": "ecc6ca2129dbfd1e83e244791c9c9b7d3199e133a80b1f1237576697ea09c89c",
+  "refs": 17,
+  "source187_live_exact": true,
+  "current213_unchanged": true,
+  "stages5_sidecar_raw_process_root_lock_exact": true,
+  "measurement_checks": [
+    {
+      "stage": "v27-ordinary-full",
+      "actual_exit": 101,
+      "accepted_rows": 462,
+      "status_counts": {
+        "PASS": 33,
+        "FAIL": 11,
+        "NOT_RUN": 0
+      },
+      "raw_libtest_trailer": "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 2334.51s",
+      "collector_replay_equal": true
+    },
+    {
+      "stage": "v27-cap-full",
+      "actual_exit": 0,
+      "accepted_rows": 14,
+      "status_counts": {
+        "PASS": 1,
+        "FAIL": 0,
+        "NOT_RUN": 0
+      },
+      "raw_libtest_trailer": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 166.43s",
+      "collector_replay_equal": true
+    }
+  ],
+  "host_ps_independent": {
+    "argv": [
+      "ps",
+      "-p",
+      "26944,28210,28212,28848,28850",
+      "-o",
+      "pid=,pgid=,command="
+    ],
+    "actual_exit": 1,
+    "stdout": "",
+    "tool_boundary": "sandbox ps raisesPermissionError; exact hostread success no matchingPIDs"
+  },
+  "accepted_total": 476,
+  "whole_ordinary_benchmark": "FAILED-exit101",
+  "cap": "PASS-exit0",
+  "historical_speed_verdict": "not yet assessed; compare identical accepted condition only"
+}

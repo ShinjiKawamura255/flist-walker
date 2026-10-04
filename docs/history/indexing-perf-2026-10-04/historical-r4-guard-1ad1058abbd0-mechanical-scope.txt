@@ -1,0 +1,1 @@
+R3 v27 compile5 preserved. R4 v27 test-only import; old mutable cursor field direct assignment; remove absent and unused PathAsc/PathDesc oracle match arms (none of fixed44 cases selects them); identical status assert before immutable events borrow for old &mut signature. Native production API/behavior unchanged. Other3 exports source byte-identical to R3. No perf.

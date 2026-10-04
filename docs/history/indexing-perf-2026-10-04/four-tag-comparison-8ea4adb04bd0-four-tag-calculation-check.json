@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "method": "Independent second calculation, exact JSON/CSV bytes; optimized mode rejected without output",
+  "condition_halves": 304,
+  "ordinary_pass_cells": 152,
+  "accepted_ordinary_rows": 2128,
+  "whole_actual_exit_codes": [
+    101,
+    101,
+    101,
+    101
+  ],
+  "failed_cells_excluded": 24,
+  "first_arithmetic_failure": "Retained metadata-type diagnostic; no Rust/raw/collector/timing admission changes",
+  "replay_stdout": "Retained-input calculation complete: 304 condition halves; /var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fw-four-tag-calc-l4b7c2ta/replay.json /var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fw-four-tag-calc-l4b7c2ta/replay.csv\n",
+  "optimized_exit": 1
+}

@@ -1,0 +1,293 @@
+--- src/app/tests/indexing_perf/extensions/driver.rs
++++ src/app/tests/indexing_perf/extensions/driver.rs
+@@ -452,6 +452,34 @@
+ fn request_for(driver: &Driver, tab: u64) -> Option<u64> {
+     driver.app.shell.indexing.latest_request_for_tab(tab)
+ }
++fn measured_request_for(
++    driver: &Driver,
++    plans: &[PlannedRequest],
++    ledger: &[OwnedRequest],
++    tab: u64,
++) -> u64 {
++    let id = plans
++        .iter()
++        .filter(|p| p.tab == tab)
++        .map(|p| p.id)
++        .max()
++        .expect("measured planned owner");
++    let i = &driver.app.shell.indexing;
++    let allocations = i.perf_allocations.iter().filter(|a| a.id == id);
++    let owned = ledger.iter().filter(|r| r.id == id);
++    let proof = MeasuredOwnerProof {
++        id,
++        allocation_count: allocations.clone().count(),
++        allocation_tab_correct: allocations.clone().all(|a| a.tab == Some(tab)),
++        ledger_count: owned.clone().count(),
++        ledger_tab_correct: owned.clone().all(|r| r.tab == tab),
++        logically_released: i.perf_released_requests.contains_key(&id),
++        route_present: i.request_tabs.contains_key(&id),
++    };
++    select_measured_request(tab, request_for(driver, tab), plans, &proof).unwrap_or_else(|reason| {
++        panic!("measured owner identity rejected tab={tab} id={id}: {reason}")
++    })
++}
+ fn actual_signature(root: &std::path::Path, entries: &[Entry]) -> String {
+     let mut p = entries.iter().map(|e| e.path.clone()).collect::<Vec<_>>();
+     p.sort();
+@@ -812,7 +840,12 @@
+                 owned_count(
+                     &driver,
+                     tabs[stage.min(2)],
+-                    request_for(&driver, tabs[stage.min(2)]),
++                    Some(measured_request_for(
++                        &driver,
++                        &plans,
++                        &ledger,
++                        tabs[stage.min(2)],
++                    )),
+                 )
+             } else {
+                 ingested
+@@ -949,10 +982,9 @@
+         record_planned_new(&driver, &mut plans, primary_tab, 0);
+         let now = driver.last_frame_end.duration_since(start);
+         collect_requests(&driver, &mut ledger);
++        let primary_before_latest_map = primary;
+         if matches!(profile, Profile::MidIgnore | Profile::TabChain) {
+-            if let Some(id) = request_for(&driver, tabs[target]) {
+-                primary = id;
+-            }
++            primary = measured_request_for(&driver, &plans, &ledger, tabs[target]);
+         }
+         if profile.stable() {
+             assert_eq!(driver.app.current_tab_id(), Some(tabs[0]));
+@@ -1032,7 +1064,29 @@
+         let primary_observation = ledger
+             .iter()
+             .find(|r| r.id == primary)
+-            .unwrap()
++            .unwrap_or_else(|| {
++                let allocations = i.perf_allocations.iter().map(|a| {
++                    serde_json::json!({"id":a.id,"tab":a.tab,"observation":format!("{:?}",a.observation.lock().unwrap())})
++                }).collect::<Vec<_>>();
++                let planned = plans.iter().map(|p| {
++                    serde_json::json!({"id":p.id,"tab":p.tab,"revoked_by":p.revoked_by,"completed_predecessor":p.completed_predecessor,"permission_reason":p.permission_reason,"permission_at":format!("{:?}",p.permission_at)})
++                }).collect::<Vec<_>>();
++                eprintln!("INDEX_PERF_MISSING_PRIMARY {}", serde_json::json!({
++                    "case":profile.name(),"source":source.name(),"condition":condition,
++                    "stage":stage,"done_inputs":done_inputs,"frame":frames,"elapsed_ms":ms(now),
++                    "primary":primary,"primary_before_latest_map":primary_before_latest_map,
++                    "target_tab":tabs[target],"target_root":roots[target].root,
++                    "current_tab":driver.app.current_tab_id(),"current_root":driver.app.shell.runtime.root,
++                    "latest_map":format!("{:?}",i.latest_request_ids.lock().unwrap()),
++                    "pending_request":i.pending_request_id,"pending_activation":driver.app.shell.tabs.pending_activation_tab_id,
++                    "pending_transition":pending_transition,"queue":i.pending_queue.iter().map(|r| (r.request_id,r.tab_id)).collect::<Vec<_>>(),
++                    "inflight":i.inflight_requests,"request_tabs":i.request_tabs,
++                    "released":i.perf_released_requests.keys().collect::<Vec<_>>(),
++                    "ledger":ledger.iter().map(|r| (r.id,r.tab)).collect::<Vec<_>>(),
++                    "planned":planned,"allocations":allocations
++                }));
++                panic!("primary request {primary} is absent from the measured allocation ledger");
++            })
+             .observation();
+         let released = ledger
+             .iter()
+--- src/app/tests/indexing_perf/extensions/mod.rs
++++ src/app/tests/indexing_perf/extensions/mod.rs
+@@ -752,3 +752,195 @@
+         }
+     }
+ }
++
++#[derive(Clone)]
++struct MeasuredOwnerProof {
++    id: u64,
++    allocation_count: usize,
++    allocation_tab_correct: bool,
++    ledger_count: usize,
++    ledger_tab_correct: bool,
++    logically_released: bool,
++    route_present: bool,
++}
++fn select_measured_request(
++    tab: u64,
++    live_latest: Option<u64>,
++    planned: &[PlannedRequest],
++    proof: &MeasuredOwnerProof,
++) -> Result<u64, &'static str> {
++    let owner = planned
++        .iter()
++        .filter(|p| p.tab == tab)
++        .max_by_key(|p| p.id)
++        .ok_or("no measured planned owner")?;
++    if owner.id == 0
++        || proof.id != owner.id
++        || proof.allocation_count != 1
++        || !proof.allocation_tab_correct
++        || proof.ledger_count != 1
++        || !proof.ledger_tab_correct
++    {
++        return Err("latest planned owner lacks exact allocation and ledger identity");
++    }
++    match live_latest {
++        Some(0) => {
++            if owner.permission_at.is_none()
++                || owner.permission_reason != Some("switch-evicts-previous-Warm")
++            {
++                return Err(
++                    "cancellation marker lacks prior latest-owner Warm eviction permission",
++                );
++            }
++        }
++        Some(id) if id != owner.id => return Err("live ID is not latest measured planned owner"),
++        None if !proof.logically_released || proof.route_present => {
++            return Err("missing live ID lacks exact latest logical retirement");
++        }
++        _ => {}
++    }
++    // This selects the completion owner only. Logical retirement and cancellation
++    // permission do not replace successful terminal/source/root or physical debt truth.
++    Ok(owner.id)
++}
++#[test]
++fn tc_229_measured_owner_rejects_cancellation_tombstone_as_request() {
++    let plans = [PlannedRequest {
++        id: 5,
++        tab: 1,
++        permission_at: Some(Instant::now()),
++        permission_reason: Some("switch-evicts-previous-Warm"),
++        ..Default::default()
++    }];
++    let proof = MeasuredOwnerProof {
++        id: 5,
++        allocation_count: 1,
++        allocation_tab_correct: true,
++        ledger_count: 1,
++        ledger_tab_correct: true,
++        logically_released: false,
++        route_present: true,
++    };
++    assert_eq!(select_measured_request(1, Some(0), &plans, &proof), Ok(5));
++}
++
++#[test]
++fn tc_229_measured_owner_requires_latest_planned_allocation_and_ledger_identity() {
++    let plans = [
++        PlannedRequest {
++            id: 5,
++            tab: 1,
++            permission_at: Some(Instant::now()),
++            permission_reason: Some("switch-evicts-previous-Warm"),
++            ..Default::default()
++        },
++        PlannedRequest {
++            id: 8,
++            tab: 1,
++            ..Default::default()
++        },
++    ];
++    let proof = MeasuredOwnerProof {
++        id: 8,
++        allocation_count: 1,
++        allocation_tab_correct: true,
++        ledger_count: 1,
++        ledger_tab_correct: true,
++        logically_released: false,
++        route_present: true,
++    };
++    assert_eq!(select_measured_request(1, Some(8), &plans, &proof), Ok(8));
++    for live in [0, 4, 5, 6, 99] {
++        assert!(
++            select_measured_request(1, Some(live), &plans, &proof).is_err(),
++            "older/setup/foreign/unplanned ID or predecessor-only permission: {live}"
++        );
++    }
++    assert!(select_measured_request(2, Some(8), &plans, &proof).is_err());
++    for bad in 0..7 {
++        let mut p = proof.clone();
++        match bad {
++            0 => p.id = 5,
++            1 => p.allocation_count = 0,
++            2 => p.allocation_count = 2,
++            3 => p.allocation_tab_correct = false,
++            4 => p.ledger_count = 0,
++            5 => p.ledger_count = 2,
++            _ => p.ledger_tab_correct = false,
++        }
++        assert!(
++            select_measured_request(1, Some(8), &plans, &p).is_err(),
++            "identity fault {bad}"
++        );
++    }
++}
++#[test]
++fn tc_229_measured_owner_none_requires_exact_latest_logical_retirement() {
++    let mut plans = [
++        PlannedRequest {
++            id: 5,
++            tab: 1,
++            ..Default::default()
++        },
++        PlannedRequest {
++            id: 8,
++            tab: 1,
++            ..Default::default()
++        },
++    ];
++    let proof = MeasuredOwnerProof {
++        id: 8,
++        allocation_count: 1,
++        allocation_tab_correct: true,
++        ledger_count: 1,
++        ledger_tab_correct: true,
++        logically_released: true,
++        route_present: false,
++    };
++    assert_eq!(select_measured_request(1, None, &plans, &proof), Ok(8));
++    let now = Instant::now();
++    let mut observation = crate::app::index_mailbox::IndexPerfObservation {
++        admitted_at: Some(now),
++        admitted_root: Some(std::path::PathBuf::from("owned-test-root")),
++        started_root: Some(std::path::PathBuf::from("owned-test-root")),
++        started_source: Some("FileList"),
++        terminal_kind: Some("finished"),
++        terminal_source: Some("FileList"),
++        terminal_published: Some(now),
++        ..Default::default()
++    };
++    let mut truth = ExtendedTruth {
++        successful_terminal: observation.terminal_kind == Some("finished"),
++        owned_physical_complete: physical_request_complete(&observation),
++        owned_request_released: proof.logically_released,
++        snapshot_valid: true,
++        debt: false,
++        latest_results_valid: true,
++    };
++    assert!(!truth.index_ready() && !truth.results_ready(),
++        "selected logically retired owner with successful terminal still awaits actual worker return");
++    observation.request_processing_returned = Some(now + Duration::from_millis(1));
++    truth.owned_physical_complete = physical_request_complete(&observation);
++    assert!(truth.index_ready() && truth.results_ready());
++    let mut p = proof.clone();
++    p.logically_released = false;
++    assert!(select_measured_request(1, None, &plans, &p).is_err());
++    p = proof.clone();
++    p.route_present = true;
++    assert!(select_measured_request(1, None, &plans, &p).is_err());
++    p = proof.clone();
++    p.id = 5;
++    assert!(
++        select_measured_request(1, None, &plans, &p).is_err(),
++        "older release is insufficient"
++    );
++    assert!(select_measured_request(1, Some(0), &plans, &proof).is_err());
++    plans[1].permission_at = Some(Instant::now());
++    plans[1].permission_reason = Some("explicit-TabChain-refresh");
++    assert!(
++        select_measured_request(1, Some(0), &plans, &proof).is_err(),
++        "refresh permission does not authorize eviction marker"
++    );
++    plans[1].permission_reason = Some("switch-evicts-previous-Warm");
++    assert_eq!(select_measured_request(1, Some(0), &plans, &proof), Ok(8));
++}

@@ -1,0 +1,19 @@
+{
+  "evidence_kind": "synthetic-control",
+  "mode": "imported_API_OO",
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-OO",
+    "-c",
+    "import sys,json; from pathlib import Path; import collect_historical as c; c.collect(Path(sys.argv[1]).read_text(),json.loads(Path(sys.argv[2]).read_text()),json.loads(Path(sys.argv[3]).read_text())); print(\"UNSAFE ACCEPT\")",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/optimized-control-nuzakqk6/events.log",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/optimized-control-nuzakqk6/side.json",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json"
+  ],
+  "PYTHONOPTIMIZE": null,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 1, in <module>\n    import sys,json; from pathlib import Path; import collect_historical as c; c.collect(Path(sys.argv[1]).read_text(),json.loads(Path(sys.argv[2]).read_text()),json.loads(Path(sys.argv[3]).read_text())); print(\"UNSAFE ACCEPT\")\n                                                                               ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py\", line 154, in collect\n    raise ValueError('optimized Python is forbidden; required fbd9 assertions must remain enabled')\nValueError: optimized Python is forbidden; required fbd9 assertions must remain enabled\n",
+  "admission_output_created": false,
+  "actual_child_returned": true
+}

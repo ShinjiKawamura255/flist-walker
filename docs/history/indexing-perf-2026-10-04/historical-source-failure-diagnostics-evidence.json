@@ -1,0 +1,33 @@
+{
+  "status": "Read-only point-in-time diagnostics; native semantics facts and unmeasured causal inferences distinguished",
+  "scope": "Frozen v27/v28 FAIL/work classification plus v29 source analysis and actual-v30 source identity only; no whole speed acceptance",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/v29-filter-full-focused-source-analysis.txt",
+      "path": "historical-diagnostic-caddb3233a6a-v29-filter-full-focused-source-analysis.txt",
+      "sha256": "caddb3233a6ad173e8f9025fd4168c83e16b0ab31b6230d5737db6a3f9478f28",
+      "bytes": 12792,
+      "uncompressed_sha256": "caddb3233a6ad173e8f9025fd4168c83e16b0ab31b6230d5737db6a3f9478f28",
+      "uncompressed_bytes": 12792,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/v30-native-filter-focused-source-addendum.txt",
+      "path": "historical-diagnostic-b1074e0c275e-v30-native-filter-focused-source-addendum.txt",
+      "sha256": "b1074e0c275e33cca614891ad9361d3a5519c4632caf397723a69579f70fc7fd",
+      "bytes": 8457,
+      "uncompressed_sha256": "b1074e0c275e33cca614891ad9361d3a5519c4632caf397723a69579f70fc7fd",
+      "uncompressed_bytes": 8457,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/v27-v28-r5-failed-cells-and-comparable-work-report.txt",
+      "path": "historical-diagnostic-bb00eb5eaacb-v27-v28-r5-failed-cells-and-comparable-work-report.txt",
+      "sha256": "bb00eb5eaacbc218bd7be5dc1df60be2b4276fbd433615ca20b3cb49a0b18a23",
+      "bytes": 91385,
+      "uncompressed_sha256": "bb00eb5eaacbc218bd7be5dc1df60be2b4276fbd433615ca20b3cb49a0b18a23",
+      "uncompressed_bytes": 91385,
+      "encoding": "unchanged"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+#[cfg(test)]
+#[test]
+fn historical_owned_registry_writer_real_success() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    crate::app::historical_perf::historical_prove_runtime_for_guard();
+    let base=crate::app::historical_perf::historical_owned_path_for_guard("registry-success");
+    let path=base.join(".flistwalker_ui_state.json");fs::write(&path,"{}").unwrap();
+    crate::app::historical_perf::bind_settings_writer(&path);
+    let _=enqueue_ui_state_patch(path.clone(),UiStatePatch::default(),Vec::new(),false);
+    OWNED_SHUTDOWN(&path,Duration::from_secs(1));
+    assert!(cleanup.safe());assert!(fs::read_to_string(&path).is_ok());
+    fs::remove_dir_all(base).unwrap();
+}
+#[cfg(test)]
+#[test]
+fn historical_owned_registry_writer_real_write_failure_is_retained() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    crate::app::historical_perf::historical_prove_runtime_for_guard();
+    let base=crate::app::historical_perf::historical_owned_path_for_guard("registry-failure");
+    let path=base.join(".flistwalker_ui_state.json");fs::create_dir(&path).unwrap();
+    crate::app::historical_perf::bind_settings_writer(&path);
+    let _=enqueue_ui_state_patch(path.clone(),UiStatePatch::default(),Vec::new(),false);
+    OWNED_SHUTDOWN(&path,Duration::from_secs(1));
+    assert!(!cleanup.safe());assert!(base.is_dir());
+    let observer=crate::app::historical_perf::owned_writer(&path).unwrap();
+    assert!(observer.physically_joined_for_guard(),"failed write must still have a real joined handle before guard cleanup");
+    // Test-only explicit cleanup occurs only after actual physical join, not under the failed-cell policy.
+    fs::remove_dir_all(base).unwrap();
+}

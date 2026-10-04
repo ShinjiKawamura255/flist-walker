@@ -1,0 +1,69 @@
+{
+  "status": "PASS-selected-local-checks/final-independent-review-pending",
+  "scope": "Fresh docs/contracts/retained-byte checks plus reuse of exact213-file accepted Rust runs; prior local status JSON is historical and retains its earlier pending fields",
+  "source_map": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "selected": [
+    "VM-001",
+    "VM-002",
+    "VM-003",
+    "VM-004",
+    "VM-008",
+    "VM-009"
+  ],
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/final-selected-validation-plan.txt",
+      "path": "final-integration-212aaefe9398-final-selected-validation-plan.txt.gz",
+      "sha256": "6f5247956acaa04e3bec25922a19287ff84c77e301d88f4656adb198939ebd39",
+      "bytes": 11276,
+      "uncompressed_sha256": "212aaefe9398e230019d431dcad89817df4cb531539fcff7bb7443842d911762",
+      "uncompressed_bytes": 95131,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/final-python-contract-tests.log",
+      "path": "final-integration-4399eee192fb-final-python-contract-tests.log.gz",
+      "sha256": "43d3d7b30fff1c5579b8da89a5f5235ba6ef0d691d8868dcff2f186986cbca55",
+      "bytes": 55,
+      "uncompressed_sha256": "4399eee192fbf45ecc880b0138a8948b658c03da3ec12a37aaca6688faae3f7b",
+      "uncompressed_bytes": 118,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/final-repo-contract.log",
+      "path": "final-integration-39b2e2597716-final-repo-contract.log.gz",
+      "sha256": "1789974ce00aeaf05bc05c69231ed3e1c3ddcffb474ce4d55155e4022c4aeec5",
+      "bytes": 43,
+      "uncompressed_sha256": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3",
+      "uncompressed_bytes": 23,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/final-evidence-check.py",
+      "path": "final-integration-20739e6baea5-final-evidence-check.py",
+      "sha256": "20739e6baea51ac5b222ba421414cfdcb485cb15b7ec5ce4c6ed9496085729f6",
+      "bytes": 3072,
+      "uncompressed_sha256": "20739e6baea51ac5b222ba421414cfdcb485cb15b7ec5ce4c6ed9496085729f6",
+      "uncompressed_bytes": 3072,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/final-evidence-check.json",
+      "path": "final-integration-e9cab0c1c63c-final-evidence-check.json",
+      "sha256": "e9cab0c1c63c10620bae9eb049dd42cce0039ea6014a3f8a07746eb573cf5e4d",
+      "bytes": 8588,
+      "uncompressed_sha256": "e9cab0c1c63c10620bae9eb049dd42cce0039ea6014a3f8a07746eb573cf5e4d",
+      "uncompressed_bytes": 8588,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-local-validation-status.json",
+      "path": "final-integration-7d86e35b9438-integration-local-validation-status.json",
+      "sha256": "7d86e35b9438a3f1612311fb6e3df9c6824cb1646e0f7c5b0c1e8deac98b7351",
+      "bytes": 3564,
+      "uncompressed_sha256": "7d86e35b9438a3f1612311fb6e3df9c6824cb1646e0f7c5b0c1e8deac98b7351",
+      "uncompressed_bytes": 3564,
+      "encoding": "unchanged"
+    }
+  ]
+}

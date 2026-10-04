@@ -1,0 +1,43 @@
+{
+  "scope": "Main frozen R5 preparation source/replay only; build/test/perf NOT_RUN",
+  "packet_sha256": "01895da191528b9bbfe94ef8279adcb09e954f16b053c569f84b9f8164530389",
+  "references": 22,
+  "tags": [
+    {
+      "tag": "v0.27.0",
+      "source_files": 187,
+      "compact_source_map_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "original_full_replay_exact": true,
+      "original_Cargo_lock_exact": true,
+      "only_two_cfg_test_files_changed_from_R4": true
+    },
+    {
+      "tag": "v0.28.0",
+      "source_files": 199,
+      "compact_source_map_sha256": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "original_full_replay_exact": true,
+      "original_Cargo_lock_exact": true,
+      "only_two_cfg_test_files_changed_from_R4": true
+    },
+    {
+      "tag": "v0.29.0",
+      "source_files": 207,
+      "compact_source_map_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "original_full_replay_exact": true,
+      "original_Cargo_lock_exact": true,
+      "only_two_cfg_test_files_changed_from_R4": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source_files": 214,
+      "compact_source_map_sha256": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "original_full_replay_exact": true,
+      "original_Cargo_lock_exact": true,
+      "only_two_cfg_test_files_changed_from_R4": true
+    }
+  ],
+  "redcandidate_map_exact": true,
+  "current213_unchanged": true,
+  "old_basic10_unchanged": true,
+  "retained11_roots_untouched": true
+}

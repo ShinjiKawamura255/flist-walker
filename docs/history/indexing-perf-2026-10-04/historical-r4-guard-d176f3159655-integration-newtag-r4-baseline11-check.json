@@ -1,0 +1,50 @@
+{
+  "scope": "Main direct replay of all11 frozen original basic historical acceptance subjects, independent of R4 packet numeric metadata field",
+  "status": "PASS",
+  "subjects": [
+    {
+      "path": "docs/history/indexing-perf-baseline-2026-10-03.md",
+      "sha256": "d40eb920a72c6f9c9756cbbdbc1a91508d3a20c2bc28f2ffdf3bf58ccb317c32"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-comparisons.json",
+      "sha256": "7a744ad8757795601a7e3490d4dcc904ba9d46045deb05986147c7e5662b8902"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-environment.json",
+      "sha256": "8299120c65de751fdc8ab73fdd063a0e11f3bb9f2e9e0ef8739b72a8d48f6f1c"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-identities.json",
+      "sha256": "4a3936770e86b800afd56ed59d8ddced3a355288b1c576c8d85947b449ac62c6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-matrix.json",
+      "sha256": "3b1dfd040e6f61bcfe46d9e0bf71cb85c76e2a58750bf67517712dcb405029ad"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-observer.jsonl",
+      "sha256": "38c36fbf1b3ef01a0fd4207f26af27cd0bc45f8702f7606bc5b54809a8040cd6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-raw.jsonl",
+      "sha256": "97bb314613559179d930db0d8dfd3f13b1956be370d5eaf58b148b45d8b6b119"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.27.0-basic.patch",
+      "sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.28.0-basic.patch",
+      "sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.29.0-basic.patch",
+      "sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.30.0-basic.patch",
+      "sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f"
+    }
+  ]
+}

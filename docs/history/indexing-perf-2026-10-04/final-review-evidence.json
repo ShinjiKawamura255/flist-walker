@@ -1,0 +1,24 @@
+{
+  "status": "PASS-independent-final-review/local-closure-pending",
+  "review_sha256": "46e84242ab1b622b8ec0c7d2bbd082e7bf5e0a5e18bc97ab197e2d0ec1bf6b90",
+  "reviewed_base": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+  "reviewed_branch": "codex/indexing-contention-perf",
+  "reviewed_dirty_snapshot_sha256": "1105c9cc3662d1c5f2957fe0d8ca6b9197efc024a27029a81040190cff79e8de",
+  "reviewed_durable_files": 1017,
+  "reviewed_temporary_controls_excluded_from_commit": 6,
+  "findings": {
+    "blocking": 0,
+    "major": 0,
+    "minor": 0
+  },
+  "disposition": "Main verified original report bytes and reviewed snapshot unchanged; no remediation. Subsequent additions only preserve the report and this disposition. No additional source/performance/CI/external action claim.",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/final-independent-review.txt",
+      "path": "final-independent-review.txt",
+      "sha256": "46e84242ab1b622b8ec0c7d2bbd082e7bf5e0a5e18bc97ab197e2d0ec1bf6b90",
+      "bytes": 6199,
+      "encoding": "unchanged"
+    }
+  ]
+}

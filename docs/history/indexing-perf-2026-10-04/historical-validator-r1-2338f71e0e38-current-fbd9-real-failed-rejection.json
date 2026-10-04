@@ -1,0 +1,17 @@
+{
+  "scope": "Original current collector on genuine retained FAILED current runner log; no synthetic events/trailer, no new Rust measurement",
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "rust/target/indexing-perf-study/summarize_extensions.py",
+    "rust/target/indexing-perf-study/warm-final-extra-full.log",
+    "--rows",
+    "616",
+    "--output",
+    "rust/target/indexing-perf-study/historical-validator-r1/current-fbd9-real-failed-output.json"
+  ],
+  "exit_code": 1,
+  "collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+  "genuine_failed_log_sha256": "36d187c3651e5b31caa1cb0af4b91a1b54d460aff2ef5044cf3f3caf00b7d432",
+  "output_exists": false,
+  "log_sha256": "b8b11b340e568f0ec29e6e137f0ed6a509253a1b730e5b4d03c7738696be4546"
+}

@@ -1,0 +1,24 @@
+{
+  "scope": "Retired failure, no accepted performance rows",
+  "rust_source_manifest_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "exit_code": 101,
+  "raw_rows": 0,
+  "test_result_summaries": [
+    "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1564 filtered out; finished in 67.39s"
+  ],
+  "assets": [
+    {
+      "file": "selector-accepted-tabchain-target.log.gz",
+      "sha256": "fc930a4b200d9c3de1a6aa04ea75df7a6f4c7e6164533ad3ab47d03364c4adbf",
+      "bytes": 2850,
+      "uncompressed_sha256": "e1bbd9bb77010f2d5f1d277f322c0060ab113fb315d3ea4b64e71b82291128b8",
+      "uncompressed_bytes": 13408
+    },
+    {
+      "file": "selector-accepted-tabchain-target.sidecar.json",
+      "sha256": "12f33cc8dcc757fa8ddcad6ce5bf8f995a7455e22ad5199483ae5d71a70130d8",
+      "bytes": 47426
+    }
+  ],
+  "limitation": "Exact typed-victim cause/fast-state predicates absent from failure context; no root-cause conclusion from this record"
+}

@@ -1,0 +1,18 @@
+Historical validator R2 scoped repair — SOURCE/CONTROL checkpoint only
+Parent R1 validator-packet ce186360b170672cfac453ae2ac89efbb3e82ba01169bd9b8b7cb91d49fb2b2e and all39refs remain unchanged. R1 AFTER4ecc4e0814a8ac6238f9de9f2552712764ccab80a86152863af7e03f97f19105 HOLD1major1minor is retained as that point-in-time outcome. Copied R1 artifacts in R2 are prior evidence, not R2 fresh results.
+
+Only two collector contracts changed:
+1 collect() begins with an explicit `if not __debug__: raise ValueError(...)`, before source/selection/FSM/admission. It does not use assert. Thus ordinary CLI and imported API both refuse optimized Python before any accepted row/output, even if predicates imported under -O have had their assert statements removed. Frozen copied fbd9_predicates22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429 and current fbd9 remain byte-identical.
+2 exact independent tag→release-target mapping is derived from accepted R4 export parents:
+<accepted R4 export parent>/target-release-v0.27.0
+<accepted R4 export parent>/target-release-v0.28.0
+<accepted R4 export parent>/target-release-v0.29.0
+<accepted R4 export parent>/target-release-v0.30.0
+The literal sidecar CARGO_TARGET_DIR must equal its mapped path, not a substring or normalized approximation. All four paths must be absolute, already normalized, resolve to exactly themselves, and be pairwise distinct. Shared multi-tag, dot/parent spelling, /tmp vs /private/tmp canonical alias, symlink aliases and a symlink placed at the mapped target are refused. Nonexistent future target directories are allowed when canonical parent mapping is unambiguous; the collector creates none. This is provenance checking, not a change to Cargo behavior.
+
+Meaningful firstRED: original copied collector and unchanged fbd9 accepted optimized valid or queued-debt1 synthetic inputs (-O,-OO,PYTHONOPTIMIZE1/2,importedAPI) plus shared/dot/parent/symlink target inputs. Actual first-red suite143tests had130PASS13FAIL/exit1; source and test snapshots/log preserved under r2-first-red*. Original guard130 remains passing evidence; added failures identify the repair, not historical speed/eligibility.
+GREEN: scoped fixes plus all original130 synthetic regressions and fifteen new controls give145PASS0FAIL0ERROR0SKIP. Nine actual child interpreter outcomes are separately recorded: eight CLI refusals exit2 and imported API refusal exit1, all return physically before10s test watchdog, none creates admission output. Normal mixed CLI remains evidence-validation exit0, preserving original inputFAILED/exit101 with28 accepted14 excluded. No success trailer is synthesized for current collector; current bytes have not changed.
+
+Full before/after Rust source/guard/map/lock identity is pinned by accepted R4 checkpoint19ba. R2 keeps all source/command/physical cleanup/restoration gates and original ordinary/cap fixed trace/selection/scale. No eligibility type label, scheduling/deadline/dependency/native behavior or accepted Rust source changed. GenericFAIL staysFAIL and no failed partial row supplies a ratio. Unknown cleanup still permits only remaining NOT_RUN statuses.
+
+The exact target mapping JSON is a future command-sidecar plan, not a claim that release target builds/settings readback/cleanup/performance occurred. Local historical full616 and separatecap14, first-tag process and actual status-aware ingestion are NOT_RUN. No build/perf authority is inferred. Freeze R2 and stop for focused independent AFTER/main acceptance; stop between future tags for actual status review when separately authorized.

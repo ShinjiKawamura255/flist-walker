@@ -1,0 +1,75 @@
+{
+  "source_map": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "verified_live_files": 213,
+  "sidecar_log_checks": [
+    {
+      "sidecar": "warm-ack-accepted-clippy.sidecar.json",
+      "log": "warm-ack-accepted-clippy.log",
+      "sha256": "a3268a9288ed913febc60a91a5b588d13c6bc5701c61015091943f8ce735aeac",
+      "exit_code": 0,
+      "summaries": []
+    },
+    {
+      "sidecar": "warm-ack-accepted-composed.sidecar.json",
+      "log": "warm-ack-accepted-composed.log",
+      "sha256": "1d98e601ccb2e6c4756f0e8a85834165801401d0ee6ed9afa06e094bf83e7ea3",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 0.13s"
+      ]
+    },
+    {
+      "sidecar": "warm-ack-accepted-fmt.sidecar.json",
+      "log": "warm-ack-accepted-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "summaries": []
+    },
+    {
+      "sidecar": "warm-ack-accepted-indexing-normal.sidecar.json",
+      "log": "warm-ack-accepted-indexing-normal.log",
+      "sha256": "1a6f778d2a6c97cd2dc1b7dfeb9930018d3587ac5c633c291b89c148f04510c5",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 62 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.34s"
+      ]
+    },
+    {
+      "sidecar": "warm-ack-accepted-ordering.sidecar.json",
+      "log": "warm-ack-accepted-ordering.log",
+      "sha256": "b8879b3bb1fc050f8e0b53d0057d4f7820037f74eadb0f36b53e43623db605ad",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1556 filtered out; finished in 0.20s"
+      ]
+    },
+    {
+      "sidecar": "warm-ack-accepted-pipeline.sidecar.json",
+      "log": "warm-ack-accepted-pipeline.log",
+      "sha256": "eb8dc7896801379c422b6f2b820d6d3273732ec28eab1f0c6ef2ca2a6bd55df5",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 152 passed; 0 failed; 0 ignored; 0 measured; 1414 filtered out; finished in 0.11s"
+      ]
+    },
+    {
+      "sidecar": "warm-ack-accepted-search-observer.sidecar.json",
+      "log": "warm-ack-accepted-search-observer.log",
+      "sha256": "2c5b44c2e47c1e7f42028ab1b55fe4408d2b29d89fec4a383f02178f31a4c285",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "sidecar": "warm-ack-accepted-tc207.sidecar.json",
+      "log": "warm-ack-accepted-tc207.log",
+      "sha256": "e7b3eda05ff81beee1b871546396ee03d82fb77f7d7172a2ec40c3f83f2f4011",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 1484 filtered out; finished in 1.39s"
+      ]
+    }
+  ],
+  "purpose": "main independent exact source/log verification; component guards only; no performance acceptance"
+}

@@ -1,0 +1,7 @@
+{
+  "error": "ValueError('observed original process exit required')",
+  "log_sha256": "fc5496aa02551e4755896a02e766014b551e96e099196f8ac20e4e0898e629c6",
+  "actual_process_exit": -15,
+  "accepted_rows": 0,
+  "classification": "protocol rejection; no inferred unsupported/noneligible"
+}

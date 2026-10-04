@@ -1,0 +1,92 @@
+e2ef stale-Full observation to four original tags — read-only compatibility supplement
+2026-10-04 /private/tmp/flistwalker-indexing-perf-20261003.
+Frozen input stale-full-final-source/src (e2ef manifest below); delta against warm-ack-final-source/src (3cf) is exactly four Rust files, no added/removed Rust subjects. This check is read-only.
+Current pilot/full remains driver sole-heavy; historical source/adapters/build/test/perf NOT RUN and unapproved until full acceptance plus main handoff. Frozen basic assets unchanged.
+
+Actual original sites (git-show original lines, not basic-adapted exports)
+Tag        sink Full branch / rejection     request_is_current     mailbox try_publish / Full return
+v0.27.0    index_worker.rs69 /71            :53                    index_mailbox.rs56 /71
+v0.28.0    index_worker.rs77 /79            :61                    index_mailbox.rs56 /71
+v0.29.0    index_worker.rs77 /79            :61                    index_mailbox.rs56 /71
+v0.30.0    index_worker.rs87 /89            :62                    index_mailbox.rs109 /124
+- try_publish locks real state, reports Closed on poison/state.closed/terminal resident BEFORE capacity; only Batch/ReplaceAll at data.len>=data_capacity produces Full. SlotOccupied applies existing control slots. Do not instrument arbitrary Err as Full or infer it from a later Failed.
+- Sink recovers response from error.into_response(), then invokes request_is_current; false returns Err(()) and true sleeps1ms/retries. All tags share this branch and scalar fields request_id/tab_id/mailbox/shutdown/latest_request_ids.
+- Original current check: shutdown.load(Relaxed) first, then latest mutex .lock().ok().and_then(latest[tab]) == own ID. Shutdown true short-circuits lock; poisoned lock yields false; absent or wrong latest yields false. None lookup success must be distinguished from poison. No original second lookup or error normalization may be introduced into the production path.
+
+Exact frozen four-file additions, cfg-only port recipe
+1 index_mailbox.rs:15 IndexPerfStaleFullDataAbort holds owned scalar IDs, batch/replace-all kind, Instant, latestID Option, lookup success and shutdown=false. Observation fields :29-30 are fixed Option(first event) + sticky duplicate flag. record_stale_full_data_abort:142 preserves first event; duplicate rejected. State is absent/defaultdisabled unless the existing test perf handle is enabled; no payload pin or unbounded event queue.
+2 index_worker.rs:89 request_is_current_after_full is cfg(test). Disabled perf delegates directly to original request_is_current. Enabled: first shutdown short-circuit; single successful latest lock; actual latestID/current decision; DATA kind and response ID match; only !current and second shutdownfalse creates scalar while latest lock held. Clock taken at this real decision, latest lock dropped before observer lock/storage. Return the original current decision bool, not a fabricated failure classification. Poison/shutdown/current/foreign ID/terminal/control emits no event.
+3 Full branch :209-228 routes cfg(test) to this helper and cfg(not(test)) to original request_is_current. Keep original Err(()) return and sleep/retry branch. Port these narrow cfg hunks at each original site, not the current worker body/root protocol/freshness code. v27–29 must not acquire current/v30 record_snapshot_started/completed calls.
+4 Shared frozen extension mod.rs:1237 declared_victim_abort_terminal now admits stage2 TabChain latestB Failed only with exact owned scalar, earlier typed warm-removal authorization, correct data type/ID, successful lookup, shutdownfalse, stale latest, chronological abort before Failed offer, exact receiver-closed error/currentfalse, successful Failed publication, no data_publish_end and no duplicate. Existing all-owned acquisition/return/lastgood seed/release/debt/full oracle requirements remain. Canceled path still retains its own exact role; no arbitrary Failed allowance.
+5 Shared frozen driver.rs:1999-2001 outputs first-event/limit1/duplicate data per owned request. Keep collectors current schema (69 guards as main-reported) and old raw rows immutable. No retroactive witness may be reconstructed from receiverclosed/error/currentfalse/Full retry totals or a later read of latest.
+
+Original return classifications and scheduling stay original
+- Full-stale abort can become stream Err('index receiver closed') and then Failed on all four tags, because existing stream_err overrides later postwalk superseded check. Existing error=='superseded' alone selects Canceled; genuine completed stream may race Finished. Preserve each actual offer/publication/body-return result.
+- A generic physical Closed/SlotOccupied branch cannot satisfy the new stale-Full scalar; neither can shutdown or poisoned latest. Missing scalar leaves Failed unproven under this role, not unsupported. Same for old retained3cf raw: its actual Failed remains evidence without the new abort-time witness.
+- Original latest.remove Warm body/callers remain as prior exact addendum; lock order latest -> release -> perf observation. Preserve existing default channels, worker counts/thresholds, adaptiveWalker configuration and runtime deadlines. No cancellation normalization, current ordered-handoff production repair or version-specific wait/trace changes.
+- Exact shared environment names: SEARCH_THREADS=12, SEARCH_PARALLEL_THRESHOLD=25000, WALKER_MAX_ENTRIES=500000. SEARCH_THREADS is not Walker concurrency; Walker uses original adaptive defaults. No changed environment is authorized by this memo.
+
+Feasibility / classifications / next gate
+All four original tags expose the necessary real Full branch, publication error enum, owned request and shutdown/latest fields. The required cfg observer is supported but not yet adapted/reviewed/built; no whole-case API absence found. Actual missing witness, unauthorized terminal, correctness/oracle mismatch or cleanup failure remains observed FAIL/NON_ELIGIBLE as specified, not unsupported or speed improvement.
+After main currentfull acceptance: fresh expanded archives+frozenbasic patch -> minimal cfg-only hunks and shared frozen tests -> exact full/additive diff+source/lock hashes -> independent adapter review -> sole-heavy focused guards/smoke/measurements. Keep positive actual joins/root restoration proof before failed-cell continuation; no AppDrop/no-error substitution.
+NOT RUN: historical implementation, adapter review, tag guards/build/perf, Windows/Linux execution. Only this ignored memo was written.
+
+Exact input identities (SHA256 of file bytes; tag commits are original objects)
+{
+  "frozen_manifest": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "subjects": 213,
+  "four_file_delta": {
+    "app/index_mailbox.rs": {
+      "3cf_sha256": "cfb6f860ed0a6febd470abc3fd3072304424a9ff37b17f6f864a0e157e45851f",
+      "e2ef_sha256": "6880d7b70b925c32105686c145ab667ddb1d899f1d4c7fb7590a98d13c758035"
+    },
+    "app/index_worker.rs": {
+      "3cf_sha256": "98a72cd347af3ab232f5943045cb473b4f269788929d461b1b8299db1b2d9eab",
+      "e2ef_sha256": "3bcd307b2a93aa3c6f31127bfa806eb3d7e52a162978005c9d638e495cd65347"
+    },
+    "app/tests/indexing_perf/extensions/driver.rs": {
+      "3cf_sha256": "154d244ac3b3a446ac9f2038d1f8b02cc53dc83ce7e568bb0ef5b5268c1d07bd",
+      "e2ef_sha256": "3cd0166011b87a3b870a9c87d0775537fb16fc609800ed22fb32b53f5be88bac"
+    },
+    "app/tests/indexing_perf/extensions/mod.rs": {
+      "3cf_sha256": "e222d99788356a324a29f95354c326604c1b87d41d54896c0bf467b41a9da37d",
+      "e2ef_sha256": "545dddd998df07a7072275c0d0a1106e02b8ebbc2dd9af658520eb4002ba8761"
+    }
+  },
+  "tags": {
+    "v0.27.0": {
+      "commit": "37195d639338f10549efabb1abad729546230914",
+      "files": {
+        "app/index_worker.rs": "27bf2da1bc94131deaa52a2859f9423d75c03de42be34e9f624268fdc441d889",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_coordinator.rs": "995148780f48bc63387b93229ccbebde90131495ec904435345cf90172a0224b"
+      }
+    },
+    "v0.28.0": {
+      "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+      "files": {
+        "app/index_worker.rs": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_coordinator.rs": "b6c18b854aced14d04934b823f4666b0abf6e07260bcd58901da7a8c5e04abc2"
+      }
+    },
+    "v0.29.0": {
+      "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+      "files": {
+        "app/index_worker.rs": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "app/index_mailbox.rs": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+        "app/index_coordinator.rs": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960"
+      }
+    },
+    "v0.30.0": {
+      "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+      "files": {
+        "app/index_worker.rs": "bac9aeabd11baa426721c4c69d6a4956a4c3cc45b07da99d983f52559c781f12",
+        "app/index_mailbox.rs": "deda23d1cd36653ba50f7dcc6867e9e406debae0eb606e7f98c24f554f5852d7",
+        "app/index_coordinator.rs": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960"
+      }
+    }
+  },
+  "stale-full-final-packet.json_sha256": "407cf3d4f11abc9521de2b1b7d5021b3293dccfa37b3177dab0634ed4aadd487",
+  "stale-full-final-source-hashes.json_sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+}

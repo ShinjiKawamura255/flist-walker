@@ -1,0 +1,768 @@
+{
+  "status": "target and all44-cell1pair pilot PASS; STOP before full7pairs/truncated pending parent acceptance",
+  "created_utc": "2026-10-03T23:38:21.523843+00:00",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+    "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source",
+  "common_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-common-packet.json",
+    "sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263"
+  },
+  "collector": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+    "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f"
+  },
+  "collector_check_claim": "Exact one test PASS, expected META cells/rows/uniquekeys/ABBA/correct/eligible, current-max roles/actual typed causes/earliest mutation/canceled and Finished chronology/full seed policy validated by frozen37fb collector.",
+  "records": [
+    {
+      "stage": "tabchain-target",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_extended_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "1",
+        "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FW_INDEX_PERF_EXTRA_CASES": "T1-A-B-C-A"
+      },
+      "started_utc": "2026-10-03T23:22:34.082283+00:00",
+      "ended_utc": "2026-10-03T23:23:43.742564+00:00",
+      "elapsed_seconds": 69.55076950000512,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 69.17s"
+      ],
+      "rows": 4,
+      "cells": 2,
+      "warmups": 4,
+      "sample_starts": 4,
+      "unique_keys": 4,
+      "all_correct": true,
+      "all_eligible": true,
+      "metadata": [
+        {
+          "coverage_kind": "selected-subset",
+          "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+          "entries": 100000,
+          "environment_identity": {
+            "arch": "aarch64",
+            "crate_version": "0.30.0",
+            "frame_period_ms": 16,
+            "logical_cpus": 12,
+            "optimized": true,
+            "os": "macos",
+            "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+          },
+          "expected_rows": 4,
+          "native": false,
+          "pairs": 1,
+          "runner": "extended",
+          "runtime_settings": {
+            "ctrl_w_deletes_word_in_query": false,
+            "disable_self_update": false,
+            "emacs_keybindings_enabled": true,
+            "filelist_auto_check_enabled": true,
+            "force_update_check_failure": "",
+            "history_persist_disabled": false,
+            "restore_tabs_enabled": false,
+            "search_parallel_threshold": 25000,
+            "search_threads": 12,
+            "tab_pin_moves_to_next_row": false,
+            "update_allow_downgrade": false,
+            "update_allow_same_version": false,
+            "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+            "walker_max_entries": 500000,
+            "window_trace_enabled": false,
+            "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+            "window_trace_verbose": false
+          },
+          "schema_version": 1,
+          "selected_cases": [
+            "T1-A-B-C-A"
+          ],
+          "selected_source_cells": 2,
+          "selected_sources": [
+            "FileList",
+            "Walker"
+          ],
+          "supported_cells": [
+            {
+              "case": "T1-A-B-C-A",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "Walker"
+            }
+          ],
+          "unsupported_cells": []
+        }
+      ],
+      "roles": {
+        "required-latest-success": 6,
+        "revoked-predecessor": 2,
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "actual_causes": {
+        "none": 6,
+        "warm-replacement-removal": 4
+      },
+      "TabChain_actual_records": [
+        {
+          "case": "B0",
+          "source": "FileList",
+          "index_ready_ms": 269.305417,
+          "results_ready_ms": 269.305417,
+          "warm_removals": 0,
+          "optional_preemptions": 0,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "T1-A-B-C-A",
+          "source": "FileList",
+          "index_ready_ms": 1442.482792,
+          "results_ready_ms": 1442.482792,
+          "warm_removals": 2,
+          "optional_preemptions": 2,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "canceled",
+              "role": "revoked-predecessor",
+              "entries_emitted": 50176,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 118.820333,
+              "optional_marker_ms": 118.83125
+            },
+            {
+              "id": 6,
+              "tab": 2,
+              "terminal": "canceled",
+              "role": "declared-Warm-eviction-retained-last-good",
+              "entries_emitted": 58368,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 194.738708,
+              "optional_marker_ms": 194.745125
+            },
+            {
+              "id": 7,
+              "tab": 3,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            },
+            {
+              "id": 8,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "B0",
+          "source": "Walker",
+          "index_ready_ms": 973.617125,
+          "results_ready_ms": 973.617125,
+          "warm_removals": 0,
+          "optional_preemptions": 0,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "T1-A-B-C-A",
+          "source": "Walker",
+          "index_ready_ms": 2238.589625,
+          "results_ready_ms": 2238.589625,
+          "warm_removals": 2,
+          "optional_preemptions": 2,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "canceled",
+              "role": "revoked-predecessor",
+              "entries_emitted": 24832,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 214.461625,
+              "optional_marker_ms": 214.470292
+            },
+            {
+              "id": 6,
+              "tab": 2,
+              "terminal": "canceled",
+              "role": "declared-Warm-eviction-retained-last-good",
+              "entries_emitted": 26880,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 358.87975,
+              "optional_marker_ms": 358.896125
+            },
+            {
+              "id": 7,
+              "tab": 3,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            },
+            {
+              "id": 8,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        }
+      ],
+      "measurement_kinds": {
+        "headless-GUI-actual-workers": 4
+      },
+      "owned_paths_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.log",
+        "sha256": "7092f1878043dbfea2abd290d3b0543ff15e508a3f97dfa14068360c82f29be4"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.sidecar.json",
+        "sha256": "227a2c37b84860aad00a7d86ee3268278e7fccda63418f060bbcf9c67f138ad5"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.collector.log",
+        "sha256": "a3c88104ea003f2170372c37c0e7844e116296e767df138d0648a5327b1ddb21"
+      },
+      "collector_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.summary.json",
+        "sha256": "c04011c7456dd80b5b04c452bedb50191ad4b86901614f71053d29f595365f4f"
+      },
+      "collector_exit_code": 0
+    },
+    {
+      "stage": "extra-pilot",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_extended_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "1",
+        "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000"
+      },
+      "started_utc": "2026-10-03T23:24:24.200719+00:00",
+      "ended_utc": "2026-10-03T23:36:23.089832+00:00",
+      "elapsed_seconds": 718.758251291998,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 718.41s"
+      ],
+      "rows": 88,
+      "cells": 44,
+      "warmups": 88,
+      "sample_starts": 88,
+      "unique_keys": 88,
+      "all_correct": true,
+      "all_eligible": true,
+      "metadata": [
+        {
+          "coverage_kind": "all-extended-nontruncated",
+          "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+          "entries": 100000,
+          "environment_identity": {
+            "arch": "aarch64",
+            "crate_version": "0.30.0",
+            "frame_period_ms": 16,
+            "logical_cpus": 12,
+            "optimized": true,
+            "os": "macos",
+            "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+          },
+          "expected_rows": 88,
+          "native": false,
+          "pairs": 1,
+          "runner": "extended",
+          "runtime_settings": {
+            "ctrl_w_deletes_word_in_query": false,
+            "disable_self_update": false,
+            "emacs_keybindings_enabled": true,
+            "filelist_auto_check_enabled": true,
+            "force_update_check_failure": "",
+            "history_persist_disabled": false,
+            "restore_tabs_enabled": false,
+            "search_parallel_threshold": 25000,
+            "search_threads": 12,
+            "tab_pin_moves_to_next_row": false,
+            "update_allow_downgrade": false,
+            "update_allow_same_version": false,
+            "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+            "walker_max_entries": 500000,
+            "window_trace_enabled": false,
+            "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+            "window_trace_verbose": false
+          },
+          "schema_version": 1,
+          "selected_cases": [
+            "F1-files",
+            "F1-folders",
+            "F1-ignore-list",
+            "F1-ignore-case",
+            "F1-mid-ignore",
+            "S1-ignore",
+            "S2-files",
+            "O1-name-shown",
+            "O1-modified-shown",
+            "O1-name-all",
+            "O1-modified-all",
+            "T1-active-warm",
+            "T1-promotion",
+            "T1-A-B-C-A",
+            "T1-S1-selective",
+            "T1-S1-dense",
+            "T1-S2",
+            "R1-natural",
+            "T1-natural-reclaim",
+            "H1-early",
+            "H1-late",
+            "P1-preview",
+            "W1-follow-links",
+            "W1-deep",
+            "W1-wide",
+            "F1-filelist-parser-files",
+            "F1-filelist-parser-folders"
+          ],
+          "selected_source_cells": 44,
+          "selected_sources": [
+            "FileList",
+            "Walker"
+          ],
+          "supported_cells": [
+            {
+              "case": "F1-files",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-folders",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S2-files",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S2",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S2",
+              "source": "Walker"
+            },
+            {
+              "case": "R1-natural",
+              "source": "FileList"
+            },
+            {
+              "case": "R1-natural",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "Walker"
+            },
+            {
+              "case": "H1-early",
+              "source": "FileList"
+            },
+            {
+              "case": "H1-late",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-follow-links",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-deep",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-wide",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-filelist-parser-files",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-filelist-parser-folders",
+              "source": "FileList"
+            }
+          ],
+          "unsupported_cells": []
+        }
+      ],
+      "roles": {
+        "required-latest-success": 92,
+        "revoked-predecessor": 4,
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "actual_causes": {
+        "none": 94,
+        "warm-replacement-removal": 4
+      },
+      "TabChain_actual_records": [
+        {
+          "case": "B0",
+          "source": "FileList",
+          "index_ready_ms": 262.800042,
+          "results_ready_ms": 262.800042,
+          "warm_removals": 0,
+          "optional_preemptions": 0,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "T1-A-B-C-A",
+          "source": "FileList",
+          "index_ready_ms": 1438.96325,
+          "results_ready_ms": 1438.96325,
+          "warm_removals": 2,
+          "optional_preemptions": 2,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "canceled",
+              "role": "revoked-predecessor",
+              "entries_emitted": 50176,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 119.792375,
+              "optional_marker_ms": 119.81025
+            },
+            {
+              "id": 6,
+              "tab": 2,
+              "terminal": "canceled",
+              "role": "declared-Warm-eviction-retained-last-good",
+              "entries_emitted": 58368,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 189.947083,
+              "optional_marker_ms": 189.95320800000002
+            },
+            {
+              "id": 7,
+              "tab": 3,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            },
+            {
+              "id": 8,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "B0",
+          "source": "Walker",
+          "index_ready_ms": 1034.552541,
+          "results_ready_ms": 1034.552541,
+          "warm_removals": 0,
+          "optional_preemptions": 0,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        },
+        {
+          "case": "T1-A-B-C-A",
+          "source": "Walker",
+          "index_ready_ms": 2262.001542,
+          "results_ready_ms": 2262.001542,
+          "warm_removals": 2,
+          "optional_preemptions": 2,
+          "requests": [
+            {
+              "id": 5,
+              "tab": 1,
+              "terminal": "canceled",
+              "role": "revoked-predecessor",
+              "entries_emitted": 24832,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 230.863292,
+              "optional_marker_ms": 230.876833
+            },
+            {
+              "id": 6,
+              "tab": 2,
+              "terminal": "canceled",
+              "role": "declared-Warm-eviction-retained-last-good",
+              "entries_emitted": 26880,
+              "cause": "warm-replacement-removal",
+              "earliest_mutation_ms": 367.20475000000005,
+              "optional_marker_ms": 367.23033300000003
+            },
+            {
+              "id": 7,
+              "tab": 3,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            },
+            {
+              "id": 8,
+              "tab": 1,
+              "terminal": "finished",
+              "role": "required-latest-success",
+              "entries_emitted": 100000,
+              "cause": null,
+              "earliest_mutation_ms": null,
+              "optional_marker_ms": null
+            }
+          ]
+        }
+      ],
+      "measurement_kinds": {
+        "headless-GUI-actual-workers": 84,
+        "worker-only-parser": 4
+      },
+      "owned_paths_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.log",
+        "sha256": "b59d3de281baa3def166ec80544a2d335533de8b0aa648ccd84e7c603217904b"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.sidecar.json",
+        "sha256": "1a006d1f5fe357d7fc470cfee3574e12e8a30550b6dd275a6dac514d505144fa"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.collector.log",
+        "sha256": "9eb33809d5bc9a5a312964207430d2b80ea257b702093b07d64723a547ef60f3"
+      },
+      "collector_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.summary.json",
+        "sha256": "65a7143b66139ce19c185c78d598f08e82016afc0d421669859be5c0a91d233c"
+      },
+      "collector_exit_code": 0
+    }
+  ],
+  "coverage": "100k1pair pilot is all44 nontruncated cells, not7pair final performance evidence; actualcap separate case not executed here.",
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "no_competing_heavy_jobs": true,
+  "cleanup": "No new matching owned fixture/settings/emptyroot paths remain after each runner process exit. Individual worker joins/nativeSIG cleanup unobserved.",
+  "limitations": [
+    "Headless production update cycle only; native GUI/Windows/Linux/CIactivation NOT RUN.",
+    "Intentional canceled TabChain predecessor/victim emitted partial counts; not100k throughput. Latest A/C successfully finished100k and retained seed independent oracle verified after tentative t3 without new frame/input.",
+    "Parser2cards are worker-only measurements; their t2/t3 are not GUI completion.",
+    "No new source edits or blind retries; original retired failed logs and accepted common/historical evidence unchanged.",
+    "Full7pair616/truncated14 and selected VM/perf gates NOT RUN in this stage."
+  ]
+}

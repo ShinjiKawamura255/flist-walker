@@ -1,0 +1,33 @@
+{
+  "os": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "cpu_count": 12,
+  "compiler": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: aarch64-apple-darwin\nrelease: 1.97.1\nLLVM version: 22.1.6",
+  "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "test_threads": 1,
+  "frame_period_ms": 16,
+  "profile": "release",
+  "cargo_flags": [
+    "--locked",
+    "--offline",
+    "--lib"
+  ],
+  "features": "Cargo.toml defaults (no extra feature flags)",
+  "filesystem": "local /private/tmp; warm OS cache; no cache eviction",
+  "measurement_parallelism": 1,
+  "native_gui": false,
+  "historical_target_dirs": "separate per tag; never share package fingerprints",
+  "base_commit": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+  "runtime_settings": {
+    "search_threads": 12,
+    "search_parallel_threshold": 25000,
+    "walker_max_entries": 500000,
+    "walker_adaptive_initial_limit": 3,
+    "walker_adaptive_max_limit": 6
+  },
+  "current_basic_source_hashes": {
+    "rust/src/app/tests/indexing_perf/mod.rs": "ab446f90be98e3821bde6b8b50f4ce42a6eba5a19fab4cb3ef0648bd1f2c46b0",
+    "rust/src/app/tests/indexing_perf/harness.rs": "6d0ef20835f06a2067308351c3b0cde7bcd33d815b2acbfe0d06cc0c9de9aa92",
+    "rust/src/app/worker/search_perf.rs": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01"
+  }
+}

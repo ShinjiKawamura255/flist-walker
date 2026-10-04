@@ -1,0 +1,61 @@
+{
+  "status": "source/normal checkpoint and basic84/observer14 accepted at56571573; actualTabChain targetfailed andfullmatrixpending",
+  "reconstruction": "current-basic-source-overlay.tar.gz then retained scoped repair patch; validate final213 hashes",
+  "files": [
+    {
+      "file": "tabchain-owner-repair-from-old213.patch",
+      "sha256": "efb66bd4b9021c79641d60d88134ba925bcdc64c6332811d949b36d92a806816",
+      "bytes": 11796
+    },
+    {
+      "file": "tabchain-owner-final-source-hashes.json",
+      "sha256": "918b06eaca0569fb0cc21a2441c05b8fce4c04be8c2e9964a7939930374ef75e",
+      "bytes": 25241
+    },
+    {
+      "file": "tabchain-owner-final-packet.json",
+      "sha256": "f05d280bbab85d9a5336b6dd2e85060a9500bfc295f08d642b3cf40607ac70eb",
+      "bytes": 3509
+    },
+    {
+      "file": "tabchain-primary-before-review.txt",
+      "sha256": "f215f78820c1475daada1da5c4655164adf4c15b975bb2ee45fc0d2b59150c63",
+      "bytes": 825
+    },
+    {
+      "file": "tabchain-primary-after-review.txt",
+      "sha256": "4143cdd13d6447d34c2b7ef435b5c3a42a2cd15ceaaa508951890fc84e4749bd",
+      "bytes": 734
+    },
+    {
+      "file": "tabchain-final-basic.sidecar.json",
+      "sha256": "5e6d5252ae9bc0ee36b90f838dbfec1e960bd496a156b7823def6b1d4ceb1bdb",
+      "bytes": 48826
+    },
+    {
+      "file": "tabchain-final-observer.sidecar.json",
+      "sha256": "ab1263a4332e236eca798d1048486784b34067ded5ce5dc561d8f86c9eaab9cd",
+      "bytes": 45648
+    },
+    {
+      "file": "tabchain-final-basic.log.gz",
+      "sha256": "e2254d8fa579fa229542f50228388bb2dc3efc08876dc7501d48db97c94fc2c7",
+      "bytes": 13783,
+      "uncompressed_sha256": "282e8ebc100bc29c97abbb4482ac5d0f3862f820f54a9b5241ffc627d764b5fe",
+      "uncompressed_bytes": 134042
+    },
+    {
+      "file": "tabchain-final-observer.log.gz",
+      "sha256": "361a4a2340b35e37a55267c1e00f33c9cb0f8e6f7067e8e6bb6a7876378cf24f",
+      "bytes": 523,
+      "uncompressed_sha256": "b5e26966922340e4abbe522f740b9aeade190e8600a75b8dd4e1b6a9219813ec",
+      "uncompressed_bytes": 2627
+    }
+  ],
+  "reconstruction_verified": {
+    "files": 213,
+    "status": "PASS",
+    "command": "From owned base export: tar -xzf current-basic-source-overlay.tar.gz; cd rust; patch -p0 --input ../tabchain-owner-repair-from-old213.patch; verify source213 hashes",
+    "manifest": "5657157385b02f6528cb677c8abcc3aec9cb237831b4fe050182d597b59fc03b"
+  }
+}

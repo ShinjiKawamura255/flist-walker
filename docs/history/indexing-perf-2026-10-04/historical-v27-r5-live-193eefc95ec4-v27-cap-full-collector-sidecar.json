@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "guard_checkpoint_sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+  "evidence_kind": "live-historical",
+  "log_sha256": "aa167890b128c7aeb5ca638def7cdbd690f7a2bf03b5738bad2aca7b3d959f6a",
+  "exit_code": 0,
+  "process_completed": true,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "watchdog_expired": false,
+  "runner_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--release",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+    "--",
+    "--ignored",
+    "--exact",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+    "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+    "FW_INDEX_PERF_EXTRA_CASES": "F1-files,F1-folders,F1-ignore-list,F1-ignore-case,F1-mid-ignore,S1-ignore,S2-files,O1-name-shown,O1-modified-shown,O1-name-all,O1-modified-all,T1-active-warm,T1-promotion,T1-A-B-C-A,T1-S1-selective,T1-S1-dense,T1-S2,R1-natural,T1-natural-reclaim,H1-early,H1-late,P1-preview,W1-follow-links,W1-deep,W1-wide,F1-filelist-parser-files,F1-filelist-parser-folders",
+    "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.27.0"
+  },
+  "selection": {
+    "runner": "truncated-serial",
+    "cells": [
+      {
+        "case": "W1-truncated",
+        "source": "Walker"
+      }
+    ],
+    "selected_cases": [
+      "W1-truncated"
+    ],
+    "selected_sources": [
+      "Walker"
+    ],
+    "pairs": 7,
+    "entries": 500001,
+    "expected_rows": 14,
+    "coverage_kind": "cap+1",
+    "cap": 500000
+  },
+  "source_identity": {
+    "tag": "v0.27.0",
+    "original_commit": "37195d639338f10549efabb1abad729546230914",
+    "original_archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+    "Cargo_lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+    "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+    "adapter_sha256": "18722cff3116fd5cdd2e742e6e10ecaddfca51d83b86bbf2fadf09135a01a9d2"
+  },
+  "validator_sha256": "6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e"
+}

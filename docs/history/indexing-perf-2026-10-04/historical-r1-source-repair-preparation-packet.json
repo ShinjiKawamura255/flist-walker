@@ -1,0 +1,913 @@
+{
+  "status": "r1 SOURCE PREPARATION FROZEN; STOP for independent focused source re-review",
+  "parent_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-preparation-packet.json",
+    "sha256": "ecc580a8f41d8ba273e904c91469ea6897dd59786fa2f6b7c8433979014a2982",
+    "all_34_refs_and_four_parent_source_maps": "reverified unchanged"
+  },
+  "finding_report": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-before-review.txt",
+    "sha256": "17a8ade6b0ac1e399a8af21d0579d04e6210124510d831c195169fd14f092d50",
+    "status": "HOLD major3 minor1 at prior checkpoint; r1 proposals NOT_RUN awaiting re-review"
+  },
+  "workspace": "/private/tmp/flistwalker-indexing-perf-20261003",
+  "current_source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "collector": {
+    "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+    "bytes": 12522
+  },
+  "collector_controls_retained": 69,
+  "tags": [
+    {
+      "tag": "v0.27.0",
+      "original_commit": "37195d639338f10549efabb1abad729546230914",
+      "original_archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+      "immutable_basic_patch_sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d",
+      "lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+      "Cargo_and_lock_original_bytes": true,
+      "native_summary_type_original_bytes": true,
+      "source_map": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-source-hashes.json",
+        "sha256": "e94a1e1ccddc2fc9bc7e817c5fbc950b49f661457a6cb9de846e89f39323b158",
+        "subjects": 187,
+        "compact_manifest_sha256": "a983a094f2c6f423415fb17c4099805c9b9d0425ce7e9c6225159aa1380ac4b4"
+      },
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-full.patch",
+        "sha256": "8d1c3065034f36b3fe157ca73f32776f4f72c9f6e04af8cf9a0559e0af4055bd",
+        "bytes": 477742,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/search_coordinator.rs",
+          "app/session.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/mod.rs",
+          "app/tests/support.rs",
+          "app/worker.rs",
+          "app/worker/runtime.rs",
+          "app/worker/search_perf.rs",
+          "app/worker/tasks.rs"
+        ]
+      },
+      "additive_basic_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-additive-basic.patch",
+        "sha256": "1635dee295f05970a815da873cbfec0d0a1dd2c7e873faf22effe7ac87a7557e",
+        "bytes": 419974,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/session.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs"
+        ]
+      },
+      "repair_parent_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-from-ecc58.patch",
+        "sha256": "fe7c0263d8afdd4bca3b4d1ece57e05a9bffdede24a78ec6a6b6a736055b938d",
+        "bytes": 38685,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/mod.rs",
+          "app/session.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs"
+        ]
+      },
+      "prepared_guard_sources": [
+        {
+          "module_file": "app/session.rs",
+          "test": "historical_owned_registry_writer_real_success"
+        },
+        {
+          "module_file": "app/session.rs",
+          "test": "historical_owned_registry_writer_real_write_failure_is_retained"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_success_is_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_default_off_and_unrelated_path_have_no_owner"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_and_join_are_required"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_join_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_parser_empty_second_stop_cannot_overwrite_timeout"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_commit_rejects_different_or_dead_arc"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_unknown_cleanup_retains_owned_path"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_actual_app_join_allows_removal"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_unknown_join_is_retained"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_proven_join_is_removed"
+        }
+      ],
+      "compile": "NOT_RUN",
+      "guards": "NOT_RUN",
+      "perf": "NOT_RUN"
+    },
+    {
+      "tag": "v0.28.0",
+      "original_commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+      "original_archive_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+      "immutable_basic_patch_sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502",
+      "lock_sha256": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+      "Cargo_and_lock_original_bytes": true,
+      "native_summary_type_original_bytes": true,
+      "source_map": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-source-hashes.json",
+        "sha256": "0e0cb92bb4da702bf0c16aac23f659e0024edb57d032148f743fac01bd18ba38",
+        "subjects": 199,
+        "compact_manifest_sha256": "ac5df6273d4f24a079f215a2b9bc27d172484cdc3b210ce7c5b583e75ffa721c"
+      },
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-full.patch",
+        "sha256": "a0a8be5ae8c1df28420480318afc24407671b47e5d0bbd39119544b21e780516",
+        "bytes": 476406,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/search_coordinator.rs",
+          "app/session.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/mod.rs",
+          "app/tests/support.rs",
+          "app/worker.rs",
+          "app/worker/runtime.rs",
+          "app/worker/search_perf.rs",
+          "app/worker/tasks.rs"
+        ]
+      },
+      "additive_basic_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-additive-basic.patch",
+        "sha256": "5dca868e198255a29a9f2a14dd3675dddb14a25d99eff0d348f9f9cc5660234e",
+        "bytes": 417457,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/session.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs"
+        ]
+      },
+      "repair_parent_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-from-ecc58.patch",
+        "sha256": "9cc9c67ea4ef6ebfae9eea05c6d34ba34e4c89747d8234297a4164ca145a84c0",
+        "bytes": 37434,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/mod.rs",
+          "app/session.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs"
+        ]
+      },
+      "prepared_guard_sources": [
+        {
+          "module_file": "app/session.rs",
+          "test": "historical_owned_registry_writer_real_success"
+        },
+        {
+          "module_file": "app/session.rs",
+          "test": "historical_owned_registry_writer_real_write_failure_is_retained"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_success_is_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_default_off_and_unrelated_path_have_no_owner"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_and_join_are_required"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_join_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_parser_empty_second_stop_cannot_overwrite_timeout"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_commit_rejects_different_or_dead_arc"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_unknown_cleanup_retains_owned_path"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_actual_app_join_allows_removal"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_unknown_join_is_retained"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_proven_join_is_removed"
+        }
+      ],
+      "compile": "NOT_RUN",
+      "guards": "NOT_RUN",
+      "perf": "NOT_RUN"
+    },
+    {
+      "tag": "v0.29.0",
+      "original_commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+      "original_archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+      "immutable_basic_patch_sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953",
+      "lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+      "Cargo_and_lock_original_bytes": true,
+      "native_summary_type_original_bytes": true,
+      "source_map": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-source-hashes.json",
+        "sha256": "9d2a4b4a972b0be07b8d941e01c825c15c037df7b7199b1e32c1dd68fc1b5db0",
+        "subjects": 207,
+        "compact_manifest_sha256": "635f753e60bf04c949ae0a02c3db2f5d5ad397b0839c6363a48c362958f5fa8f"
+      },
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-full.patch",
+        "sha256": "54553d61ba11195f305135915b8b83c8e1aa5f0bc70881890d157814ea5b8b1f",
+        "bytes": 477160,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/search_coordinator.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/mod.rs",
+          "app/tests/support.rs",
+          "app/worker.rs",
+          "app/worker/runtime.rs",
+          "app/worker/search_perf.rs",
+          "app/worker/tasks.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "additive_basic_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-additive-basic.patch",
+        "sha256": "ff64faa6d7a0dc910ce16d70a6be11e9eff76537b9b394202bcd9e71a1634890",
+        "bytes": 417492,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/tab_state.rs",
+          "app/tabs.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "repair_parent_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-from-ecc58.patch",
+        "sha256": "d2a10ba1c1bc3ed31e0dcb67cffe264aaaf6418d422f157becdfda084c7b5ad7",
+        "bytes": 37587,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/mod.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "prepared_guard_sources": [
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_success_is_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_default_off_and_unrelated_path_have_no_owner"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_and_join_are_required"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_join_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_parser_empty_second_stop_cannot_overwrite_timeout"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_commit_rejects_different_or_dead_arc"
+        },
+        {
+          "module_file": "persistence/worker.rs",
+          "test": "historical_owned_registry_writer_real_success"
+        },
+        {
+          "module_file": "persistence/worker.rs",
+          "test": "historical_owned_registry_writer_real_write_failure_is_retained"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_unknown_cleanup_retains_owned_path"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_actual_app_join_allows_removal"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_unknown_join_is_retained"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_proven_join_is_removed"
+        }
+      ],
+      "compile": "NOT_RUN",
+      "guards": "NOT_RUN",
+      "perf": "NOT_RUN"
+    },
+    {
+      "tag": "v0.30.0",
+      "original_commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+      "original_archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+      "immutable_basic_patch_sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f",
+      "lock_sha256": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+      "Cargo_and_lock_original_bytes": true,
+      "native_summary_type_original_bytes": true,
+      "source_map": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-source-hashes.json",
+        "sha256": "363a5863a09a7f98b0b20b3409392150b50ff0fbbb59186cc82aeb07f12157cd",
+        "subjects": 214,
+        "compact_manifest_sha256": "cdc37a1d0ea7c285f83e2aeb60497346c2f10adbacec5d42f77e40c25a79dc27"
+      },
+      "full_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-full.patch",
+        "sha256": "3edcbf23330f515eae2bca878e5d4538368308068313352093dd81349d63f3e4",
+        "bytes": 473963,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/search_coordinator.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/mod.rs",
+          "app/tests/support.rs",
+          "app/worker.rs",
+          "app/worker/runtime.rs",
+          "app/worker/search_perf.rs",
+          "app/worker/tasks.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "additive_basic_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-additive-basic.patch",
+        "sha256": "d126fccb41c1c22954a23f24f7b43b9ef88918dba3fd277c3e493569498bd43e",
+        "bytes": 414614,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/index_coordinator.rs",
+          "app/index_mailbox.rs",
+          "app/index_worker.rs",
+          "app/mod.rs",
+          "app/pipeline.rs",
+          "app/pipeline_owner.rs",
+          "app/preview_flow.rs",
+          "app/result_reducer.rs",
+          "app/tests/indexing_perf/child_process.rs",
+          "app/tests/indexing_perf/extensions/cases.rs",
+          "app/tests/indexing_perf/extensions/driver.rs",
+          "app/tests/indexing_perf/extensions/fixture.rs",
+          "app/tests/indexing_perf/extensions/mod.rs",
+          "app/tests/indexing_perf/extensions/oracle.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/indexing_perf/mod.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "repair_parent_patch": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-from-ecc58.patch",
+        "sha256": "b772f7100e6f74921887aa4c6454835c6bbfc2dfbddcfe88f511d5cdbb50932d",
+        "bytes": 37172,
+        "subjects": [
+          "app/historical_perf.rs",
+          "app/mod.rs",
+          "app/tests/indexing_perf/extensions/runner.rs",
+          "app/tests/indexing_perf/extensions/supplementary.rs",
+          "app/tests/indexing_perf/harness.rs",
+          "app/tests/support.rs",
+          "app/worker/runtime.rs",
+          "persistence/worker.rs"
+        ]
+      },
+      "prepared_guard_sources": [
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_success_is_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_actual_worker_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_default_off_and_unrelated_path_have_no_owner"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_and_join_are_required"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_panic_is_not_positive"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_join_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_writer_actual_ack_timeout_cannot_be_healed"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_parser_empty_second_stop_cannot_overwrite_timeout"
+        },
+        {
+          "module_file": "app/historical_perf.rs",
+          "test": "historical_commit_rejects_different_or_dead_arc"
+        },
+        {
+          "module_file": "persistence/worker.rs",
+          "test": "historical_owned_registry_writer_real_success"
+        },
+        {
+          "module_file": "persistence/worker.rs",
+          "test": "historical_owned_registry_writer_real_write_failure_is_retained"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_unknown_cleanup_retains_owned_path"
+        },
+        {
+          "module_file": "app/tests/support.rs",
+          "test": "historical_settings_scope_actual_app_join_allows_removal"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_unknown_join_is_retained"
+        },
+        {
+          "module_file": "app/tests/indexing_perf/harness.rs",
+          "test": "historical_startup_root_proven_join_is_removed"
+        }
+      ],
+      "compile": "NOT_RUN",
+      "guards": "NOT_RUN",
+      "perf": "NOT_RUN"
+    }
+  ],
+  "matrix_intent_parent": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/newtag-matrix-intent.json",
+    "sha256": "81f8b282fa76ec73c48298f68500a8198753ea9b406f2dd937371c7dea4f36b4"
+  },
+  "ordinary_cells_per_tag": 44,
+  "truncated_cells_per_tag": 1,
+  "expected_rows_per_tag": 630,
+  "all_runtime_evidence": "NOT_RUN; no compile/build/test/perf; no settings readback or physical proof claim",
+  "first_red_candidate": {
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red",
+    "source_map": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red-source-hashes.json",
+      "sha256": "e15cd612c69cc75a8e76ac96cc5d7bc521a3fd57d1d3897b1d7a0da6c926e5e1",
+      "subjects": 214,
+      "compact_manifest_sha256": "66558aa27cf2a45ebd66b6d110c8b2b4f85b4cb15c0df838a8861a44f3c64929"
+    },
+    "patch": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red.patch",
+      "sha256": "f29cb80ad78655c7e179ab92ca37cc245ba93caea848676f8e170c822370c5d1"
+    },
+    "test": "app::tests::indexing_perf::harness::historical_startup_root_unknown_join_is_retained",
+    "expected": "one actual failed ownership assertion after caught panic; not yet run; compile failure never classified RED",
+    "dedicated_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red-target",
+    "test_discovery": "NOT_RUN"
+  },
+  "syntax": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-format.json",
+    "sha256": "6ee773e29409b7bac4cc7561cd2d8b56d6094aa1920e40d348fe4e25b6b2edf3",
+    "result": "four exit0 syntax/format only"
+  },
+  "cfg_disabled_lexical": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/newtag-production-equivalence-audit.json",
+    "sha256": "511fb5f7b41a4fbf04e977419a640a3b6bcee90b525e383a73ecfd5ceb6412a9",
+    "result": "four zero mismatches against immutable basic; not compiler/runtime proof"
+  },
+  "settings": {
+    "toolchain": "1.97.1",
+    "locked": true,
+    "offline": true,
+    "features": "original tag default features; no changes",
+    "separate_targets": true,
+    "environment": {
+      "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+      "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+      "FLISTWALKER_SEARCH_THREADS": "12",
+      "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+      "FLISTWALKER_WALKER_MAX_ENTRIES": "500000"
+    },
+    "walker_concurrency": "original adaptive default, not search thread count",
+    "actual_before_after_readback": "NOT_RUN"
+  },
+  "protocol": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-review-protocol.txt",
+    "sha256": "662d1883fff7af8597acfd9c1da74be3eb8f30a18e77a8e19263b2dabd16331b"
+  },
+  "first_runtime_failures": "NOT_RUN; retained prior source-review HOLD is first defect evidence, not executed TDD red",
+  "future_guard_command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "historical_",
+    "--",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "future_guard_expected_exact_count_per_tag": 16,
+  "preparation_files": {
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair.py": {
+      "sha256": "7b85e84c57de194f2d05d405e8a4c9e617c23518ff383c96b439111f44f62424",
+      "bytes": 8447
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-additive-basic.patch": {
+      "sha256": "ff64faa6d7a0dc910ce16d70a6be11e9eff76537b9b394202bcd9e71a1634890",
+      "bytes": 417492
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/historical-perf-prefix.rs.txt": {
+      "sha256": "ca59f2085c5f75dbca180e2fe0119647598b66fd503853c37c1590a060c57de1",
+      "bytes": 1182
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/historical-perf-parser.rs.txt": {
+      "sha256": "ff5d33f66d707979e9d05b675b4402f9f9eff4db19b442464e3290922334cad6",
+      "bytes": 1340
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/startup-root-guards.rs.txt": {
+      "sha256": "831af62380c87daf5cc0b30e3d302a34ae7f25809ef70c25f1f6299e1c4263c2",
+      "bytes": 1214
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red.patch": {
+      "sha256": "f29cb80ad78655c7e179ab92ca37cc245ba93caea848676f8e170c822370c5d1",
+      "bytes": 711
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-additive-basic.patch": {
+      "sha256": "d126fccb41c1c22954a23f24f7b43b9ef88918dba3fd277c3e493569498bd43e",
+      "bytes": 414614
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/truncated-body.rs.txt": {
+      "sha256": "aaa0df436e1c1b6107c35a8baab5c15f5817f8b0c5af00eaf81e6a80e5957660",
+      "bytes": 2552
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-audit.py": {
+      "sha256": "5f63bda16d171e442e32576689841f20979744de621e6291fc478848f3884223",
+      "bytes": 3385
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-additive-basic.patch": {
+      "sha256": "1635dee295f05970a815da873cbfec0d0a1dd2c7e873faf22effe7ac87a7557e",
+      "bytes": 419974
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-from-ecc58.patch": {
+      "sha256": "d2a10ba1c1bc3ed31e0dcb67cffe264aaaf6418d422f157becdfda084c7b5ad7",
+      "bytes": 37587
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-origin.txt": {
+      "sha256": "b2148c51cd6c623b040cd676c79e15a6ff414343920495ca2f95627575cf5dc9",
+      "bytes": 232
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-additive-basic.patch": {
+      "sha256": "5dca868e198255a29a9f2a14dd3675dddb14a25d99eff0d348f9f9cc5660234e",
+      "bytes": 417457
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/guard-helper-extra.rs.txt": {
+      "sha256": "31b4a62724dbbda4681d0b3d1a9af139367c0def690fbd09877edb182ce76c3d",
+      "bytes": 683
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-format.json": {
+      "sha256": "6ee773e29409b7bac4cc7561cd2d8b56d6094aa1920e40d348fe4e25b6b2edf3",
+      "bytes": 5933
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/settings-scope-guards.rs.txt": {
+      "sha256": "9ea418726dad93456f206c52cb674dc779383838511543e11125f8fb5b0bc391",
+      "bytes": 920
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-full.patch": {
+      "sha256": "3edcbf23330f515eae2bca878e5d4538368308068313352093dd81349d63f3e4",
+      "bytes": 473963
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-from-ecc58.patch": {
+      "sha256": "fe7c0263d8afdd4bca3b4d1ece57e05a9bffdede24a78ec6a6b6a736055b938d",
+      "bytes": 38685
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/writer-integration-guards.rs.txt": {
+      "sha256": "751eb0f01b5931cddb01bd803954f3f53fc07c1d03713564ed122219dd99428e",
+      "bytes": 1717
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-review-protocol.txt": {
+      "sha256": "662d1883fff7af8597acfd9c1da74be3eb8f30a18e77a8e19263b2dabd16331b",
+      "bytes": 8888
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-full.patch": {
+      "sha256": "54553d61ba11195f305135915b8b83c8e1aa5f0bc70881890d157814ea5b8b1f",
+      "bytes": 477160
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/repair-preparation.log": {
+      "sha256": "e5814c331988c692400e39cb5fa6438a016b0d6bdd4589a65b113a6989fcf7c7",
+      "bytes": 228
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-source-hashes.json": {
+      "sha256": "9d2a4b4a972b0be07b8d941e01c825c15c037df7b7199b1e32c1dd68fc1b5db0",
+      "bytes": 20132
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-full.patch": {
+      "sha256": "a0a8be5ae8c1df28420480318afc24407671b47e5d0bbd39119544b21e780516",
+      "bytes": 476406
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-format.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.29.0-repair-format.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/writer-shutdown-v27.rs.txt": {
+      "sha256": "06f75e20d8d8b7d59d7409ce8051b0691659e0268376e13db9e95a4bc67a59b9",
+      "bytes": 1004
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-format.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-from-ecc58.patch": {
+      "sha256": "9cc9c67ea4ef6ebfae9eea05c6d34ba34e4c89747d8234297a4164ca145a84c0",
+      "bytes": 37434
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/historical-perf-tests.rs.txt": {
+      "sha256": "f3495cf2bea1b60aa366bcbb8532f3f012f16d37d0482ce70d3a82da5fb04658",
+      "bytes": 6690
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/writer-shutdown-modern.rs.txt": {
+      "sha256": "ace93d0c66ae1ec6c7fb483ee7212c2264619b5678963e0eb7d9d40887e1cac8",
+      "bytes": 986
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-source-hashes.json": {
+      "sha256": "363a5863a09a7f98b0b20b3409392150b50ff0fbbb59186cc82aeb07f12157cd",
+      "bytes": 20834
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-startup-first-red-source-hashes.json": {
+      "sha256": "e15cd612c69cc75a8e76ac96cc5d7bc521a3fd57d1d3897b1d7a0da6c926e5e1",
+      "bytes": 20834
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/newtag-production-equivalence-audit.json": {
+      "sha256": "511fb5f7b41a4fbf04e977419a640a3b6bcee90b525e383a73ecfd5ceb6412a9",
+      "bytes": 4300
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/historical-perf-cleanup.rs.txt": {
+      "sha256": "cf11a74812d1a19d475a4da5b7e4e113cec9a065071ee018d46ebce7cf3cfb5a",
+      "bytes": 8528
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0-repair-from-ecc58.patch": {
+      "sha256": "b772f7100e6f74921887aa4c6454835c6bbfc2dfbddcfe88f511d5cdbb50932d",
+      "bytes": 37172
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.28.0-repair-source-hashes.json": {
+      "sha256": "0e0cb92bb4da702bf0c16aac23f659e0024edb57d032148f743fac01bd18ba38",
+      "bytes": 19370
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-source-hashes.json": {
+      "sha256": "e94a1e1ccddc2fc9bc7e817c5fbc950b49f661457a6cb9de846e89f39323b158",
+      "bytes": 18180
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-full.patch": {
+      "sha256": "8d1c3065034f36b3fe157ca73f32776f4f72c9f6e04af8cf9a0559e0af4055bd",
+      "bytes": 477742
+    },
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.27.0-repair-format.log": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  }
+}

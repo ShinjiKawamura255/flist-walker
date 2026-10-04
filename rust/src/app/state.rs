@@ -32,7 +32,7 @@ use std::time::{Instant, SystemTime};
 #[derive(Default)]
 pub(super) struct BackgroundIndexState {
     pub(super) source: Option<IndexSource>,
-    pub(super) entries: Vec<Entry>,
+    pub(super) entries: VecDeque<Entry>,
     pub(super) replaced: bool,
 }
 

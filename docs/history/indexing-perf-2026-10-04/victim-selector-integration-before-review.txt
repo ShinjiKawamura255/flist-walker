@@ -1,0 +1,54 @@
+Independent narrow BEFORE: observed Finished owner-selector integration
+
+Decision: PASS WITH IMPLEMENTATION ACCEPTANCE CONDITIONS for main-authorized
+minimal selector repair. Existing failed AFTER records remain unchanged; this
+design does not close the integration major without new frozen AFTER evidence.
+Reviewer /root/plan_review, independent prior design/checkpoint work only,
+no Rust implementation/test authorship. Checkout /private/tmp/flistwalker-indexing-perf-20261003,
+base/head8a452b3858c80f70a5f3064834c8add4d9b1d347, uncommitted task work.
+
+Accepted exact scope
+1. Add a default-false finished_preemption_cause to the existing selection proof.
+   Derive it in the actual measured_request_for path for the selected maximum
+   same-tab measured planned owner, not from a predecessor/flag/live map alone.
+2. The derived proof requires exactly ONE matching actual typed event for that
+   owner's ID/tab, no observer overflow, exact declared fixed-TabChain stage,
+   candidate/trigger/window and acquisition/Started/terminal root/source.
+   It uses specifically the actual observed Finished WITHOUT cancelpermission
+   branch: real publication<=real permit observation<=mutation, completed marker,
+   observed timestamp and Finished offer/publication. Do not reuse the generic
+   permission-OR-observed cause predicate as an undifferentiated positive bool.
+3. Core Some0 selector accepts prior correct Warm permission OR this separately
+   derived observed-Finished proof only AFTER unchanged maximum-ID, exact actual
+   allocation count/tab and ledger count/tab gates. Return real nonzero latest
+   owner; do not convert0 to a request or accept merely completed flag/time.
+4. Preserve all nonzero equality/unknown/setup/wrong-tab/stale-ID rejections and
+   None exact-release/route-absent contract. No old-ID fallback; selecting A8 must
+   never reuse A5's event or derived proof.
+5. Selection does not prove completion. Real body return, required latest
+   success/freshness/source/root, successor graph, sender/debt and independent
+   snapshot/query oracles remain mandatory. Latest B oldseed exception still
+   needs prior Warm permission+actual Canceled+!completed predecessor and post-t3
+   full seed validation. Finished B cannot use old seed.
+6. Meaningful guard uses actual driver proof derivation AND the real selector
+   at the same seam as postframe primary/checkpoint. Stage1 A5/latestmap0 with no
+   permission passes for publication before declaration and publication between
+   declaration and actual permit observation. With body pending selection passes
+   but composed t2/t3 remains false. When A8 exists choose8/reject5's proof.
+7. Negatives: missing/duplicate/overflow/wrong event, candidate/stage/tab/trigger/
+   interval, missing/future/wrong observation/publication, root/source mismatch,
+   Canceled/Failed with no permission, completed flag alone, missing latest
+   allocation/ledger or mismatched tabs. Test specifically observed-Finished
+   derivation rather than supplying a naked true proof in every positive.
+
+No production scheduling/protocol/trace/fixture/oracle change or backport.
+Existing raw typed-event/publication/observation metadata remains consistent
+with the selection branch. Parent owns minimal implementation and SDD updates.
+New frozen source/hash/first-red/green packet and focused independent AFTER are
+required before real100k/pilot/full measurements resume.
+
+NOT RUN
+No source read/edit, build/test/perf or Git mutation was needed/performed for
+this design decision. Only this explicitly requested ignored note was saved.
+Prior failed AFTER stays audit truth; fullhost/basic/100k/historical/native/
+platform/CI and final fresh review remain separate gates.

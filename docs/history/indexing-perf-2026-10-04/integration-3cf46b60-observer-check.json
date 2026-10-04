@@ -1,0 +1,20 @@
+{
+  "purpose": "main independently verified exact full14 on/off records and real runner success, observations only",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "log_sha256": "d38c06935819e5ccd50e999d70aac774d04bce2dafb027610ef1ca64cfa72f7a",
+  "observer_rows": 14,
+  "expected_rows_derivation": "7pairs*2on/off=14",
+  "metadata_records": 0,
+  "metadata_absence_limitation": "Observer emits full-profile100k/correct/pair flags without separate META; source/environment/commands/settings are in matching sidecar.",
+  "exact_runner_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1565 filtered out; finished in 14.76s",
+  "median_paired_on_off_t3_ratio": 0.9907655634095021,
+  "paired_on_off_t3_ratios": [
+    1.0045268893608992,
+    0.9669490522747582,
+    0.9794791240875066,
+    0.9907655634095021,
+    1.0282130346724472,
+    0.9858779623378442,
+    1.093623556879541
+  ]
+}

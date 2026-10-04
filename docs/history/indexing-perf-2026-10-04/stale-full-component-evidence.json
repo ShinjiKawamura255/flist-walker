@@ -1,0 +1,293 @@
+{
+  "status": "Focused component accepted after independent scoped AFTER; common/performance acceptance separate",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+  "source_overlay": "current-e2efece3-source-overlay.json",
+  "source_overlay_sha256": "0c8f0295a579c8ae889edc527530f3619e6d8405b2e55f02211cd4ba60b79be9",
+  "assets": [
+    {
+      "original_basename": "stale-full-final-source-hashes.json",
+      "path": "stale-full-final-source-hashes.json",
+      "plain_sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162",
+      "sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+    },
+    {
+      "original_basename": "stale-full-final.patch",
+      "path": "stale-full-final.patch.gz",
+      "plain_sha256": "b274ed11ec6e2ef901a772b6060539126213838f15333b5117df0b14c614f165",
+      "sha256": "ce18a9f2f6c96f72c76a1c08a32b0ef8e1fac882fdfa95d5d3cc1eceacc4db29"
+    },
+    {
+      "original_basename": "stale-full-observer-first-red-v2.log",
+      "path": "stale-full-observer-first-red-v2.log.gz",
+      "plain_sha256": "fd6e5550700bf3155c81dcd874c8c3c5991748148fe58bfca6be249a5810115f",
+      "sha256": "b0937f57427b5bca04a31634fcee5e34b03724d2d955f70f7e12af5d1d15d148"
+    },
+    {
+      "original_basename": "stale-full-observer-hook-green.log",
+      "path": "stale-full-observer-hook-green.log.gz",
+      "plain_sha256": "b2e3cf0de6c9a1d344f99d20d417ed92962bd51db6968cf325a5b0e2510ce1b8",
+      "sha256": "206d6f0442e88d65a91d10bf2f8e4a02a87547ccf2001b3900d2fb2b5c08be5c"
+    },
+    {
+      "original_basename": "stale-full-canceled-only-first-red.log",
+      "path": "stale-full-canceled-only-first-red.log.gz",
+      "plain_sha256": "53dc5f1488775ca8acd255ace2a67dddb1ed25d99227b584df6ef4dfad6b53c3",
+      "sha256": "79d1eefdc195f0a355e645c917a853d79610fbc69f08a99a974d0568c77a3798"
+    },
+    {
+      "original_basename": "stale-full-composed-green.log",
+      "path": "stale-full-composed-green.log.gz",
+      "plain_sha256": "883af7fb35da75405221ec5acadd509ad74deaebc652fadaef694207d074f3f9",
+      "sha256": "99cdb17a8919c1670ce5dd14784a99f71a7c121859b9523b9fc83b21bbd62932"
+    },
+    {
+      "original_basename": "stale-full-composed-green-v2.log",
+      "path": "stale-full-composed-green-v2.log.gz",
+      "plain_sha256": "bef4c4f38a7e5aad7e90354daf77617b9ce7bfba40f4ea6bd6c6a85e6a9961d0",
+      "sha256": "d41ce199fa506c8b81a76c29cd9a6b6572921ac49e61097ea61b01bed04c1efb"
+    },
+    {
+      "original_basename": "stale-full-collector-first-red-v2.log",
+      "path": "stale-full-collector-first-red-v2.log.gz",
+      "plain_sha256": "0455581b82801130b776d1e7be1430fbb989109a3bff7cc573b45cab752fb487",
+      "sha256": "9462f33dff84d515d1b22bb10e31e9ebd61cee76013a1ab9ebc90559e07f8720"
+    },
+    {
+      "original_basename": "stale-full-collector-final-green.log",
+      "path": "stale-full-collector-final-green.log.gz",
+      "plain_sha256": "a117a655c4f387b0192f806467daeff8362fc21ee3546a1d4df6c4822663e6ab",
+      "sha256": "cc2e6df2235dbd8b2048c46fb880de84f5256d968ec3a8ff715db72b21f961b0"
+    },
+    {
+      "original_basename": "stale-full-collector-prior-regression.log",
+      "path": "stale-full-collector-prior-regression.log.gz",
+      "plain_sha256": "6b86bd13d517ef8780b265ae8afdb37bb3a822e8f52ace18426a809534354578",
+      "sha256": "82037da55d7f8a936a9e0015fa4bafe4cc7ccdbf64db9feb5981281258c8b620"
+    },
+    {
+      "original_basename": "stale-full-observer-first-red.log",
+      "path": "stale-full-observer-first-red.log.gz",
+      "plain_sha256": "54ac94c3f7026d4e7cd52804eaa9e0ef12f74b715f832b8dffb48d2205e053c5",
+      "sha256": "553f72a6275ba2a33b10a3f99995cbb025ed606c6f478a4226b3297409edbfe3"
+    },
+    {
+      "original_basename": "stale-full-predicate-negatives-green.log",
+      "path": "stale-full-predicate-negatives-green.log.gz",
+      "plain_sha256": "26f5152e7decd0d4706acbd108b99dbd402a9a37a8d60b6596796f13c1262d72",
+      "sha256": "7e5f858223a2915406c276a4eef658b7b5249b75f066a98b739f2836c25c13bc"
+    },
+    {
+      "original_basename": "stale-full-collector-first-red.log",
+      "path": "stale-full-collector-first-red.log.gz",
+      "plain_sha256": "ee4f701337a3247236309e67f1fdd4f66d2bd89c6a612e0b3c214c09ed4e10b6",
+      "sha256": "d2311c7f0236456681800fad20d9d11d2b2311132052476141855ede6bc68963"
+    },
+    {
+      "original_basename": "stale-full-accepted-terminal-negatives.log",
+      "path": "stale-full-accepted-terminal-negatives.log.gz",
+      "plain_sha256": "1f1400314456b606274b4f12f3a73af1dc5e365f5b9187c6d90c9648f3cc20f6",
+      "sha256": "a9f907e5c44482505c04273ab174432d837d33966ae1783b07a1625cc5895208"
+    },
+    {
+      "original_basename": "stale-full-accepted-terminal-negatives.sidecar.json",
+      "path": "stale-full-accepted-terminal-negatives.sidecar.json",
+      "plain_sha256": "a4f1f2c81ad1c31ba532e2735b0e2772236148b81fabca94325e76159aa50790",
+      "sha256": "a4f1f2c81ad1c31ba532e2735b0e2772236148b81fabca94325e76159aa50790"
+    },
+    {
+      "original_basename": "stale-full-accepted-composed.log",
+      "path": "stale-full-accepted-composed.log.gz",
+      "plain_sha256": "6127fa5a2fc0de0fcefd22a3ce0d54c6bbb78658912429b54de73192d4dc5e24",
+      "sha256": "cf5599904a8c2be8a67a180fed007208898ff46a5d2423030b9361396a547e03"
+    },
+    {
+      "original_basename": "stale-full-accepted-composed.sidecar.json",
+      "path": "stale-full-accepted-composed.sidecar.json",
+      "plain_sha256": "d9d6577a054bcc60f038f7450385014fc4149c4f8ca15aa82bb7a2ce57ee80ac",
+      "sha256": "d9d6577a054bcc60f038f7450385014fc4149c4f8ca15aa82bb7a2ce57ee80ac"
+    },
+    {
+      "original_basename": "stale-full-accepted-indexing-normal.log",
+      "path": "stale-full-accepted-indexing-normal.log.gz",
+      "plain_sha256": "e0efdd414fa53f0cd68135464131f00460e06e42a448d5c3f001bb6cd9c4ee16",
+      "sha256": "3a76429fe23593ffe9e602d5b6a23c3e34fb96fbb728cb6e24111a5fdd806fff"
+    },
+    {
+      "original_basename": "stale-full-accepted-indexing-normal.sidecar.json",
+      "path": "stale-full-accepted-indexing-normal.sidecar.json",
+      "plain_sha256": "b5c3647a5a3b87e6417a8f8b810aace01d8d8eaa41ff58a52061e146cebf4917",
+      "sha256": "b5c3647a5a3b87e6417a8f8b810aace01d8d8eaa41ff58a52061e146cebf4917"
+    },
+    {
+      "original_basename": "stale-full-accepted-search-observer.log",
+      "path": "stale-full-accepted-search-observer.log.gz",
+      "plain_sha256": "70e301b57a577d4e5845c86d9a4fd0f3e69c10f383d19d5ae49ba7887abb8b3c",
+      "sha256": "cd508f560194d1ddb514b406f2be3839c1ff887d342b59d34f2195988ec5ece4"
+    },
+    {
+      "original_basename": "stale-full-accepted-search-observer.sidecar.json",
+      "path": "stale-full-accepted-search-observer.sidecar.json",
+      "plain_sha256": "8bdef4a3a7f9dcc1d7dac255e1247ee58ba34f0f8822b87c2bffe55962146f95",
+      "sha256": "8bdef4a3a7f9dcc1d7dac255e1247ee58ba34f0f8822b87c2bffe55962146f95"
+    },
+    {
+      "original_basename": "stale-full-accepted-ordering.log",
+      "path": "stale-full-accepted-ordering.log.gz",
+      "plain_sha256": "293f472945e78902381a2c0292aaf58b068c9a7db991d0b23e77733acef815f2",
+      "sha256": "98c431e7cec3fd7aab036832109c2203608d3f2440bd813efb7b43e40beeb48e"
+    },
+    {
+      "original_basename": "stale-full-accepted-ordering.sidecar.json",
+      "path": "stale-full-accepted-ordering.sidecar.json",
+      "plain_sha256": "630b3d3186532d7ad5562b254c3f48ab2509214bc751f3921335a98230ddf2ca",
+      "sha256": "630b3d3186532d7ad5562b254c3f48ab2509214bc751f3921335a98230ddf2ca"
+    },
+    {
+      "original_basename": "stale-full-accepted-tc207.log",
+      "path": "stale-full-accepted-tc207.log.gz",
+      "plain_sha256": "1ab92f829185bc2783124e859a5d769851524b22d3bfb97a4b0eaa68f6fbcff8",
+      "sha256": "d1be29e516177490802d0febf262b1365a75895d25cf6db2f9c4c177b041fed2"
+    },
+    {
+      "original_basename": "stale-full-accepted-tc207.sidecar.json",
+      "path": "stale-full-accepted-tc207.sidecar.json",
+      "plain_sha256": "c2c77879b0bf1f7ca62614cf51ab4043c48dfa3cfdc09dc9d4f6bf067d7a9b61",
+      "sha256": "c2c77879b0bf1f7ca62614cf51ab4043c48dfa3cfdc09dc9d4f6bf067d7a9b61"
+    },
+    {
+      "original_basename": "stale-full-accepted-pipeline.log",
+      "path": "stale-full-accepted-pipeline.log.gz",
+      "plain_sha256": "d71eebf7d3395d043a266668e6e00ca2823df5ce0972c8cdbfdc6b01ac695aa5",
+      "sha256": "2ebf2269c79c8b3f0df92e63e0fd9a13f531d582855dcad127a7e085feb0d41f"
+    },
+    {
+      "original_basename": "stale-full-accepted-pipeline.sidecar.json",
+      "path": "stale-full-accepted-pipeline.sidecar.json",
+      "plain_sha256": "dd117c72def81ee4cc65aa6b2c02ae14f81ece3e3f06b4bbbef209ccf2690450",
+      "sha256": "dd117c72def81ee4cc65aa6b2c02ae14f81ece3e3f06b4bbbef209ccf2690450"
+    },
+    {
+      "original_basename": "stale-full-accepted-fmt.log",
+      "path": "stale-full-accepted-fmt.log.gz",
+      "plain_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "original_basename": "stale-full-accepted-fmt.sidecar.json",
+      "path": "stale-full-accepted-fmt.sidecar.json",
+      "plain_sha256": "7ea74fe6a920da5128d82ca29b89458d7556f6dd6f730cc9316cf99922ffd6f1",
+      "sha256": "7ea74fe6a920da5128d82ca29b89458d7556f6dd6f730cc9316cf99922ffd6f1"
+    },
+    {
+      "original_basename": "stale-full-accepted-clippy.log",
+      "path": "stale-full-accepted-clippy.log.gz",
+      "plain_sha256": "b6f3b175a4b75a26601fb6f71da319eafa21cc6da9c237cc777a6d2158f041c3",
+      "sha256": "9b96eeee17b8ddc638ffd998ef9fb59a5ec5110752a5014870fc4f452342f1ef"
+    },
+    {
+      "original_basename": "stale-full-accepted-clippy.sidecar.json",
+      "path": "stale-full-accepted-clippy.sidecar.json",
+      "plain_sha256": "c5fe6c24b077b6b653aace44c3ec0e34501be5dd54e3bf29d7cf00b84e6e34db",
+      "sha256": "c5fe6c24b077b6b653aace44c3ec0e34501be5dd54e3bf29d7cf00b84e6e34db"
+    },
+    {
+      "original_basename": "summarize_extensions.py",
+      "path": "summarize_extensions-stale-full.py",
+      "plain_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+      "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa"
+    },
+    {
+      "original_basename": "stale-full-before-summarize_extensions.py",
+      "path": "stale-full-before-summarize_extensions.py",
+      "plain_sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+      "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f"
+    },
+    {
+      "original_basename": "test_stale_full_collector.py",
+      "path": "test_stale_full_collector.py",
+      "plain_sha256": "6e6cee765079dbd1978ef86d842fa07dda35f6fac94b4910e60659bef8060c95",
+      "sha256": "6e6cee765079dbd1978ef86d842fa07dda35f6fac94b4910e60659bef8060c95"
+    },
+    {
+      "original_basename": "test_warm_removal_collector.py",
+      "path": "test_warm_removal_collector.py",
+      "plain_sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298",
+      "sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298"
+    },
+    {
+      "original_basename": "test_victim_final_collector_regression.py",
+      "path": "test_victim_final_collector_regression.py",
+      "plain_sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1",
+      "sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1"
+    },
+    {
+      "original_basename": "stale-full-collector-guards.json",
+      "path": "stale-full-collector-guards.json",
+      "plain_sha256": "712d2a992269113701ecc8006f666e95d8cb0ae61364b551db4f9e24acbb7874",
+      "sha256": "712d2a992269113701ecc8006f666e95d8cb0ae61364b551db4f9e24acbb7874"
+    },
+    {
+      "original_basename": "stale-full-collector-prior-guards.json",
+      "path": "stale-full-collector-prior-guards.json",
+      "plain_sha256": "0e2ebb2c460e77202366d6ab6ab69bfadd3b006291ce6e9acb2fed1b6bd20ed6",
+      "sha256": "0e2ebb2c460e77202366d6ab6ab69bfadd3b006291ce6e9acb2fed1b6bd20ed6"
+    },
+    {
+      "original_basename": "warm-stale-full-abort-before-review.txt",
+      "path": "warm-stale-full-abort-before-review.txt",
+      "plain_sha256": "8ac661acf60eeee9e176d25f862036006ac9c88ee0c2f0ecd88d300c5fa8aa1b",
+      "sha256": "8ac661acf60eeee9e176d25f862036006ac9c88ee0c2f0ecd88d300c5fa8aa1b"
+    },
+    {
+      "original_basename": "warm-final-full-failure-packet.json",
+      "path": "warm-final-full-failure-packet.json",
+      "plain_sha256": "576e3f226fb26ab22162cc560f5b8575bb14b0cafe30c1e45cc3ecdcec1713b2",
+      "sha256": "576e3f226fb26ab22162cc560f5b8575bb14b0cafe30c1e45cc3ecdcec1713b2"
+    },
+    {
+      "original_basename": "stale-full-final-packet.json",
+      "path": "stale-full-final-packet.json",
+      "plain_sha256": "407cf3d4f11abc9521de2b1b7d5021b3293dccfa37b3177dab0634ed4aadd487",
+      "sha256": "407cf3d4f11abc9521de2b1b7d5021b3293dccfa37b3177dab0634ed4aadd487"
+    },
+    {
+      "original_basename": "stale-full-accepted-regates.json",
+      "path": "stale-full-accepted-regates.json",
+      "plain_sha256": "9815b29ae6f1a19e2d939309a26569e328743d03d7f07a7961c358a693f8ee3e",
+      "sha256": "9815b29ae6f1a19e2d939309a26569e328743d03d7f07a7961c358a693f8ee3e"
+    },
+    {
+      "original_basename": "integration-stale-full-scoped-regate-check.json",
+      "path": "integration-stale-full-scoped-regate-check.json",
+      "plain_sha256": "067d2e04d75a52b9283594e48355d56c601208c92cd4c983c25925d7c48c0265",
+      "sha256": "067d2e04d75a52b9283594e48355d56c601208c92cd4c983c25925d7c48c0265"
+    },
+    {
+      "original_basename": "stale-full-after-review.txt",
+      "path": "stale-full-after-review.txt",
+      "plain_sha256": "84846236ef7bb769e76dafe07ae4d3f9cf4fdec6761786be7c29f976d8afa6fa",
+      "sha256": "84846236ef7bb769e76dafe07ae4d3f9cf4fdec6761786be7c29f976d8afa6fa"
+    },
+    {
+      "original_basename": "integration-stale-full-durable-replay.json",
+      "path": "integration-stale-full-durable-replay.json",
+      "plain_sha256": "9d5ba0e98935e118686f5be7e9351ccbe65a2dfbedf1e1dff23570565b666327",
+      "sha256": "9d5ba0e98935e118686f5be7e9351ccbe65a2dfbedf1e1dff23570565b666327"
+    }
+  ],
+  "control_replay": "Restore original basenames in exclusively owned temp dir, plus selector-accepted-tabchain-target.log and selector-stall-diagnostic-tabchain-target.log from their gz archives; run test_stale_full_collector.py and test_warm_removal_collector.py. Generated controls are synthetic, never perf evidence.",
+  "actual_vs_models": {
+    "actual": [
+      "Owned capacity1 mailbox publication returned Full; real coordinator.replace_warm_tab removed routed request mapping.",
+      "Actual MailboxResponseSink Full freshness decision successful mutex lookup!=own/shutdownfalse stamped under latest lock; scalar stored after unlock.",
+      "Actual sink Failed terminal offer/publication, Closed/SlotOccupied/shutdown/poison/off/foreigndata/ReplaceAll and first-event duplicate controls."
+    ],
+    "controlled_models": [
+      "The control explicitly sends Failed response; it does not execute outer worker classification.",
+      "Admission/body-return/seed fast-state in composed predicate controls are explicitly modeled; no actual worker processing-return/join timing is claimed.",
+      "Actual published Failed worker classification/body chronology remains shown by retired3cf failure; no new backwards abort witness is attached.",
+      "Collector tests are synthetic raw-schema cases, not performance measurements."
+    ]
+  }
+}

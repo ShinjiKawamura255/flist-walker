@@ -1,0 +1,14 @@
+{
+  "scope": "Main R5 actual37-stage sidecar/log/source check; no performance",
+  "packet_sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+  "references": 102,
+  "stages": 37,
+  "unique_pattern_passed": 139,
+  "meaningful_exact_red": 2,
+  "separate_same_exact_green": 2,
+  "actual_exit_wait_group_source_lock_cleanup_valid": true,
+  "unexpected_warning_or_newroots": 0,
+  "current213_and_baseline11_unchanged": true,
+  "interrupted11roots_retained": true,
+  "performance": "NOT_RUN"
+}

@@ -41,11 +41,37 @@ mod root_projection;
 
 trait IndexResponseSink {
     fn send(&self, response: IndexResponse) -> Result<(), ()>;
+    #[cfg(test)]
+    fn observe_nested_input(&self, _reused: bool) {}
 }
 
 impl IndexResponseSink for Sender<IndexResponse> {
     fn send(&self, response: IndexResponse) -> Result<(), ()> {
         Sender::send(self, response).map_err(|_| ())
+    }
+}
+
+#[cfg(test)]
+struct RequestPerfReturnGuard(Option<super::index_mailbox::IndexPerfHandle>);
+#[cfg(test)]
+impl Drop for RequestPerfReturnGuard {
+    fn drop(&mut self) {
+        if let Some(mailbox) = &self.0 {
+            mailbox
+                .lock()
+                .expect("index observation")
+                .request_processing_returned = Some(Instant::now());
+        }
+    }
+}
+#[cfg(test)]
+struct TerminalPerfSendGuard<'a>(Option<&'a IndexResponseMailbox>);
+#[cfg(test)]
+impl Drop for TerminalPerfSendGuard<'_> {
+    fn drop(&mut self) {
+        if let Some(mailbox) = self.0 {
+            mailbox.record_terminal_send_returned();
+        }
     }
 }
 
@@ -59,6 +85,47 @@ struct MailboxResponseSink {
 }
 
 impl MailboxResponseSink {
+    #[cfg(test)]
+    fn request_is_current_after_full(&self, response: &IndexResponse) -> bool {
+        if !self.mailbox.perf_enabled() {
+            return self.request_is_current();
+        }
+        if self.shutdown.load(Ordering::Relaxed) {
+            return false;
+        }
+        let Ok(latest) = self.latest_request_ids.lock() else {
+            return false;
+        };
+        let latest_id = latest.get(&self.tab_id).copied();
+        let current = latest_id == Some(self.request_id);
+        let data = match response {
+            IndexResponse::Batch { request_id, .. } => Some((*request_id, "batch")),
+            IndexResponse::ReplaceAll { request_id, .. } => Some((*request_id, "replace-all")),
+            _ => None,
+        };
+        let event = if !current && !self.shutdown.load(Ordering::Relaxed) {
+            data.filter(|(id, _)| *id == self.request_id)
+                .map(
+                    |(id, kind)| super::index_mailbox::IndexPerfStaleFullDataAbort {
+                        request_id: self.request_id,
+                        tab_id: self.tab_id,
+                        response_request_id: id,
+                        data_kind: kind,
+                        at: Instant::now(),
+                        latest_id,
+                        latest_lookup_succeeded: true,
+                        shutdown: false,
+                    },
+                )
+        } else {
+            None
+        };
+        drop(latest);
+        if let Some(event) = event {
+            self.mailbox.record_stale_full_data_abort(event);
+        }
+        current
+    }
     fn request_is_current(&self) -> bool {
         !self.shutdown.load(Ordering::Relaxed)
             && self
@@ -70,8 +137,50 @@ impl MailboxResponseSink {
     }
 }
 
+#[cfg(test)]
+pub(super) fn mailbox_response_sink_for_test(
+    req: &IndexRequest,
+    mailbox: Arc<IndexResponseMailbox>,
+    latest: Arc<Mutex<HashMap<u64, u64>>>,
+    shutdown: Arc<AtomicBool>,
+) -> impl Fn(IndexResponse) -> Result<(), ()> {
+    let sink = MailboxResponseSink {
+        request_id: req.request_id,
+        root: req.root.clone(),
+        tab_id: req.tab_id,
+        mailbox,
+        shutdown,
+        latest_request_ids: latest,
+    };
+    move |response| sink.send(response)
+}
+
 impl IndexResponseSink for MailboxResponseSink {
+    #[cfg(test)]
+    fn observe_nested_input(&self, reused: bool) {
+        self.mailbox.record_nested_input_reused(reused);
+    }
     fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
+        #[cfg(test)]
+        if matches!(&response, IndexResponse::Finished { .. }) {
+            // All data sends have succeeded. Includes producer Full waits and
+            // nested FileList processing; this is not pure filesystem duration.
+            self.mailbox.record_data_publish_end();
+        }
+        #[cfg(test)]
+        let _terminal_return = if self.mailbox.perf_enabled()
+            && matches!(
+                &response,
+                IndexResponse::Finished { .. }
+                    | IndexResponse::Canceled { .. }
+                    | IndexResponse::Failed { .. }
+            ) {
+            self.mailbox
+                .record_terminal_offer(&response, self.request_is_current());
+            TerminalPerfSendGuard(Some(&self.mailbox))
+        } else {
+            TerminalPerfSendGuard(None)
+        };
         match &response {
             IndexResponse::Started { source, .. } => self.mailbox.record_snapshot_started(
                 self.request_id,
@@ -81,17 +190,51 @@ impl IndexResponseSink for MailboxResponseSink {
             IndexResponse::Finished { .. } => self.mailbox.record_snapshot_completed(),
             _ => {}
         }
+        #[cfg(test)]
+        let mut full_wait_started: Option<Instant> = None;
+        #[cfg(test)]
+        let mut full_retries = 0;
+        #[cfg(test)]
+        let observe = self.mailbox.perf_enabled();
         loop {
             match self.mailbox.try_publish(response) {
-                Ok(()) => return Ok(()),
+                Ok(()) => {
+                    #[cfg(test)]
+                    if let Some(started) = full_wait_started {
+                        self.mailbox
+                            .record_full_wait(started.elapsed(), full_retries);
+                    }
+                    return Ok(());
+                }
                 Err(error @ IndexMailboxPublishError::Full(_)) => {
+                    #[cfg(test)]
+                    if observe {
+                        full_wait_started.get_or_insert_with(Instant::now);
+                        full_retries += 1;
+                    }
                     response = error.into_response();
-                    if !self.request_is_current() {
+                    #[cfg(test)]
+                    let current = self.request_is_current_after_full(&response);
+                    #[cfg(not(test))]
+                    let current = self.request_is_current();
+                    if !current {
+                        #[cfg(test)]
+                        if let Some(started) = full_wait_started {
+                            self.mailbox
+                                .record_full_wait(started.elapsed(), full_retries);
+                        }
                         return Err(());
                     }
                     thread::sleep(Duration::from_millis(1));
                 }
-                Err(_) => return Err(()),
+                Err(_) => {
+                    #[cfg(test)]
+                    if let Some(started) = full_wait_started {
+                        self.mailbox
+                            .record_full_wait(started.elapsed(), full_retries);
+                    }
+                    return Err(());
+                }
             }
         }
     }
@@ -450,6 +593,8 @@ fn stream_filelist_index(
         return Ok(source);
     }
 
+    #[cfg(test)]
+    tx_res.observe_nested_input(streamed_entries_for_nested.is_some());
     let mut final_entries = if let Some(entries) = streamed_entries_for_nested {
         entries
     } else {
@@ -778,13 +923,30 @@ fn spawn_index_worker_with(
                     }
                 };
                 let (req, inflight) = req;
+                #[cfg(test)]
+                let mut _processing_return =
+                    RequestPerfReturnGuard(super::index_mailbox::take_perf_request(
+                        Arc::as_ptr(&latest_request_ids_worker) as usize,
+                        req.request_id,
+                    ));
                 let mailbox = mailbox_for_dequeued_request(
                     response_mailboxes_worker.as_ref(),
                     req.request_id,
                 );
                 let Some(mailbox) = mailbox else {
+                    #[cfg(test)]
+                    if let Some(handle) = &_processing_return.0 {
+                        handle
+                            .lock()
+                            .expect("index observation")
+                            .skipped_closed_before_start = true;
+                    }
                     continue;
                 };
+                #[cfg(test)]
+                if _processing_return.0.is_none() && mailbox.perf_enabled() {
+                    _processing_return.0 = Some(mailbox.perf_handle());
+                }
                 let tx_res_worker = MailboxResponseSink {
                     request_id: req.request_id,
                     root: req.root.clone(),

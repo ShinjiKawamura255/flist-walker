@@ -1,0 +1,126 @@
+{
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "status": "PASS complete full616; trunc pending",
+  "exact_summary": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 2508.89s"
+  ],
+  "log_sha256": "da576b4141fcb6b03b9ff14bd2a483f4940119dbeaff3c1449ae2d4fba460d45",
+  "source213_unchanged": true,
+  "raw_rows": 616,
+  "warmups": 88,
+  "sample_starts": 616,
+  "strict_collector_replay_summary_equal": true,
+  "actual_staleFullFailed_count": 1,
+  "actual_staleFullFailed": [
+    {
+      "row": 349,
+      "source": "Walker",
+      "case": "T1-A-B-C-A",
+      "pair": 6,
+      "request": {
+        "actual_admitted_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+        "actual_cause_kind": "warm-replacement-removal",
+        "actual_started_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+        "actual_terminal_offer_kind": "failed",
+        "admitted_ms": 118.961833,
+        "admitted_root_matches": true,
+        "allocated_ms": 118.9575,
+        "allocation_observed": true,
+        "batches": 104,
+        "bookkeeping_released_ms": 395.444208,
+        "completed_predecessor": false,
+        "completed_predecessor_observed_ms": null,
+        "data_publish_end_ms": null,
+        "emitted_workload_semantics": "actual partial failed work; not full generation throughput",
+        "entries_emitted": 26624,
+        "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+        "followup_preempt_ms": 372.614583,
+        "invalidating_mutation_ms": 372.58333300000004,
+        "latest_generation_required": false,
+        "latest_measured_request": true,
+        "mailbox_closed": true,
+        "mailbox_closed_ms": 395.444,
+        "permission_ms": 372.569125,
+        "permission_reason": "switch-evicts-previous-Warm",
+        "planned_revocation": false,
+        "planned_revoked_by": null,
+        "replacements": 0,
+        "request_id": 6,
+        "request_processing_returned_ms": 372.803875,
+        "skipped_closed_before_start": false,
+        "stale_full_data_abort": {
+          "at_ms": 372.60004200000003,
+          "data_kind": "batch",
+          "latest_lookup_succeeded": true,
+          "latest_request_id": null,
+          "reason": "stale-full-data",
+          "request_id": 6,
+          "response_request_id": 6,
+          "shutdown": false,
+          "tab_id": 2
+        },
+        "stale_full_data_abort_duplicate": false,
+        "stale_full_data_abort_limit": 1,
+        "started_ms": 119.07229199999999,
+        "started_source": "Walker",
+        "tab_id": 2,
+        "terminal_kind": "failed",
+        "terminal_offer_current": false,
+        "terminal_offer_error": "index receiver closed",
+        "terminal_offered_ms": 372.802875,
+        "terminal_publish_ms": 372.803,
+        "terminal_role": "declared-Warm-eviction-stale-Full-retained-last-good",
+        "terminal_source": null,
+        "unsent_planned_discard": false
+      },
+      "declared_victim": [
+        {
+          "actual_all_count": 100000,
+          "actual_all_signature": "1b6d50b02bf5adc7",
+          "actual_seed_request_id": 3,
+          "actual_seed_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+          "actual_seed_source": "Walker",
+          "actual_visible_count": 100000,
+          "actual_visible_signature": "1b6d50b02bf5adc7",
+          "closed_ms": null,
+          "declared_ms": 372.565292,
+          "full_seed_oracle_after_t3": true,
+          "incoming_request_ids": [
+            8
+          ],
+          "partial_emitted_entries": 26624,
+          "request_id": 6,
+          "role": "declared-Warm-eviction-stale-Full-retained-last-good",
+          "seed_all_count": 100000,
+          "seed_all_signature": "1b6d50b02bf5adc7",
+          "seed_request_id": 3,
+          "seed_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+          "seed_source": "Walker",
+          "seed_visible_count": 100000,
+          "seed_visible_signature": "1b6d50b02bf5adc7",
+          "stage": 2,
+          "tab_id": 2,
+          "workload_semantics": "actual partial stale-full-failed work; not 100k indexing throughput"
+        }
+      ],
+      "warm_removals": [
+        {
+          "mutation_ms": 228.757292,
+          "previous_warm_tab": 1,
+          "removed_request_id": 5,
+          "replacement_warm_tab": 2,
+          "route_tab": 1
+        },
+        {
+          "mutation_ms": 372.58333300000004,
+          "previous_warm_tab": 2,
+          "removed_request_id": 6,
+          "replacement_warm_tab": 3,
+          "route_tab": 2
+        }
+      ]
+    }
+  ],
+  "partial_victim_not_100k_throughput": true,
+  "no_new_owned_paths": true
+}

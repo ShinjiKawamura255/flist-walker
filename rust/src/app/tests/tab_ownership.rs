@@ -847,7 +847,7 @@ fn tc_154_reclaimer_full_restores_complete_tab_mailbox_and_finalizer_ownership()
         request_id,
         BackgroundIndexState {
             source: Some(IndexSource::Walker),
-            entries: entries("full-rollback-background"),
+            entries: entries("full-rollback-background").into(),
             replaced: true,
         },
     );
@@ -894,7 +894,7 @@ fn tc_154_reclaimer_full_restores_complete_tab_mailbox_and_finalizer_ownership()
             .background_states
             .get(&request_id)
             .expect("background state");
-        (state.entries.as_ptr(), state.entries.capacity())
+        deque_allocation(&state.entries)
     };
     let (finalizer_weight, finalizer_entries) = {
         let finalizer = app
@@ -930,10 +930,7 @@ fn tc_154_reclaimer_full_restores_complete_tab_mailbox_and_finalizer_ownership()
         .get(&request_id)
         .expect("restored background state");
     assert_eq!(
-        (
-            restored_background.entries.as_ptr(),
-            restored_background.entries.capacity()
-        ),
+        deque_allocation(&restored_background.entries),
         background_entries
     );
     let restored_finalizer = app

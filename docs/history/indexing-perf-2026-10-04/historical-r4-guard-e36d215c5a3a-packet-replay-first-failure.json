@@ -1,0 +1,23 @@
+{
+  "scope": "packet assembly patch replay diagnostic; not Rust test/TDD/performance",
+  "exit_code": 0,
+  "mismatches": [
+    "app/filelist/confirmations.rs"
+  ],
+  "stdout": "patching file 'rust/src/app/filelist/confirmations.rs'\npatching file 'rust/src/app/historical_perf.rs'\npatching file 'rust/src/app/index_coordinator.rs'\npatching file 'rust/src/app/index_mailbox.rs'\npatching file 'rust/src/app/index_worker.rs'\npatching file 'rust/src/app/mod.rs'\npatching file 'rust/src/app/pipeline.rs'\npatching file 'rust/src/app/pipeline_owner.rs'\npatching file 'rust/src/app/preview_flow.rs'\npatching file 'rust/src/app/result_reducer.rs'\npatching file 'rust/src/app/search_coordinator.rs'\npatching file 'rust/src/app/session.rs'\npatching file 'rust/src/app/tab_state.rs'\npatching file 'rust/src/app/tabs.rs'\npatching file 'rust/src/app/tests/indexing_perf/child_process.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/cases.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/driver.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/fixture.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/mod.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/oracle.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/runner.rs'\npatching file 'rust/src/app/tests/indexing_perf/extensions/supplementary.rs'\npatching file 'rust/src/app/tests/indexing_perf/harness.rs'\npatching file 'rust/src/app/tests/indexing_perf/mod.rs'\npatching file 'rust/src/app/tests/mod.rs'\npatching file 'rust/src/app/tests/support.rs'\npatching file 'rust/src/app/tests/tab_contract.rs'\npatching file 'rust/src/app/worker.rs'\npatching file 'rust/src/app/worker/runtime.rs'\npatching file 'rust/src/app/worker/search_perf.rs'\npatching file 'rust/src/app/worker/tasks.rs'\n",
+  "stderr": "",
+  "retained_replay_root": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/packet-replay-diagnostic-v11hh_ut",
+  "cause": "Packet assembly read_text normalized 23 native CR bytes in otherwise unchanged app/filelist/confirmations.rs. Sources unchanged; use byte-decoded source text for exact patch identity.",
+  "full_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-full.patch",
+    "sha256": "bcb3ae6001e3dd9e82717b7a71461ee0f116cafb0910e27a2734bba196642f35"
+  },
+  "additive-basic_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-additive-basic.patch",
+    "sha256": "651b5dd8a116733934be534fb0909871250716fb468d6eae1405a01b87b38172"
+  },
+  "additive-r1_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-additive-r1.patch",
+    "sha256": "d051c8123f22cd64551e049bee1546e5ff649762dd5c8242f0827195709d7e42"
+  }
+}

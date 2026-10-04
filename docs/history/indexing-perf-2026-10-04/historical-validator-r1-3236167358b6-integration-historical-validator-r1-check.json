@@ -1,0 +1,22 @@
+{
+  "scope": "Main actual synthetic validator-control replay and frozen39refs/R4/current source readback only; no historical benchmark run",
+  "packet_sha256": "ce186360b170672cfac453ae2ac89efbb3e82ba01169bd9b8b7cb91d49fb2b2e",
+  "references": 39,
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "test_historical"
+  ],
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1",
+  "actual_exit": 0,
+  "passed": 130,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "log": "rust/target/indexing-perf-study/integration-historical-validator-r1-controls.log",
+  "log_sha256": "9500b41ea84fedc447cb0da7ed001fe85f9e3525e535f861273b66dd080f62a1",
+  "R4_and_current213_unchanged": true,
+  "historical_performance": "NOT_RUN"
+}

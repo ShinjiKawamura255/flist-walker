@@ -1,0 +1,90 @@
+Independent focused AFTER: observed-Finished selector integration
+
+Decision: PASS for the focused source/normal checkpoint. Previous integration
+major RESOLVED; blocking0 / major0 / minor0 remaining in this reviewed scope.
+This does not certify speed, real100k/full/tag performance, task completion or
+fresh final review. Parent owns subsequent validation/measurement gates.
+Reviewer /root/plan_review; independent prior plan/design/checkpoint review only,
+no Rust implementation or test authorship. Read-only inspection; no build,
+test/perf execution, Rust/source/Git mutation. Requested ignored record saved.
+Checkout /private/tmp/flistwalker-indexing-perf-20261003, base/head
+8a452b3858c80f70a5f3064834c8add4d9b1d347, uncommitted task diff.
+Failed8e/87e review artifacts were preserved unchanged.
+
+Identity and actual scope independently verified
+Packet FILE SHA256:
+82f49033b3d4f12f586b4203ad9bd3b890292d2e4f51a23c5bf3d4769dc649a1
+Nested canonical213 source-map SHA256 (distinct from wrapper file identity):
+b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a
+All213 live Rust files and all213 saved final content copies match.
+Exactly extensions/driver.rs and extensions/mod.rs differ from rejected87e map.
+Driver SHA256 f8349b720159b62d322b348e9a7195a089abcba0183c79a06de59bbf4f8a83ab
+Mod SHA256 4bf79d7ea2632d516dd0497ef550003d080691f796f56473d14068014275a7a1
+Reversible patch SHA25691e0953afeb80c8bf5fe6748c14b981dac74afac3b8edc8f7eeb8e75a10d1fc7 verified.
+Narrow BEFORE99115b6f338e7892d3b7a54020f19724da37c16fb4fcab38367dbcccfab9c8ae followed.
+Collector remains unchanged SHA2563679db4137e8279f77499d620a8ec4cb99e58d0acfc21d9d775d55fe1e22440c.
+
+Disposition of integration major
+Actual measured_request_for first selects same-tab maximum planned ID. Its
+default-false finished_preemption_cause is derived only for that exact ID/tab,
+one matching actual event, no overflow, all owned typed events/trigger ledger
+valid, and the selected plan explicitly has no permission/time/reason. Therefore
+declared_preemption_cause must take its specific observed-Finished branch, not
+the generic permission alternative. That branch checks real publication <= real
+permit_revocation observation <= mutation, own admitted/Started/terminal root
+and source, typed fixed-TabChain candidate/stage/trigger/window.
+
+Some0 selector accepts that derived proof OR the old prior Warm permission only
+after unchanged max planned ID + exact allocation/ledger counts/tab gates. The
+real owner remains a nonzero measured allocation ID. Unknown nonzero/setup/stale/
+wrong-tab and None exact logical-retirement checks are unchanged. Completed flag
+alone cannot create a positive proof, and newer A8 cannot reuse old A5's cause.
+Actual postframe primary and TabChain checkpoint both use this repaired helper.
+
+Meaningful guard inspected
+The existing11th isolated normal caller invokes assert_observed_finished_primary_selection
+after real startup/tab setup. It supplies explicitly scalar phase observations
+to the ACTUAL driver derivation and real selector (not a naked true proof):
+stage1 A5/latestmap0/no permission passes for publication before declaration and
+after declaration before observation. Body return remains missing and composed
+ExtendedTruth t2/t3 are false, then true only when physical return is supplied.
+19 malformed event/observation/time/root/source/stage/allocation/ledger/overflow
+variants reject. New same-tab allocation8 with map0 rejects predecessor proof;
+map8 correctly selects8. The same enclosing guard separately verifies the real
+production scheduler observer's default-off/bounds/overflow/no-mutex-poison seam.
+These phase inputs are synthetic; they do not claim a real100k race was observed.
+
+Preserved completion and comparison contracts
+- Required A/C, stable measured B and Finished B still require current own
+  success/source/root/freshness/full oracle; canceled B cannot borrow this
+  selection exception as oldseed completion.
+- Latest B LastGoodVictim retains prior Warm permission, actual Canceled
+  false-current, !completed predecessor, no successor, physical return/release/
+  route absence/sender and full GUI/result/deferred debt checks.
+- All allocated request bodies still gate actual t2/t3; selecting a completed
+  publication owner never replaces body return or committed correctness.
+- Full retained seed oracle remains after tentative t3 without another frame
+  or input, before raw output. No per-frame100k scan/new cache/Arc payload pin.
+- Raw typed cause/observed time/roles/emitted work and derived collector latest
+  consistency are unchanged. SDD indexing-contention now explicitly matches
+  latest-map0 selection via prior permission OR specifically observed-Finished
+  typed mutation, max-owner identity, no flag-only proof/old-ID reuse, and physical
+  completion separation. Previous global gate/collector findings remain closed.
+
+Evidence inspected, NOT rerun
+First-red log SHA2566afbdfc84d3ecdd3bbee70fda1a00a580f4e8ef5f50be3f1a3497c6a4ac5e933 verified:
+actual measured_request_for rejects A5/map0/no permission at old seam; leaf and
+parent each0P1F are the same failing test, not additive independent failures.
+All8 actual green log hashes match packet, exit0 and warnings0:
+actual-driver-selector guard1 PASS, normal61 PASS/4ignored38.25s, search9 PASS,
+ordered10 PASS, TC20782 PASS, index_pipeline152 PASS, fmt/clippy-Dwarnings PASS.
+Existing old selector negative expectations are retained with new field false.
+Production/trace/fixture/oracle/protocol/basic behavior unchanged by this patch.
+
+NOT RUN / residual boundaries
+Reviewer ran no build/test/perf or external/native action. Renewed fullhost
+defaultparallel, basic84/observer14 perf, targeted real100k TabChain/pilot/full/
+truncated, historical expanded matrix, native GUI/Windows/Linux, SIGINT/SIGKILL
+cleanup and individual App worker join outcomes remain unverified here.
+Synthetic guards/normal green/source identities are not performance acceptance.
+Fresh final independent review remains required after complete evidence/gates.

@@ -1,0 +1,349 @@
+{
+  "status": "HOLD-independent-BEFORE-3major1minor; preparation only, no historicalruntime acceptance",
+  "scope": "Immutable originaltag archives and cfg adapter preparation with independent review/main replay; not timings; preserves failed source checkpoint for later repairs",
+  "packet_sha256": "ecc580a8f41d8ba273e904c91469ea6897dd59786fa2f6b7c8433979014a2982",
+  "current_source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "all_180_cells": "NOT_RUN",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-basic-apply.log",
+      "path": "historical-before-v0.28.0-basic-apply.log.gz",
+      "sha256": "3b291c76d068fb9935c91fbcad006d84fb384e2ee0f8a7a7f39d1d35aceec343",
+      "bytes": 148,
+      "uncompressed_sha256": "00d4ef616db7b637e63593582f5d20271e2f2431e799d843b9013345cc91a6ee",
+      "uncompressed_bytes": 532,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-prepare.log",
+      "path": "historical-before-newtag-prepare.log.gz",
+      "sha256": "3f670aa4d5ad0c08e4b561e72e169ef58a2cff83c89d9cbf3a1c06c23f4f9322",
+      "bytes": 359,
+      "uncompressed_sha256": "77a68307a435d8bf91d06eb2b126560752979f1717940d16cb438f43f62b1406",
+      "uncompressed_bytes": 2072,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-basic-apply.log",
+      "path": "historical-before-v0.29.0-basic-apply.log.gz",
+      "sha256": "3b291c76d068fb9935c91fbcad006d84fb384e2ee0f8a7a7f39d1d35aceec343",
+      "bytes": 148,
+      "uncompressed_sha256": "00d4ef616db7b637e63593582f5d20271e2f2431e799d843b9013345cc91a6ee",
+      "uncompressed_bytes": 532,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-full.patch",
+      "path": "historical-before-v0.30.0-expanded-full.patch.gz",
+      "sha256": "57d6b4f62194be7ad42aeed072b4284b1262c503a187c68c9eb585e9bdae20a7",
+      "bytes": 87158,
+      "uncompressed_sha256": "dcd235029ba599787da728b26f46150e9e5c5fd943fbd08321f6d68370de5f99",
+      "uncompressed_bytes": 449469,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-format-preparation.log",
+      "path": "historical-before-v0.27.0-format-preparation.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-additive.patch",
+      "path": "historical-before-v0.29.0-expanded-additive.patch.gz",
+      "sha256": "31b6150b8e43794166a055d8f89db58342bd616127015788af43e3258558254e",
+      "bytes": 76201,
+      "uncompressed_sha256": "b25e45c2f02b59b77477b75c29b8411945224f95e75e09c8a02ab185fe226761",
+      "uncompressed_bytes": 392963,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-basic-apply.log",
+      "path": "historical-before-v0.30.0-basic-apply.log.gz",
+      "sha256": "3b291c76d068fb9935c91fbcad006d84fb384e2ee0f8a7a7f39d1d35aceec343",
+      "bytes": 148,
+      "uncompressed_sha256": "00d4ef616db7b637e63593582f5d20271e2f2431e799d843b9013345cc91a6ee",
+      "uncompressed_bytes": 532,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-full.patch",
+      "path": "historical-before-v0.28.0-expanded-full.patch.gz",
+      "sha256": "074e1ca51514250fac9f7a35ebab2d7bdc31dbff53c949cebbd860c51021de34",
+      "bytes": 87832,
+      "uncompressed_sha256": "ba10e9c5b1b96696eea56d942914fdb8f88ff9ccdde8f590948894915bea00aa",
+      "uncompressed_bytes": 452592,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-review-protocol.txt",
+      "path": "historical-before-newtag-review-protocol.txt",
+      "sha256": "f1834ced1d5be4c61e694d3a53a1dea1172df8271295bf4d55afe387fe25d91b",
+      "bytes": 7663,
+      "uncompressed_sha256": "f1834ced1d5be4c61e694d3a53a1dea1172df8271295bf4d55afe387fe25d91b",
+      "uncompressed_bytes": 7663,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-format-preparation.log",
+      "path": "historical-before-v0.30.0-format-preparation.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-mailbox-current-reference.diff",
+      "path": "historical-before-newtag-mailbox-current-reference.diff.gz",
+      "sha256": "2aeb078045d35c820938e9cb1719061467b61ad8fa2401d66c3785e3b389024a",
+      "bytes": 2385,
+      "uncompressed_sha256": "99cf3b51291826e7a80d3753e213ed785b06ed6515a2e15364a11aa64c2c7610",
+      "uncompressed_bytes": 10276,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-format-preparation.log",
+      "path": "historical-before-v0.28.0-format-preparation.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-format-preparation.json",
+      "path": "historical-before-newtag-format-preparation.json",
+      "sha256": "0f627ffa3904249a1b609adbc7e7a3a3e85816b5bfb4359f28a34df7294692b8",
+      "bytes": 10478,
+      "uncompressed_sha256": "0f627ffa3904249a1b609adbc7e7a3a3e85816b5bfb4359f28a34df7294692b8",
+      "uncompressed_bytes": 10478,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-original.tar",
+      "path": "historical-before-v0.29.0-original.tar.gz",
+      "sha256": "8ad2d4449ceba3af6d3e7937583afdd60233d2aa185770007cbc7d47c5f0d4aa",
+      "bytes": 1184189,
+      "uncompressed_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+      "uncompressed_bytes": 6144000,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-basic-apply.log",
+      "path": "historical-before-v0.27.0-basic-apply.log.gz",
+      "sha256": "fb09afee93b1b2f43bad492fdbed486a2c1430b98f0b654a7ac6639756c19f56",
+      "bytes": 159,
+      "uncompressed_sha256": "e90860a00f3b8e34cfe34439c00c1c8feafaff905fd18016ac80de7740374362",
+      "uncompressed_bytes": 618,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-source-hashes.json",
+      "path": "historical-before-v0.30.0-expanded-source-hashes.json",
+      "sha256": "523c68ecedddd4fa17c755e4275656e4b1d2e5b62331a7fd708f6beb985df245",
+      "bytes": 20834,
+      "uncompressed_sha256": "523c68ecedddd4fa17c755e4275656e4b1d2e5b62331a7fd708f6beb985df245",
+      "uncompressed_bytes": 20834,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-original.tar",
+      "path": "historical-before-v0.27.0-original.tar.gz",
+      "sha256": "bc5a481c8a9f431ff4fe94dd2a5abdcb0cef11ccfd206dfd7c6e66d0d413a6e9",
+      "bytes": 1017180,
+      "uncompressed_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+      "uncompressed_bytes": 5273600,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-full.patch",
+      "path": "historical-before-v0.27.0-expanded-full.patch.gz",
+      "sha256": "637717d9254f99280a3dfb6680dc6e8e016bae18903ee8380c8d6edfe3432cdb",
+      "bytes": 88486,
+      "uncompressed_sha256": "a3b23941f9c39b7b2bee3cdb21414c21777ac581a6f5be2fc5a4c646bc9ef892",
+      "uncompressed_bytes": 454096,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-source-hashes.json",
+      "path": "historical-before-v0.29.0-expanded-source-hashes.json",
+      "sha256": "66898e749ab367ae3a8122769019baf4f5b1b088d63e6aa196f512895c214443",
+      "bytes": 20132,
+      "uncompressed_sha256": "66898e749ab367ae3a8122769019baf4f5b1b088d63e6aa196f512895c214443",
+      "uncompressed_bytes": 20132,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-original.tar",
+      "path": "historical-before-v0.28.0-original.tar.gz",
+      "sha256": "9e102857693fb4d1187ecccf346b67b11b5b2d5b69c27bf1bcbaeb7241c20bed",
+      "bytes": 1144837,
+      "uncompressed_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+      "uncompressed_bytes": 5969920,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-matrix-intent.json",
+      "path": "historical-before-newtag-matrix-intent.json",
+      "sha256": "81f8b282fa76ec73c48298f68500a8198753ea9b406f2dd937371c7dea4f36b4",
+      "bytes": 16095,
+      "uncompressed_sha256": "81f8b282fa76ec73c48298f68500a8198753ea9b406f2dd937371c7dea4f36b4",
+      "uncompressed_bytes": 16095,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-expanded-additive.patch",
+      "path": "historical-before-v0.30.0-expanded-additive.patch.gz",
+      "sha256": "611892574f91983d99a95e982db7be77fde3c0b08fc59d22c10a11febb35eb75",
+      "bytes": 75385,
+      "uncompressed_sha256": "62111f7d9bdf2d7bb2ab401c8793566f246d1451ff9aa7cb1c7aef836166dcc0",
+      "uncompressed_bytes": 389558,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-production-equivalence-audit.json",
+      "path": "historical-before-newtag-production-equivalence-audit.json",
+      "sha256": "31f61c08674081df220cd1111914d055745cba04cb537fa42cfa09de698494e2",
+      "bytes": 3954,
+      "uncompressed_sha256": "31f61c08674081df220cd1111914d055745cba04cb537fa42cfa09de698494e2",
+      "uncompressed_bytes": 3954,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-additive.patch",
+      "path": "historical-before-v0.28.0-expanded-additive.patch.gz",
+      "sha256": "21ef2f6678dde3d57a091aacf73fe6b9b5560b79460864bba31883d93215694e",
+      "bytes": 76274,
+      "uncompressed_sha256": "1cd077df9fdc64614ffd9097a6d89a64155af8f734e5e94d19781565ce0989ab",
+      "uncompressed_bytes": 393081,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-archive-identities.json",
+      "path": "historical-before-newtag-archive-identities.json",
+      "sha256": "b9fa6d43c90190889087926063d00185758bbcd5909a9a30290e489b2a00586e",
+      "bytes": 2031,
+      "uncompressed_sha256": "b9fa6d43c90190889087926063d00185758bbcd5909a9a30290e489b2a00586e",
+      "uncompressed_bytes": 2031,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.30.0-original.tar",
+      "path": "historical-before-v0.30.0-original.tar.gz",
+      "sha256": "f20ddc40de72b6dd7dd5969622d15cf910892e17fd0e9b8dad4cbe808e8f0dd3",
+      "bytes": 1272350,
+      "uncompressed_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+      "uncompressed_bytes": 6512640,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-historical-perf.rs",
+      "path": "historical-before-newtag-historical-perf.rs",
+      "sha256": "bf55e352ea7b57e8b88fe2edd3de44747ecc933780a320febf7146a2346fd239",
+      "bytes": 6232,
+      "uncompressed_sha256": "bf55e352ea7b57e8b88fe2edd3de44747ecc933780a320febf7146a2346fd239",
+      "uncompressed_bytes": 6232,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-expanded-full.patch",
+      "path": "historical-before-v0.29.0-expanded-full.patch.gz",
+      "sha256": "17bed7a6591fb23acb3acfcd662dd2432e176cc516233b5b7377b9ce40026edc",
+      "bytes": 87932,
+      "uncompressed_sha256": "4ad9c19cabc0afbccdffaa72c626e618f6c79e59e959758c20f0dbcc68015f6d",
+      "uncompressed_bytes": 453193,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.28.0-expanded-source-hashes.json",
+      "path": "historical-before-v0.28.0-expanded-source-hashes.json",
+      "sha256": "6c8fbe8e1ef3a1fa60f960aecd93c2e4cf3ffe7d5d9998f7821e7607a4325136",
+      "bytes": 19370,
+      "uncompressed_sha256": "6c8fbe8e1ef3a1fa60f960aecd93c2e4cf3ffe7d5d9998f7821e7607a4325136",
+      "uncompressed_bytes": 19370,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-additive.patch",
+      "path": "historical-before-v0.27.0-expanded-additive.patch.gz",
+      "sha256": "9a7c25578748afbce8ce797e54e1ce78195d13e7b3f209114a50e902ec7db894",
+      "bytes": 76784,
+      "uncompressed_sha256": "e5a0511ed2cf94ad5e794b9540ba7bdce6a172065aee9cb9c7154ad9fcdf14f0",
+      "uncompressed_bytes": 394434,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.29.0-format-preparation.log",
+      "path": "historical-before-v0.29.0-format-preparation.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/v0.27.0-expanded-source-hashes.json",
+      "path": "historical-before-v0.27.0-expanded-source-hashes.json",
+      "sha256": "cf64275fe989861db43686ac58ef87acbb29266eda94e7d555fefe087670a609",
+      "bytes": 18180,
+      "uncompressed_sha256": "cf64275fe989861db43686ac58ef87acbb29266eda94e7d555fefe087670a609",
+      "uncompressed_bytes": 18180,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-audit.py",
+      "path": "historical-before-newtag-audit.py",
+      "sha256": "bceb098655c6c4269374189f9365cec7fa5376a8ca6636a80a8af71811270b2e",
+      "bytes": 3341,
+      "uncompressed_sha256": "bceb098655c6c4269374189f9365cec7fa5376a8ca6636a80a8af71811270b2e",
+      "uncompressed_bytes": 3341,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-prepare.py",
+      "path": "historical-before-newtag-prepare.py",
+      "sha256": "a489d77a89b555be401eab3d5dcc291c9b187c22aaba3501efc4f0e1b41451d6",
+      "bytes": 33047,
+      "uncompressed_sha256": "a489d77a89b555be401eab3d5dcc291c9b187c22aaba3501efc4f0e1b41451d6",
+      "uncompressed_bytes": 33047,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-preparation-packet.json",
+      "path": "historical-before-newtag-preparation-packet.json",
+      "sha256": "ecc580a8f41d8ba273e904c91469ea6897dd59786fa2f6b7c8433979014a2982",
+      "bytes": 38060,
+      "uncompressed_sha256": "ecc580a8f41d8ba273e904c91469ea6897dd59786fa2f6b7c8433979014a2982",
+      "uncompressed_bytes": 38060,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-expanded/newtag-before-review.txt",
+      "path": "historical-before-newtag-before-review.txt",
+      "sha256": "17a8ade6b0ac1e399a8af21d0579d04e6210124510d831c195169fd14f092d50",
+      "bytes": 14889,
+      "uncompressed_sha256": "17a8ade6b0ac1e399a8af21d0579d04e6210124510d831c195169fd14f092d50",
+      "uncompressed_bytes": 14889,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-newtag-preparation-check.json",
+      "path": "historical-before-integration-newtag-preparation-check.json",
+      "sha256": "2497edd0ef327c4ef9a121c057ce98a611117f6e3de4e6a3b5b47a8a6e46f6ce",
+      "bytes": 14329,
+      "uncompressed_sha256": "2497edd0ef327c4ef9a121c057ce98a611117f6e3de4e6a3b5b47a8a6e46f6ce",
+      "uncompressed_bytes": 14329,
+      "encoding": "unchanged"
+    }
+  ],
+  "archive_reproduction": "Decompress originaltag tar and full patch, git apply from archive root; compare source hash map using compact JSON separators; Cargo/lock stay archive-identical",
+  "findings": {
+    "major": 3,
+    "minor": 1,
+    "blocking": 0,
+    "status": "OPEN-at-this-checkpoint"
+  }
+}

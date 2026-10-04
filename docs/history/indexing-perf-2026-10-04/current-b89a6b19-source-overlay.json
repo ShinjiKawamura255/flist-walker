@@ -1,0 +1,12 @@
+{
+  "scope": "Exact source used by accepted focused correctness checkpoint; full measurements pending",
+  "base_revision": "8a452b3858c80f70a5f3064834c8add4d9b1d347",
+  "all_rust_source_manifest_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "members": 213,
+  "file": "current-b89a6b19-source-overlay.tar.gz",
+  "sha256": "085e77e8b323b46db08ab0d8e360479d8db3768c9a435faff57c31c2a36f0903",
+  "uncompressed_sha256": "0a389bc11f5f5b283a5493c18eef95d404a48a2aaa36a6123753fbe0dbc91318",
+  "bytes": 762390,
+  "reconstruction": "Overlay src/ onto rust/ from exact base; no Cargo dependency change; check every source hash from victim-selector-final-source-hashes.json",
+  "reconstruction_verified": true
+}

@@ -178,6 +178,15 @@ impl FlistWalkerApp {
                     is_dir,
                     document: None,
                 };
+                #[cfg(test)]
+                self.shell.indexing.perf_aux_dispatch(
+                    "preview",
+                    request_id,
+                    self.current_tab_id().unwrap_or_default(),
+                    self.shell.indexing.kind_resolution_epoch,
+                    Some(req.path.clone()),
+                    1,
+                );
                 if !self.queue_preview_request(req) {
                     self.fail_preview_worker();
                 }

@@ -1,0 +1,110 @@
+{
+  "packet_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-final-execution-packet.json",
+  "packet_sha256": "685d3e9aff43a689e07466dc092f7b075804dff1b65ee550f7832f39f51348f8",
+  "refs": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full-collector-sidecar.json",
+      "actual_sha256": "7bc34ec4d2939f40aaa61368fe1135f27ad5804929299d5d2d23298aeda983ff",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full-collector-sidecar.json",
+      "actual_sha256": "761ceb61c457852c0b3b438a7742b0e5c700e1238327f8de8e487d618d37b59d",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/run_v28.py",
+      "actual_sha256": "d29210d029287458873b64856fb337e469b4c4e05a07812e934a8f15a696da54",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/wrapper-preparation.json",
+      "actual_sha256": "7ee39517f9e54436ca1f59470ee2f9875a7fae6453a516172518dd2fc2ce15f8",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full-validated.json",
+      "actual_sha256": "326817b37b8b2461ce75b2e2cbd803c52037cec3e241f67dd061d9c99948bf1f",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full.json",
+      "actual_sha256": "fd2b2094d43a034a50151dd959d5bf6c1ad90edf781935091680ef2e89a90cd9",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full.json",
+      "actual_sha256": "ae88bc2dacea6b4b1966c1aac8c35d92d7da292ad830c7a8ef5ad903a68c19da",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-release-build.json",
+      "actual_sha256": "58a894e98f6946087a0a24ffb2e6d8423270fcb39a8600bad4bdf3cf6dca7e4a",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-discovery.json",
+      "actual_sha256": "758695f8c076d277999c18c98bb34121c8c975a7dfdc77e39f1a25d578ada721",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-release-build.log",
+      "actual_sha256": "0ce1dbf605aed1ed75d81dafb8cabd43016952ae1f3b72ae911698740b83f6d5",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-discovery.log",
+      "actual_sha256": "f0d41e3698d2f90f38a5ae92ea5df47bcc04b0945f0dbd666be4e790d2642022",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full.log",
+      "actual_sha256": "728991b4f0a5a9cf0461e2e1e526e3f59b56dd1c787062c14e987f310b73f588",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-discovery.log",
+      "actual_sha256": "d35d95cd59cbcabee581ca9c434328b154eb7d1b5578267beae8560500c56878",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-discovery.json",
+      "actual_sha256": "c35a46f4ddc4ade46bf3e38467068fb9935ec23c53051333af05183a24ab50ca",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-ordinary-full-validated.json",
+      "actual_sha256": "604d2693ee98d73708e036bf89a7e12a9f65b75035744c53b54dde22f529e3f0",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/v28-cap-full.log",
+      "actual_sha256": "d105cfaaba6e8a43990d2e66a21d445ea50ff9bb7ce36d1b80be0971f6c21b7f",
+      "matches": true
+    }
+  ],
+  "refs_count": 16,
+  "all_refs_match": true,
+  "actual_wrapper_exit": 0,
+  "actual_wrapper_exit_evidence": "unified exec session 30000 final write_stdin chunk 3c2046 exit_code=0; actual process completion, not derived from libtest",
+  "ordinary_exit": 101,
+  "cap_exit": 0,
+  "ordinary_status_counts": {
+    "PASS": 37,
+    "FAIL": 7,
+    "NOT_RUN": 0
+  },
+  "cap_status_counts": {
+    "PASS": 1,
+    "FAIL": 0,
+    "NOT_RUN": 0
+  },
+  "accepted_rows_total": 532,
+  "root_candidates_before_count": 15,
+  "all_stage_groups_absent": true,
+  "all_stage_actual_wait": true,
+  "all_stage_sources_unchanged": true,
+  "ambient_baseline_retained_unchanged": true,
+  "performance_verdict": "NOT DECLARED; accepted comparable rows only available for later comparison",
+  "next_tag": "v0.29.0 NOT_RUN, unauthorized"
+}

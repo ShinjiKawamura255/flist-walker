@@ -73,6 +73,7 @@ mod autosave;
 mod cache_tests;
 mod empty_query_progress;
 mod index_pipeline;
+mod indexing_perf;
 mod paged_preview;
 mod pipeline_tests;
 mod preset_picker;

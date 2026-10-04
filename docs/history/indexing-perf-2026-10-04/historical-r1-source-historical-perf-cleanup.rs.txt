@@ -1,0 +1,143 @@
+#[derive(Default, Debug, Clone)]
+struct JoinProof {
+    expected: usize,
+    first: Option<(usize, usize, Vec<String>, Vec<String>, Instant)>,
+    duplicate: bool,
+    requires_physical: bool,
+    physical: BTreeMap<String, bool>,
+}
+impl JoinProof {
+    fn safe(&self) -> bool {
+        self.expected > 0 && !self.duplicate && self.first.as_ref().is_some_and(|(joined,total,pending,panicked,_)| {
+            *total==self.expected && joined==total && pending.is_empty() && panicked.is_empty()
+                && (!self.requires_physical || (self.physical.len()==self.expected && self.physical.values().all(|ok| *ok)))
+        })
+    }
+}
+#[derive(Default, Debug)]
+struct WriterProof {
+    spawned: usize,
+    handle: Option<std::thread::JoinHandle<()>>,
+    first_stop: Option<(bool, Option<Result<(),String>>, bool, Instant)>,
+    first_wait: Option<(bool, Instant)>,
+    physical_join: Option<(bool, Instant)>,
+    duplicate: bool,
+}
+impl WriterProof {
+    fn safe(&self) -> bool {
+        self.spawned==1 && !self.duplicate
+            && self.first_stop.as_ref().is_some_and(|(sent,ack,timeout,_)| *sent && ack.as_ref().is_some_and(Result::is_ok) && !timeout)
+            && self.first_wait.as_ref().is_some_and(|(ok,_)| *ok)
+            && self.physical_join.as_ref().is_some_and(|(ok,_)| *ok)
+    }
+}
+#[derive(Default, Debug)]
+struct CellProof {
+    runtimes: BTreeMap<usize, (Weak<AtomicBool>, JoinProof)>,
+    parsers: BTreeMap<u64, JoinProof>,
+    writers: BTreeMap<std::path::PathBuf, WriterProof>,
+    invalid: bool,
+}
+impl CellProof {
+    fn safe(&self) -> bool {
+        !self.invalid && (!self.runtimes.is_empty() || !self.parsers.is_empty())
+            && self.runtimes.values().all(|(_,j)|j.safe())
+            && self.parsers.values().all(JoinProof::safe)
+            && self.writers.values().all(WriterProof::safe)
+    }
+}
+thread_local! { static CELL: RefCell<Option<Arc<Mutex<CellProof>>>> = const { RefCell::new(None) }; }
+fn update(f: impl FnOnce(&mut CellProof)) {
+    CELL.with(|cell| {if let Some(p)=cell.borrow().as_ref() {f(&mut p.lock().expect("historical cleanup observation"));}});
+}
+pub(crate) fn cleanup_unproven() -> bool {
+    CELL.with(|cell|cell.borrow().as_ref().is_some_and(|p|!p.lock().expect("historical cleanup observation").safe()))
+}
+pub(super) struct CellGuard(Arc<Mutex<CellProof>>);
+impl CellGuard {
+    pub(super) fn begin() -> Self {
+        let proof=Arc::new(Mutex::new(CellProof::default()));
+        CELL.with(|cell|assert!(cell.replace(Some(Arc::clone(&proof))).is_none(),"historical cleanup cell overlap"));Self(proof)
+    }
+    pub(super) fn safe(&self)->bool {self.0.lock().expect("historical cleanup observation").safe()}
+    pub(super) fn evidence(&self)->String {format!("{:?}",self.0.lock().expect("historical cleanup observation"))}
+}
+impl Drop for CellGuard {
+    fn drop(&mut self) {
+        CELL.with(|cell|assert!(cell.take().is_some_and(|old|Arc::ptr_eq(&old,&self.0)),"historical cleanup owner mismatch"));
+        if let Ok(mut registry)=owned_writers().lock() {
+            registry.retain(|_,w|w.upgrade().is_some_and(|p|!Arc::ptr_eq(&p,&self.0)));
+        }
+    }
+}
+pub(super) fn runtime_created(token:&Arc<AtomicBool>) {
+    update(|p|{let key=Arc::as_ptr(token) as usize;if p.runtimes.len()>=32 || p.runtimes.contains_key(&key) {p.invalid=true;return;}
+        p.runtimes.insert(key,(Arc::downgrade(token),JoinProof::default()));});
+}
+pub(super) fn runtime_expected(token:&Arc<AtomicBool>,count:usize) {
+    update(|p|{let key=Arc::as_ptr(token) as usize;let Some((w,j))=p.runtimes.get_mut(&key) else {p.invalid=true;return;};
+        if !w.upgrade().is_some_and(|t|Arc::ptr_eq(&t,token)) {p.invalid=true;return;}j.expected=count;});
+}
+#[derive(Clone)]
+pub(super) struct RuntimeJoinObserver { cell:Arc<Mutex<CellProof>>, key:usize }
+pub(super) fn runtime_join_observer(token:&Arc<AtomicBool>)->Option<RuntimeJoinObserver> {
+    CELL.with(|cell| {let proof=cell.borrow().as_ref()?.clone();let key=Arc::as_ptr(token) as usize;
+        {let mut p=proof.lock().expect("historical cleanup observation");let (w,j)=p.runtimes.get_mut(&key)?;
+        if !w.upgrade().is_some_and(|t|Arc::ptr_eq(&t,token)) {p.invalid=true;return None;}j.requires_physical=true;}
+        Some(RuntimeJoinObserver{cell:proof,key})})
+}
+impl RuntimeJoinObserver {
+    pub(super) fn returned(&self,name:&str,ok:bool) {
+        let mut p=self.cell.lock().expect("historical cleanup observation");let Some((_,j))=p.runtimes.get_mut(&self.key) else {p.invalid=true;return;};
+        if j.physical.len()>=j.expected || j.physical.insert(name.to_string(),ok).is_some() {p.invalid=true;}
+    }
+}
+pub(super) fn runtime_joined(token:&Arc<AtomicBool>,joined:usize,total:usize,pending:&[String],native_panicked:Option<&[String]>) {
+    update(|p|{let key=Arc::as_ptr(token) as usize;let Some((w,j))=p.runtimes.get_mut(&key) else {p.invalid=true;return;};
+        if !w.upgrade().is_some_and(|t|Arc::ptr_eq(&t,token)) {p.invalid=true;return;}
+        if j.first.is_some() {j.duplicate=true;return;}
+        let panicked=match native_panicked {Some(names)=>names.to_vec(),None=>j.physical.iter().filter(|(_,ok)|!**ok).map(|(name,_)|name.clone()).collect()};
+        // A legacy summary has no panic field: actual captured helper results are mandatory.
+        if native_panicked.is_none() {j.requires_physical=true;}
+        j.first=Some((joined,total,pending.to_vec(),panicked,Instant::now()));});
+}
+fn owned_writers()->&'static Mutex<BTreeMap<std::path::PathBuf,Weak<Mutex<CellProof>>>> {
+    static REGISTRY:std::sync::OnceLock<Mutex<BTreeMap<std::path::PathBuf,Weak<Mutex<CellProof>>>>>=std::sync::OnceLock::new();
+    REGISTRY.get_or_init(||Mutex::new(BTreeMap::new()))
+}
+/// Bind only a newly owned test settings path before any app/persistence construction.
+pub(crate) fn bind_settings_writer(path:&std::path::Path) {
+    CELL.with(|cell| {let borrowed=cell.borrow();let Some(proof)=borrowed.as_ref() else {return;};
+        let mut registry=owned_writers().lock().expect("owned writer registry");registry.retain(|_,w|w.strong_count()>0);
+        let mut p=proof.lock().expect("historical cleanup observation");
+        if p.writers.len()>=32 || registry.contains_key(path) || p.writers.contains_key(path) {p.invalid=true;return;}
+        p.writers.insert(path.to_path_buf(),WriterProof::default());registry.insert(path.to_path_buf(),Arc::downgrade(proof));});
+}
+#[derive(Clone)]
+pub(crate) struct WriterObserver { cell:Arc<Mutex<CellProof>>,path:std::path::PathBuf }
+pub(crate) fn owned_writer(path:&std::path::Path)->Option<WriterObserver> {
+    let cell=owned_writers().lock().ok()?.get(path)?.upgrade()?;
+    Some(WriterObserver{cell,path:path.to_path_buf()})
+}
+impl WriterObserver {
+    pub(crate) fn spawned(&self,handle:std::thread::JoinHandle<()>) {
+        let mut p=self.cell.lock().expect("historical cleanup observation");let Some(w)=p.writers.get_mut(&self.path) else {p.invalid=true;return;};
+        w.spawned+=1;if w.spawned!=1 || w.handle.is_some() {w.duplicate=true;return;}w.handle=Some(handle);
+    }
+    pub(crate) fn stopping(&self,sent:bool,ack:Option<Result<(),String>>,timed_out:bool) {
+        let mut p=self.cell.lock().expect("historical cleanup observation");let Some(w)=p.writers.get_mut(&self.path) else {p.invalid=true;return;};
+        if w.first_stop.is_none() {w.first_stop=Some((sent,ack,timed_out,Instant::now()));}
+    }
+    /// Only untimed teardown calls this. First wait/physical result are retained separately.
+    pub(crate) fn join(&self,timeout:std::time::Duration) {
+        let handle={let mut p=self.cell.lock().expect("historical cleanup observation");let Some(w)=p.writers.get_mut(&self.path) else {p.invalid=true;return;};
+            if w.first_wait.is_some() {return;}let Some(handle)=w.handle.take() else {w.first_wait=Some((false,Instant::now()));return;};handle};
+        let (tx,rx)=std::sync::mpsc::channel();let captured=self.clone();
+        std::thread::spawn(move||{let ok=handle.join().is_ok();{
+            let mut p=captured.cell.lock().expect("historical cleanup observation");
+            if let Some(w)=p.writers.get_mut(&captured.path) {if w.physical_join.is_none() {w.physical_join=Some((ok,Instant::now()));}else {w.duplicate=true;}}
+        }let _=tx.send(());});
+        let joined=rx.recv_timeout(timeout).is_ok();let mut p=self.cell.lock().expect("historical cleanup observation");
+        if let Some(w)=p.writers.get_mut(&self.path) {if w.first_wait.is_none() {w.first_wait=Some((joined,Instant::now()));}}
+    }
+}

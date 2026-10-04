@@ -1,0 +1,136 @@
+{
+  "scope": "Frozen focused61-normal correctness at87e213a2; re-review pending at archive creation; no new performance samples accepted",
+  "rust_source_map_sha256": "87e213a2c137edf55703f3ee74ec983494df246841ecf00da918cc4aa5cffea3",
+  "assets": [
+    {
+      "file": "victim-observed-final-packet.json",
+      "sha256": "0a70f231aaa0019138ed0d2f23b28d50dac0e828b7e3f9f4266797f573f06812",
+      "bytes": 41427
+    },
+    {
+      "file": "victim-observed-final-source-hashes.json",
+      "sha256": "c7992ecbbf7074438f9cbc569a3d6f7200aeaed14e7788b872428e36a3a7e3ea",
+      "bytes": 25237
+    },
+    {
+      "file": "victim-observed-final-observed-finished.log.gz",
+      "sha256": "0a0c8cc6ee71d55ccf9a0c1d39d526c517e81988ff7e90defa4a9af9603cc750",
+      "bytes": 340,
+      "uncompressed_sha256": "08bb3b7b172e07af833ce3253c156c04e6312719012ff7afafeb6ec0b5c5cf08",
+      "uncompressed_bytes": 492
+    },
+    {
+      "file": "victim-observed-final-composed.log.gz",
+      "sha256": "797d98d39132a0452c0c552cb4e2e304343b12191c3922edb87f6ea846d38a79",
+      "bytes": 290,
+      "uncompressed_sha256": "363e17d247c241940e0e2bbe8064babd29e92ddfc5d17f4b701b22b8e8c0e946",
+      "uncompressed_bytes": 406
+    },
+    {
+      "file": "victim-observed-final-indexing-normal.log.gz",
+      "sha256": "3bf8b2bd24792b1823a44736ceb651c9a26fc109d5b7b847de212ded2a0c93cf",
+      "bytes": 2017,
+      "uncompressed_sha256": "0799252f6b849eacb7f8bd312d1f0b20c852489cc89766d268cd7f9bacfff5c2",
+      "uncompressed_bytes": 8455
+    },
+    {
+      "file": "victim-observed-final-search-observer.log.gz",
+      "sha256": "410f72b68fbb1992e20acb0f64f85b2027eff9304f1c243b5648756b9931654c",
+      "bytes": 496,
+      "uncompressed_sha256": "57fa8d8e1529197fc45cf231e6bb566774a98c447dfa4226d85450c1bfc992f9",
+      "uncompressed_bytes": 1223
+    },
+    {
+      "file": "victim-observed-final-fmt.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "file": "victim-observed-final-clippy.log.gz",
+      "sha256": "8c6595f5ab204a96f166088ca3ac430521d0bab8e5bfad23c6402687c951ca82",
+      "bytes": 153,
+      "uncompressed_sha256": "9531909583bd3a0439186f64d9f7f51e980d38c6938291b7f677b3999fc29749",
+      "uncompressed_bytes": 161
+    },
+    {
+      "file": "victim-observed-final-ordering-focused.log.gz",
+      "sha256": "d815cac9371eebf7eeae119f4e7221f75c7f5de47cb13849108313e94227c200",
+      "bytes": 533,
+      "uncompressed_sha256": "5c1a3f406f8fda08596de9d184a7a45e1ebb8749a2c606db05da516fffce276a",
+      "uncompressed_bytes": 1533
+    },
+    {
+      "file": "victim-observed-final-tc207.log.gz",
+      "sha256": "72ae48f4c3989ecb36cf51c11b2f6776c958bd2e96c1b2e8099b39c749cb4709",
+      "bytes": 2446,
+      "uncompressed_sha256": "b834e4886d6db97584f1c87f1e48c0010b3f64c6f3409cc77affebc8e958a796",
+      "uncompressed_bytes": 10623
+    },
+    {
+      "file": "victim-observed-final-index-pipeline.log.gz",
+      "sha256": "5963c1db71249031a995321f1058074a0f5c2f67ef41d5a30df218bad8e3f03f",
+      "bytes": 3600,
+      "uncompressed_sha256": "780fd62c88850ad1209064da9ee6b0a55eeedacddd20280d6174187165cda321",
+      "uncompressed_bytes": 19343
+    },
+    {
+      "file": "victim-race-composed-first-red.log.gz",
+      "sha256": "acff70bf0697341283032abe2e9567bf0e3311f8fb972da90e9c97433b5193d7",
+      "bytes": 538,
+      "uncompressed_sha256": "d12eb8657c5183d6ef2ca3dd680faaba5b34e76978f6433e29bfa954a4b33da1",
+      "uncompressed_bytes": 1050
+    },
+    {
+      "file": "victim-race-collector-major-first-red.log.gz",
+      "sha256": "301adb992dad1b25bc578a34d7766b1e6b38be6d27350330b49b1107b124e66c",
+      "bytes": 382,
+      "uncompressed_sha256": "08ff229a06b5d8794ca0cc754ca5ee5367aeeea2cfd41729c960f3258b938504",
+      "uncompressed_bytes": 1081
+    },
+    {
+      "file": "victim-race-collector-minor-first-red.log.gz",
+      "sha256": "e1e306a89660099331e9719f7a4db4c25595306e2ce4d81acd2d4a873acf5de6",
+      "bytes": 252,
+      "uncompressed_sha256": "e594ec4935529509608ff71d9c85fd0ea057072e967e597dd45d85938c9618b1",
+      "uncompressed_bytes": 344
+    },
+    {
+      "file": "victim-observed-finished-first-red.log.gz",
+      "sha256": "bb5d308e620ca5e2ec64a7e68f1d4a911a4dbddb5105d780cdcce9724921188b",
+      "bytes": 543,
+      "uncompressed_sha256": "252a6bd635b7174488bad6a05383ef634f26002cf7f3ec817895d8ec6c69ec67",
+      "uncompressed_bytes": 1063
+    },
+    {
+      "file": "victim-observed-finished-collector-first-red.log.gz",
+      "sha256": "d7714566b37ecc89e137297a496e68e1097cc61e1e865eb9900051b5b68abf84",
+      "bytes": 350,
+      "uncompressed_sha256": "9060d5b0baf19ff28c483417801ae9041b1c8c9cded6fb3b4439e0619a564b1a",
+      "uncompressed_bytes": 906
+    },
+    {
+      "file": "victim-race-composed-final-compile-diagnostic.log.gz",
+      "sha256": "91ebb6e135945fd561700168e461ea065bb940e87c9a91d15460dfd7745389e3",
+      "bytes": 500,
+      "uncompressed_sha256": "aa6db2e115690cbd7140ff52feae1fa2aed6660a9c1f9025b21a7845c176ab7e",
+      "uncompressed_bytes": 854
+    },
+    {
+      "file": "victim-observed-final-vs-8e.patch.gz",
+      "sha256": "5f590341911a79ac483ee8f0399e492039a8e477bc93dc53ac69ca4d21f0a1e5",
+      "bytes": 4537,
+      "uncompressed_sha256": "f4724baa1938d02957c8a4b36dd9942d04fe605eda5edcc77eddfedfa3327ce8",
+      "uncompressed_bytes": 21050
+    },
+    {
+      "file": "summarize_extensions-observed.py",
+      "origin_name": "summarize_extensions.py",
+      "sha256": "3679db4137e8279f77499d620a8ec4cb99e58d0acfc21d9d775d55fe1e22440c",
+      "bytes": 9661
+    }
+  ],
+  "decompression": "python3 -m gzip -d <owned copy>; verify compressed and uncompressed SHA256",
+  "collector_name_mapping": "summarize_extensions-observed.py is the exact frozen ignored summarize_extensions.py at3679db4137...; old789a collector remains separately retained"
+}

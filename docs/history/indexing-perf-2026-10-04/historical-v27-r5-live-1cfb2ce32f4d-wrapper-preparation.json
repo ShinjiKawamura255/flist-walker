@@ -1,0 +1,171 @@
+{
+  "stage": "PREPARATION ONLY; wrapper frozen, no execution authority inferred",
+  "frozen_utc": "2026-10-04T06:00:49.722982+00:00",
+  "tag": "v0.27.0 ONLY",
+  "wrapper": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/run_v27.py",
+    "sha256": "4f76a28f5b66466a9a7415ae9c8e8d1120103a56a9b6072d0536ab870b90b4a5",
+    "bytes": 12730
+  },
+  "origin_wrapper": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r1/run_v27.py",
+    "sha256": "25f3309b9b3a99d861aa68d79197df072d1e415ca4bd3362711fbe7e5f2116fb",
+    "bytes": 12720
+  },
+  "minimal_identity_only_wrapper_diff": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/wrapper-from-invalid-observer-r1.patch",
+    "sha256": "e6eec52950b720a2c1771de537e69c6285453e5428651fb00299c830ee3e445a",
+    "bytes": 4732
+  },
+  "guard": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json",
+    "sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+    "bytes": 100296
+  },
+  "validator_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-validator-packet.json",
+    "sha256": "d9623e9b026910627c530a79ad52957f012fdc06fc815b76802d903abbc05329",
+    "bytes": 18107
+  },
+  "validator_source": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py",
+    "sha256": "6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e",
+    "bytes": 25115
+  },
+  "release_target_plan": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-exact-release-target-plan.json",
+    "sha256": "83d5dc2766b6b35afc1cf0a727af5e07f0e39d035eded89695574b770f922323",
+    "bytes": 10608
+  },
+  "actual_source_readback_matches_R5": true,
+  "actual_original_lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+  "exact_canonical_dedicated_release_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.27.0",
+  "command_plan": {
+    "tag": "v0.27.0",
+    "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0/rust",
+    "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+    "Cargo_lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+    "full_patch_sha256": "18722cff3116fd5cdd2e742e6e10ecaddfca51d83b86bbf2fadf09135a01a9d2",
+    "env": {
+      "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.27.0",
+      "FLISTWALKER_SEARCH_THREADS": "12",
+      "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+      "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+      "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+      "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+      "FW_INDEX_PERF_EXTRA_CASES": "F1-files,F1-folders,F1-ignore-list,F1-ignore-case,F1-mid-ignore,S1-ignore,S2-files,O1-name-shown,O1-modified-shown,O1-name-all,O1-modified-all,T1-active-warm,T1-promotion,T1-A-B-C-A,T1-S1-selective,T1-S1-dense,T1-S2,R1-natural,T1-natural-reclaim,H1-early,H1-late,P1-preview,W1-follow-links,W1-deep,W1-wide,F1-filelist-parser-files,F1-filelist-parser-folders",
+      "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker"
+    },
+    "ordinary": [
+      "cargo",
+      "+1.97.1",
+      "test",
+      "--release",
+      "--locked",
+      "--offline",
+      "--lib",
+      "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+      "--",
+      "--ignored",
+      "--exact",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "cap": [
+      "cargo",
+      "+1.97.1",
+      "test",
+      "--release",
+      "--locked",
+      "--offline",
+      "--lib",
+      "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+      "--",
+      "--ignored",
+      "--exact",
+      "--nocapture",
+      "--test-threads=1"
+    ],
+    "ordinary_expected_cells": 44,
+    "ordinary_expected_rows": 616,
+    "cap_expected_rows": 14,
+    "cap_selector_note": "Dedicated cap runner ignores ordinary entries/case selectors and uses fixed cap+1 trace."
+  },
+  "build_discovery_perf_status": "NOT_RUN",
+  "deadlines": {
+    "outer_build_seconds": 1200,
+    "outer_discovery_seconds": 120,
+    "outer_ordinary_seconds": 10800,
+    "outer_cap_seconds": 3600,
+    "native_constructive_progress_seconds": 30,
+    "native_per_run_seconds": 120,
+    "native_join_settings": "unchanged"
+  },
+  "ordinary_contract": "44 declared cells,100000 entries,7 pairs,616 expected rows. Real whole process exit/trailer retained. Exact sealed44 PASS/FAIL statuses and literal positive cleanup/rootrestore are required by frozen R3 collector before optional cap; every failed-cell partial row excluded.",
+  "cap_gate": "Only after ordinary process physically waited/group absent/source+lock unchanged and collector protocol accepted with all44 sealed status cleanup/rootrestore true and no retained/new root candidates. Original settings/writer proof is bound by exact R5 cfg observers; no added settings readback claim. Cap additionally requires actual config before/after equality and explicit restoration authority in its sealed status.",
+  "cap_selector_note": "Dedicated cap runner ignores ordinary case/entry env; its fixed500001 input/500000 cap and14 row contract is separate.",
+  "stop_gate": "unknown cleanup/rootrestore/config authority, missing STATUS, timeout, real compile/discovery failure, collector rejection, process/group/source uncertainty => STOP, capNOT_RUN, no nexttag/retry/source modification. No root/settings deletion or restoration in wrapper. Signals only authorized owned new process group on outer expiry, actual parent reap/absence recorded; not product SIG cleanup proof.",
+  "ambient11_roots": [
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+      "exists": true,
+      "action": "untouched baseline"
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000",
+      "exists": true,
+      "action": "untouched baseline"
+    }
+  ],
+  "v27_precleanup_Flush": "unobserved; evidence covers added final owned cleanup Flush only",
+  "future_execution_command": [
+    "python3",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/run_v27.py"
+  ],
+  "native_Rust_R2_R3_or_fbd9_mutation": "none"
+}

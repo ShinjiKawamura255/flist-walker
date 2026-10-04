@@ -1,0 +1,38 @@
+[
+  {
+    "tag": "v0.27.0",
+    "commit": "37195d639338f10549efabb1abad729546230914",
+    "archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+    "basic_patch_sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d",
+    "basic_apply_exit": 0,
+    "lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.27.0"
+  },
+  {
+    "tag": "v0.28.0",
+    "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+    "archive_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+    "basic_patch_sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502",
+    "basic_apply_exit": 0,
+    "lock_sha256": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.28.0"
+  },
+  {
+    "tag": "v0.29.0",
+    "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+    "archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+    "basic_patch_sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953",
+    "basic_apply_exit": 0,
+    "lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.29.0"
+  },
+  {
+    "tag": "v0.30.0",
+    "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+    "archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+    "basic_patch_sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f",
+    "basic_apply_exit": 0,
+    "lock_sha256": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-expanded/v0.30.0"
+  }
+]

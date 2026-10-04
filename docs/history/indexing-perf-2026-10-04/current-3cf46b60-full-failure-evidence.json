@@ -1,0 +1,44 @@
+{
+  "status": "FAILED / no full performance acceptance",
+  "source_identity": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "partial_raw_rows": 336,
+  "exit_code": 101,
+  "truncated": "NOT RUN",
+  "assets": [
+    {
+      "original": "rust/target/indexing-perf-study/warm-final-full-failure-packet.json",
+      "path": "warm-final-full-failure-packet.json",
+      "sha256": "576e3f226fb26ab22162cc560f5b8575bb14b0cafe30c1e45cc3ecdcec1713b2",
+      "plain_sha256": "576e3f226fb26ab22162cc560f5b8575bb14b0cafe30c1e45cc3ecdcec1713b2",
+      "bytes": 12701
+    },
+    {
+      "original": "rust/target/indexing-perf-study/warm-final-extra-full.log",
+      "path": "warm-final-extra-full.log.gz",
+      "sha256": "5973ada0aefe4224850a6ef91ac8ca1651ccc6c48a0d4223ac3342a0b7d9d22d",
+      "plain_sha256": "36d187c3651e5b31caa1cb0af4b91a1b54d460aff2ef5044cf3f3caf00b7d432",
+      "bytes": 1851115
+    },
+    {
+      "original": "rust/target/indexing-perf-study/warm-final-extra-full.sidecar.json",
+      "path": "warm-final-extra-full.sidecar.json",
+      "sha256": "d5473e9d41e4558bd9ea6e9a6d7253703710712ac42d227493135de2fde42607",
+      "plain_sha256": "d5473e9d41e4558bd9ea6e9a6d7253703710712ac42d227493135de2fde42607",
+      "bytes": 53077
+    },
+    {
+      "original": "rust/target/indexing-perf-study/warm-full-failure-main-diagnostic.json",
+      "path": "warm-full-failure-main-diagnostic.json",
+      "sha256": "235d4622e2fe62f6710cfb945d153db64b44c1c09fbc0a72993759e43c4db13c",
+      "plain_sha256": "235d4622e2fe62f6710cfb945d153db64b44c1c09fbc0a72993759e43c4db13c",
+      "bytes": 22644
+    },
+    {
+      "original": "rust/target/indexing-perf-study/expanded-historical-stream-error-classification.txt",
+      "path": "expanded-historical-stream-error-classification.txt",
+      "sha256": "2f05ab4268b90b5e30ac7a7d10dea1913902a3c7a9274a8e68ef2c3ac3ff7a67",
+      "plain_sha256": "2f05ab4268b90b5e30ac7a7d10dea1913902a3c7a9274a8e68ef2c3ac3ff7a67",
+      "bytes": 5187
+    }
+  ]
+}

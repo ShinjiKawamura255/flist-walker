@@ -1,0 +1,1614 @@
+{
+  "status": "SOURCE_AFTER-and-controlled-guard-PASS-historical-performance-NOT_RUN-at-checkpoint",
+  "scope": "Frozen R4 cfg compatibility source, exact patch replay,124 actual controlled guards, independent focused source AFTER, original meaningful startup-root RED and compile failures retained separately. Not100k performance or historical full-profile correctness. Original archives reside in historical-expanded-before-evidence.json.",
+  "packet_sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+  "source_after_review_sha256": "461b51e1aeafcd0b7b4aff565915913574abde7471f4af7255afe10c5679ebff",
+  "original_archives_manifest": "historical-expanded-before-evidence.json",
+  "guard_passes": 124,
+  "historical_performance": "NOT_RUN",
+  "v27_flush_limit": "Original pre-cleanup Flush result unobserved; positive proof covers added final owned cleanup Flush.",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-newtag-r4-baseline11-check.json",
+      "path": "historical-r4-guard-d176f3159655-integration-newtag-r4-baseline11-check.json",
+      "sha256": "d176f3159655cad498ac8ed454c4bb974e8aef008b704e3b87cec970a965691b",
+      "bytes": 2063,
+      "uncompressed_sha256": "d176f3159655cad498ac8ed454c4bb974e8aef008b704e3b87cec970a965691b",
+      "uncompressed_bytes": 2063,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-newtag-r4-guard-check.json",
+      "path": "historical-r4-guard-636b65619f11-integration-newtag-r4-guard-check.json",
+      "sha256": "636b65619f11b2720dc7b8fcdc40d68b12a9279757f34a98748a77804a137cd5",
+      "bytes": 1634,
+      "uncompressed_sha256": "636b65619f11b2720dc7b8fcdc40d68b12a9279757f34a98748a77804a137cd5",
+      "uncompressed_bytes": 1634,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-discovery.json",
+      "path": "historical-r4-guard-94b80012463d-first-red-discovery.json",
+      "sha256": "94b80012463d836883c4a112315c3655a79eeb53ffac8629e30c7a2da54ef1cf",
+      "bytes": 1667,
+      "uncompressed_sha256": "94b80012463d836883c4a112315c3655a79eeb53ffac8629e30c7a2da54ef1cf",
+      "uncompressed_bytes": 1667,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-discovery.log",
+      "path": "historical-r4-guard-be550efd70c3-first-red-discovery.log.gz",
+      "sha256": "dbee0a931fa4e52dab8ab24391a26eb4e84bc3863ca358c143b6dd9aeeeb823f",
+      "bytes": 3028,
+      "uncompressed_sha256": "be550efd70c3433fef6c489081c091c7894d99c8a89112fef9b673788d332605",
+      "uncompressed_bytes": 9809,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-exact.json",
+      "path": "historical-r4-guard-b7cdccfc200f-first-red-exact.json",
+      "sha256": "b7cdccfc200f4848b60b0a2de2864968cad1ca2cf83b0795c2736bc29906acbb",
+      "bytes": 1762,
+      "uncompressed_sha256": "b7cdccfc200f4848b60b0a2de2864968cad1ca2cf83b0795c2736bc29906acbb",
+      "uncompressed_bytes": 1762,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-exact.log",
+      "path": "historical-r4-guard-480e666641e7-first-red-exact.log.gz",
+      "sha256": "1c9ca55d1d331304268ae7052d5d305a76b62144ab0b9cdccf363eef1fbd6f0c",
+      "bytes": 887,
+      "uncompressed_sha256": "480e666641e755ab2eda48b38799271d3ba18ac0869c2b4d3ce83f9b71f011ba",
+      "uncompressed_bytes": 1946,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-immutable-test-snippet.rs.txt",
+      "path": "historical-r4-guard-2b781a125131-first-red-immutable-test-snippet.rs.txt",
+      "sha256": "2b781a125131b2c8d71256bba380d837957fe8778dc0013884cb2f6a06be0d91",
+      "bytes": 498,
+      "uncompressed_sha256": "2b781a125131b2c8d71256bba380d837957fe8778dc0013884cb2f6a06be0d91",
+      "uncompressed_bytes": 498,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/first-red-result.json",
+      "path": "historical-r4-guard-3da56ffc281c-first-red-result.json",
+      "sha256": "3da56ffc281c78adb9dd4a1c7c6f97de6580fdbfdda3dd46f7de9042270ebef8",
+      "bytes": 2034,
+      "uncompressed_sha256": "3da56ffc281c78adb9dd4a1c7c6f97de6580fdbfdda3dd46f7de9042270ebef8",
+      "uncompressed_bytes": 2034,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r1-v30-green-discovery.json",
+      "path": "historical-r4-guard-a03d957ae9a8-r1-v30-green-discovery.json",
+      "sha256": "a03d957ae9a8caea5b90cceac9bfdb00aea5537b14c3c5c7cd730907e31cdb3c",
+      "bytes": 2045,
+      "uncompressed_sha256": "a03d957ae9a8caea5b90cceac9bfdb00aea5537b14c3c5c7cd730907e31cdb3c",
+      "uncompressed_bytes": 2045,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r1-v30-green-discovery.log",
+      "path": "historical-r4-guard-f5f7d2b1073b-r1-v30-green-discovery.log.gz",
+      "sha256": "50e0eae3c849edb32d7fb053859bbb5adc15eeb9900ce0e0ad747d3a9bcbe28b",
+      "bytes": 3604,
+      "uncompressed_sha256": "f5f7d2b1073bed5f389b7278aacda8691b5010c9d4f32e1bd44a8ee6c110c637",
+      "uncompressed_bytes": 15612,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-fixture-discovery.json",
+      "path": "historical-r4-guard-326e4b0309b0-r2-v0.30.0-fixture-discovery.json",
+      "sha256": "326e4b0309b09d73a8efe2041abc15a6964724ed8924de66ab8297d2649e742f",
+      "bytes": 2549,
+      "uncompressed_sha256": "326e4b0309b09d73a8efe2041abc15a6964724ed8924de66ab8297d2649e742f",
+      "uncompressed_bytes": 2549,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-fixture-discovery.log",
+      "path": "historical-r4-guard-2f53e8402882-r2-v0.30.0-fixture-discovery.log.gz",
+      "sha256": "34fb457326c3d1be35ec80e54ebc0b2d846fc2bd11af73962d346888e95f0237",
+      "bytes": 483,
+      "uncompressed_sha256": "2f53e84028829eca405310660e4074b15a914006c19c010a5c5541be3e0ee662",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-fixture-guards.json",
+      "path": "historical-r4-guard-b5f11fa55e1c-r2-v0.30.0-fixture-guards.json",
+      "sha256": "b5f11fa55e1ca43a1ebf5913518db8da004dd40fd015babf8666bb5e7be42b20",
+      "bytes": 1653,
+      "uncompressed_sha256": "b5f11fa55e1ca43a1ebf5913518db8da004dd40fd015babf8666bb5e7be42b20",
+      "uncompressed_bytes": 1653,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-fixture-guards.log",
+      "path": "historical-r4-guard-3d4294dfb57e-r2-v0.30.0-fixture-guards.log.gz",
+      "sha256": "92aaab4548186468dd8e5347a74bb566e62de31c6dabf0d3c1e595f5b7ebca61",
+      "bytes": 785,
+      "uncompressed_sha256": "3d4294dfb57efd19f2578fc68e2cc44c3f6dae5393e414c24fea287f91870f99",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-oracle-discovery.json",
+      "path": "historical-r4-guard-02a282cbd7b7-r2-v0.30.0-oracle-discovery.json",
+      "sha256": "02a282cbd7b71d879a18d8c6937ee8cfae6ee47a5ea0b7784cf0da9e70572895",
+      "bytes": 2396,
+      "uncompressed_sha256": "02a282cbd7b71d879a18d8c6937ee8cfae6ee47a5ea0b7784cf0da9e70572895",
+      "uncompressed_bytes": 2396,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-oracle-discovery.log",
+      "path": "historical-r4-guard-26c7fc39c426-r2-v0.30.0-oracle-discovery.log.gz",
+      "sha256": "73993e482f7a51078a250f4a2e1dc4e30b0983d4e8330dc9699a4d43afb2d005",
+      "bytes": 453,
+      "uncompressed_sha256": "26c7fc39c42647a210fd207e27fb6742ccf5cbd5d999251e39ccbf5d0b1b2912",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-oracle-guards.json",
+      "path": "historical-r4-guard-f1c754e3bae7-r2-v0.30.0-oracle-guards.json",
+      "sha256": "f1c754e3bae72e6a303f4d7737928b0c8d653ada1fe3b1a22a9f7966a9299bf5",
+      "bytes": 1651,
+      "uncompressed_sha256": "f1c754e3bae72e6a303f4d7737928b0c8d653ada1fe3b1a22a9f7966a9299bf5",
+      "uncompressed_bytes": 1651,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v0.30.0-oracle-guards.log",
+      "path": "historical-r4-guard-9ec0ca2525cc-r2-v0.30.0-oracle-guards.log.gz",
+      "sha256": "ae34a3d0d18ec7ffbc97cf012a8ae78c7d010c8dacbe84331e09ce42e1e1b13d",
+      "bytes": 504,
+      "uncompressed_sha256": "9ec0ca2525ccf03eef41398301758a11f6737669a24afe9ad809d86c850ff9e1",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v29-historical-discovery.json",
+      "path": "historical-r4-guard-369599311019-r2-v29-historical-discovery.json",
+      "sha256": "369599311019bc20d2a6179808228f2b36c96fc6efc66d6dbe4fe3c5d8bd1915",
+      "bytes": 1855,
+      "uncompressed_sha256": "369599311019bc20d2a6179808228f2b36c96fc6efc66d6dbe4fe3c5d8bd1915",
+      "uncompressed_bytes": 1855,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v29-historical-discovery.log",
+      "path": "historical-r4-guard-39859aefe621-r2-v29-historical-discovery.log.gz",
+      "sha256": "50e7f38c63752be1600e6f9e3e6369c0e262bc535e6db7b2a4eee335d21a78b4",
+      "bytes": 3129,
+      "uncompressed_sha256": "39859aefe6218a196a8b76fd8674560a8e2fee59a751e07624a6d8cf7e5b141d",
+      "uncompressed_bytes": 10121,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-green-discovery.json",
+      "path": "historical-r4-guard-04b10573e5e9-r2-v30-green-discovery.json",
+      "sha256": "04b10573e5e9e0201d33f6535a2eaa6dc16a510e994dd1f524d8e506b78d1fc9",
+      "bytes": 1651,
+      "uncompressed_sha256": "04b10573e5e9e0201d33f6535a2eaa6dc16a510e994dd1f524d8e506b78d1fc9",
+      "uncompressed_bytes": 1651,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-green-discovery.log",
+      "path": "historical-r4-guard-a5ad05bcb833-r2-v30-green-discovery.log.gz",
+      "sha256": "a30a5d2fd62bd43722273a94beacfdff95e1aa2dc1285355d3ada5747a23ec57",
+      "bytes": 2672,
+      "uncompressed_sha256": "a5ad05bcb8336b0d26a01cfeb72a4cfd29cbb7d4d526c28f23ee842b3715d734",
+      "uncompressed_bytes": 8965,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-green-exact.json",
+      "path": "historical-r4-guard-0eddfbefb629-r2-v30-green-exact.json",
+      "sha256": "0eddfbefb629228aec4b7dfc2c45424c6fdb22f67296c97cf3fe4dca7e0c35f0",
+      "bytes": 1689,
+      "uncompressed_sha256": "0eddfbefb629228aec4b7dfc2c45424c6fdb22f67296c97cf3fe4dca7e0c35f0",
+      "uncompressed_bytes": 1689,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-green-exact.log",
+      "path": "historical-r4-guard-68d003c4e4b7-r2-v30-green-exact.log.gz",
+      "sha256": "31d987d780cae80cee266c7be1d049a80ce946d68de6aa258e681daa1fe038c3",
+      "bytes": 620,
+      "uncompressed_sha256": "68d003c4e4b7635c6e4e5c8f377446f7ccdebeeb25580d1f7ad4aa72923bb648",
+      "uncompressed_bytes": 970,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-historical-discovery.json",
+      "path": "historical-r4-guard-5a59967da4ac-r2-v30-historical-discovery.json",
+      "sha256": "5a59967da4ac3c4b6915276f8805ff387571c0c1016cc3a7fe840938d44c6ec1",
+      "bytes": 2803,
+      "uncompressed_sha256": "5a59967da4ac3c4b6915276f8805ff387571c0c1016cc3a7fe840938d44c6ec1",
+      "uncompressed_bytes": 2803,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-historical-discovery.log",
+      "path": "historical-r4-guard-43dff0d79b8c-r2-v30-historical-discovery.log.gz",
+      "sha256": "892db49c22de871ab2674a0348625a98a6c70f21d74668409e8ca4b8c3e56e6a",
+      "bytes": 561,
+      "uncompressed_sha256": "43dff0d79b8c8c6d89f8339ccedb03c8ec28c74082451b12c8d7e8c3c7574d6c",
+      "uncompressed_bytes": 1609,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-historical-guards.json",
+      "path": "historical-r4-guard-1928c979e866-r2-v30-historical-guards.json",
+      "sha256": "1928c979e866b724698e895c29a44c345fa12fe6d8b84c72a9adf5be54207474",
+      "bytes": 1608,
+      "uncompressed_sha256": "1928c979e866b724698e895c29a44c345fa12fe6d8b84c72a9adf5be54207474",
+      "uncompressed_bytes": 1608,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-historical-guards.log",
+      "path": "historical-r4-guard-582da2476261-r2-v30-historical-guards.log.gz",
+      "sha256": "1e0ce4b739338a748bffaf8657990d7e873b2c486331fd8f30a2da6a0e669a19",
+      "bytes": 1001,
+      "uncompressed_sha256": "582da2476261f705bfbb131d40e70f539b42443578a53af16efa79e6d5fc7ddb",
+      "uncompressed_bytes": 2677,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-tc229-discovery.json",
+      "path": "historical-r4-guard-d046cf401f33-r2-v30-tc229-discovery.json",
+      "sha256": "d046cf401f335baac8abd6f65f69a14f7e7c99fcb72a28037826228c6bca47ea",
+      "bytes": 8254,
+      "uncompressed_sha256": "d046cf401f335baac8abd6f65f69a14f7e7c99fcb72a28037826228c6bca47ea",
+      "uncompressed_bytes": 8254,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r2-v30-tc229-discovery.log",
+      "path": "historical-r4-guard-0b2ccb4f3640-r2-v30-tc229-discovery.log.gz",
+      "sha256": "478430a04471f59220f1e7b4f499a3389f609c757a4d1859140b1242f86ecadc",
+      "bytes": 1713,
+      "uncompressed_sha256": "0b2ccb4f36406a8279fdd504b5dd354e1c21d766e851fa3cb8fb522e51f75007",
+      "uncompressed_bytes": 7029,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-fixture-discovery.json",
+      "path": "historical-r4-guard-698ea041705f-r3-v0.28.0-fixture-discovery.json",
+      "sha256": "698ea041705fdfd316b687172c59a2f306e4944b06c3a8defb6b57130754f8f8",
+      "bytes": 2764,
+      "uncompressed_sha256": "698ea041705fdfd316b687172c59a2f306e4944b06c3a8defb6b57130754f8f8",
+      "uncompressed_bytes": 2764,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-fixture-discovery.log",
+      "path": "historical-r4-guard-fb274b001847-r3-v0.28.0-fixture-discovery.log.gz",
+      "sha256": "36e82ce1b213736212e349bfcd002cf964f4f9c704b2e1e1b897ed895f4236b0",
+      "bytes": 483,
+      "uncompressed_sha256": "fb274b001847273426a89ea43d969839e705c434a98cb7cc9f470eab260ddb61",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-fixture-guards.json",
+      "path": "historical-r4-guard-ae7a792efb91-r3-v0.28.0-fixture-guards.json",
+      "sha256": "ae7a792efb912e94d64603280832c770073541f0728c0866c1fc80b654fb17ee",
+      "bytes": 1868,
+      "uncompressed_sha256": "ae7a792efb912e94d64603280832c770073541f0728c0866c1fc80b654fb17ee",
+      "uncompressed_bytes": 1868,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-fixture-guards.log",
+      "path": "historical-r4-guard-aa6a45d85163-r3-v0.28.0-fixture-guards.log.gz",
+      "sha256": "9c066ae3875759c15cbeefd35bbcf8381790bb2261dc70402c61afeaad4715b5",
+      "bytes": 786,
+      "uncompressed_sha256": "aa6a45d85163ea79dc69c5a4bbc6519ccd3e0e126fee1356f612de7fb2313422",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-oracle-discovery.json",
+      "path": "historical-r4-guard-ad7248dff32f-r3-v0.28.0-oracle-discovery.json",
+      "sha256": "ad7248dff32f725751c9bb2c747fc00970242ff6c551726963b0024e4a6f57dc",
+      "bytes": 2611,
+      "uncompressed_sha256": "ad7248dff32f725751c9bb2c747fc00970242ff6c551726963b0024e4a6f57dc",
+      "uncompressed_bytes": 2611,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-oracle-discovery.log",
+      "path": "historical-r4-guard-419e3484b718-r3-v0.28.0-oracle-discovery.log.gz",
+      "sha256": "3fce16f3ff864793122ee31c6e878a81967fd5618ff863a015ad2409ee4ee6f9",
+      "bytes": 452,
+      "uncompressed_sha256": "419e3484b7181bc26d6e715b3e021befc1cbf4c7247b1b4d7b4e6b7f35cc168c",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-oracle-guards.json",
+      "path": "historical-r4-guard-67bbde1f2049-r3-v0.28.0-oracle-guards.json",
+      "sha256": "67bbde1f2049ef5562815e2fbaa2948b9090d3063fa47d7ba84eaf69826b3c79",
+      "bytes": 1865,
+      "uncompressed_sha256": "67bbde1f2049ef5562815e2fbaa2948b9090d3063fa47d7ba84eaf69826b3c79",
+      "uncompressed_bytes": 1865,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.28.0-oracle-guards.log",
+      "path": "historical-r4-guard-7ca87fb28167-r3-v0.28.0-oracle-guards.log.gz",
+      "sha256": "379704567435ef13dbaa0297ab706c105cc80efe5dadd003ce8c126e9edf864c",
+      "bytes": 504,
+      "uncompressed_sha256": "7ca87fb28167a8f635d20be8301e0c9340fd43491f6191344041dc52de5e9e6c",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-fixture-discovery.json",
+      "path": "historical-r4-guard-178ea2906938-r3-v0.29.0-fixture-discovery.json",
+      "sha256": "178ea2906938c10401327f54f966717b62eeb48350ad2809a36db2eda476b943",
+      "bytes": 2548,
+      "uncompressed_sha256": "178ea2906938c10401327f54f966717b62eeb48350ad2809a36db2eda476b943",
+      "uncompressed_bytes": 2548,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-fixture-discovery.log",
+      "path": "historical-r4-guard-5d9554b2760e-r3-v0.29.0-fixture-discovery.log.gz",
+      "sha256": "f99b46a8d59105e953893b5a56f108c62f1c1a57458ab56cf81c8de631dc25bd",
+      "bytes": 482,
+      "uncompressed_sha256": "5d9554b2760effa4b00b4e61884d5623002de6c7ff4d54ee008b78dc4cce1c5c",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-fixture-guards.json",
+      "path": "historical-r4-guard-6b9befded193-r3-v0.29.0-fixture-guards.json",
+      "sha256": "6b9befded193f39a9a00b036bf4bac8207450b190f56988b3494a0a22461931e",
+      "bytes": 1653,
+      "uncompressed_sha256": "6b9befded193f39a9a00b036bf4bac8207450b190f56988b3494a0a22461931e",
+      "uncompressed_bytes": 1653,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-fixture-guards.log",
+      "path": "historical-r4-guard-1c98ff2b918d-r3-v0.29.0-fixture-guards.log.gz",
+      "sha256": "7ef01748eaa4c3405c8bf5d75d01029d20cca9f2d02e875eaeff8ccdb187cf49",
+      "bytes": 785,
+      "uncompressed_sha256": "1c98ff2b918dc2fa9f06d64886dc2ae7e893fcdb89899104ef8038097dc609d1",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-oracle-discovery.json",
+      "path": "historical-r4-guard-a43a12dfba65-r3-v0.29.0-oracle-discovery.json",
+      "sha256": "a43a12dfba65c25f4eab3f94233b4dcc942853c8cb845df34049f6f053e8c443",
+      "bytes": 2396,
+      "uncompressed_sha256": "a43a12dfba65c25f4eab3f94233b4dcc942853c8cb845df34049f6f053e8c443",
+      "uncompressed_bytes": 2396,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-oracle-discovery.log",
+      "path": "historical-r4-guard-c8beb60be7eb-r3-v0.29.0-oracle-discovery.log.gz",
+      "sha256": "1aba6fb5275b97310a0fdd1cb2bcfa41e7d1af808e6027da1325c5818647004e",
+      "bytes": 451,
+      "uncompressed_sha256": "c8beb60be7eb3ed5c6f6ba743a0ea028da10313d4e72491401926866e823f4e2",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-oracle-guards.json",
+      "path": "historical-r4-guard-ffcec993765e-r3-v0.29.0-oracle-guards.json",
+      "sha256": "ffcec993765e245c43d2ff82626cf489f841a4f2a02cf806bb6fdd8afe91489a",
+      "bytes": 1650,
+      "uncompressed_sha256": "ffcec993765e245c43d2ff82626cf489f841a4f2a02cf806bb6fdd8afe91489a",
+      "uncompressed_bytes": 1650,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v0.29.0-oracle-guards.log",
+      "path": "historical-r4-guard-0cb413384f17-r3-v0.29.0-oracle-guards.log.gz",
+      "sha256": "35b4a870f944f102c3fea3e5252d364c152e76fa8c7d46ffba4ede5acab8dfda",
+      "bytes": 503,
+      "uncompressed_sha256": "0cb413384f17c3451a842ed18492e66831ad4193da9332c97da0be671fadd3a7",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v27-historical-discovery.json",
+      "path": "historical-r4-guard-2b357e0a5b82-r3-v27-historical-discovery.json",
+      "sha256": "2b357e0a5b8208b843784f314c50687a29fb3ca0f590425aa615fe8a72926235",
+      "bytes": 2352,
+      "uncompressed_sha256": "2b357e0a5b8208b843784f314c50687a29fb3ca0f590425aa615fe8a72926235",
+      "uncompressed_bytes": 2352,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v27-historical-discovery.log",
+      "path": "historical-r4-guard-8d4cb375e2a3-r3-v27-historical-discovery.log.gz",
+      "sha256": "669a684bfacff0437c6e62dbda88a830c9111fcadceac41cc417972da39f5ed4",
+      "bytes": 3443,
+      "uncompressed_sha256": "8d4cb375e2a331cba44c552c85375d6b68a71d425eb2dcc1deb2231cfec89fef",
+      "uncompressed_bytes": 11632,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v28-historical-discovery.json",
+      "path": "historical-r4-guard-3a5f0b65a7e9-r3-v28-historical-discovery.json",
+      "sha256": "3a5f0b65a7e95bfe3d6befb167de5065c41868db83703cadfc829fbb437e295e",
+      "bytes": 3002,
+      "uncompressed_sha256": "3a5f0b65a7e95bfe3d6befb167de5065c41868db83703cadfc829fbb437e295e",
+      "uncompressed_bytes": 3002,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v28-historical-discovery.log",
+      "path": "historical-r4-guard-108a202497cd-r3-v28-historical-discovery.log.gz",
+      "sha256": "1302b52f793cffe0b8730e547fca97d9344522bde0b2995d06199276964fea30",
+      "bytes": 2931,
+      "uncompressed_sha256": "108a202497cd48ca760136c02e50ef47ef2d37745deff5c3e856b4a4cfcc93bc",
+      "uncompressed_bytes": 10172,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v28-historical-guards.json",
+      "path": "historical-r4-guard-9795ce154363-r3-v28-historical-guards.json",
+      "sha256": "9795ce15436379460f4d4057dcc01f1ef1bd08eda8d491a1540ea363f12a7fe0",
+      "bytes": 1823,
+      "uncompressed_sha256": "9795ce15436379460f4d4057dcc01f1ef1bd08eda8d491a1540ea363f12a7fe0",
+      "uncompressed_bytes": 1823,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v28-historical-guards.log",
+      "path": "historical-r4-guard-156dddaa798f-r3-v28-historical-guards.log.gz",
+      "sha256": "45d196fb085a9d7762421ed40ef9e5354e8b21bfbd792a5b973feeecce78f0c4",
+      "bytes": 995,
+      "uncompressed_sha256": "156dddaa798f12a5ca16f704e1d99075d56ac324d1e0d7449a56b91fa4409dc2",
+      "uncompressed_bytes": 2663,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v29-historical-discovery.json",
+      "path": "historical-r4-guard-9f650a91bf37-r3-v29-historical-discovery.json",
+      "sha256": "9f650a91bf37592610311b0d43098a920254fd00ddcd8abec5fb8a97559b533f",
+      "bytes": 2801,
+      "uncompressed_sha256": "9f650a91bf37592610311b0d43098a920254fd00ddcd8abec5fb8a97559b533f",
+      "uncompressed_bytes": 2801,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v29-historical-discovery.log",
+      "path": "historical-r4-guard-c7b81e91bf30-r3-v29-historical-discovery.log.gz",
+      "sha256": "dcc9db146ae137df3ccfeea8251f002f6dc518c6c37ba7b0d1c292955f70d672",
+      "bytes": 2942,
+      "uncompressed_sha256": "c7b81e91bf30de8cb83342f682dd2a47c14070dfcc951e478539a6ae3a2ce01d",
+      "uncompressed_bytes": 10186,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v29-historical-guards.json",
+      "path": "historical-r4-guard-f82794ff0c1e-r3-v29-historical-guards.json",
+      "sha256": "f82794ff0c1e1d2a49cc2cef7b913fb7a395a7bb31a60ffeaa4a75f70e198168",
+      "bytes": 1608,
+      "uncompressed_sha256": "f82794ff0c1e1d2a49cc2cef7b913fb7a395a7bb31a60ffeaa4a75f70e198168",
+      "uncompressed_bytes": 1608,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r3-v29-historical-guards.log",
+      "path": "historical-r4-guard-0f63a3cea1c9-r3-v29-historical-guards.log.gz",
+      "sha256": "f35b673a2423b656a029c8ea21df852879400b1e9c7fc715ddc71726ccbace86",
+      "bytes": 1002,
+      "uncompressed_sha256": "0f63a3cea1c9723e07165b92bd43b21faee04010ab54aa0d0338ad25699940f5",
+      "uncompressed_bytes": 2677,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-fixture-discovery.json",
+      "path": "historical-r4-guard-ff6993efd9b9-r4-v0.27.0-fixture-discovery.json",
+      "sha256": "ff6993efd9b9fcd0f3bc53354c8628bf12430b05968cb20ea743a8424fbe75ac",
+      "bytes": 2764,
+      "uncompressed_sha256": "ff6993efd9b9fcd0f3bc53354c8628bf12430b05968cb20ea743a8424fbe75ac",
+      "uncompressed_bytes": 2764,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-fixture-discovery.log",
+      "path": "historical-r4-guard-3fbdd0eea7e8-r4-v0.27.0-fixture-discovery.log.gz",
+      "sha256": "9a976bd4ec743138e8e94fc5da40e2353e8c9647bdad0e841259c66c2c8a9d3b",
+      "bytes": 483,
+      "uncompressed_sha256": "3fbdd0eea7e84ab0de86e9cf395ffc5442672559769a314e0fec5dde70a9e5ee",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-fixture-guards.json",
+      "path": "historical-r4-guard-8ff29a698729-r4-v0.27.0-fixture-guards.json",
+      "sha256": "8ff29a698729b7460ff607c1eb9d185b8f1ed5f0ae5112788e12aace14c183e6",
+      "bytes": 1868,
+      "uncompressed_sha256": "8ff29a698729b7460ff607c1eb9d185b8f1ed5f0ae5112788e12aace14c183e6",
+      "uncompressed_bytes": 1868,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-fixture-guards.log",
+      "path": "historical-r4-guard-5f16ac09ce56-r4-v0.27.0-fixture-guards.log.gz",
+      "sha256": "f2880681c7d5f4c2eb9daf68bd889b5745725bdb3bb5667eed02990ead2524a0",
+      "bytes": 785,
+      "uncompressed_sha256": "5f16ac09ce56551ec5a94548f5033f73b320e2e27bf56e75c33e517dcb833936",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-oracle-discovery.json",
+      "path": "historical-r4-guard-faa9aa258fd4-r4-v0.27.0-oracle-discovery.json",
+      "sha256": "faa9aa258fd4bbb153da95e0cc369ca7943ac14c518f92a7c9d0b902e3a362c0",
+      "bytes": 2611,
+      "uncompressed_sha256": "faa9aa258fd4bbb153da95e0cc369ca7943ac14c518f92a7c9d0b902e3a362c0",
+      "uncompressed_bytes": 2611,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-oracle-discovery.log",
+      "path": "historical-r4-guard-166760e03048-r4-v0.27.0-oracle-discovery.log.gz",
+      "sha256": "0eae5141ad4e03d02715f6f39d6ecf088bf05f50931fedb0c4dc3eced04a4bb3",
+      "bytes": 451,
+      "uncompressed_sha256": "166760e030487456c51666c4f0cdac4ba041f52a4da6e23a5d5f923e41266a6d",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-oracle-guards.json",
+      "path": "historical-r4-guard-bcceb4e1fe66-r4-v0.27.0-oracle-guards.json",
+      "sha256": "bcceb4e1fe660aeba2da3038457572e4d9b90f80eee0de119125a2c572d0d81b",
+      "bytes": 1866,
+      "uncompressed_sha256": "bcceb4e1fe660aeba2da3038457572e4d9b90f80eee0de119125a2c572d0d81b",
+      "uncompressed_bytes": 1866,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.27.0-oracle-guards.log",
+      "path": "historical-r4-guard-3919235d1e00-r4-v0.27.0-oracle-guards.log.gz",
+      "sha256": "b4e998c0f1dfaf466845f69122041d1a6cc850a93979ccd6df2032cf59694a1b",
+      "bytes": 503,
+      "uncompressed_sha256": "3919235d1e00c8c6b5fadd99ffcba5501680921499d6c583b3ce924356c57b30",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-fixture-discovery.json",
+      "path": "historical-r4-guard-48de9cab2b6f-r4-v0.28.0-fixture-discovery.json",
+      "sha256": "48de9cab2b6f5c1e148d802c8a6c4ffc14656fc5a65a83b58d1d2eecfd4a3dbb",
+      "bytes": 2764,
+      "uncompressed_sha256": "48de9cab2b6f5c1e148d802c8a6c4ffc14656fc5a65a83b58d1d2eecfd4a3dbb",
+      "uncompressed_bytes": 2764,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-fixture-discovery.log",
+      "path": "historical-r4-guard-108151da0064-r4-v0.28.0-fixture-discovery.log.gz",
+      "sha256": "c6d369a5c2588eb534a2b0d1b4425aba6d7812f0e597548ec85a4a4442b9088a",
+      "bytes": 483,
+      "uncompressed_sha256": "108151da0064aae18618a49daddb3b33b6449f36ebda7e429bef02d20dfc5704",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-fixture-guards.json",
+      "path": "historical-r4-guard-6489f7734f1a-r4-v0.28.0-fixture-guards.json",
+      "sha256": "6489f7734f1a7a4f79f05e830a326934b1262950b26d7f98ff65cfbe9261efd2",
+      "bytes": 1868,
+      "uncompressed_sha256": "6489f7734f1a7a4f79f05e830a326934b1262950b26d7f98ff65cfbe9261efd2",
+      "uncompressed_bytes": 1868,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-fixture-guards.log",
+      "path": "historical-r4-guard-9aaa52cbe68e-r4-v0.28.0-fixture-guards.log.gz",
+      "sha256": "f84f9206d7549ba694f305f4d4ca06040257b4d3a7aa4445fb694cd885362012",
+      "bytes": 785,
+      "uncompressed_sha256": "9aaa52cbe68e6375404a0ca39593e8402517e3044bc1e28bc35bcb2399ac746f",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-oracle-discovery.json",
+      "path": "historical-r4-guard-05150be5ff21-r4-v0.28.0-oracle-discovery.json",
+      "sha256": "05150be5ff21709c76a6ea1aaa6b9128edef1914c6485d35b18736d7be319939",
+      "bytes": 2610,
+      "uncompressed_sha256": "05150be5ff21709c76a6ea1aaa6b9128edef1914c6485d35b18736d7be319939",
+      "uncompressed_bytes": 2610,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-oracle-discovery.log",
+      "path": "historical-r4-guard-153be187a3ae-r4-v0.28.0-oracle-discovery.log.gz",
+      "sha256": "dbf2bd5cfe57522cb2ac3d9171a75524b056f1193836f219c365fb69783028e2",
+      "bytes": 452,
+      "uncompressed_sha256": "153be187a3ae4753a72f5c09dc8b9ea229c2dc32c7ea8c03e3a11a91de8c11a3",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-oracle-guards.json",
+      "path": "historical-r4-guard-23cbb2df8b7e-r4-v0.28.0-oracle-guards.json",
+      "sha256": "23cbb2df8b7eeb602dcb2e4fe0ef5d3af8af6059d04d814554a276574cf28567",
+      "bytes": 1866,
+      "uncompressed_sha256": "23cbb2df8b7eeb602dcb2e4fe0ef5d3af8af6059d04d814554a276574cf28567",
+      "uncompressed_bytes": 1866,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.28.0-oracle-guards.log",
+      "path": "historical-r4-guard-61beef6792ad-r4-v0.28.0-oracle-guards.log.gz",
+      "sha256": "74ecac4a37b9413e5fe3f226a501b7621ee8c7487b7654b98a8f8aea6c18ba9c",
+      "bytes": 504,
+      "uncompressed_sha256": "61beef6792ad83f8afaa030aeef06c51ccaee9db36dc689784bcbf479f652007",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-fixture-discovery.json",
+      "path": "historical-r4-guard-df4c8ef18f0b-r4-v0.29.0-fixture-discovery.json",
+      "sha256": "df4c8ef18f0b4bdfc81974e4d147b6a929ab21109589765e08aa0d8c2827b3b0",
+      "bytes": 2764,
+      "uncompressed_sha256": "df4c8ef18f0b4bdfc81974e4d147b6a929ab21109589765e08aa0d8c2827b3b0",
+      "uncompressed_bytes": 2764,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-fixture-discovery.log",
+      "path": "historical-r4-guard-dd9b2c9a4ad2-r4-v0.29.0-fixture-discovery.log.gz",
+      "sha256": "e6d1229f358470ddd2b94fc4152915c85c05e5eef3171f59fe88821c2d9a7548",
+      "bytes": 483,
+      "uncompressed_sha256": "dd9b2c9a4ad295e2eeb481f01232dd462144b8c80050038c6efb889a9afd6224",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-fixture-guards.json",
+      "path": "historical-r4-guard-48a04963568a-r4-v0.29.0-fixture-guards.json",
+      "sha256": "48a04963568a8598502cd48e23415b6b557383b3c8c38af137f2763065e2c21f",
+      "bytes": 1868,
+      "uncompressed_sha256": "48a04963568a8598502cd48e23415b6b557383b3c8c38af137f2763065e2c21f",
+      "uncompressed_bytes": 1868,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-fixture-guards.log",
+      "path": "historical-r4-guard-217f970497f6-r4-v0.29.0-fixture-guards.log.gz",
+      "sha256": "b841ec29daa29feb67be6d8ea0501f01ab8d1477d0a681e85b0ca79e03c140c8",
+      "bytes": 785,
+      "uncompressed_sha256": "217f970497f6d37592bdcf7248210f412ddbbec0362655396211454791af0f04",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-oracle-discovery.json",
+      "path": "historical-r4-guard-8c7ce4d491ba-r4-v0.29.0-oracle-discovery.json",
+      "sha256": "8c7ce4d491bacbcc4d32571fb569455874a9d0a03de2f30de59ff6b0569b7635",
+      "bytes": 2611,
+      "uncompressed_sha256": "8c7ce4d491bacbcc4d32571fb569455874a9d0a03de2f30de59ff6b0569b7635",
+      "uncompressed_bytes": 2611,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-oracle-discovery.log",
+      "path": "historical-r4-guard-f21382196050-r4-v0.29.0-oracle-discovery.log.gz",
+      "sha256": "bb23a530b71b670d105493c2a0b6f3206da9f64c3f813baee57c1c9aed8a5d53",
+      "bytes": 451,
+      "uncompressed_sha256": "f213821960508ce39c809777d5ed271c886589540bb75be41bfcf05607e5475c",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-oracle-guards.json",
+      "path": "historical-r4-guard-dff73a3aafd6-r4-v0.29.0-oracle-guards.json",
+      "sha256": "dff73a3aafd6750440d835e9c25fa0e2cde6d32e86e993075b2dbfe15ba7fcff",
+      "bytes": 1866,
+      "uncompressed_sha256": "dff73a3aafd6750440d835e9c25fa0e2cde6d32e86e993075b2dbfe15ba7fcff",
+      "uncompressed_bytes": 1866,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.29.0-oracle-guards.log",
+      "path": "historical-r4-guard-54b26584433d-r4-v0.29.0-oracle-guards.log.gz",
+      "sha256": "cc79b2e734d15fbfbc96374b1437b9042432518e1b13118f68c1f1241e02204d",
+      "bytes": 503,
+      "uncompressed_sha256": "54b26584433d790ea68df6562774933b8e284e87ac94d20de5a796308980385d",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-fixture-discovery.json",
+      "path": "historical-r4-guard-a7d2cf547db5-r4-v0.30.0-fixture-discovery.json",
+      "sha256": "a7d2cf547db5ffa8fb17113efbd58fa05b11fc1f03cde3e029a3388184950cc9",
+      "bytes": 2764,
+      "uncompressed_sha256": "a7d2cf547db5ffa8fb17113efbd58fa05b11fc1f03cde3e029a3388184950cc9",
+      "uncompressed_bytes": 2764,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-fixture-discovery.log",
+      "path": "historical-r4-guard-17c46cad2976-r4-v0.30.0-fixture-discovery.log.gz",
+      "sha256": "a87bce855275b9dbd11d669f43dc8bcbc5b711ab7699407ff8b96a233899f0ff",
+      "bytes": 484,
+      "uncompressed_sha256": "17c46cad29764ac7a7b64a01c431365f497fe3ab37516cd391ef58701f71c250",
+      "uncompressed_bytes": 1315,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-fixture-guards.json",
+      "path": "historical-r4-guard-a33ca8bd9936-r4-v0.30.0-fixture-guards.json",
+      "sha256": "a33ca8bd993641a9fd6002b08dacbb81ac6e7e1999dcf693afa49aeb28291f4c",
+      "bytes": 1867,
+      "uncompressed_sha256": "a33ca8bd993641a9fd6002b08dacbb81ac6e7e1999dcf693afa49aeb28291f4c",
+      "uncompressed_bytes": 1867,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-fixture-guards.log",
+      "path": "historical-r4-guard-fdd847c11f81-r4-v0.30.0-fixture-guards.log.gz",
+      "sha256": "5b67f8426fd3cf342fd0cced9594e1f212223f10c52c30fd210ea2d0f6312aab",
+      "bytes": 785,
+      "uncompressed_sha256": "fdd847c11f814258c0ca1f3dfca971861a3f85c5bb6d840c213629993c046cfb",
+      "uncompressed_bytes": 2375,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-oracle-discovery.json",
+      "path": "historical-r4-guard-02abd0b72d15-r4-v0.30.0-oracle-discovery.json",
+      "sha256": "02abd0b72d15ed9a047b415c24c90b616f4913ce7335c72104030a76efbeeb2d",
+      "bytes": 2611,
+      "uncompressed_sha256": "02abd0b72d15ed9a047b415c24c90b616f4913ce7335c72104030a76efbeeb2d",
+      "uncompressed_bytes": 2611,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-oracle-discovery.log",
+      "path": "historical-r4-guard-1d3db6da7087-r4-v0.30.0-oracle-discovery.log.gz",
+      "sha256": "465d8d658ea9012d8fee5334dc96b43745966f12b463be1d6fde47400616486d",
+      "bytes": 453,
+      "uncompressed_sha256": "1d3db6da708794cf81200001d2d376e2366ec471d16b27142f363925269d3e06",
+      "uncompressed_bytes": 1165,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-oracle-guards.json",
+      "path": "historical-r4-guard-359c0a105e39-r4-v0.30.0-oracle-guards.json",
+      "sha256": "359c0a105e39882ff99fc05de84c11f9dee6429c8d7a37c49c750e3cda9909e4",
+      "bytes": 1866,
+      "uncompressed_sha256": "359c0a105e39882ff99fc05de84c11f9dee6429c8d7a37c49c750e3cda9909e4",
+      "uncompressed_bytes": 1866,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v0.30.0-oracle-guards.log",
+      "path": "historical-r4-guard-a4d6bc559ec5-r4-v0.30.0-oracle-guards.log.gz",
+      "sha256": "c124b6bfa9968f9a037c1e57440392eaccaf84b58b811c55f6293b8e01410812",
+      "bytes": 504,
+      "uncompressed_sha256": "a4d6bc559ec51fa075d80dbe0d399cc56eda13af35ceb9d31d59d391986245bb",
+      "uncompressed_bytes": 1300,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v27-historical-discovery.json",
+      "path": "historical-r4-guard-40760323661e-r4-v27-historical-discovery.json",
+      "sha256": "40760323661e5e919966902655ff38f530aa0cbb71efb3aed6837e8aed605edf",
+      "bytes": 3002,
+      "uncompressed_sha256": "40760323661e5e919966902655ff38f530aa0cbb71efb3aed6837e8aed605edf",
+      "uncompressed_bytes": 3002,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v27-historical-discovery.log",
+      "path": "historical-r4-guard-3011c9048f9d-r4-v27-historical-discovery.log.gz",
+      "sha256": "8874b53f24054b019db8254e701fd260cdd2c6bbdd55b021bfa2c9ce40ee82d4",
+      "bytes": 2940,
+      "uncompressed_sha256": "3011c9048f9df023b293cb6612c4036147949b337d90801a84cac7794e293406",
+      "uncompressed_bytes": 10172,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v27-historical-guards.json",
+      "path": "historical-r4-guard-56e439a09712-r4-v27-historical-guards.json",
+      "sha256": "56e439a09712c3b9e73e917bcd4a160d504bc460e14e7fb0a389aac0d267c62d",
+      "bytes": 1823,
+      "uncompressed_sha256": "56e439a09712c3b9e73e917bcd4a160d504bc460e14e7fb0a389aac0d267c62d",
+      "uncompressed_bytes": 1823,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v27-historical-guards.log",
+      "path": "historical-r4-guard-594c7948a41b-r4-v27-historical-guards.log.gz",
+      "sha256": "d6d3df7ee5afe0c2a595cb6816369034e4085b53401db100ab10c8efceba32d8",
+      "bytes": 993,
+      "uncompressed_sha256": "594c7948a41b22af4d1c2bac84cd38fd41200806206769f1c8d290fd72e85275",
+      "uncompressed_bytes": 2663,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v28-historical-discovery.json",
+      "path": "historical-r4-guard-6d1d73545e35-r4-v28-historical-discovery.json",
+      "sha256": "6d1d73545e35d43d882af318c45e3f1e48e7ea5270856a1e7510ccb7fb6f816a",
+      "bytes": 3002,
+      "uncompressed_sha256": "6d1d73545e35d43d882af318c45e3f1e48e7ea5270856a1e7510ccb7fb6f816a",
+      "uncompressed_bytes": 3002,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v28-historical-discovery.log",
+      "path": "historical-r4-guard-4a3cccc612b1-r4-v28-historical-discovery.log.gz",
+      "sha256": "f477fcda866b8a4ebfb0b40c994a8167f7e4cf92cb6a6b27f6e0c0a5c5809f5e",
+      "bytes": 2933,
+      "uncompressed_sha256": "4a3cccc612b1c0c544499d079838047879f4a476420499c4fc2df708b5de8a7c",
+      "uncompressed_bytes": 10172,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v28-historical-guards.json",
+      "path": "historical-r4-guard-15bdcd7b46b8-r4-v28-historical-guards.json",
+      "sha256": "15bdcd7b46b80ba77226cf3006dbaf5b25bae743ff5a3c30606b77a8b45f2feb",
+      "bytes": 1822,
+      "uncompressed_sha256": "15bdcd7b46b80ba77226cf3006dbaf5b25bae743ff5a3c30606b77a8b45f2feb",
+      "uncompressed_bytes": 1822,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v28-historical-guards.log",
+      "path": "historical-r4-guard-959933e24a2b-r4-v28-historical-guards.log.gz",
+      "sha256": "85a2232540f57e5551072cadf70d8d76a8502e3a3c2e7fe95b9b478a9cb21b3e",
+      "bytes": 996,
+      "uncompressed_sha256": "959933e24a2b25a5e2f6510c9c048575f82331630e7dd786ff0a4e7fc1141f53",
+      "uncompressed_bytes": 2663,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v29-historical-discovery.json",
+      "path": "historical-r4-guard-c9c92e48c3fe-r4-v29-historical-discovery.json",
+      "sha256": "c9c92e48c3fe1d215b5dd18b1846766ba11000eba5cee5b2128407b8f6f36610",
+      "bytes": 3017,
+      "uncompressed_sha256": "c9c92e48c3fe1d215b5dd18b1846766ba11000eba5cee5b2128407b8f6f36610",
+      "uncompressed_bytes": 3017,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v29-historical-discovery.log",
+      "path": "historical-r4-guard-d761069b5bad-r4-v29-historical-discovery.log.gz",
+      "sha256": "f2d418bfd78a6adefa01b27b37608716e947a8d3ed3364e0e3c054cb2394d008",
+      "bytes": 2942,
+      "uncompressed_sha256": "d761069b5bad8dce7f04195f1823153196dfb50a541f5f675ac7fc10c2157500",
+      "uncompressed_bytes": 10186,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v29-historical-guards.json",
+      "path": "historical-r4-guard-018e465ac794-r4-v29-historical-guards.json",
+      "sha256": "018e465ac794ec580be8efce0c997f79ca8b544f278b107434f555a047cd6b12",
+      "bytes": 1823,
+      "uncompressed_sha256": "018e465ac794ec580be8efce0c997f79ca8b544f278b107434f555a047cd6b12",
+      "uncompressed_bytes": 1823,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v29-historical-guards.log",
+      "path": "historical-r4-guard-ed68e179721a-r4-v29-historical-guards.log.gz",
+      "sha256": "e151d683b92cf2eea4e67b9028916a8756ff524f8f9b7697627dab0e9c29605b",
+      "bytes": 1002,
+      "uncompressed_sha256": "ed68e179721ae422b1901d3ed172e3c0d09a527d6d779b034e6bef8f16d8890b",
+      "uncompressed_bytes": 2677,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v30-historical-discovery.json",
+      "path": "historical-r4-guard-adcc38b9755c-r4-v30-historical-discovery.json",
+      "sha256": "adcc38b9755c35b59d14ae3fd5d780147a867d14a1dd464c6aa542e6eca4fc71",
+      "bytes": 3016,
+      "uncompressed_sha256": "adcc38b9755c35b59d14ae3fd5d780147a867d14a1dd464c6aa542e6eca4fc71",
+      "uncompressed_bytes": 3016,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v30-historical-discovery.log",
+      "path": "historical-r4-guard-bc5202d74356-r4-v30-historical-discovery.log.gz",
+      "sha256": "d97867aa10a1d59fc3578ed711341b580c1b36b67915989f3edbe853669190c4",
+      "bytes": 2935,
+      "uncompressed_sha256": "bc5202d74356ee226c8139fa740768bd0ae4a2904a51d1af62fd4208297df238",
+      "uncompressed_bytes": 10186,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v30-historical-guards.json",
+      "path": "historical-r4-guard-255ed4f3a4e9-r4-v30-historical-guards.json",
+      "sha256": "255ed4f3a4e975021984ce29edfd5ed75700fd3d5778315471121f4d5d3365e4",
+      "bytes": 1823,
+      "uncompressed_sha256": "255ed4f3a4e975021984ce29edfd5ed75700fd3d5778315471121f4d5d3365e4",
+      "uncompressed_bytes": 1823,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/r4-v30-historical-guards.log",
+      "path": "historical-r4-guard-4248057ba234-r4-v30-historical-guards.log.gz",
+      "sha256": "9f5311be01e29b2a251df38427b431628e2097b471d543b68f4c533c5422eb09",
+      "bytes": 1005,
+      "uncompressed_sha256": "4248057ba2340c3610d76f757d5d821329c2c2082fed3cf4115af13df8494cb6",
+      "uncompressed_bytes": 2677,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-final-r4.py",
+      "path": "historical-r4-guard-42ac80c9d4a6-run-final-r4.py",
+      "sha256": "42ac80c9d4a61f052e7988f107f4acb5324c1bf22dff7379a7886169c0d25bb8",
+      "bytes": 760,
+      "uncompressed_sha256": "42ac80c9d4a61f052e7988f107f4acb5324c1bf22dff7379a7886169c0d25bb8",
+      "uncompressed_bytes": 760,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-neighbors-bounded-r3.py",
+      "path": "historical-r4-guard-3121f322f8e7-run-neighbors-bounded-r3.py",
+      "sha256": "3121f322f8e78c687924a54dd60b6e3b7f5713813ba8a3845083fd388eef5906",
+      "bytes": 963,
+      "uncompressed_sha256": "3121f322f8e78c687924a54dd60b6e3b7f5713813ba8a3845083fd388eef5906",
+      "uncompressed_bytes": 963,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-neighbors-bounded-r4.py",
+      "path": "historical-r4-guard-3272305fc3f6-run-neighbors-bounded-r4.py",
+      "sha256": "3272305fc3f6e45cb40ebf8630480b49431abe328a0be47d0fa01c5ebe95b323",
+      "bytes": 963,
+      "uncompressed_sha256": "3272305fc3f6e45cb40ebf8630480b49431abe328a0be47d0fa01c5ebe95b323",
+      "uncompressed_bytes": 963,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-neighbors-r3.py",
+      "path": "historical-r4-guard-4a9a17aa3d26-run-neighbors-r3.py",
+      "sha256": "4a9a17aa3d2617eeaebdc9e6c78c34171442cec197057fc3ae80674dbb8b73ca",
+      "bytes": 875,
+      "uncompressed_sha256": "4a9a17aa3d2617eeaebdc9e6c78c34171442cec197057fc3ae80674dbb8b73ca",
+      "uncompressed_bytes": 875,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-neighbors.py",
+      "path": "historical-r4-guard-f70cc18aeb22-run-neighbors.py",
+      "sha256": "f70cc18aeb22cde9fc78f014032a2fca90364005b7945163a64b44be1310651f",
+      "bytes": 875,
+      "uncompressed_sha256": "f70cc18aeb22cde9fc78f014032a2fca90364005b7945163a64b44be1310651f",
+      "uncompressed_bytes": 875,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-stage-bounded-r3.py",
+      "path": "historical-r4-guard-701c6f17c10e-run-stage-bounded-r3.py",
+      "sha256": "701c6f17c10efc8e537e7d1ec80927977dbc2b60c56866551a175667c3d2afb3",
+      "bytes": 3263,
+      "uncompressed_sha256": "701c6f17c10efc8e537e7d1ec80927977dbc2b60c56866551a175667c3d2afb3",
+      "uncompressed_bytes": 3263,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-r1-guards-execution/run-stage.py",
+      "path": "historical-r4-guard-da46788a229e-run-stage.py",
+      "sha256": "da46788a229e8b12ec4aaae827f7695e39219d5675da605da35448eb512c1451",
+      "bytes": 2474,
+      "uncompressed_sha256": "da46788a229e8b12ec4aaae827f7695e39219d5675da605da35448eb512c1451",
+      "uncompressed_bytes": 2474,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r1/historical-validator-contract-review.txt",
+      "path": "historical-r4-guard-50b56b4c0cdd-historical-validator-contract-review.txt",
+      "sha256": "50b56b4c0cdd2a5e718df9aa68d608a80e849f2d36994eb45e5ea001e7cfeb5a",
+      "bytes": 15229,
+      "uncompressed_sha256": "50b56b4c0cdd2a5e718df9aa68d608a80e849f2d36994eb45e5ea001e7cfeb5a",
+      "uncompressed_bytes": 15229,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/mechanical-format.json",
+      "path": "historical-r4-guard-afccfe12f850-mechanical-format.json",
+      "sha256": "afccfe12f850ef7cd7e74cc8911e6bcbd7d26ab92cc17ccfe53aa5d7de7c0ee9",
+      "bytes": 2009,
+      "uncompressed_sha256": "afccfe12f850ef7cd7e74cc8911e6bcbd7d26ab92cc17ccfe53aa5d7de7c0ee9",
+      "uncompressed_bytes": 2009,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/mechanical-scope.txt",
+      "path": "historical-r4-guard-87ee89785968-mechanical-scope.txt",
+      "sha256": "87ee897859681988f60842b09be9f551d8bd41c9e3e65385555c68b052820767",
+      "bytes": 259,
+      "uncompressed_sha256": "87ee897859681988f60842b09be9f551d8bd41c9e3e65385555c68b052820767",
+      "uncompressed_bytes": 259,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.27.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.27.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.27.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-50470a15cf43-v0.27.0-mechanical-source-hashes.json",
+      "sha256": "50470a15cf43a4a8f63f70a433307392963b5e8554485619bb0d0ff93984a87b",
+      "bytes": 18180,
+      "uncompressed_sha256": "50470a15cf43a4a8f63f70a433307392963b5e8554485619bb0d0ff93984a87b",
+      "uncompressed_bytes": 18180,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.27.0-r1-mechanical.patch",
+      "path": "historical-r4-guard-2baa9a45f8b5-v0.27.0-r1-mechanical.patch.gz",
+      "sha256": "7bf1b6404ea4e1df47e690328e7a8e1ef83d773897b13371b1c766150c55fe61",
+      "bytes": 1269,
+      "uncompressed_sha256": "2baa9a45f8b5c0de1992b900a28c1446d9a6fef3eeb80dc6190fcea8b6e07be5",
+      "uncompressed_bytes": 4221,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.28.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.28.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.28.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-2ff6a071b92f-v0.28.0-mechanical-source-hashes.json",
+      "sha256": "2ff6a071b92f231b71f5335bd0b83042c87eae216c2408067173e146d0650651",
+      "bytes": 19370,
+      "uncompressed_sha256": "2ff6a071b92f231b71f5335bd0b83042c87eae216c2408067173e146d0650651",
+      "uncompressed_bytes": 19370,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.28.0-r1-mechanical.patch",
+      "path": "historical-r4-guard-11ef453269f2-v0.28.0-r1-mechanical.patch.gz",
+      "sha256": "4f11e37912dea579dc1fcf852f5504513530992aca85807400a37d0c8b8d250b",
+      "bytes": 1274,
+      "uncompressed_sha256": "11ef453269f2a0ae0be55a3a6c7901646eb8bf59af415cb2ef3b76d1c18e37aa",
+      "uncompressed_bytes": 4233,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.29.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-dc6f94c93b5c-v0.29.0-mechanical-source-hashes.json",
+      "sha256": "dc6f94c93b5c656f0677dbec9f0be32b766f954074ff7874a387c96c9b1c7aed",
+      "bytes": 20132,
+      "uncompressed_sha256": "dc6f94c93b5c656f0677dbec9f0be32b766f954074ff7874a387c96c9b1c7aed",
+      "uncompressed_bytes": 20132,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0-r1-mechanical.patch",
+      "path": "historical-r4-guard-27828e282559-v0.29.0-r1-mechanical.patch.gz",
+      "sha256": "c703f5d8da3a663ae16b3cf69899c0341a2c1946e71b825cca8c7596a7a5bcf7",
+      "bytes": 1278,
+      "uncompressed_sha256": "27828e282559050499b7670ba095c7439dafc0eae6aec7c8356ff1e54d857e3a",
+      "uncompressed_bytes": 4241,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.30.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-7c96f33ec348-v0.30.0-mechanical-source-hashes.json",
+      "sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "bytes": 20834,
+      "uncompressed_sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "uncompressed_bytes": 20834,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0-r1-mechanical.patch",
+      "path": "historical-r4-guard-bd32ae4463ee-v0.30.0-r1-mechanical.patch.gz",
+      "sha256": "523f6dbb04085f8068fd1c87cb52e7213837e6dc98658a2f2ad8edd8d1b0b37f",
+      "bytes": 1277,
+      "uncompressed_sha256": "bd32ae4463ee8d01d9402cfa2d2a616469d3c4c82f20ef0b5c9ec97e78311bdb",
+      "uncompressed_bytes": 4241,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/mechanical-format.json",
+      "path": "historical-r4-guard-9b062855646b-mechanical-format.json",
+      "sha256": "9b062855646b4f733a1e7df2850a53b346d7eac9daac9c4013ad83c13c1f9607",
+      "bytes": 2080,
+      "uncompressed_sha256": "9b062855646b4f733a1e7df2850a53b346d7eac9daac9c4013ad83c13c1f9607",
+      "uncompressed_bytes": 2080,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/mechanical-scope.txt",
+      "path": "historical-r4-guard-a008f01a71a3-mechanical-scope.txt",
+      "sha256": "a008f01a71a32160b1edda5be2ba97a1907f149b7700bb433c0d7ef544876877",
+      "bytes": 351,
+      "uncompressed_sha256": "a008f01a71a32160b1edda5be2ba97a1907f149b7700bb433c0d7ef544876877",
+      "uncompressed_bytes": 351,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/newtag-production-equivalence-audit.json",
+      "path": "historical-r4-guard-87b305441bf4-newtag-production-equivalence-audit.json",
+      "sha256": "87b305441bf42761a1282fcf7b34d0e6b4b2ed16f45b4b43c34f964281adb6a0",
+      "bytes": 4462,
+      "uncompressed_sha256": "87b305441bf42761a1282fcf7b34d0e6b4b2ed16f45b4b43c34f964281adb6a0",
+      "uncompressed_bytes": 4462,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/repair-audit-r3.py",
+      "path": "historical-r4-guard-1b202d4ca2e1-repair-audit-r3.py",
+      "sha256": "1b202d4ca2e1e878b9cfcfd81bfb183276d99c25c81e801d9dadfcf0bd65da5a",
+      "bytes": 3385,
+      "uncompressed_sha256": "1b202d4ca2e1e878b9cfcfd81bfb183276d99c25c81e801d9dadfcf0bd65da5a",
+      "uncompressed_bytes": 3385,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.27.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-13032d2860ec-v0.27.0-mechanical-source-hashes.json",
+      "sha256": "13032d2860eced797ce64075da58a9dbda00c73fce90ff2833f4a52267e7a14d",
+      "bytes": 18180,
+      "uncompressed_sha256": "13032d2860eced797ce64075da58a9dbda00c73fce90ff2833f4a52267e7a14d",
+      "uncompressed_bytes": 18180,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0-r2-mechanical.patch",
+      "path": "historical-r4-guard-9a30d5d6ea59-v0.27.0-r2-mechanical.patch.gz",
+      "sha256": "2e70cfbdcfc2a3e7360416f911f55fe45ab7f950bf23a0f32f7e1c7b97217a82",
+      "bytes": 455,
+      "uncompressed_sha256": "9a30d5d6ea597a87721f4ba0ea9e896ce8e1e6da006fcef9750c3de176c0ed5e",
+      "uncompressed_bytes": 964,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.28.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-b8d6da2e1c9a-v0.28.0-mechanical-source-hashes.json",
+      "sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "bytes": 19370,
+      "uncompressed_sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "uncompressed_bytes": 19370,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.28.0-r2-mechanical.patch",
+      "path": "historical-r4-guard-1551e3a14d5b-v0.28.0-r2-mechanical.patch.gz",
+      "sha256": "c87fd61f8d4219ac07534cb07c71742afba6f70133aedd6b8cf17fe506512bf8",
+      "bytes": 856,
+      "uncompressed_sha256": "1551e3a14d5b005848c0037e57e1ad866f2ecb8f7ae04a2e4802fa27bceb4f62",
+      "uncompressed_bytes": 2253,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0-mechanical-format.log",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.29.0-mechanical-format.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-a9659d9ecbe1-v0.29.0-mechanical-source-hashes.json",
+      "sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "bytes": 20132,
+      "uncompressed_sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "uncompressed_bytes": 20132,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.29.0-r2-mechanical.patch",
+      "path": "historical-r4-guard-65d6c8b74b76-v0.29.0-r2-mechanical.patch.gz",
+      "sha256": "b24029c12be79b6af2efa3d715e9f1f61734c7686c36e356a3d6aacd6a3338d9",
+      "bytes": 857,
+      "uncompressed_sha256": "65d6c8b74b76e1e24e84f2d919ae27177b7cafa2f43d08054560f7d4df7d0106",
+      "uncompressed_bytes": 2253,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.30.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-7c96f33ec348-v0.30.0-mechanical-source-hashes.json",
+      "sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "bytes": 20834,
+      "uncompressed_sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "uncompressed_bytes": 20834,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r3/v0.30.0-r2-mechanical.patch",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.30.0-r2-mechanical.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/basic-set-and-reproduction-addendum.json",
+      "path": "historical-r4-guard-adfb0aba8dfc-basic-set-and-reproduction-addendum.json",
+      "sha256": "adfb0aba8dfc08886c95c5abd34cb48ac14d61c4ce4e0dd1101f2a17bb6994ed",
+      "bytes": 9966,
+      "uncompressed_sha256": "adfb0aba8dfc08886c95c5abd34cb48ac14d61c4ce4e0dd1101f2a17bb6994ed",
+      "uncompressed_bytes": 9966,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/compatibility-source-after-review.txt",
+      "path": "historical-r4-guard-461b51e1aeaf-compatibility-source-after-review.txt",
+      "sha256": "461b51e1aeafcd0b7b4aff565915913574abde7471f4af7255afe10c5679ebff",
+      "bytes": 10008,
+      "uncompressed_sha256": "461b51e1aeafcd0b7b4aff565915913574abde7471f4af7255afe10c5679ebff",
+      "uncompressed_bytes": 10008,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/freeze-guard-packet.py",
+      "path": "historical-r4-guard-21c80368504e-freeze-guard-packet.py",
+      "sha256": "21c80368504ef57cf29989b3d7abe5ba66f5d0948f512d8ccee3da3a22237498",
+      "bytes": 8433,
+      "uncompressed_sha256": "21c80368504ef57cf29989b3d7abe5ba66f5d0948f512d8ccee3da3a22237498",
+      "uncompressed_bytes": 8433,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/guard-execution-packet.json",
+      "path": "historical-r4-guard-19ba26595911-guard-execution-packet.json",
+      "sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+      "bytes": 75693,
+      "uncompressed_sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+      "uncompressed_bytes": 75693,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/mechanical-format.json",
+      "path": "historical-r4-guard-150d27a9d7e6-mechanical-format.json",
+      "sha256": "150d27a9d7e686cd7723d01e626483217507d93950d68c16de94e27903e7d7e9",
+      "bytes": 454,
+      "uncompressed_sha256": "150d27a9d7e686cd7723d01e626483217507d93950d68c16de94e27903e7d7e9",
+      "uncompressed_bytes": 454,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/mechanical-scope.txt",
+      "path": "historical-r4-guard-1ad1058abbd0-mechanical-scope.txt",
+      "sha256": "1ad1058abbd01794512a3acb41decd96a348c129ce85402de72f6c50f40d2bb1",
+      "bytes": 368,
+      "uncompressed_sha256": "1ad1058abbd01794512a3acb41decd96a348c129ce85402de72f6c50f40d2bb1",
+      "uncompressed_bytes": 368,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/newtag-production-equivalence-audit.json",
+      "path": "historical-r4-guard-87b305441bf4-newtag-production-equivalence-audit.json",
+      "sha256": "87b305441bf42761a1282fcf7b34d0e6b4b2ed16f45b4b43c34f964281adb6a0",
+      "bytes": 4462,
+      "uncompressed_sha256": "87b305441bf42761a1282fcf7b34d0e6b4b2ed16f45b4b43c34f964281adb6a0",
+      "uncompressed_bytes": 4462,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/packet-replay-first-failure.json",
+      "path": "historical-r4-guard-e36d215c5a3a-packet-replay-first-failure.json",
+      "sha256": "e36d215c5a3a2a0f5a308ead900c683b7389ce8998de92a9ca6017dc8c7e52ba",
+      "bytes": 3009,
+      "uncompressed_sha256": "e36d215c5a3a2a0f5a308ead900c683b7389ce8998de92a9ca6017dc8c7e52ba",
+      "uncompressed_bytes": 3009,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/repair-audit-r4.py",
+      "path": "historical-r4-guard-12920c6dd05a-repair-audit-r4.py",
+      "sha256": "12920c6dd05a573614541923157c69a739009e4aa24010b8be4b107deac71154",
+      "bytes": 3385,
+      "uncompressed_sha256": "12920c6dd05a573614541923157c69a739009e4aa24010b8be4b107deac71154",
+      "uncompressed_bytes": 3385,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-final-additive-basic.patch",
+      "path": "historical-r4-guard-651b5dd8a116-v0.27.0-final-additive-basic.patch.gz",
+      "sha256": "43791134b8a1216e5e1bc78bde5d2e5bba402fdbfb60e052c09ec275fda46ff9",
+      "bytes": 81841,
+      "uncompressed_sha256": "651b5dd8a116733934be534fb0909871250716fb468d6eae1405a01b87b38172",
+      "uncompressed_bytes": 423185,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-final-additive-r1.patch",
+      "path": "historical-r4-guard-d051c8123f22-v0.27.0-final-additive-r1.patch.gz",
+      "sha256": "9a359a722a6290c08a2f0711da96d802cec7f7b8d9b9244b72b9ca08f0637429",
+      "bytes": 4636,
+      "uncompressed_sha256": "d051c8123f22cd64551e049bee1546e5ff649762dd5c8242f0827195709d7e42",
+      "uncompressed_bytes": 17186,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-final-full.patch",
+      "path": "historical-r4-guard-06c81776285a-v0.27.0-final-full.patch.gz",
+      "sha256": "9c66e98ac9fb01abb0daad501f95041319e012b59b83764f6c9f996df20934b9",
+      "bytes": 92865,
+      "uncompressed_sha256": "06c81776285aa7958cbe01b2667e43bd7bd448e8b30db070f5e4eb68e28efdab",
+      "uncompressed_bytes": 479768,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-final-source-hashes.json",
+      "path": "historical-r4-guard-19416d3eea1c-v0.27.0-final-source-hashes.json",
+      "sha256": "19416d3eea1c73b0f58e5d12211be36e4da95a0bf3f1d1b471ed71432df35dcd",
+      "bytes": 18180,
+      "uncompressed_sha256": "19416d3eea1c73b0f58e5d12211be36e4da95a0bf3f1d1b471ed71432df35dcd",
+      "uncompressed_bytes": 18180,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-19416d3eea1c-v0.27.0-mechanical-source-hashes.json",
+      "sha256": "19416d3eea1c73b0f58e5d12211be36e4da95a0bf3f1d1b471ed71432df35dcd",
+      "bytes": 18180,
+      "uncompressed_sha256": "19416d3eea1c73b0f58e5d12211be36e4da95a0bf3f1d1b471ed71432df35dcd",
+      "uncompressed_bytes": 18180,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-additive-basic.patch",
+      "path": "historical-r4-guard-651b5dd8a116-v0.27.0-packet-firstfailed-additive-basic.patch.gz",
+      "sha256": "43791134b8a1216e5e1bc78bde5d2e5bba402fdbfb60e052c09ec275fda46ff9",
+      "bytes": 81841,
+      "uncompressed_sha256": "651b5dd8a116733934be534fb0909871250716fb468d6eae1405a01b87b38172",
+      "uncompressed_bytes": 423185,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-additive-r1.patch",
+      "path": "historical-r4-guard-d051c8123f22-v0.27.0-packet-firstfailed-additive-r1.patch.gz",
+      "sha256": "9a359a722a6290c08a2f0711da96d802cec7f7b8d9b9244b72b9ca08f0637429",
+      "bytes": 4636,
+      "uncompressed_sha256": "d051c8123f22cd64551e049bee1546e5ff649762dd5c8242f0827195709d7e42",
+      "uncompressed_bytes": 17186,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-packet-firstfailed-full.patch",
+      "path": "historical-r4-guard-bcb3ae6001e3-v0.27.0-packet-firstfailed-full.patch.gz",
+      "sha256": "b316cc1544c3571ad8be93782d49667a08921ffa153e3c4d391bf0f00d6217ed",
+      "bytes": 93460,
+      "uncompressed_sha256": "bcb3ae6001e3dd9e82717b7a71461ee0f116cafb0910e27a2734bba196642f35",
+      "uncompressed_bytes": 483343,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0-r3-mechanical.patch",
+      "path": "historical-r4-guard-8ad8594f352d-v0.27.0-r3-mechanical.patch.gz",
+      "sha256": "a4875a5e88991c2fc69bf7be093da775b5c456aa0ecad35c3abfca1aa0287747",
+      "bytes": 3355,
+      "uncompressed_sha256": "8ad8594f352daa7a99999bd15ad0b61a616dfd4ed3a92bc00c9f075542ad9323",
+      "uncompressed_bytes": 12077,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-final-additive-basic.patch",
+      "path": "historical-r4-guard-0fa137ce0b04-v0.28.0-final-additive-basic.patch.gz",
+      "sha256": "a695362ac40108ef71e36c6de68d281945d5ab2bb40310273dc54a1830ffa79c",
+      "bytes": 81001,
+      "uncompressed_sha256": "0fa137ce0b042fa3bbb1c5b280a99dc1144bdb3c5b57fecd20f0617d1c111415",
+      "uncompressed_bytes": 419486,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-final-additive-r1.patch",
+      "path": "historical-r4-guard-30d4f080e9a3-v0.28.0-final-additive-r1.patch.gz",
+      "sha256": "4995ca5e78121f09a5d00e9aa97a2f99ee546b2ba816b85bc9905b7137125fad",
+      "bytes": 1958,
+      "uncompressed_sha256": "30d4f080e9a31da1bdfe5af293cfe2bcdd7cd2e5a8aa8763b1f33cc7007a0098",
+      "uncompressed_bytes": 6410,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-final-full.patch",
+      "path": "historical-r4-guard-80476a380231-v0.28.0-final-full.patch.gz",
+      "sha256": "ce47d4fc61a549e3f6bd3a10eb8fbaf0adea18916b7d46fdda02387a971032a8",
+      "bytes": 92408,
+      "uncompressed_sha256": "80476a380231e52c75d3737232c4f035f9538a7117f611a882e1042c86a96cba",
+      "uncompressed_bytes": 478530,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-final-source-hashes.json",
+      "path": "historical-r4-guard-b8d6da2e1c9a-v0.28.0-final-source-hashes.json",
+      "sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "bytes": 19370,
+      "uncompressed_sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "uncompressed_bytes": 19370,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-b8d6da2e1c9a-v0.28.0-mechanical-source-hashes.json",
+      "sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "bytes": 19370,
+      "uncompressed_sha256": "b8d6da2e1c9a9fa17cd87644b17ba856470fbc25150b2fe0234eb29e0a12e458",
+      "uncompressed_bytes": 19370,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0-r3-mechanical.patch",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.28.0-r3-mechanical.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-final-additive-basic.patch",
+      "path": "historical-r4-guard-cf5a1d753087-v0.29.0-final-additive-basic.patch.gz",
+      "sha256": "644abcb497abe72c2400d87724c45e711ef5096547cfb6c599fdc75b92e55c5e",
+      "bytes": 80824,
+      "uncompressed_sha256": "cf5a1d7530879044ddf9af8684feaddd01ed8b40566ec9ff3fb794345ba9bee4",
+      "uncompressed_bytes": 419521,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-final-additive-r1.patch",
+      "path": "historical-r4-guard-68db2a40c5a1-v0.29.0-final-additive-r1.patch.gz",
+      "sha256": "2b5d859c891ee203189d3545a6b4de7c5f4cea3454d8b4530bf544fd51bf684e",
+      "bytes": 1959,
+      "uncompressed_sha256": "68db2a40c5a188df14bcbb4be5f1cce67fd917d98d0ef7f56a14cdac1ec6a049",
+      "uncompressed_bytes": 6418,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-final-full.patch",
+      "path": "historical-r4-guard-a44ea742d6b5-v0.29.0-final-full.patch.gz",
+      "sha256": "2dce8d532e06880032792f0790afe33170da98fee95a59659aa2e47764c6a15e",
+      "bytes": 92465,
+      "uncompressed_sha256": "a44ea742d6b5f3237f5977338832ca62344b5b37f3d29be95118ce6bc07469fa",
+      "uncompressed_bytes": 479284,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-final-source-hashes.json",
+      "path": "historical-r4-guard-a9659d9ecbe1-v0.29.0-final-source-hashes.json",
+      "sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "bytes": 20132,
+      "uncompressed_sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "uncompressed_bytes": 20132,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-a9659d9ecbe1-v0.29.0-mechanical-source-hashes.json",
+      "sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "bytes": 20132,
+      "uncompressed_sha256": "a9659d9ecbe1f1821ad34cda0729a7a4780d2a34884f08a55f1a8db3cc7b222c",
+      "uncompressed_bytes": 20132,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0-r3-mechanical.patch",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.29.0-r3-mechanical.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-final-additive-basic.patch",
+      "path": "historical-r4-guard-be68d97ddb61-v0.30.0-final-additive-basic.patch.gz",
+      "sha256": "6070fec05830a505afe7e88f3a0be6666ceada9f3baf7be43bf07fbc832bcf17",
+      "bytes": 79835,
+      "uncompressed_sha256": "be68d97ddb61d2ef4ddf49004cd2cf27aaad9056e2629ce10910c4267f050fd1",
+      "uncompressed_bytes": 415303,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-final-additive-r1.patch",
+      "path": "historical-r4-guard-bd32ae4463ee-v0.30.0-final-additive-r1.patch.gz",
+      "sha256": "523f6dbb04085f8068fd1c87cb52e7213837e6dc98658a2f2ad8edd8d1b0b37f",
+      "bytes": 1277,
+      "uncompressed_sha256": "bd32ae4463ee8d01d9402cfa2d2a616469d3c4c82f20ef0b5c9ec97e78311bdb",
+      "uncompressed_bytes": 4241,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-final-full.patch",
+      "path": "historical-r4-guard-9fa2a5f57ee0-v0.30.0-final-full.patch.gz",
+      "sha256": "dc1210ef7ef407785ef632073b5f3a3a8ac5eb9d3f8b376467e0ef28d8322528",
+      "bytes": 91503,
+      "uncompressed_sha256": "9fa2a5f57ee063c74612d53b19ae7f152b6a743f057577ce6b9ab0994873462b",
+      "uncompressed_bytes": 474747,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-final-source-hashes.json",
+      "path": "historical-r4-guard-7c96f33ec348-v0.30.0-final-source-hashes.json",
+      "sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "bytes": 20834,
+      "uncompressed_sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "uncompressed_bytes": 20834,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-mechanical-source-hashes.json",
+      "path": "historical-r4-guard-7c96f33ec348-v0.30.0-mechanical-source-hashes.json",
+      "sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "bytes": 20834,
+      "uncompressed_sha256": "7c96f33ec34813729fcb4a16a741a44333820b7f174e965c1ebd3d334db69d8b",
+      "uncompressed_bytes": 20834,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0-r3-mechanical.patch",
+      "path": "historical-r4-guard-e3b0c44298fc-v0.30.0-r3-mechanical.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/newtag-repair-r4/v27-cursor-native-equivalence.txt",
+      "path": "historical-r4-guard-7b2fccb70cc5-v27-cursor-native-equivalence.txt",
+      "sha256": "7b2fccb70cc54ba3c8aa85ab9ba0142a80e46a961a864de0bf85b95d236fc863",
+      "bytes": 695,
+      "uncompressed_sha256": "7b2fccb70cc54ba3c8aa85ab9ba0142a80e46a961a864de0bf85b95d236fc863",
+      "uncompressed_bytes": 695,
+      "encoding": "unchanged"
+    }
+  ]
+}

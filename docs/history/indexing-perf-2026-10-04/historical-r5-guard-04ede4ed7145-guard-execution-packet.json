@@ -1,0 +1,1529 @@
+{
+  "schema_version": 1,
+  "status": "R5 normal build/discovery/RED-GREEN/139 guards COMPLETE; source FROZEN for focused AFTER; performance NOT_RUN",
+  "freeze_utc": "2026-10-04T05:44:25.010178+00:00",
+  "preparation_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/preparation-packet.json",
+    "sha256": "01895da191528b9bbfe94ef8279adcb09e954f16b053c569f84b9f8164530389",
+    "bytes": 36441
+  },
+  "preparation_readback": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/preparation-readback.json",
+    "sha256": "3cf53db990a0eb37641321023ba7388bbc37e760b28f48b60f29b5951ffcfa3d",
+    "bytes": 272
+  },
+  "tags": [
+    {
+      "tag": "v0.27.0",
+      "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0",
+      "original_commit": "37195d639338f10549efabb1abad729546230914",
+      "original_archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+      "Cargo_lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+      "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_map": {
+        "bytes": 18180,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-source-hashes.json",
+        "sha256": "810ac9d4556e681458aa8e1b949cd8d1b7b2cfd944b5cb01e420996eb5a9f023"
+      },
+      "full_patch": {
+        "bytes": 485950,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-full.patch",
+        "sha256": "18722cff3116fd5cdd2e742e6e10ecaddfca51d83b86bbf2fadf09135a01a9d2"
+      },
+      "additive_r4_patch": {
+        "bytes": 6434,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-additive-r4.patch",
+        "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+      },
+      "additive_basic_patch": {
+        "bytes": 429367,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-additive-basic.patch",
+        "sha256": "59d5d426920bb97da95befd1a9ad5cf7c165ffa27c9d0f01b3abfe44f9ae8492"
+      },
+      "original_Cargo_toml_sha256": "a2ad6feb373e488a7d823cfbdfe66bad293f4a70f867fb4e03a87181a25e2d5d",
+      "source_subjects": 187,
+      "original_native_runtime_unchanged": true,
+      "production_cfg_disabled_equivalence": true,
+      "full_original_patch_replay_matches_source": true,
+      "guards": [
+        {
+          "family": "historical",
+          "discovery_stage": "v0.27.0-historical-discovery",
+          "execution_stage": "v0.27.0-historical-guards",
+          "discovered_count": 20,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1247 filtered out; finished in 2.74s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "fixture",
+          "discovery_stage": "v0.27.0-fixture-discovery",
+          "execution_stage": "v0.27.0-fixture-guards",
+          "discovered_count": 8,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1259 filtered out; finished in 0.87s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "oracle",
+          "discovery_stage": "v0.27.0-oracle-discovery",
+          "execution_stage": "v0.27.0-oracle-guards",
+          "discovered_count": 7,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1260 filtered out; finished in 0.50s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        }
+      ],
+      "discovery_membership_preservation": [
+        {
+          "family": "historical",
+          "original_names_preserved": 16,
+          "fresh_names": [
+            "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+            "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+          ]
+        },
+        {
+          "family": "fixture",
+          "original_names_preserved": 8,
+          "fresh_names": []
+        },
+        {
+          "family": "oracle",
+          "original_names_preserved": 7,
+          "fresh_names": []
+        }
+      ],
+      "dedicated_normal_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-normal-v0.27.0",
+      "dedicated_release_target_planned": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.27.0"
+    },
+    {
+      "tag": "v0.28.0",
+      "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0",
+      "original_commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+      "original_archive_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+      "Cargo_lock_sha256": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+      "source_manifest_sha256": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_map": {
+        "bytes": 19370,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-source-hashes.json",
+        "sha256": "c044711fde6a0843939ab4071185dd360798b367d70cee54a33e33cf185b15ed"
+      },
+      "full_patch": {
+        "bytes": 484712,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-full.patch",
+        "sha256": "01a97a14fb43b9d91105e48b4caaba1c42d537fe9e20fea09c88f4bced48ffa0"
+      },
+      "additive_r4_patch": {
+        "bytes": 6434,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-additive-r4.patch",
+        "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+      },
+      "additive_basic_patch": {
+        "bytes": 425668,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-additive-basic.patch",
+        "sha256": "f6c35b4bbcb2075a0e7faf119d40a6b6f51886745a8b23bd034f9c14f09e1062"
+      },
+      "original_Cargo_toml_sha256": "5e9aaa2b7068aa900f93fcc2d6c2801cf12b333cfcf7e92b9147907a92208326",
+      "source_subjects": 199,
+      "original_native_runtime_unchanged": true,
+      "production_cfg_disabled_equivalence": true,
+      "full_original_patch_replay_matches_source": true,
+      "guards": [
+        {
+          "family": "historical",
+          "discovery_stage": "v0.28.0-historical-discovery",
+          "execution_stage": "v0.28.0-historical-guards",
+          "discovered_count": 20,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1439 filtered out; finished in 2.94s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "fixture",
+          "discovery_stage": "v0.28.0-fixture-discovery",
+          "execution_stage": "v0.28.0-fixture-guards",
+          "discovered_count": 8,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1451 filtered out; finished in 0.87s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "oracle",
+          "discovery_stage": "v0.28.0-oracle-discovery",
+          "execution_stage": "v0.28.0-oracle-guards",
+          "discovered_count": 7,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1452 filtered out; finished in 0.50s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        }
+      ],
+      "discovery_membership_preservation": [
+        {
+          "family": "historical",
+          "original_names_preserved": 16,
+          "fresh_names": [
+            "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+            "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+          ]
+        },
+        {
+          "family": "fixture",
+          "original_names_preserved": 8,
+          "fresh_names": []
+        },
+        {
+          "family": "oracle",
+          "original_names_preserved": 7,
+          "fresh_names": []
+        }
+      ],
+      "dedicated_normal_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-normal-v0.28.0",
+      "dedicated_release_target_planned": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.28.0"
+    },
+    {
+      "tag": "v0.29.0",
+      "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0",
+      "original_commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+      "original_archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+      "Cargo_lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+      "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_map": {
+        "bytes": 20132,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-source-hashes.json",
+        "sha256": "46ab2cc5b685cd2e026854b69f49ee680549dbe927d4b8179185672a3dbd2ad3"
+      },
+      "full_patch": {
+        "bytes": 485466,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-full.patch",
+        "sha256": "77560d30d65c4841bd171b95d9f2c717d953e89cee5c50e3378090d76a91c43e"
+      },
+      "additive_r4_patch": {
+        "bytes": 6434,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-r4.patch",
+        "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+      },
+      "additive_basic_patch": {
+        "bytes": 425703,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-basic.patch",
+        "sha256": "8f71e33af445e863936e8faee82faf9cae90c09cb71e3737b1d9995d1c304b33"
+      },
+      "original_Cargo_toml_sha256": "f60615a0ecb4ba348f57ff85939cb1d423907734e1f5301400115fb187d53707",
+      "source_subjects": 207,
+      "original_native_runtime_unchanged": true,
+      "production_cfg_disabled_equivalence": true,
+      "full_original_patch_replay_matches_source": true,
+      "guards": [
+        {
+          "family": "historical",
+          "discovery_stage": "v0.29.0-historical-discovery",
+          "execution_stage": "v0.29.0-historical-guards",
+          "discovered_count": 20,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1489 filtered out; finished in 3.00s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "fixture",
+          "discovery_stage": "v0.29.0-fixture-discovery",
+          "execution_stage": "v0.29.0-fixture-guards",
+          "discovered_count": 8,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1501 filtered out; finished in 0.91s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "oracle",
+          "discovery_stage": "v0.29.0-oracle-discovery",
+          "execution_stage": "v0.29.0-oracle-guards",
+          "discovered_count": 7,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1502 filtered out; finished in 0.50s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        }
+      ],
+      "discovery_membership_preservation": [
+        {
+          "family": "historical",
+          "original_names_preserved": 16,
+          "fresh_names": [
+            "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+            "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+          ]
+        },
+        {
+          "family": "fixture",
+          "original_names_preserved": 8,
+          "fresh_names": []
+        },
+        {
+          "family": "oracle",
+          "original_names_preserved": 7,
+          "fresh_names": []
+        }
+      ],
+      "dedicated_normal_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-normal-v0.29.0",
+      "dedicated_release_target_planned": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.29.0"
+    },
+    {
+      "tag": "v0.30.0",
+      "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0",
+      "original_commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+      "original_archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+      "Cargo_lock_sha256": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+      "source_manifest_sha256": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_map": {
+        "bytes": 20834,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-source-hashes.json",
+        "sha256": "6b956eecdec96b664aad0a2b1abcc6ddd44a6da083e0ea7feb91d6f5562b4ab0"
+      },
+      "full_patch": {
+        "bytes": 479871,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-full.patch",
+        "sha256": "1bf3199cf599bcc7bbd46636f6f717002d4099bc82a5b68b941bffdf5372a8bf"
+      },
+      "additive_r4_patch": {
+        "bytes": 5376,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-additive-r4.patch",
+        "sha256": "a64368172e4c6e107ab61ef2dd54436f18f7ebea5e2ff99d14b87462c3eae4d5"
+      },
+      "additive_basic_patch": {
+        "bytes": 420427,
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-additive-basic.patch",
+        "sha256": "cd8f3816e8b0a625e3468fafe0b800eb33aa4e4644ace297ecf93c80853ebff7"
+      },
+      "original_Cargo_toml_sha256": "6e88518685deb3bea7210158c2e5b874373ac453a066d876764681c7ef989618",
+      "source_subjects": 214,
+      "original_native_runtime_unchanged": true,
+      "production_cfg_disabled_equivalence": true,
+      "full_original_patch_replay_matches_source": true,
+      "guards": [
+        {
+          "family": "historical",
+          "discovery_stage": "v0.30.0-historical-discovery",
+          "execution_stage": "v0.30.0-historical-guards",
+          "discovered_count": 19,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 2.92s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "fixture",
+          "discovery_stage": "v0.30.0-fixture-discovery",
+          "execution_stage": "v0.30.0-fixture-guards",
+          "discovered_count": 8,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1568 filtered out; finished in 0.88s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        },
+        {
+          "family": "oracle",
+          "discovery_stage": "v0.30.0-oracle-discovery",
+          "execution_stage": "v0.30.0-oracle-guards",
+          "discovered_count": 7,
+          "exit_code": 0,
+          "actual_summary": [
+            "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1569 filtered out; finished in 0.50s"
+          ],
+          "actual_wait_returned": true,
+          "owned_process_group_absent": true,
+          "watchdog_expired": false,
+          "source_manifest_sha256": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+          "actual_owned_roots_before": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "actual_owned_roots_after": [
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+            "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+          ],
+          "new_owned_roots_retained": []
+        }
+      ],
+      "discovery_membership_preservation": [
+        {
+          "family": "historical",
+          "original_names_preserved": 16,
+          "fresh_names": [
+            "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+            "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+          ]
+        },
+        {
+          "family": "fixture",
+          "original_names_preserved": 8,
+          "fresh_names": []
+        },
+        {
+          "family": "oracle",
+          "original_names_preserved": 7,
+          "fresh_names": []
+        }
+      ],
+      "dedicated_normal_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-normal-v0.30.0",
+      "dedicated_release_target_planned": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.30.0"
+    }
+  ],
+  "first_red": [
+    {
+      "name": "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+      "red_exit": 101,
+      "red_summary": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "green_exit": 0,
+      "green_summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "red_source_manifest": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "green_source_manifest": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "classification": "meaningful original cfg observer no-op assertion RED; not compile failure"
+    },
+    {
+      "name": "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+      "red_exit": 101,
+      "red_summary": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "green_exit": 0,
+      "green_summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "red_source_manifest": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "green_source_manifest": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "classification": "meaningful original cfg observer no-op assertion RED; not compile failure"
+    }
+  ],
+  "aggregate_guards": {
+    "original_preserved": 124,
+    "fresh": 15,
+    "planned_and_actual_passed": 139,
+    "failed": 0,
+    "ignored": 0,
+    "warnings": 0,
+    "separate_exact_green_repeats": 2,
+    "separate_meaningful_expected_reds": 2
+  },
+  "actual_stages": 37,
+  "source_changes_since_BEFORE_review": "none",
+  "actual_small_worker_scope": "4096 correctness only: source/root actual Started, required latest generation, producer body/debt, independent oracle and positive actual physical cleanup/root restore. No100k eligibility/full-performance claim.",
+  "cleanup_evidence_scope": "actual controlled guard assertions use CellGuard and real App/worker/writer shutdown plus original restored_fixture. Before/after directory inventory and actual process wait/group absence are independent recorded facts. Neither process reap nor deliberate caught-panic controls are product SIG cleanup claims.",
+  "ambient11retained_roots": [
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    },
+    {
+      "path": "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000",
+      "exists_before": true,
+      "exists_after": true,
+      "untouched": true
+    }
+  ],
+  "ambient_roots_action": "No delete/restore/rewrite",
+  "current213_unchanged": true,
+  "current_fbd9_unchanged": true,
+  "R2_all_refs_unchanged": 77,
+  "R4_all_refs_unchanged": 172,
+  "frozen_basic_all11_unchanged": [
+    {
+      "path": "docs/history/indexing-perf-baseline-2026-10-03.md",
+      "sha256": "d40eb920a72c6f9c9756cbbdbc1a91508d3a20c2bc28f2ffdf3bf58ccb317c32"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-comparisons.json",
+      "sha256": "7a744ad8757795601a7e3490d4dcc904ba9d46045deb05986147c7e5662b8902"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-environment.json",
+      "sha256": "8299120c65de751fdc8ab73fdd063a0e11f3bb9f2e9e0ef8739b72a8d48f6f1c"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-identities.json",
+      "sha256": "4a3936770e86b800afd56ed59d8ddced3a355288b1c576c8d85947b449ac62c6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-matrix.json",
+      "sha256": "3b1dfd040e6f61bcfe46d9e0bf71cb85c76e2a58750bf67517712dcb405029ad"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-observer.jsonl",
+      "sha256": "38c36fbf1b3ef01a0fd4207f26af27cd0bc45f8702f7606bc5b54809a8040cd6"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/basic-raw.jsonl",
+      "sha256": "97bb314613559179d930db0d8dfd3f13b1956be370d5eaf58b148b45d8b6b119"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.27.0-basic.patch",
+      "sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.28.0-basic.patch",
+      "sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.29.0-basic.patch",
+      "sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-03/v0.30.0-basic.patch",
+      "sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f"
+    }
+  ],
+  "rustfmt_check": {
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  "watchdogs": {
+    "build": 1200,
+    "discovery": 120,
+    "guard": 600,
+    "expired": 0,
+    "native_deadlines_changed": false
+  },
+  "original_v27_precleanup_Flush": "unobserved; positive proof covers added final owned cleanup Flush only",
+  "next_action": "STOP; independent AFTER and main acceptance before any R3 validator rebinding or performance",
+  "references": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/execution-summary.json",
+      "sha256": "b9b490c1567ff5f09205730f5727f4ba34df27d632e691fcc11989c869dee6f4",
+      "bytes": 18428
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/executor-origin.py",
+      "sha256": "701c6f17c10efc8e537e7d1ec80927977dbc2b60c56866551a175667c3d2afb3",
+      "bytes": 3263
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/freeze-result.py",
+      "sha256": "77ae63c662cd75b5277416ebd04de56a32f340e7665ae9d11ed2f517d58e7b4e",
+      "bytes": 8608
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-0-discovery.json",
+      "sha256": "f6ab8ba96276acb859e9c48d8bf6da6c8029265ab86973d41a184a7aad14d09e",
+      "bytes": 5712
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-0-discovery.log",
+      "sha256": "0b933e032e115e5d2710ba4b0d7be1ee4df9e76ab4acde5ed342e0aa6df56ae7",
+      "bytes": 402
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-0-exact.json",
+      "sha256": "1802ccbac543bf8d01afd57e3d473129ffe28fe6b074d012403620eccdd959d7",
+      "bytes": 5726
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-0-exact.log",
+      "sha256": "86954d22a09b11e561cb3397a37ea02f40814ae851e33846887785095fa5dd59",
+      "bytes": 501
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-1-discovery.json",
+      "sha256": "ca05d48b8d7ca58c4a2a125eaf672469cebd132565fb46679a81fb3fb9812265",
+      "bytes": 5709
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-1-discovery.log",
+      "sha256": "96089e46fba0176814153fd63e217c539b663ffd6c27c51ac597893f6e531d2c",
+      "bytes": 400
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-1-exact.json",
+      "sha256": "a9e39b87bdef3d97ea8e70112799af919fee85d37adee01ef0be3acc611f6b36",
+      "bytes": 5724
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-green-1-exact.log",
+      "sha256": "b7cf1f2da6a0dc919530d5bca4f94c9467bcb6e5ffe5debd32de7a58f2ad2e5e",
+      "bytes": 499
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-0-discovery.json",
+      "sha256": "ea51ccfd525a7a282282b155b954b0a3caa52d50f0de3dfefadbc4e3767da800",
+      "bytes": 5731
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-0-discovery.log",
+      "sha256": "e6e73704ee05cee6ce02285c04d35e416c79d7acd90c485730dbc1615fd85d43",
+      "bytes": 412
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-0-exact.json",
+      "sha256": "fa783f79ea0edf818e040042b928d93ccdc912c232c081f910c5682c6e303275",
+      "bytes": 5803
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-0-exact.log",
+      "sha256": "7b0906514ebd274217843fbe20eed5fc8c6c859a4555f20a8ab0037f7328d188",
+      "bytes": 1116
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-1-discovery.json",
+      "sha256": "d607acbda7671d663995c89f09849be591b566c4b723ac55df38815de95512bd",
+      "bytes": 5728
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-1-discovery.log",
+      "sha256": "bb6dbcd2182817f141104d9e3a393fa99718fa095de29f8f5c1a56c6dd15d6bd",
+      "bytes": 410
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-1-exact.json",
+      "sha256": "324c7f2a72fcf52b7c9abc66fecd9a91c9811e5ace93c666b99de48946a3d9a1",
+      "bytes": 5801
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-1-exact.log",
+      "sha256": "f0ca0c3cdab8ee2c50b778d6b74498a45b6ba552acc23a6bf774494b91abd147",
+      "bytes": 1079
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-build.json",
+      "sha256": "c55232d2e4289e6522519e11ba127ef4f257e04449f50731f3e9d05138bb031e",
+      "bytes": 5584
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/r5-red-build.log",
+      "sha256": "74dac6e1f2881d7f6b3f613e312c08854a432ced63abaec672fbaa990654c7f3",
+      "bytes": 8866
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/run.py",
+      "sha256": "9b68238c361589d0008f000962d88a6a2482bb8ae4ec23f6bed40c665f694ff3",
+      "bytes": 7128
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-build.json",
+      "sha256": "481e5bdc255c08e8234a0b78da3210fe7dd320a5dede6c0de1050123a804a7b2",
+      "bytes": 5470
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-build.log",
+      "sha256": "4566121a25ca8b0d299ed90624ec32dd8d478b9ae411da040677191a6b656f8c",
+      "bytes": 8846
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-fixture-discovery.json",
+      "sha256": "29da4819fc60b09720ba0b1fb029427dcb64229a37fd6fae0b783aa8ac0cd3e1",
+      "bytes": 6524
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-fixture-discovery.log",
+      "sha256": "4b8440b90a23a409315822a1f14840d9f72d85a25d799561dd552a6fd7ec76b4",
+      "bytes": 1309
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-fixture-guards.json",
+      "sha256": "a4c42f8a085275a8530a09bb398bc43d91202c83af8b753113abcd5b5cc44b03",
+      "bytes": 5622
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-fixture-guards.log",
+      "sha256": "05b3bdff287ce5eb5292f1bb39454cefa319f993213850707a7b201fe737a4e4",
+      "bytes": 2369
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-historical-discovery.json",
+      "sha256": "99015ef5169b42c8a870b7c425e212dcefd6fcbeb0eefea9b18f911af29bd3cd",
+      "bytes": 7283
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-historical-discovery.log",
+      "sha256": "629a27e41d3f7cc5754084c47be68b9eed793bcf70fb26a9b735bc9e6addcc06",
+      "bytes": 2051
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-historical-guards.json",
+      "sha256": "98d48a2087c95260fffe76f0e0769f211a56b4735dd79bcef209cfebe0595816",
+      "bytes": 5630
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-historical-guards.log",
+      "sha256": "904053b0b55b26bc8d68bb9e1563699f5eb640b40a4224b3995ecf940a7e57bc",
+      "bytes": 3143
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-oracle-discovery.json",
+      "sha256": "1abc320f0fe5732c9540f8bc4510c5adfbb200ba14d0db198d520551dcb6a074",
+      "bytes": 6371
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-oracle-discovery.log",
+      "sha256": "7cf44a09b062442a8e66b2a16ad59c84a9d19acaab5b54a3ee6392d32ff05435",
+      "bytes": 1159
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-oracle-guards.json",
+      "sha256": "2c1b470a304525ec00790c78d84ff63ada4a0d9a8e841874c6fb1c6ddaeec3af",
+      "bytes": 5621
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.27.0-oracle-guards.log",
+      "sha256": "d21b3524d7cf7709eaa599a729aab0932844a9173c6710c9f01c4d43b0592d21",
+      "bytes": 1294
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-build.json",
+      "sha256": "a6d65eb99ccb24d1ca8e6d8c1ddcf5b637090e2af53a78571c204d3840f427a2",
+      "bytes": 5472
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-build.log",
+      "sha256": "49efc5844582a2b0e34a03b551f3595ee212fa59f5b1a31b2b5b617f2df6af76",
+      "bytes": 8846
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-fixture-discovery.json",
+      "sha256": "d2cce10edabe873841d21c34687ec194d9aa03be30289bbeff8a112392b06b4b",
+      "bytes": 6524
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-fixture-discovery.log",
+      "sha256": "aba770b997a6400e1c411b44f6a0068261a24bbe7b216eafa791f92cea22f244",
+      "bytes": 1309
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-fixture-guards.json",
+      "sha256": "c3fddd86ff825fcc7be3a410c7e727fd59c0002befcc01fef34d67987a1f6a23",
+      "bytes": 5622
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-fixture-guards.log",
+      "sha256": "006bf5688687f96880dc6b82d488627dbf0c3f33988ae9202de8ab2b2de7057e",
+      "bytes": 2369
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-historical-discovery.json",
+      "sha256": "bcb2858a98938991a6d814a5822fc97e8133078add68d245557192544bf04608",
+      "bytes": 7282
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-historical-discovery.log",
+      "sha256": "1121acd62b938f332a68fb062ad9e259dd372f3ade5f0da564e1782068c3667b",
+      "bytes": 2051
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-historical-guards.json",
+      "sha256": "4c25a3243db982cffbce2b63d6a0a3006837e48892b98a47bac4320e1ae93933",
+      "bytes": 5630
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-historical-guards.log",
+      "sha256": "efc70bf665839e209e5ef7475ef0bdea6df0bbabae666cf76a56f26007174dd1",
+      "bytes": 3143
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-oracle-discovery.json",
+      "sha256": "e6f723bce138023a6c7742a6a0f462790c7ace55771cbca88192549405d0bb35",
+      "bytes": 6371
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-oracle-discovery.log",
+      "sha256": "b52e62835121f076e5f5587f66e9154aaa0878fd5f4d0e77d99b42d33f756543",
+      "bytes": 1159
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-oracle-guards.json",
+      "sha256": "e8bb63813748cb4caeb6ceee13bb2b375c7c25082d5c802ffbafbdad49e0441f",
+      "bytes": 5621
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.28.0-oracle-guards.log",
+      "sha256": "be7931d4eb19b6453be82353954ab71a41f95aef46e0ed142e9d4238c4e32648",
+      "bytes": 1294
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-build.json",
+      "sha256": "892a45fa00e26f0a198857a24664bb92414740ae74ed2ff53c97c49a1961bb7c",
+      "bytes": 5472
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-build.log",
+      "sha256": "0eb0ae8fefb966594eabcd5af360a0092fcdd0a480e76b9164b52afee6d1fdff",
+      "bytes": 8846
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-fixture-discovery.json",
+      "sha256": "5af60dd6c523ab28d7c55b10c8346c3b2345353071da85d40e038983dac3d226",
+      "bytes": 6524
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-fixture-discovery.log",
+      "sha256": "13b29edea78150d720374e04ba621bb96a492a10dd8eb9cddef17e6b6d95561b",
+      "bytes": 1309
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-fixture-guards.json",
+      "sha256": "6862ae7a9dc5d3cb9c1641fbb659d8658a558e6a3f87efdcc49670594be2b6da",
+      "bytes": 5623
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-fixture-guards.log",
+      "sha256": "db75627a6ef9dc88705fad6ff20e7d0ec4d1b37c96f6a5c330cf7041b01fa954",
+      "bytes": 2369
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-historical-discovery.json",
+      "sha256": "b73ec679d048c0f2b5fbdf0f78d62bd23fb6239c62ec1976d45902b00619f97d",
+      "bytes": 7296
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-historical-discovery.log",
+      "sha256": "257c9b79323defc30c4c4d4e41db9697380d2418ed28efc1468748beade5b33d",
+      "bytes": 2065
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-historical-guards.json",
+      "sha256": "9ac1b86c05bf8f51f3d3ddb04792bbcb3c959b0f556b1e30f2201c36087a3a6d",
+      "bytes": 5629
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-historical-guards.log",
+      "sha256": "2259e7ea84c31e9462c3b3dc727f8138cde8d5d65091b8c1530da2dc075e1a5a",
+      "bytes": 3157
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-oracle-discovery.json",
+      "sha256": "9bd0d533ff9530871b54297249790f3334d0e530da322117f6fa215b06c320a0",
+      "bytes": 6371
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-oracle-discovery.log",
+      "sha256": "9b3855ae9166b1ad06ed93c7e0e84ab03221f8c6cbec503b1eacf9ab86c23768",
+      "bytes": 1159
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-oracle-guards.json",
+      "sha256": "9a969e75edf8c4173178c45865de860ca9a8d809dc2c6be9342b9185bbae9915",
+      "bytes": 5621
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.29.0-oracle-guards.log",
+      "sha256": "3ec9f4809bd07f17ed96c83050e02240e94999c30667c98f32da5e19b28b99bf",
+      "bytes": 1294
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-build.json",
+      "sha256": "1f984d7cbd78ff119f274f81fe7e443a2e5dd99dd3e080c0c07a53ae5087e9c8",
+      "bytes": 5472
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-build.log",
+      "sha256": "edc5d7e29217e8019b47fb8e78d1070d2bafa926c665d455cae4ca63e2822318",
+      "bytes": 8846
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-fixture-discovery.json",
+      "sha256": "29b5dab21db659cd4d413dedf6ea597cc86f197f1c9a6bca0cf33887cb71861d",
+      "bytes": 6524
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-fixture-discovery.log",
+      "sha256": "622d9653fd2cc58a266a813846319ac01a29f2e2e5d05d3e37781c741c229992",
+      "bytes": 1309
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-fixture-guards.json",
+      "sha256": "2e10620052c3d1fae13ac03838d05f53a5c925d1b465c6fe3c4f2f2fb285d340",
+      "bytes": 5623
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-fixture-guards.log",
+      "sha256": "34a81f25d606cd4894d73f9050ccabc4cd8dad7ce78c9a6a6ddde881692a5935",
+      "bytes": 2369
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-historical-discovery.json",
+      "sha256": "c6711bed2083d962cd9ef5157a194827204097bd9149ebeabb9fb0b072cf07d8",
+      "bytes": 7184
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-historical-discovery.log",
+      "sha256": "9f52c36d4cf2378cbeb527cef5355ef13f566a973eb7d774805a342901e095a7",
+      "bytes": 1954
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-historical-guards.json",
+      "sha256": "3b6ca3a348e00c0cfdcb122c04c89f7902996792715f6a11bf1e009ad7c03cc4",
+      "bytes": 5630
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-historical-guards.log",
+      "sha256": "e62dfe13dadde6a928d80e0b07b936af95bd138cadcca865183ab675c4495c88",
+      "bytes": 3040
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-oracle-discovery.json",
+      "sha256": "25021b85263efeb7be771c1d8e251ca08fa40c5c2088111809076abb5e32f977",
+      "bytes": 6370
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-oracle-discovery.log",
+      "sha256": "6d6e5e37c2e178db40d735f5842290ea477ab04b7d043de8c8ec49f7cfa9c3d8",
+      "bytes": 1159
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-oracle-guards.json",
+      "sha256": "8a2aaa8e494af2b0f5b69a90a34b3916632c8229b8e65697931724c47cad133f",
+      "bytes": 5621
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/v0.30.0-oracle-guards.log",
+      "sha256": "74857014687e1c486f214723cd7b5755ac39cde31209a23c2dee0c921f193bba",
+      "bytes": 1294
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/preparation-packet.json",
+      "sha256": "01895da191528b9bbfe94ef8279adcb09e954f16b053c569f84b9f8164530389",
+      "bytes": 36441
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/preparation-readback.json",
+      "sha256": "3cf53db990a0eb37641321023ba7388bbc37e760b28f48b60f29b5951ffcfa3d",
+      "bytes": 272
+    },
+    {
+      "bytes": 5885,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/first-red-additive-r4.patch",
+      "sha256": "91cf3feba6c519a7230daef2e1358dc160cef6c8bfd19a162045b225d0b107b2"
+    },
+    {
+      "bytes": 18180,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/first-red-source-hashes.json",
+      "sha256": "caeddaadd008615ea68a5efa7d81a845cb4c0ff04982b93e0b7347a664f5a70d"
+    },
+    {
+      "bytes": 512,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/first-static-audit-failure.json",
+      "sha256": "bcd5914822289bd15f3609f800c80f0e0d897e358d415a4da00f5dbf7628e3d1"
+    },
+    {
+      "bytes": 9869,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/freeze-preparation-first-audit-failure.py",
+      "sha256": "d075b161936e13e19dcbc4d673edc5391a6be847b450c3e9c54f5e56d299c185"
+    },
+    {
+      "bytes": 10059,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/freeze-preparation.py",
+      "sha256": "fca173076516471776c4d90b1fff71341997a6d72a4c88c301380abdc7219082"
+    },
+    {
+      "bytes": 3602,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/refine-smoke-preparation.py",
+      "sha256": "950d8108d9d46a12eaac76001583c637739f355f491fbaf2b2cb02c83e5d6475"
+    },
+    {
+      "bytes": 429367,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-additive-basic.patch",
+      "sha256": "59d5d426920bb97da95befd1a9ad5cf7c165ffa27c9d0f01b3abfe44f9ae8492"
+    },
+    {
+      "bytes": 6434,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-additive-r4.patch",
+      "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+    },
+    {
+      "bytes": 485950,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-full.patch",
+      "sha256": "18722cff3116fd5cdd2e742e6e10ecaddfca51d83b86bbf2fadf09135a01a9d2"
+    },
+    {
+      "bytes": 18180,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.27.0-source-hashes.json",
+      "sha256": "810ac9d4556e681458aa8e1b949cd8d1b7b2cfd944b5cb01e420996eb5a9f023"
+    },
+    {
+      "bytes": 425668,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-additive-basic.patch",
+      "sha256": "f6c35b4bbcb2075a0e7faf119d40a6b6f51886745a8b23bd034f9c14f09e1062"
+    },
+    {
+      "bytes": 6434,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-additive-r4.patch",
+      "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+    },
+    {
+      "bytes": 484712,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-full.patch",
+      "sha256": "01a97a14fb43b9d91105e48b4caaba1c42d537fe9e20fea09c88f4bced48ffa0"
+    },
+    {
+      "bytes": 19370,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0-source-hashes.json",
+      "sha256": "c044711fde6a0843939ab4071185dd360798b367d70cee54a33e33cf185b15ed"
+    },
+    {
+      "bytes": 425703,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-basic.patch",
+      "sha256": "8f71e33af445e863936e8faee82faf9cae90c09cb71e3737b1d9995d1c304b33"
+    },
+    {
+      "bytes": 6434,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-r4.patch",
+      "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+    },
+    {
+      "bytes": 485466,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-full.patch",
+      "sha256": "77560d30d65c4841bd171b95d9f2c717d953e89cee5c50e3378090d76a91c43e"
+    },
+    {
+      "bytes": 20132,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-source-hashes.json",
+      "sha256": "46ab2cc5b685cd2e026854b69f49ee680549dbe927d4b8179185672a3dbd2ad3"
+    },
+    {
+      "bytes": 420427,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-additive-basic.patch",
+      "sha256": "cd8f3816e8b0a625e3468fafe0b800eb33aa4e4644ace297ecf93c80853ebff7"
+    },
+    {
+      "bytes": 5376,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-additive-r4.patch",
+      "sha256": "a64368172e4c6e107ab61ef2dd54436f18f7ebea5e2ff99d14b87462c3eae4d5"
+    },
+    {
+      "bytes": 479871,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-full.patch",
+      "sha256": "1bf3199cf599bcc7bbd46636f6f717002d4099bc82a5b68b941bffdf5372a8bf"
+    },
+    {
+      "bytes": 20834,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.30.0-source-hashes.json",
+      "sha256": "6b956eecdec96b664aad0a2b1abcc6ddd44a6da083e0ea7feb91d6f5562b4ab0"
+    }
+  ]
+}

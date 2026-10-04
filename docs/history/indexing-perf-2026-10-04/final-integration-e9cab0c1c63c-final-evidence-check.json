@@ -1,0 +1,191 @@
+{
+  "status": "PASS",
+  "manifests": [
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-3cf46b60-basic-evidence.json",
+      "sha256": "af61de054b98b8649f4997d9037c5f8f123bdd05c547dd937f707a3ed0611050",
+      "assets": 14
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-3cf46b60-full-failure-evidence.json",
+      "sha256": "eeabcc96dd892a6f60db390fcac1c9a0d40f5ea94f9149872b9ee4e792f853e5",
+      "assets": 5
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-3cf46b60-pilot-evidence.json",
+      "sha256": "defa1d630640d510ca57c587cfd29cf6378564f0634533591d441d41f547a14b",
+      "assets": 14
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-b89a6b19-basic-evidence.json",
+      "sha256": "cde8ece20703ed1bfd356387d9c52a13067492dc38f463b2a007b64d3ff71f56",
+      "assets": 10
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-common-evidence.json",
+      "sha256": "3aec81395ad8b7a5ec29abd608873b2785fdb14d391a60dc26b4978d69a85a66",
+      "assets": 10
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-full-evidence.json",
+      "sha256": "b7c2a1ef0e093f2d7a591bda16c660288c4b1e07b2df960467b8c015864821f8",
+      "assets": 13
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-pilot-evidence.json",
+      "sha256": "6178dd3e4011efb9b171159e8ebbb5f0c7469498a0170a94243e50391c1049ab",
+      "assets": 12
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-selected-vm-evidence.json",
+      "sha256": "75e7496a39ab2c6dab78bcce1d2b2407d3c80059d5bc7f1ad741df5869dbc242",
+      "assets": 10
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/focused-correctness-checkpoint-manifest.json",
+      "sha256": "04c15cf280263f052af4f29f14cb464f748c330e44cbf461945277a8ebea9168",
+      "assets": 21
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/four-tag-comparison-evidence.json",
+      "sha256": "bd265a763ae18f52ff4010654f9fb13681bf321b428278206301e44660b8a371",
+      "assets": 6
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-expanded-before-evidence.json",
+      "sha256": "307953994d1634e3eebfcbf80490d2aae3a4679913bdb3415f1ec43c8c48bb56",
+      "assets": 37
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-expanded-r1-source-evidence.json",
+      "sha256": "ded099ffa597eedeffd59cf44590da2ebf4252216f6eab40ce68ba287828712a",
+      "assets": 44
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-expanded-r4-guard-evidence.json",
+      "sha256": "555b7354730072a23e200f7d6ee0c023432f497ffe1dd4b002500ede22e34889",
+      "assets": 178
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-expanded-r5-before-evidence.json",
+      "sha256": "50bf9f864cf506729955998c5e828dcc481c776f616b00b9a1272c99e9a76ad4",
+      "assets": 26
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-expanded-r5-guard-evidence.json",
+      "sha256": "4c2291758c8dec4d4d7ef3f83277917ad396bc18c7286c6763e095d9ede7365c",
+      "assets": 106
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-source-failure-diagnostics-evidence.json",
+      "sha256": "73eb5180a4d4fb458d18177be123c5b92ee54045292d2d812f4ed5908383851f",
+      "assets": 3
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v27-invalid-observer-evidence.json",
+      "sha256": "f8fcc27df4c6e71a2ba2aaa34c04ebec5591776a1d10fe18f4757f4efb620fa9",
+      "assets": 17
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v27-r5-live-evidence.json",
+      "sha256": "56295265508e5f9089d6fc8b06ccce2c64eacd50ec5e2c050ab05cfa44880c8c",
+      "assets": 19
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v28-r5-live-evidence.json",
+      "sha256": "4ea758db679c781f127d269d2aad11661cb477ce86301eea00cde4c4e2167ff8",
+      "assets": 20
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v29-failure-work-addendum-evidence.json",
+      "sha256": "40199b90a967ce958cf01df8d4bda26e348520ac9074f7ca5adefa45bd8980fd",
+      "assets": 1
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v29-r5-live-evidence.json",
+      "sha256": "68c096eac9680f6b114d4b33b9a371bb5c46819a7b31fd47b4cb558e33d059d4",
+      "assets": 21
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-v30-r5-live-evidence.json",
+      "sha256": "e1e73837c3e8c3e71463bc8e4f0f2f167dfc82e064fe900d5d0a82e95924ea8f",
+      "assets": 20
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-validator-r1-evidence.json",
+      "sha256": "5360a16de75eadfd109787f03cf042bb1352034a9fe1e8e6e2769d807247762e",
+      "assets": 43
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-validator-r2-evidence.json",
+      "sha256": "259b756ae9ab4371338d29a9bbb58f32d929bae754938534d84fe4a643ef6cf9",
+      "assets": 81
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/historical-validator-r3-evidence.json",
+      "sha256": "5c482ae7f399812e56c8274444e3c47bbd2003da6d4d4ba263f21cb524e6bbb2",
+      "assets": 32
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/selector-stall-diagnostic-evidence.json",
+      "sha256": "af760a9cd67b5cbac98583f9e658ea37c6200fa5437b64796122d033070a16a7",
+      "assets": 10
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-component-evidence.json",
+      "sha256": "e0b126aeb079568abaeab972b168c7a61f707c96b668f391fb20d265e708b01d",
+      "assets": 45
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/tabchain-b89a6b19-failed-target-evidence.json",
+      "sha256": "0654bbb0fe020eecd231b242ba2d5a0c3d1689868c599547abad41e089f4e1bc",
+      "assets": 2
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/victim-contract-checkpoint-evidence.json",
+      "sha256": "9a40128e59e4e274c7754e068f39c61a70250d695d07f1c4da18c729c13cda60",
+      "assets": 20
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/victim-observed-checkpoint-evidence.json",
+      "sha256": "33ae0e36437063a416e7cdd553cac80f7d85abae4a74fb666e1ac6a84564ac9c",
+      "assets": 19
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/victim-selector-checkpoint-evidence.json",
+      "sha256": "46c5976dee66318a746ebc82717bca0cc39b1916e6ae63dfad448a037e6340e3",
+      "assets": 12
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/warm-removal-component-evidence.json",
+      "sha256": "53bdbf0924e4232f97ce433f9cdfd52eef92e20ff944e7333fe9f7f8359c74a0",
+      "assets": 36
+    }
+  ],
+  "asset_references_checked": 907,
+  "legacy_bytes_fields_record_plain_length": [
+    "docs/history/indexing-perf-2026-10-04/warm-final-extra-full.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-common-cargo-host.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-common-basic.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-common-observer.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.collector.log.gz",
+    "docs/history/indexing-perf-2026-10-04/current-e2efece3-extra-full-raw.jsonl.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-trunc.collector.log.gz",
+    "docs/history/indexing-perf-2026-10-04/current-e2efece3-truncated-raw.jsonl.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-tabchain-target.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-tabchain-target.collector.log.gz",
+    "docs/history/indexing-perf-2026-10-04/current-e2efece3-tabchain-target-raw.jsonl.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-pilot.log.gz",
+    "docs/history/indexing-perf-2026-10-04/stale-full-extra-pilot.collector.log.gz",
+    "docs/history/indexing-perf-2026-10-04/current-e2efece3-extra-pilot-raw.jsonl.gz"
+  ],
+  "rust_source_files": 213,
+  "rust_source_map": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "markdown_documents_checked": 14,
+  "local_links_checked": 170,
+  "missing_links": 0,
+  "diff_check_exit": 0,
+  "patch_data_policy": "Stored SHA256 and uncompressed SHA256 exact; retained patch syntax/CR are never normalized or counted as production whitespace errors"
+}

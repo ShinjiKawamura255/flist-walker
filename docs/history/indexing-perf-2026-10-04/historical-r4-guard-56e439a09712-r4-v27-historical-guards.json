@@ -1,0 +1,47 @@
+{
+  "stage": "r4-v27-historical-guards",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "historical_",
+    "--",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r4-v0.27.0"
+  },
+  "started_utc": "2026-10-04T04:02:13.482628+00:00",
+  "source_manifest_before": "668d0360bf236bc26870297ad16345f3c9ae792c00e7b2ae4e9bfc10be400358",
+  "Cargo_lock_before": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "watchdog_seconds": 600,
+  "watchdog_expired": false,
+  "termination": null,
+  "actual_process_pid": 12949,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "continuation_authorized": true,
+  "exit_code": 0,
+  "ended_utc": "2026-10-04T04:02:13.690303+00:00",
+  "elapsed_seconds": 0.19871045800391585,
+  "log_sha256": "594c7948a41b22af4d1c2bac84cd38fd41200806206769f1c8d290fd72e85275",
+  "source_manifest_after": "668d0360bf236bc26870297ad16345f3c9ae792c00e7b2ae4e9bfc10be400358",
+  "Cargo_lock_after": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [
+    "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 1247 filtered out; finished in 0.03s"
+  ],
+  "discovered_tests": [],
+  "first_errors": []
+}
