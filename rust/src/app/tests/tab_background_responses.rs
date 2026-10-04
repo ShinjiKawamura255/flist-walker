@@ -973,15 +973,24 @@ fn tc_207_promoted_handoff_real_refresh_full_restores_then_retires_old_request()
             .map(|i| root.join(format!("e{i}.txt")))
             .collect::<Vec<_>>()
     );
+    let replacement_id = app.shell.indexing.next_request_id;
     app.shell.tabs.resume_resource_reclaimer();
     poll_background_index_until(&mut app, "real replacement request committed", |app| {
-        app.shell
+        let committed = app
+            .shell
             .runtime
             .freshness
             .as_ref()
-            .is_some_and(|f| f.request_id != id)
-            && app.shell.indexing.pending_request_id.is_none()
+            .is_some_and(|f| f.request_id == replacement_id)
+            && app.shell.indexing.pending_request_id.is_none();
+        if !committed {
+            // Real FileList I/O needs elapsed scheduling time, not just busy yields.
+            // The shared five-second deadline and 4096-frame cap remain in force.
+            thread::sleep(Duration::from_millis(1));
+        }
+        committed
     });
+    assert_eq!(app.shell.indexing.next_request_id, replacement_id + 1);
     let freshness = app.shell.runtime.freshness.as_ref().unwrap();
     assert_eq!(freshness.root, root);
     assert_eq!(
