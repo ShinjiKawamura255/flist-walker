@@ -1,0 +1,13 @@
+{
+  "run": "37234612163",
+  "source": "3823a0c861c46900616b4f84b09c5aa9f2f1db06",
+  "rust_rows": 84,
+  "receipt_admission": "invalid, correctly rejected",
+  "process": "return0/reaped/group absent",
+  "settings_roots_remaining": 2,
+  "grounded_lifecycle_gap": "test shutdown removes registry ownership before waiting; ignores timeout, no retained join handle; next settings-scope drop ignores delete failure",
+  "unobserved": "remnant contents/removal errno/recreation vs concurrent removal",
+  "independent_diagnosis": "calibration_feasibility read-only corroborated; no tests/mutations",
+  "repair_scope": "cfgtest ownership and perf-only strict post-t3 settings teardown",
+  "forbidden": "no retry deletion, no disabling saves, no cleanup receipt exception"
+}

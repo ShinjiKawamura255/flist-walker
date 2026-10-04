@@ -1407,3 +1407,103 @@ fn tc_167_two_process_writers_preserve_alternating_history() {
     assert_eq!(written["query_history"], json!(["B", "A"]));
     let _ = fs::remove_dir_all(&base);
 }
+
+// Path-scoped synchronization: unrelated writers remain runnable. Unwind releases
+// the writer, and a forgotten release fails within a finite test-only deadline.
+#[derive(Default)]
+struct WriteGateState {
+    entered: bool,
+    released: bool,
+}
+struct WriteGateInner {
+    state: Mutex<WriteGateState>,
+    changed: std::sync::Condvar,
+}
+static WRITE_GATES: OnceLock<
+    Mutex<std::collections::HashMap<PathBuf, std::sync::Weak<WriteGateInner>>>,
+> = OnceLock::new();
+pub(crate) struct WriteGate {
+    path: PathBuf,
+    inner: Arc<WriteGateInner>,
+}
+impl WriteGate {
+    pub(crate) fn new(path: PathBuf) -> Self {
+        let inner = Arc::new(WriteGateInner {
+            state: Mutex::new(WriteGateState::default()),
+            changed: std::sync::Condvar::new(),
+        });
+        let mut gates = WRITE_GATES.get_or_init(Default::default).lock().unwrap();
+        assert!(gates.insert(path.clone(), Arc::downgrade(&inner)).is_none());
+        Self { path, inner }
+    }
+    pub(crate) fn wait_entered(&self) {
+        let state = self.inner.state.lock().unwrap();
+        let (state, _) = self
+            .inner
+            .changed
+            .wait_timeout_while(state, Duration::from_secs(2), |state| !state.entered)
+            .unwrap();
+        assert!(state.entered, "writer never reached its pre-I/O barrier");
+    }
+    pub(crate) fn release(&self) {
+        self.inner.state.lock().unwrap().released = true;
+        self.inner.changed.notify_all();
+    }
+}
+impl Drop for WriteGate {
+    fn drop(&mut self) {
+        self.release();
+        WRITE_GATES
+            .get()
+            .unwrap()
+            .lock()
+            .unwrap()
+            .remove(&self.path);
+    }
+}
+pub(super) fn pause_before_write(path: &Path) {
+    let gate = WRITE_GATES.get().and_then(|gates| {
+        gates
+            .lock()
+            .unwrap()
+            .get(path)
+            .and_then(std::sync::Weak::upgrade)
+    });
+    if let Some(gate) = gate {
+        let mut state = gate.state.lock().unwrap();
+        state.entered = true;
+        gate.changed.notify_all();
+        let (state, _) = gate
+            .changed
+            .wait_timeout_while(state, Duration::from_secs(5), |state| !state.released)
+            .unwrap();
+        assert!(state.released, "test failed to release its settings writer");
+    }
+}
+
+#[test]
+fn timed_out_test_shutdown_retains_writer_ownership_until_physical_return() {
+    let base = temp_dir("shutdown-ownership");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let gate = WriteGate::new(path.clone());
+    enqueue_ui_state_patch(path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    gate.wait_entered();
+    shutdown_ui_state_persistence_for_test(&path, Duration::from_millis(1));
+    assert!(
+        ui_state_persistence_registry()
+            .lock()
+            .unwrap()
+            .senders
+            .contains_key(&path),
+        "timed-out writer must remain owned until it physically returns"
+    );
+    gate.release();
+    shutdown_ui_state_persistence_for_test(&path, Duration::from_secs(2));
+    assert!(!ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .senders
+        .contains_key(&path));
+    fs::remove_dir_all(base).unwrap();
+}
