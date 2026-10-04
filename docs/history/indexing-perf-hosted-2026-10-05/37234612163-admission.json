@@ -1,0 +1,67 @@
+{
+  "run_id": "37234612163",
+  "head": "3823a0c861c46900616b4f84b09c5aa9f2f1db06",
+  "workflow_conclusion": "failure",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37234612163",
+  "groups": {
+    "f1": {
+      "status": "valid",
+      "rows": 112,
+      "receipt_sha256": "2ed7fbc419b887f2830c31ccaa4de06c8db429452b66b2d5a9890db6dd31fe59",
+      "raw_sha256": "c5f1cb6815408d3229778ec377ce6efa8c97d00ae38db9946facc188aa74c46a",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1"
+    },
+    "matched": {
+      "status": "valid",
+      "rows": 42,
+      "receipt_sha256": "fc08e03f752a66d305ee8e667d9d9f6e3063c97feb4f03f32eee589868c226bb",
+      "raw_sha256": "6206419bab604fbbc960d9d151c82becfd661928417c2169fef8ed7be122d2db",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1"
+    },
+    "stable": {
+      "status": "invalid",
+      "error": "ValidationError: malformed receipt: receipt schema/status/selection"
+    }
+  },
+  "timing_gate": null
+}

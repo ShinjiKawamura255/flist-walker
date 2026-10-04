@@ -1,0 +1,6 @@
+{
+  "run": "37234612163",
+  "head": "3823a0c861c46900616b4f84b09c5aa9f2f1db06",
+  "error": "ValidationError: whole workflow or admission failed; no unchanged retry",
+  "next_action": "inspect actual failure; do not retry unchanged"
+}

@@ -245,6 +245,15 @@ struct UiStatePersistenceRegistry {
     senders: std::collections::HashMap<PathBuf, PersistenceSender>,
     history_snapshots: std::collections::HashMap<PathBuf, Vec<String>>,
     startup_failures: std::collections::HashSet<PathBuf>,
+    #[cfg(test)]
+    test_workers: std::collections::HashMap<PathBuf, Arc<Mutex<TestWorkerOwnership>>>,
+}
+
+#[cfg(test)]
+struct TestWorkerOwnership {
+    handle: Option<thread::JoinHandle<()>>,
+    shutdown_sent: bool,
+    completed: Option<Result<(), String>>,
 }
 fn ui_state_persistence_registry() -> &'static Mutex<UiStatePersistenceRegistry> {
     UI_STATE_PERSISTENCE.get_or_init(|| Mutex::new(UiStatePersistenceRegistry::default()))
@@ -317,19 +326,44 @@ fn registry_sender(
     history_persist_disabled: bool,
 ) -> PersistenceSender {
     let startup_protected = registry.startup_failures.contains(&path);
-    registry
-        .senders
-        .entry(path.clone())
-        .or_insert_with(|| {
-            spawn_ui_state_persistence_worker(
-                path,
-                history_persist_disabled,
-                UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
-                startup_protected,
-            )
-            .0
-        })
-        .clone()
+    #[cfg(not(test))]
+    {
+        registry
+            .senders
+            .entry(path.clone())
+            .or_insert_with(|| {
+                spawn_ui_state_persistence_worker(
+                    path,
+                    history_persist_disabled,
+                    UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
+                    startup_protected,
+                )
+                .0
+            })
+            .clone()
+    }
+    #[cfg(test)]
+    {
+        if let Some(sender) = registry.senders.get(&path) {
+            return sender.clone();
+        }
+        let (sender, handle) = spawn_ui_state_persistence_worker(
+            path.clone(),
+            history_persist_disabled,
+            UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
+            startup_protected,
+        );
+        registry.test_workers.insert(
+            path.clone(),
+            Arc::new(Mutex::new(TestWorkerOwnership {
+                handle: Some(handle),
+                shutdown_sent: false,
+                completed: None,
+            })),
+        );
+        registry.senders.insert(path, sender.clone());
+        sender
+    }
 }
 pub(crate) fn enqueue_ui_state_patch(
     path: PathBuf,
@@ -414,24 +448,99 @@ pub(crate) fn flush_ui_state_persistence(path: &Path, timeout: Duration) -> Resu
 }
 #[cfg(test)]
 pub(crate) fn shutdown_ui_state_persistence_for_test(path: &Path, timeout: Duration) {
-    let sender = ui_state_persistence_registry()
-        .lock()
-        .ok()
-        .and_then(|mut registry| {
+    let _ = finish_ui_state_persistence_for_test(path, timeout);
+}
+
+/// A test fixture may be deleted only after its writer has physically returned.
+/// On timeout keep both sender and JoinHandle registered for a later bounded wait.
+#[cfg(test)]
+pub(crate) fn finish_ui_state_persistence_for_test(
+    path: &Path,
+    timeout: Duration,
+) -> Result<(), String> {
+    let deadline = std::time::Instant::now() + timeout;
+    let (sender, ownership) = {
+        let mut registry = ui_state_persistence_registry()
+            .lock()
+            .map_err(|_| "UI-state persistence registry is unavailable".to_string())?;
+        let Some(ownership) = registry.test_workers.get(path).cloned() else {
             registry.history_snapshots.remove(path);
             registry.startup_failures.remove(path);
-            registry.senders.remove(path)
-        });
-    if let Some(sender) = sender {
-        let (tx, rx) = mpsc::channel();
-        if sender
-            .send_control(UiStatePersistenceCommand::Shutdown(tx))
-            .is_ok()
-        {
-            let _ = rx.recv_timeout(timeout);
+            return Ok(());
+        };
+        (registry.senders.get(path).cloned(), ownership)
+    };
+    // Never wait while holding the global registry lock. Serialize only this path.
+    let mut worker = loop {
+        match ownership.try_lock() {
+            Ok(worker) => break worker,
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err("test writer ownership poisoned".into())
+            }
+            Err(std::sync::TryLockError::WouldBlock) => {
+                if std::time::Instant::now() >= deadline {
+                    return Err("test writer ownership wait timed out".into());
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
         }
+    };
+    if worker.completed.is_none() {
+        if !worker.shutdown_sent {
+            let (tx, _rx) = mpsc::channel();
+            let sent = sender
+                .as_ref()
+                .ok_or("test writer sender missing")?
+                .send_control(UiStatePersistenceCommand::Shutdown(tx));
+            if let Err(error) = sent {
+                if !worker
+                    .handle
+                    .as_ref()
+                    .is_some_and(thread::JoinHandle::is_finished)
+                {
+                    return Err(error);
+                }
+            } else {
+                worker.shutdown_sent = true;
+            }
+        }
+        while !worker
+            .handle
+            .as_ref()
+            .is_some_and(thread::JoinHandle::is_finished)
+        {
+            if std::time::Instant::now() >= deadline {
+                return Err("test settings writer did not physically stop before deadline".into());
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
+        worker.completed = Some(
+            worker
+                .handle
+                .take()
+                .expect("owned writer")
+                .join()
+                .map_err(|_| "test settings writer panicked".to_string()),
+        );
     }
+    worker.completed.as_ref().expect("joined writer").clone()?;
+    drop(worker);
+    let mut registry = ui_state_persistence_registry()
+        .lock()
+        .map_err(|_| "UI-state persistence registry is unavailable".to_string())?;
+    if registry
+        .test_workers
+        .get(path)
+        .is_some_and(|current| Arc::ptr_eq(current, &ownership))
+    {
+        registry.test_workers.remove(path);
+        registry.senders.remove(path);
+        registry.history_snapshots.remove(path);
+        registry.startup_failures.remove(path);
+    }
+    Ok(())
 }
+
 fn run_ui_state_persistence_worker(
     rx: mpsc::Receiver<UiStatePersistenceCommand>,
     path: PathBuf,
@@ -501,6 +610,10 @@ fn run_ui_state_persistence_worker(
             .lock()
             .map(|state| state.status.startup_protected)
             .unwrap_or(true);
+        #[cfg(test)]
+        if attempted && !protected {
+            tests::pause_before_write(&path);
+        }
         let result = if let Some((request, response)) = settings_commit {
             let request_id = request.request_id;
             let result = if protected {
@@ -590,3 +703,5 @@ use crate::path_utils::normalize_windows_path_buf;
 use crate::query_history::MAX_QUERY_HISTORY_ENTRIES;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+pub(crate) use tests::WriteGate;

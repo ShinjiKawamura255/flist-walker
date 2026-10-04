@@ -18,8 +18,8 @@ use std::path::{Path, PathBuf};
 pub use worker::AsyncHistoryPersistence;
 #[cfg(test)]
 pub(crate) use worker::{
-    canonicalize_last_root_for_persistence, shutdown_ui_state_persistence_for_test,
-    SettingsCommitReceipt,
+    canonicalize_last_root_for_persistence, finish_ui_state_persistence_for_test,
+    shutdown_ui_state_persistence_for_test, SettingsCommitReceipt, WriteGate,
 };
 pub(crate) use worker::{
     enqueue_settings_commit, enqueue_ui_state_patch, flush_ui_state_persistence,

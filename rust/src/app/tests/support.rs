@@ -12,13 +12,38 @@ pub(crate) fn test_root(name: &str) -> PathBuf {
 
 pub(crate) struct TestSettingsScope {
     base: PathBuf,
+    strict_cleanup: bool,
+    cleaned: bool,
 }
 
 impl TestSettingsScope {
     pub(crate) fn new(name: &str) -> Self {
         let base = test_root(name);
         fs::create_dir_all(&base).expect("create test settings dir");
-        Self { base }
+        Self {
+            base,
+            strict_cleanup: false,
+            cleaned: false,
+        }
+    }
+
+    pub(crate) fn with_strict_cleanup(mut self) -> Self {
+        self.strict_cleanup = true;
+        self
+    }
+
+    fn cleanup(&mut self, timeout: std::time::Duration) -> Result<(), String> {
+        if self.cleaned {
+            return Ok(());
+        }
+        crate::persistence::finish_ui_state_persistence_for_test(
+            &FlistWalkerApp::ui_state_file_path_in(&self.base),
+            timeout,
+        )?;
+        fs::remove_dir_all(&self.base)
+            .map_err(|error| format!("remove settings fixture {}: {error}", self.base.display()))?;
+        self.cleaned = true;
+        Ok(())
     }
 
     pub(crate) fn app(&self, root: PathBuf, limit: usize, query: String) -> FlistWalkerApp {
@@ -36,7 +61,18 @@ impl TestSettingsScope {
 
 impl Drop for TestSettingsScope {
     fn drop(&mut self) {
-        let _ = fs::remove_dir_all(&self.base);
+        if self.strict_cleanup {
+            if let Err(error) = self.cleanup(std::time::Duration::from_secs(5)) {
+                // Keep the fixture as failure evidence. Do not hide an earlier panic.
+                if std::thread::panicking() {
+                    eprintln!("settings fixture teardown failed: {error}");
+                } else {
+                    panic!("settings fixture teardown failed: {error}");
+                }
+            }
+        } else {
+            let _ = fs::remove_dir_all(&self.base);
+        }
     }
 }
 
@@ -149,4 +185,66 @@ pub(crate) fn reset_index_request_state_for_test(app: &mut FlistWalkerApp) {
     if let Ok(mut latest) = app.shell.indexing.latest_request_ids.lock() {
         latest.clear();
     }
+}
+
+#[test]
+fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
+    use std::time::Duration;
+    let mut settings = TestSettingsScope::new("strict-settings-teardown").with_strict_cleanup();
+    let path = FlistWalkerApp::ui_state_file_path_in(&settings.base);
+    let root = settings.base.join("startup");
+    fs::create_dir_all(&root).unwrap();
+    let mut app = settings.app(root, 1000, String::new());
+    let gate = crate::persistence::WriteGate::new(path.clone());
+    crate::persistence::enqueue_ui_state_patch(
+        path.clone(),
+        crate::persistence::UiStatePatch::default(),
+        vec![],
+        false,
+    )
+    .unwrap();
+    gate.wait_entered();
+    app.shell.ui.show_preview = false;
+    drop(app);
+    assert!(settings.cleanup(Duration::from_millis(1)).is_err());
+    assert!(
+        settings.base.is_dir(),
+        "unconfirmed writer termination must retain evidence"
+    );
+    // The retained writer cannot block another path's admission or termination.
+    let other = settings.base.join("unrelated.json");
+    crate::persistence::enqueue_ui_state_patch(
+        other.clone(),
+        crate::persistence::UiStatePatch::default(),
+        vec![],
+        false,
+    )
+    .unwrap();
+    crate::persistence::finish_ui_state_persistence_for_test(&other, Duration::from_secs(1))
+        .unwrap();
+    gate.release();
+    settings.cleanup(Duration::from_secs(2)).unwrap();
+    assert!(!settings.base.exists());
+    crate::persistence::finish_ui_state_persistence_for_test(&path, Duration::from_millis(1))
+        .unwrap();
+    assert!(
+        !settings.base.exists(),
+        "a physically joined writer cannot recreate the root"
+    );
+}
+
+#[test]
+fn perf_settings_cleanup_reports_removal_failure_and_retains_the_fixture() {
+    use std::time::Duration;
+    let mut settings = TestSettingsScope::new("strict-settings-remove").with_strict_cleanup();
+    fs::remove_dir(&settings.base).unwrap();
+    fs::write(&settings.base, "failure evidence").unwrap();
+    assert!(settings.cleanup(Duration::from_millis(1)).is_err());
+    assert_eq!(
+        fs::read_to_string(&settings.base).unwrap(),
+        "failure evidence"
+    );
+    // Explicit test-owned disposal after checking the error, not a cleanup retry.
+    fs::remove_file(&settings.base).unwrap();
+    settings.cleaned = true;
 }

@@ -257,7 +257,7 @@ pub(super) struct Driver {
 }
 impl Driver {
     pub(super) fn new() -> Self {
-        let settings = test_settings_scope("indexing-perf");
+        let settings = test_settings_scope("indexing-perf").with_strict_cleanup();
         let startup_root = test_root("indexing-perf-empty");
         fs::create_dir_all(&startup_root).unwrap();
         let mut app = settings.app(startup_root.clone(), 1000, String::new());
