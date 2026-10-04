@@ -1,0 +1,11 @@
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	﻿2026-10-04T18:28:44.6584862Z ##[group]Run set -euo pipefail
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6585245Z ^[[36;1mset -euo pipefail^[[0m
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6585630Z ^[[36;1mpython scripts/check_ci_policy.py --guardian "$PROPOSED_ROOT"^[[0m
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6657550Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6657941Z env:
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6658242Z   PROPOSED_ROOT: /home/runner/work/_temp/proposed-ci-policy
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.6658614Z ##[endgroup]
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.7266247Z ERROR: .github/workflows/perf-regression.yml: immutable trusted policy changed outside approved runner/action/tool pins
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.7268019Z ERROR: scripts/check_ci_policy.py: immutable trusted policy changed outside approved runner/action/tool pins
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.7269185Z ERROR: scripts/tests/test_check_ci_policy.py: immutable trusted policy changed outside approved runner/action/tool pins
+CI Policy Guardian	Validate proposed tree with immutable trusted policy	2026-10-04T18:28:44.7330565Z ##[error]Process completed with exit code 1.

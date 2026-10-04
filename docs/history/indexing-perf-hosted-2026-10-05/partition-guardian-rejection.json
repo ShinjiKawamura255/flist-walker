@@ -1,0 +1,13 @@
+{
+  "head": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+  "app_id": 15368,
+  "check_run_id": 111501481368,
+  "conclusion": "failure",
+  "paths": [
+    ".github/workflows/perf-regression.yml",
+    "scripts/check_ci_policy.py",
+    "scripts/tests/test_check_ci_policy.py"
+  ],
+  "log_sha256": "ba69b412621d4832dfdecc48ef8d2fdf97deebe45d2b93dbc35065a463472684",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37224578881/job/111501481368"
+}

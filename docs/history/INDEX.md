@@ -4,6 +4,7 @@ This directory contains completed maintenance and closure records. These documen
 
 | Record | Contents |
 | --- | --- |
+| [Hosted indexing observations 2026-10-05](indexing-perf-hosted-2026-10-05.md) | Five exact-source sessions, strict hardware/image cohorts, all raw pairs, retained failures and observation-only limits |
 | [Indexing contention comparison 2026-10-04](indexing-perf-expanded-2026-10-04.md) | Current45-cell guards and actual v27–v30 comparison, non-search regression evidence, preserved failures and calibration limits |
 | [Indexing performance baseline 2026-10-03](indexing-perf-baseline-2026-10-03.md) | Frozen tag/current measurements, exact test adapters and eligibility limitations |
 | [運用復旧性・構造レビュー 2026-10-01](resilience-structure-review-2026-10-01.md) | worker panicの終了診断、保存owner分割、recent機能の責務、障害・復旧マトリクスと検証範囲 |

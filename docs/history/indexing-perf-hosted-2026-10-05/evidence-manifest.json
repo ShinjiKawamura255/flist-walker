@@ -1,0 +1,1056 @@
+{
+  "schema": 1,
+  "candidate": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+  "timing_gate": null,
+  "runs": [
+    {
+      "run_id": "37224579992",
+      "role": "exploratory",
+      "group": "f1",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37224579992",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "memory_total": "MemTotal:       16372436 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37224579992-f1.tar.gz",
+        "sha256": "16797df8fdeca8dad7446dd3fb782ffa255ba3e9e9c85f638fd72e385b363743",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68681,
+            "sha256": "bd88b079da395a4c9d6c02bb499a0fa83bff42ef5b266194c96c6f5fb22595b5"
+          },
+          "measurement.log": {
+            "bytes": 619234,
+            "sha256": "d990676f4c8a05be5afcb14419f6470ac773fb8cd9ab1e03237678b999cbc6f6"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "1409651382545be960b8462507ba09a996dba2320105c73a64fd0617ae4ad32a"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72499,
+            "sha256": "4907a7c067b403161767fc73c57f66f6a26ca659e952e00b57c814f9cc215249"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37224579992",
+      "role": "exploratory",
+      "group": "matched",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37224579992",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37224579992-matched.tar.gz",
+        "sha256": "9d2238f232ef486c3308a4195e03f8e61dd6a5fa334f0db1fa8da867762d1cec",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68718,
+            "sha256": "ebf1cd5a5081ce5bda597c9d55c7a60d009c50f5a4d4c35cbe746d128d039970"
+          },
+          "measurement.log": {
+            "bytes": 250331,
+            "sha256": "ce22cd360b4521046490b4f0bfca7c450be824ebf91ec0dac08aed48a2eed952"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "2a204dd0e851ef099b2317f54f61f1b86dbc3fc841d1c8a1458518886a894d8c"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27519,
+            "sha256": "d6da25a89c24415973be3cb10a32b4673c94a2f83a97cbcb8f2fbce850535b57"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37224579992",
+      "role": "exploratory",
+      "group": "stable",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37224579992",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37224579992-stable.tar.gz",
+        "sha256": "2841ba4824f1ce46f4efe23dbc80edbf319eef1849170926eb4b6aa32106ea94",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68706,
+            "sha256": "5df67425383c7544be6cecf24393f8c1b14ce1f925228fd6b68433439eda1a76"
+          },
+          "measurement.log": {
+            "bytes": 527062,
+            "sha256": "c0a8fee78ab281909b042e3346c190339726874df8d223dcfa91b6d36179d38a"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "4b65cf52015c4cbbdcd90a32888ba94c78ae04ed72f3df2dc6dd16420d6a2a06"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54837,
+            "sha256": "51ef2ba5581d406d38261337cd8b2c92bf9ec7f10283db501a643ae8a0b8911b"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37225450497",
+      "role": "exploratory",
+      "group": "f1",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37225450497",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37225450497-f1.tar.gz",
+        "sha256": "be9ec12924fc7db640a7f827a0b7f2adfc7fd0c82762ce97d9917934bc3864a2",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68682,
+            "sha256": "926dca0d10bcf476d931e69443d576d53e5b7359d531730a9ad63130a2ec6d35"
+          },
+          "measurement.log": {
+            "bytes": 619529,
+            "sha256": "9f5e9fd853c91ba620038105325887847ca5750b139f9629f3b664bcebf111bc"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "2a73e0e28e9f4b54a82c73eecf33e47128a7f9ee517c56bd0cedb7e7891d3dae"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72072,
+            "sha256": "aadf70c81eb4447b4d32c543cc02cc5b8b3a0f721db356f22d57e5b32eea5611"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37225450497",
+      "role": "exploratory",
+      "group": "matched",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37225450497",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37225450497-matched.tar.gz",
+        "sha256": "4cbad76811927225cafb1b1bcc92d6463049df4ada69d4bfcb6cc54621ffb492",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68706,
+            "sha256": "951215f476f3f501af22977192fcdd53717b2d84d1951ca840b7f58cd8bd89a1"
+          },
+          "measurement.log": {
+            "bytes": 250182,
+            "sha256": "52c477dd4e36db29b4806e01d4f28e80d3a9041aa0c5a5991769290529d00772"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "bcd54b6340a77441795aa9aaefdc2621e65f022b070b5d3a3a505a500be43e45"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27461,
+            "sha256": "e749025650f27c510bbb4e10d23563b8dcf0192b7c1f7bdb435b99339b4eef22"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37225450497",
+      "role": "exploratory",
+      "group": "stable",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37225450497",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37225450497-stable.tar.gz",
+        "sha256": "3efa902376774ec38d314af98fdf33de3a0dab27b04ead205d55ab490435cc6a",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68712,
+            "sha256": "29e12a9c1d097d12e65d91b1dc8c850e812af4f22408efb5cab908f8e95b9043"
+          },
+          "measurement.log": {
+            "bytes": 526994,
+            "sha256": "cb5e90fa46738cfd9d8acd8d3e0b7cc6d7b6e8eb0ae6d526651e2aa1d50cbf1e"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "abc20b398c49f04c99a141e4e18c8453cd1a071637c66176f2d448ed50443ea9"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 55039,
+            "sha256": "f38d2b37c6670d34ac46bfba606f0974a92935171249469f15bf0071aa016dc6"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37226231620",
+      "role": "exploratory",
+      "group": "f1",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37226231620",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37226231620-f1.tar.gz",
+        "sha256": "6d24d6486e222b22b15e94199781d24e00260cd78a63dfd2cb2cb367254b2b77",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68677,
+            "sha256": "ae7a00f539f8612cc2fb882c11ac7292c92f96118212b47297b5858876b54cc5"
+          },
+          "measurement.log": {
+            "bytes": 618680,
+            "sha256": "5ae8edfbb72c0af5ea7edff16f1794129286b39cad68543ad4ef394c1d02762d"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "56297269c909c68a06e4667c79671832f90aa519443e6ec7d80d72f10c774c1d"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72104,
+            "sha256": "7c164e084b4bbbcc2f75995d244da6de905655454a616e7c40ce47b3499244a0"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37226231620",
+      "role": "exploratory",
+      "group": "matched",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37226231620",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+        "memory_total": "MemTotal:       16373440 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37226231620-matched.tar.gz",
+        "sha256": "0a1525e12d5170afb9145050d0b55193599139e71864ea6b894bd0a594b4c142",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68718,
+            "sha256": "155a75d52a9ee902677d3e3d6ec2b481eaf4733c3de139dcaa091d68f0408b34"
+          },
+          "measurement.log": {
+            "bytes": 250182,
+            "sha256": "3feba05ea3717004319f882ebc5278debf10e5a31814b3b682cf44330b2e8247"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "342f57d2311539290b9e8884174cb77b1405372b3dc52283216af276e008d643"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27262,
+            "sha256": "8ed33f6650c611ac1a8b7e1f9d84c679a2174d9e676f60a1234b2e57065f7b50"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37226231620",
+      "role": "exploratory",
+      "group": "stable",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37226231620",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+        "memory_total": "MemTotal:       16372436 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37226231620-stable.tar.gz",
+        "sha256": "82746949fe827840856ad4739287205f8fdc949e2a46847fff8d4361dc48adc7",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68691,
+            "sha256": "334a47424dc8230b2f3555bf3305c493a36df673883129860dab3c4c9be46ca1"
+          },
+          "measurement.log": {
+            "bytes": 526410,
+            "sha256": "06686a8a48ccedc4aa2ae7c0049d9c03db22cbac7ef46a5fd5fbbbf97e62cc26"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "72835b41dfca4ddc797ae15f35d9072f8ca8ae02f08396d4eea1f7fd57a45b94"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54511,
+            "sha256": "a83445c693451015cdc185a6ab20aa6fe2da0f5fc1f8055d39be078ccd8a2c53"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227157919",
+      "role": "held-out",
+      "group": "f1",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227157919",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227157919-f1.tar.gz",
+        "sha256": "7682e97a0d155a0ae19570935cff798b8c67e8f179018acb34e1a4cb41aa4a9c",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68677,
+            "sha256": "1e7ae83356170cfefa3e8a5ed93510bd8f7924a01f4746df8be2649abc21f9b3"
+          },
+          "measurement.log": {
+            "bytes": 620162,
+            "sha256": "6958b5ebfffc14ec71c929e069142f265f9a4d77b556bfd84b4cd85312f08e6e"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "d630fa61fd942d8366ddf75e7966180761a53ffeff80bbf77d4362b17b6de1ec"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72913,
+            "sha256": "77ff28971a37c8bc95e22b1143f8acea2f668525fb4f6bd127bfd89456e5d7db"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227157919",
+      "role": "held-out",
+      "group": "matched",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227157919",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227157919-matched.tar.gz",
+        "sha256": "40943ba415f1fb1f383acc93233a4bc286bc68aa43bc0bac493901d8c5ff3a03",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68711,
+            "sha256": "aad9ece873a56a26192f44d448e721f5a7db54ba12d4dadda52fdf1695ed22ac"
+          },
+          "measurement.log": {
+            "bytes": 250508,
+            "sha256": "f16a468eadf224d6a9ab72b3ad3bbf8cf7339112e3afdbf5a5d18b9a19dcb8cf"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "3c9ab55af65e46aadef98350bc5c59afac846bfb9e587d924baf47f1650aea5e"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27556,
+            "sha256": "ead559c9493a0a3bab0fb9dfad5db8c27a2792a3114f82bd9a8b57931b7f92d7"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227157919",
+      "role": "held-out",
+      "group": "stable",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227157919",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227157919-stable.tar.gz",
+        "sha256": "a2fe536172d2e8d927b518fdc0a5b7575c0bafcf7197952aecce68015c196185",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68701,
+            "sha256": "ac9f6b08b90ab142e7bedae55b09b68379d0481d2dea024b6cd068afc2c8bf57"
+          },
+          "measurement.log": {
+            "bytes": 526650,
+            "sha256": "df9fb4d4f1f8afa0ae8952e5a9ee58e4dc658374121781463cf7408f8b022a2e"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "e8ca3e8eb0381591eec0696cf10a209d58525128ed983a064c1013576f6c92e7"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54907,
+            "sha256": "2e6673668f82b1ea6df022f6f7df2027b09d616d03405f221798d7b39d079688"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227898422",
+      "role": "held-out",
+      "group": "f1",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227898422",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227898422-f1.tar.gz",
+        "sha256": "de44b4189abb6219d0ad666c6d0d7b53256fe2eb7fb2b8a354cf859115ce56e0",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68682,
+            "sha256": "2ddbae2c08ba07250a881b8cca949d96801772c9c4b7f1966c10a78af1dad01f"
+          },
+          "measurement.log": {
+            "bytes": 619299,
+            "sha256": "5f0b9dc4d916fd723a40bfafb8f9f34348a9ba8bac327fb9a6c6a3565146e389"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "ef378c32efc68c79e0b520eafa35c2fe1f1e72b185fabe6eca17009e3b15954e"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72240,
+            "sha256": "319537fdd7e93dbfa88c3d2fc09b06d00f4289a896639a93edb121d24dd87069"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227898422",
+      "role": "held-out",
+      "group": "matched",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227898422",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373448 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227898422-matched.tar.gz",
+        "sha256": "22e942668e2c2f6d7b159e17936104264879aecf2a226db4d7a8bbfe386e2eb1",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68717,
+            "sha256": "c74dee705c990992b97bdf2b1d8deff02c4ffc675e907f32deed50e48c3336f9"
+          },
+          "measurement.log": {
+            "bytes": 250154,
+            "sha256": "c79f3612c946e4757d27b6f790d4fbbbe7ef16be93f6a74361d35a4365590a5a"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "c0ea1e599d29b917874be39aa96db37e070125c493c2e2d405c926a0d165ae1c"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27355,
+            "sha256": "930e040391e7d26dee91ddb944584447a2d193afb98963a65da038c7a9e6fe19"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37227898422",
+      "role": "held-out",
+      "group": "stable",
+      "status": "whole-workflow-success and raw/receipt-valid",
+      "source": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37227898422",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "archive": {
+        "file": "37227898422-stable.tar.gz",
+        "sha256": "e50fd97c833173807c76bd2183074b59ebe688a9b8a4a33258839880a5e21928",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68706,
+            "sha256": "fcb5bfc04da935f2c41065d661b6b8535c5d258aa1d5eeb048418da52b0ffdff"
+          },
+          "measurement.log": {
+            "bytes": 526947,
+            "sha256": "1a686dec08a5ade7f707dc4151b7f022dc27726521d50760f83c12f727344ce9"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "bb0834df52fa18538a33edcc9cd04f3d5bb26aa096b13ba2b2d6728d95805a8f"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54838,
+            "sha256": "0a2f9639257853fc9ef7be5fb3e9d7b92a42da46b0387a1274ed663ed92b0a25"
+          }
+        }
+      }
+    }
+  ],
+  "prior_runs": [
+    {
+      "run_id": "37218316677",
+      "group": "f1",
+      "whole_workflow": "failure",
+      "source": "1bd6b356c474a09c259d4049e1dd8583253fe329",
+      "status": "raw/receipt-valid",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37218316677",
+      "archive": {
+        "file": "37218316677-f1.tar.gz",
+        "sha256": "a015f89b0d8b931f5e3b1226b83518af4606a989dd1da1dbc3592b3e36a67f49",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68683,
+            "sha256": "f01cd27b0a17b43caa518f3c20fd2f29b9aba1d922c51ad4b7e9fcfc74db4c0d"
+          },
+          "measurement.log": {
+            "bytes": 592949,
+            "sha256": "d8378b3f127d7bd5f8d6c78d67f5f06bd8d8cbadd3d78a0420bfcea8dab615ec"
+          },
+          "build.log": {
+            "bytes": 384725,
+            "sha256": "3720c05f0c366e8565cad6a33b5004a6e04604505b3200450bb33638dde123ab"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72183,
+            "sha256": "3638092c876d6700d2981ff71a10f9387185ee06ac223af5e5a635a290c2979b"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37218316677",
+      "group": "matched",
+      "whole_workflow": "failure",
+      "source": "1bd6b356c474a09c259d4049e1dd8583253fe329",
+      "status": "raw/receipt-valid",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37218316677",
+      "archive": {
+        "file": "37218316677-matched.tar.gz",
+        "sha256": "9caaa1cdc50932f99671e78efcb0a6c1249b100b2d58aaa72c934bdd92538383",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68725,
+            "sha256": "91e266c246d6e99ed549f6c7c931be44f138b369c3413f71c4e341290990b1e7"
+          },
+          "measurement.log": {
+            "bytes": 240387,
+            "sha256": "e312be15258fa920ac95914fd71da5c4b55a5c721189951157ef7db8ab12095a"
+          },
+          "build.log": {
+            "bytes": 388725,
+            "sha256": "2640737122b821efe2f2e00ff0143f3e04898cee2df0baa0e2908a5938924e38"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27430,
+            "sha256": "39f52dfd3d00ab355a80e9cf194a8c4d6da4449aacc5b6a81b69f0af7cf8f212"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37218316677",
+      "group": "stable",
+      "whole_workflow": "failure",
+      "source": "1bd6b356c474a09c259d4049e1dd8583253fe329",
+      "status": "rejected: ValidationError: malformed receipt: receipt schema/status/selection",
+      "rows": null,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37218316677",
+      "archive": {
+        "file": "37218316677-stable.tar.gz",
+        "sha256": "0dfa73e381b9b3f797c5c7829e0c01472d48fe0438e590ed394d63e6fcc79d7e",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68775,
+            "sha256": "ed99d862d8b246b281a44cc65c7a329b83e3feda0f993feaa543c290ef394f1e"
+          },
+          "measurement.log": {
+            "bytes": 323320,
+            "sha256": "a688b6f99a085b20f215d250cfe4fe0078125a671e09c5e9cb1a99baf1616fe4"
+          },
+          "build.log": {
+            "bytes": 387925,
+            "sha256": "4eb90c00d3594410d7fd18d5433d0184f186fea1ef0a59b150a1cb40ec32cc51"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37221630419",
+      "group": "f1",
+      "whole_workflow": "success",
+      "source": "6e95f527a2fb56b097292d80d8c8e08016ec0dee",
+      "status": "raw/receipt-valid",
+      "rows": 112,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37221630419",
+      "archive": {
+        "file": "37221630419-f1.tar.gz",
+        "sha256": "ad66693905014d8bb0fade8b74250baee8dae39d8e2f933cf8efbd19c5a3d793",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68688,
+            "sha256": "05b85b93ff5b31b852b5ec9707da49b9eab898622a25c0ecbcadc1b54c4ed699"
+          },
+          "measurement.log": {
+            "bytes": 619250,
+            "sha256": "81df2a3a0d012c936ca22bbda8d2695fca7bc96988a52b6d9cc7c7c1c53164a6"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "cacb08025c9ac9624142e779d5eea4f41f319a0df6a8651329e54dc871094d2c"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72301,
+            "sha256": "236d86f383d91473ecf785603f4a1ac7fe5131a8ac928ef3e1bd97883e539db3"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37221630419",
+      "group": "matched",
+      "whole_workflow": "success",
+      "source": "6e95f527a2fb56b097292d80d8c8e08016ec0dee",
+      "status": "raw/receipt-valid",
+      "rows": 42,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37221630419",
+      "archive": {
+        "file": "37221630419-matched.tar.gz",
+        "sha256": "5248b4e8d5d24ca49aeefed39b218628f70da1aa9ce50f33e19d1701c8112779",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68711,
+            "sha256": "02af580e7dc7c856c72195c9fcc450057c378f4b975f2426ff48b6f3625eed83"
+          },
+          "measurement.log": {
+            "bytes": 249931,
+            "sha256": "039c5ced3e0c99366b7519ebd5389a576b2cbad55c3d0af203d5d01b32327e39"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "758580f028ce3f5ba26847425145790b4232fb2e68290691a2cb938286b7e5e7"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27163,
+            "sha256": "3f03c5aef9c6ca0477f02305a99b074a78f3c7710c13d4c98f321f607e2c784f"
+          }
+        }
+      }
+    },
+    {
+      "run_id": "37221630419",
+      "group": "stable",
+      "whole_workflow": "success",
+      "source": "6e95f527a2fb56b097292d80d8c8e08016ec0dee",
+      "status": "raw/receipt-valid",
+      "rows": 84,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37221630419",
+      "archive": {
+        "file": "37221630419-stable.tar.gz",
+        "sha256": "2f196967b0e3c21d8600ddb11a95c97cfd48059224370bf0ed9ff826946d1805",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68706,
+            "sha256": "9fd519f92bdf6e17e14d51be837bf4e8a45696860d8b7a45a4ca31d571c3a131"
+          },
+          "measurement.log": {
+            "bytes": 526871,
+            "sha256": "71386b36adbfab9b73077d8a409be0a6ca0cc54abe8a61b39520acf8c54f6dfd"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "6c0f14583eaff6b58ff7b3e4adcf60e8409979bd8485e78cfcbf8b19a12400e2"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54905,
+            "sha256": "a4ec0f8f304e0138ff0ce1558617e7d254ad1180fa2d193823901c78f5fda057"
+          }
+        }
+      }
+    }
+  ],
+  "interpretation": "Different source/hardware/image/config cohorts never pooled. Five runs alone do not certify time ceilings. Failed whole runs remain failed even when sibling groups validate."
+}
