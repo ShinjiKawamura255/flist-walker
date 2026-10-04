@@ -1,0 +1,188 @@
+{
+  "schema": 1,
+  "source": "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e",
+  "run_id": "37238688865",
+  "role": "changed-merged-source-validation",
+  "workflow_conclusion": "success",
+  "timing_gate": null,
+  "candidate_cohorts_not_pooled": true,
+  "old_failed_run": "37234612163",
+  "groups": [
+    {
+      "group": "f1",
+      "status": "valid",
+      "rows": 112,
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "fixtures_after": [],
+      "compiler_temp_after": [],
+      "archive": {
+        "file": "37238688865-f1.tar.gz",
+        "sha256": "87dac95c67366c2c79ac44389c286d2628aeafedbe9a579f2f43d5533ae18e5c",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68663,
+            "sha256": "fef8133485b38f00e02698296cd02ea23afbc9058c4bb00828334ffc20ec28e2"
+          },
+          "measurement.log": {
+            "bytes": 619428,
+            "sha256": "414f8e3ecfe3e5bf02d40423b229ab1eb30802765ee9fe04246698ddada03609"
+          },
+          "build.log": {
+            "bytes": 370082,
+            "sha256": "8087fe47edd060d379853f32c8ac46eff3ac553b31957994fdaa8c8f2c87fa92"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 72508,
+            "sha256": "0d05b5cbd48c8a5207918238e727b43b09d35bc24251d49b76862f4d8b82e8e1"
+          }
+        }
+      }
+    },
+    {
+      "group": "matched",
+      "status": "valid",
+      "rows": 42,
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "fixtures_after": [],
+      "compiler_temp_after": [],
+      "archive": {
+        "file": "37238688865-matched.tar.gz",
+        "sha256": "65fbca829b20136489f468f9a6d10163ecc139a7e4afd090891b0040f4599872",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68691,
+            "sha256": "dccf2147a04cb4e9e32260e01ea7ef570bc74ac90b56c03ee8b891934e039307"
+          },
+          "measurement.log": {
+            "bytes": 250031,
+            "sha256": "f1c848b23c2fd8a7589d88a29ed2fcc37bfcb3bc8eb296215506a230d526c9d6"
+          },
+          "build.log": {
+            "bytes": 374082,
+            "sha256": "d66009235f7ebe80834fd3a77c50410a00606f64e667ad4d4f4a86149ba2b782"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 27341,
+            "sha256": "d6be80c7f125ad6a6b849cc301d98daf9aef4679d271694e8473a4c884800b82"
+          }
+        }
+      }
+    },
+    {
+      "group": "stable",
+      "status": "valid",
+      "rows": 84,
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1",
+      "fixtures_after": [],
+      "compiler_temp_after": [],
+      "archive": {
+        "file": "37238688865-stable.tar.gz",
+        "sha256": "a232cddab26ae125c804b0d805e6b4e7e7342fe50c39a0b2197c97477bda8e47",
+        "original_files": {
+          "receipt.json": {
+            "bytes": 68676,
+            "sha256": "e44b0e3608bac860e882673673f4028cb90ec9b100d651bf18e6f82cdd0d66d4"
+          },
+          "measurement.log": {
+            "bytes": 526987,
+            "sha256": "0fa2977a9a9e34e476e1187151901490757d645dbe9df3d7c1051565bcf9c826"
+          },
+          "build.log": {
+            "bytes": 373282,
+            "sha256": "f1b43a7667238fa4f39e245286687aecfabb97f70163c6523fa0359782bde4d3"
+          },
+          "discovery.log": {
+            "bytes": 114,
+            "sha256": "e3daa24369147cdec91acf6c87aed6c3901b37bab3a6b1ab883039c612f1ead9"
+          },
+          "summary.json": {
+            "bytes": 54953,
+            "sha256": "9712dc02b3825047e8cde0ccff8b13569c8d01c47c1770076d92b1fea409cb71"
+          }
+        }
+      }
+    }
+  ],
+  "state_files": {
+    "37238688865-admission.json": {
+      "bytes": 3838,
+      "sha256": "36d5d4e23524ddfae20d1b9db039b7c4f56ecc6b31755d6a4ebcc4d642a66201"
+    },
+    "37238688865-state-final.json": {
+      "bytes": 9149,
+      "sha256": "0a9dc8842b24bb4a4d4924d31749539eb96c87eb66196701d3e8234e7aa7a54d"
+    },
+    "37238688865-complete.json": {
+      "bytes": 211,
+      "sha256": "b36df8b5f40f86614842f0d005deccbe0dc3c0bf2442567fa19c9d863b8bd26b"
+    }
+  }
+}

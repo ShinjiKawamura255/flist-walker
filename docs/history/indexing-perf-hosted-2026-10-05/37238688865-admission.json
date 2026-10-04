@@ -1,0 +1,90 @@
+{
+  "run_id": "37238688865",
+  "head": "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e",
+  "workflow_conclusion": "success",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865",
+  "groups": {
+    "f1": {
+      "status": "valid",
+      "rows": 112,
+      "receipt_sha256": "fef8133485b38f00e02698296cd02ea23afbc9058c4bb00828334ffc20ec28e2",
+      "raw_sha256": "414f8e3ecfe3e5bf02d40423b229ab1eb30802765ee9fe04246698ddada03609",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 66305,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1"
+    },
+    "matched": {
+      "status": "valid",
+      "rows": 42,
+      "receipt_sha256": "dccf2147a04cb4e9e32260e01ea7ef570bc74ac90b56c03ee8b891934e039307",
+      "raw_sha256": "f1c848b23c2fd8a7589d88a29ed2fcc37bfcb3bc8eb296215506a230d526c9d6",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1"
+    },
+    "stable": {
+      "status": "valid",
+      "rows": 84,
+      "receipt_sha256": "e44b0e3608bac860e882673673f4028cb90ec9b100d651bf18e6f82cdd0d66d4",
+      "raw_sha256": "0fa2977a9a9e34e476e1187151901490757d645dbe9df3d7c1051565bcf9c826",
+      "hardware": {
+        "os": "linux",
+        "arch": "x86_64",
+        "kernel": "6.17.0-1022-azure",
+        "logical_cpus": 4,
+        "affinity": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "cpu_model": "AMD EPYC 7763 64-Core Processor",
+        "memory_total": "MemTotal:       16373452 kB",
+        "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+        "storage": {
+          "device": 2049,
+          "block_size": 4096,
+          "total_bytes": 154894188544
+        }
+      },
+      "image": "20260927.320.1"
+    }
+  },
+  "timing_gate": null
+}
