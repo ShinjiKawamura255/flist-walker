@@ -1,0 +1,2386 @@
+{
+  "schema_version": 1,
+  "mode": "observation-only",
+  "group": "matched",
+  "cohort": {
+    "source": {
+      "head": "2e4f6766867e8867693dabddd9b32e6eb2d000fb",
+      "tree": "08a513cdfa96d842f8df0a75353ce1abb7f79585",
+      "files": {
+        ".github/workflows/ci-canary.yml": "760ec484cb3e6f731cd3e46861d08062f07a2c43a59bdc2940ed900abe3232bf",
+        ".github/workflows/ci-cross-platform.yml": "d313f7ac23e43675460a4bf580b1637d537ced451149eb5b85385bcfc934969a",
+        ".github/workflows/ci-policy-guardian.yml": "967454f1f4cca92f54ed269c01ef5bf88b5550683d04548ad777643ab8883b45",
+        ".github/workflows/dependabot-auto-merge.yml": "6113745a3a84d55c9521e606d72787192d8c47a434e1b3720c52f3d257345454",
+        ".github/workflows/perf-regression.yml": "fd04b77ce58f01ac1d465ffa2cffe56b6a1cb8d95378d3e639317df18bb95583",
+        ".github/workflows/release-tagged.yml": "6050ced45bb6858db9b532947b21801c7cbc3e8ac92c42524b9662928589ae62",
+        ".github/workflows/security-audit.yml": "925959efcfe641c3397a51c49d08800618edb75047e8c06f5b7942e72b311480",
+        ".github/workflows/stateful-endurance.yml": "70ae4b549a426cbd774a5fe6b36f4459a0b1fb613ef29e0c685fa7f7c54b8a2d",
+        "rust/.cargo/audit.toml": "be63e529d1b6356b023fb7e7393dcb0fdebdb292c3ee01a3372f0a0af3f96d8e",
+        "rust/Cargo.lock": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+        "rust/Cargo.toml": "6e88518685deb3bea7210158c2e5b874373ac453a066d876764681c7ef989618",
+        "rust/README.md": "deb6b7a5da9813bc00a0550d0ebd4286f642480eb26ac1e4ea541cdf37df748d",
+        "rust/assets/flistwalker-icon.svg": "7c25de95e272f24c850fbddc437602e9a3f91b13fb4cc9b3d519957a22140b61",
+        "rust/build.rs": "73ea4007cf1523d9983544118b633411611f1be8214dc9873f4d49fd05468f26",
+        "rust/rust-toolchain.toml": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+        "rust/src/actions.rs": "c9a239d839aa0a0a43abe3ff16534cd733e141d8c2d1790639681986bd50ddd0",
+        "rust/src/app/active_filter.rs": "b276ccd789d59da7e6cb5062e94d5a432df5eafe1cdf85f323b744215bccd377",
+        "rust/src/app/bootstrap.rs": "9985594ffb3df61033e37050cff599faa5ed535afaadeb701a0457f3910add1c",
+        "rust/src/app/cache.rs": "f3ca10dc542d4d0fce4061337eebbb89cbadf43583d75b9d6ec949c706adec8f",
+        "rust/src/app/config.rs": "152de40b48087c47c4f23b982830c9e44ded530ec7012d48f42b394ea5120aa5",
+        "rust/src/app/coordinator.rs": "3a4ae74ca36743a0178875d68f6cb3e1f20661651a17ebeeca68473ab593a101",
+        "rust/src/app/filelist/commands.rs": "ccd51cbbb55846d41880a9f0103ed755551685d807192ad2e6193835d801f857",
+        "rust/src/app/filelist/confirmations.rs": "cee7f6de29df4a8005c0e078b6ff6c769840f104994daf16ef815deae53c484f",
+        "rust/src/app/filelist/creation.rs": "624addab56846a117da818edc246adf2d19f11452940ebb7222c379c68f99237",
+        "rust/src/app/filelist/manager.rs": "bb69328601b500d2a97c044e5dcd9b5cf140af58be5c8e9687b88ff0e751dc67",
+        "rust/src/app/filelist/mod.rs": "b28d3476e01fa4df02fa29df7f0d1daef7d5c2fab8f76b8c90d0ae9c9b2b7243",
+        "rust/src/app/filelist/responses.rs": "de0fee687a869a54d18c5beddc9c6aae5cf6d7173c086e6131960475b1ee60b2",
+        "rust/src/app/freshness.rs": "7ff09663c21696cc80d5367fcc6fbe4c8449e1d097efdaf0cc4bcb315c64fae8",
+        "rust/src/app/freshness/worker.rs": "1b02171c20dc83b849f49209bc06fd52ca0c48767f6fd73a918ac7eead6f5d89",
+        "rust/src/app/index_coordinator.rs": "398dbba9b990147adb21c8e1fea8b3e6874a6e0b898bdacde3739f4920844982",
+        "rust/src/app/index_finalization.rs": "c80f940f86fd3709575a02753f15f805d9c73a4cbd8504283ac3a5384b59f575",
+        "rust/src/app/index_mailbox.rs": "6880d7b70b925c32105686c145ab667ddb1d899f1d4c7fb7590a98d13c758035",
+        "rust/src/app/index_response_arbitration.rs": "6c68aff625fed9e9e209943fefd7bd234c3a5e565d6cd985f678eb86e4a2fd5e",
+        "rust/src/app/index_response_effects.rs": "ab683d4cc088126230978b8980a7f97598e82401eb0024cc02022de0b85750ff",
+        "rust/src/app/index_worker.rs": "3bcd307b2a93aa3c6f31127bfa806eb3d7e52a162978005c9d638e495cd65347",
+        "rust/src/app/index_worker/root_projection.rs": "0443ac15a0e4785057b65508c1575c41a69416fee07cf0649bcee50e89848880",
+        "rust/src/app/index_worker/tests/mod.rs": "e30875ede18b87d79a159c64bc27f6ab8706fb8e1bf774b0ac1e595f62becbd9",
+        "rust/src/app/input/actions.rs": "cc58b5d90b25f7d8714eca6fb2444e7409b07477a894c7c7e9a9c8c20a9356f2",
+        "rust/src/app/input/dialogs.rs": "fe885d2bcfd76a594b2653601199ad1bf3bac8c4e2640bdcd802b03fbc85c6a7",
+        "rust/src/app/input/history.rs": "19995534449f2df39ea2034729994f0478eecb6d19ccd825e60eeafed64a61b2",
+        "rust/src/app/input/ime.rs": "ef868b70c1a39107ff96957f4c4ea60c11bf8ef8e0b0b8915e1f744fac3aeeb1",
+        "rust/src/app/input/mod.rs": "09b4004301bf5574bfad2f9078e3c3a338eccf2a9ca500e0284807f81b93cc22",
+        "rust/src/app/input/navigation.rs": "860c9ffb62a3b29ed82e924cd30b8375722dcf4a82bace7d8273a25dabb3c47c",
+        "rust/src/app/input/shortcuts.rs": "c9b80d9c7979137deca3f2d676f3044593a374ebd7e264f2804dee70fe9d264b",
+        "rust/src/app/input/text_editing.rs": "24e0bcd3dd73c499d8c8884ec815c692c40eff90cff8afc98bf1e6fff758e172",
+        "rust/src/app/mod.rs": "461d3027904e4c03338deb0ba28c9816f017749e8fd831961c53d4211d7b47d4",
+        "rust/src/app/paged_preview_flow.rs": "d05f5c0fa16d13e748f86f23a222f886f12b1e688821b46bb5c41c2d078df0e7",
+        "rust/src/app/pipeline.rs": "e2fd23b9f2eb72222da952c87f18241090e7c5868abf5ead48d01f55579d1e6d",
+        "rust/src/app/pipeline_owner.rs": "a6fb92d9b52be71299a570727ed094e83e05bfecf1de7fe1cd0aaa03e5486161",
+        "rust/src/app/preset_picker.rs": "3b8076018905efa61693fd9766432951dd54e5e9adaf34d94f093157974160c7",
+        "rust/src/app/preview_flow.rs": "51fd6c6b6f564a43a403c1adc9493f9d83aa047d9bbeb8c1fb0ec94b72b10cb1",
+        "rust/src/app/query_state.rs": "354f82f630b17ddbc0ced3cecaf677a421e3a65e1fc3606eec3c28dff8b4b099",
+        "rust/src/app/render.rs": "397630959db83fd8947679d91b960008d9fd35edff53b1c26f5927d6c8a2d2e2",
+        "rust/src/app/render_dialogs.rs": "f62f8ec46e1f4bb2d8211d1c489ea55b2619f56d3fc5ecf541c7e0db1b1fcae5",
+        "rust/src/app/render_dialogs/filelist.rs": "ce47a2fe8e8457632d6d8116f1366f507600081e836e6099d676239c6140c72c",
+        "rust/src/app/render_dialogs/help.rs": "d26c8a2a697bc6a2bb07d1a95e4937bce36820c126ee87f4f846d85a2a2c77dd",
+        "rust/src/app/render_dialogs/preset_picker.rs": "d89111e6c0c1af43bf885977845d7303f9af27875abe8cad99c9c480bb8a2cc6",
+        "rust/src/app/render_dialogs/root_list.rs": "17e0cdd3d46568a8fffee2e3f773fd11019a21c1429ab0e0e113d6c56da8c05d",
+        "rust/src/app/render_dialogs/settings.rs": "507e44bea8e7d15193990abe2faa496c879ab7549cb93dd36226ff7e55c04b81",
+        "rust/src/app/render_dialogs/update.rs": "424fbbff5b5e6418ea71b1f2418fa83fb2064e0a408f7400594560d8c198be08",
+        "rust/src/app/render_panels.rs": "c2db94f147af5cce452718394e492f771d471d5ada1a785e1e472f40a8864aeb",
+        "rust/src/app/render_panels/top_panel.rs": "040a455ba576baae6c04c566f79401135e6331697bd723997f7c914093608772",
+        "rust/src/app/render_panels/widgets.rs": "e885c11ca9a98a6de3e5e6715edb0bc688076446cb4381d746f13a9f2da3b64d",
+        "rust/src/app/render_snapshot.rs": "c172897a1bfac78760f5c9b64eb2536c8f2ed090d7964a22827822bf101d0786",
+        "rust/src/app/render_tabs.rs": "6f16812a08b2dc55b207b06b6849fbb90a675f090e3c891deb2e245fdf5b3d29",
+        "rust/src/app/render_theme.rs": "8d02e64bccd25e695828fb024e0a25a991e741b39f4a42f18abbf5e83e61b331",
+        "rust/src/app/response_flow.rs": "6569e3e444c165de906c7fa767591b1ade33bdbce923935e02f59b5234a0b6c1",
+        "rust/src/app/result_flow.rs": "04aef22560ca1d5a92ae50e1b889eb5f028ae855540b79bf54661189d023a5eb",
+        "rust/src/app/result_policy.rs": "a0321fab97171d29e0301c91c56ef611f1cb466b9c7cb2340b70efe70302af0e",
+        "rust/src/app/result_reducer.rs": "137dba8273d5121501da5561803dda7777e75ef2c0ca9d673605757d060e4d6d",
+        "rust/src/app/root_browser.rs": "107af43d98c2c41ca85c09b5d55341540d40456bd06629154a780497100b2627",
+        "rust/src/app/search_assist.rs": "a5846d589cb6aec5b3e5395d728989631d313618ee0b88fdae5f3a2880092773",
+        "rust/src/app/search_coordinator.rs": "fb6a0fe8bd331367a9f4bce6ca31fef394112c57af8fe47c937abdcb92e95fee",
+        "rust/src/app/selection_ux.rs": "cafa9b87eca34277e66eb74ff2f6128c5a682eaab7c3341845773b3e5e766a6a",
+        "rust/src/app/session.rs": "36ca7cbb561304de0150154e3864e2d6bf50a9417698f54895ba00888dc901f4",
+        "rust/src/app/settings_dialog.rs": "aa08a78e55271c03ebd989b4855482ebf813c452194308153b4764e2d173827b",
+        "rust/src/app/shell_support.rs": "3c5bdb518cc908cc0b01c76dbd799e447bdc221df3e44fb0701660e4d81c70cf",
+        "rust/src/app/state.rs": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef",
+        "rust/src/app/tab_resources.rs": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b",
+        "rust/src/app/tab_state.rs": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598",
+        "rust/src/app/tabs.rs": "31e019de5f1d363680c24c6e8daa3dba65bc8e5ed5b1f1227f5ad6c9bd05beaf",
+        "rust/src/app/tests/action_commands.rs": "9cfc4e0167f879639ea14533a94ff0de2fb411c24e5cc3e0061f6e9731126b1a",
+        "rust/src/app/tests/app_core.rs": "9ecfa09533d7b47bbb1fe478622dc0b307c020a1b8304c8f63f79d8d3b62b6a5",
+        "rust/src/app/tests/autosave.rs": "b927ac9bfc701d6d28ff1eb3f9ce0ed2c29fab64a1f97248e524a569dc6f3155",
+        "rust/src/app/tests/cache_tests.rs": "d0b8e5a1d6303377ca4e0111914453fbe9260b768a5b2265d0c3045cfd555079",
+        "rust/src/app/tests/empty_query_progress.rs": "bc0466a6e1977e3d29e361641c7b43705ba78dcdce5bc620569bfa73cd78a120",
+        "rust/src/app/tests/freshness.rs": "9a76b3257d4a355ce4d28a8b453c4204ad8d6fffd5c3d881b5910160450db284",
+        "rust/src/app/tests/freshness_refresh.rs": "23ab24b0e74a65be8d5ae7fa4ee5aa75063ecdb1d7d4f9fced0adffc94fc7ed6",
+        "rust/src/app/tests/index_pipeline/dialogs_and_inflight.rs": "419a04e63228be62c648aa8b2725614845eb3810927ec51ee12a2aa3e1c2523b",
+        "rust/src/app/tests/index_pipeline/filelist_background.rs": "189381985d18e6518063e6f12931edec081ffd81cfe7f2ab9c9592a7d5524cda",
+        "rust/src/app/tests/index_pipeline/filelist_creation.rs": "57b953a16825cdfc103cd65809f814a62649dc658570dec5a3c9550ca206ee46",
+        "rust/src/app/tests/index_pipeline/filelist_lifecycle.rs": "02fc27a323ca98f202c3c9b9f613f4b62f167aaa6780b42931805a16c8a97c61",
+        "rust/src/app/tests/index_pipeline/filelist_root_cleanup.rs": "445b3e41b55e4f052bb4f5f6fc917937ef7252035b0785d30aa047d97eaf7e35",
+        "rust/src/app/tests/index_pipeline/kind_resolution.rs": "8633d90b7a9f2196b04549f92b4e068c3a7ce4d3e0cf832b4e2597efb1014aad",
+        "rust/src/app/tests/index_pipeline/mailbox_arbitration.rs": "9327bfff70c8d7811c6a6a62819766c1262db1f07ffc976306b0f920a11285b2",
+        "rust/src/app/tests/index_pipeline/mod.rs": "09444c6488e412517de83df08bb784fc7376c94a7951f9f1c1da54eb42522199",
+        "rust/src/app/tests/index_pipeline/search_refresh.rs": "a93073a9a4488b4ffec0317fb41bdb0979d0d83bd60000256b51e9848676ffad",
+        "rust/src/app/tests/indexing_perf/child_process.rs": "1811c3cec2402528754c7bfc12bd6fecf155aa2a45e9786d6dadd1c409951fa1",
+        "rust/src/app/tests/indexing_perf/extensions/cases.rs": "0bdee561b352d7e8bfd90ca993daff5e09e8b20e980386345ded46904f2d509a",
+        "rust/src/app/tests/indexing_perf/extensions/driver.rs": "1097d2a385cd969ecdc464fbc88bf8e56d4785804877f3deb9283b058098f91b",
+        "rust/src/app/tests/indexing_perf/extensions/fixture.rs": "1fd860be6349f2ad7565c7a2e6f657ae1dbdc89176b0656b318a930150ddd3ff",
+        "rust/src/app/tests/indexing_perf/extensions/mod.rs": "7f2d894227d91943237495fd436af2505b9eab6f6e75af82cc44c2d1f12f7836",
+        "rust/src/app/tests/indexing_perf/extensions/oracle.rs": "b4298bafc5445a4e51f02d064dbd514ae80b7adbd0b100bf233940048caaa5dc",
+        "rust/src/app/tests/indexing_perf/extensions/runner.rs": "482c0ed1addcc4c42a8df283d96eb72d993cc2653fb948ff1e300a24c355c41b",
+        "rust/src/app/tests/indexing_perf/extensions/supplementary.rs": "d2f20ef9008bf802c0bea7d96661fc8d9461562cabbb45abc00497293a8af6ae",
+        "rust/src/app/tests/indexing_perf/harness.rs": "b4345e5b98444137cdf10208d03a91305bd02c1b54dc6c3fcffffae58113fa67",
+        "rust/src/app/tests/indexing_perf/mod.rs": "87e0403ba78701c9635a0c94f271f67118dcbcaf4b84bb23f7fcb2213cc2410a",
+        "rust/src/app/tests/mod.rs": "a20c41e0dd416a62f1ecf0a03ba0dc4662481004c9418a5885e071b33d8ab74f",
+        "rust/src/app/tests/paged_preview.rs": "d8094cbcd8a8a74ead99b85df53364e6350f843e5316d5391fcd3a1984c7b6c8",
+        "rust/src/app/tests/pipeline_tests.rs": "0b80b49fb890d4d9a57cdf44483eca270dedac64a1a0c8b7904561077188353d",
+        "rust/src/app/tests/preset_picker.rs": "a60e429305ae1b37869f2429e9e51b2c85aba551c26872b0c04b1d7cd6d24b9e",
+        "rust/src/app/tests/query_history.rs": "d1ccca2d847be2a9fa9a3d2c8681f7059079002bf00fc7da64514e14413b6d12",
+        "rust/src/app/tests/render_tests.rs": "4786c3e306d8c6de8db9f49bb8d6aff526e62d681eaa491deb76d675db00f914",
+        "rust/src/app/tests/result_parity.rs": "97fe0fd4354db2c5c49ffe259e2376c8b2a7f0586e59862c273216a5d01ef90d",
+        "rust/src/app/tests/root_list_manager.rs": "1d5fb8295735e20fe8564f7fdd783caba754bea13cd72fb85e4d04ff7869c635",
+        "rust/src/app/tests/search_failure.rs": "dca121008dd2a79b84c6844c43a39e642a6c900e698a12dbdcb294b8b83d3f0c",
+        "rust/src/app/tests/session_restore.rs": "42e29f02357b147c5741a80c29438792b3095b65d938c6a946d73410a4e06970",
+        "rust/src/app/tests/settings_dialog.rs": "78ba577db3cfaa13c0fd8797dc7b20faf163e2f564ada7441035bfe8e57a5518",
+        "rust/src/app/tests/shortcut_action.rs": "3a7405766e6a6d89dadcecb6df3b67c087de2e86487512415283721d171bfbc2",
+        "rust/src/app/tests/shortcut_help.rs": "4e5ab4ffd2d781990b752f0292340a7b889161730bc48d40b37c988f37fddca0",
+        "rust/src/app/tests/shortcut_navigation.rs": "64a3ff152d736326cffb56c0f537c8aedb3e7da0fe90b2206e6d1f5fe930fdb9",
+        "rust/src/app/tests/shortcut_pin_focus.rs": "e2cf2d3f996706ce1df05b47231818c416ab9635c1f5035c5fe08b4b5e8bfc27",
+        "rust/src/app/tests/shortcut_root_history.rs": "e098246f87815ddb463b3fa72f5d053aff3021ea1d975e88a6c2778f99d536ad",
+        "rust/src/app/tests/shutdown.rs": "16d51e54a85583bda280bac55cbd05074f696be01b303ab0811465be0fd87fd6",
+        "rust/src/app/tests/stateful_endurance/events.rs": "a3bb98d93c7fa194ed937ef31e7971f059ba8c2678c298970f0e9659b038b3a0",
+        "rust/src/app/tests/stateful_endurance/harness.rs": "769e602cb79094f0c523245a7cf76d069fbbca17a37ad3ba3c14359c9de3e3fc",
+        "rust/src/app/tests/stateful_endurance/invariants.rs": "44a80ebb339f5f67f653f5eacad846569cbbe287d764676d8a458db27b5d2300",
+        "rust/src/app/tests/stateful_endurance/mod.rs": "bbb8bbb09ce8609da99a5c97d36d453aa451b2b1522f095ea0fda9bbbb7f90e8",
+        "rust/src/app/tests/support.rs": "629b3f28fd84c377288867463ec7ce60b61ae157e7043ba07288f30d658540b0",
+        "rust/src/app/tests/tab_background_responses.rs": "166cbb7c410d7ccff633d5db836339d127af26cf29a815c18f19b9d47cfd45e8",
+        "rust/src/app/tests/tab_contract.rs": "2b9f4fd230eb8501033d78af839943635bb5ef3aee3ca48869291f1c498d6178",
+        "rust/src/app/tests/tab_drag.rs": "7d6f33bb5cb6a8ead1745aaadedb7b12b816b22a1649118312509cf7cbaf204e",
+        "rust/src/app/tests/tab_lifecycle.rs": "fbccfef47893915f061a533fa39569a1dec57e5e37b1d1131ab2d20c101fd704",
+        "rust/src/app/tests/tab_ownership.rs": "983dc61ea6da841c219bfb586f0b2c016a84ff688ab35356e457ffe4f3c3f118",
+        "rust/src/app/tests/tab_result_cache.rs": "d7cf9260b2e131bd7266ac4d56c0e7ef41130fa9e713e49d0cc5df757a4bc41f",
+        "rust/src/app/tests/update_commands.rs": "2fc772c47cc2dee22c999bb9a029ac3fc18e4604d16d159d873430f568c4a4b5",
+        "rust/src/app/tests/ux_contracts.rs": "8116ea6c3e62807089d71ffa3c3d873c3c3f137743d394ec1da2742f77822a66",
+        "rust/src/app/tests/window_ime.rs": "a60c3f1db3a2ecfcccceddc60ab3cab4d374231d3bcb42f801361198d27bf22f",
+        "rust/src/app/ui_state.rs": "dc389b3f87807a24eeb2977e57c19c754eabed10c5aa9182f96287285ebdd8cf",
+        "rust/src/app/update.rs": "c77e05d03e42d0208be9b0e313b64f55f650e2f75c06c0eba4bb7ccba42df06d",
+        "rust/src/app/worker.rs": "db274f5e465a9f15d04197e13170608c04367d99c0bcf2900b19f57edf3e1e0b",
+        "rust/src/app/worker/bus.rs": "ff23891b1c2c0fbe3f568dc9e8bf158c688fcca7936fcc5576c75ca5328ea42c",
+        "rust/src/app/worker/channel.rs": "23cd2b9462e50e63559436e31f015010a6b0849ff085599f1a6fc73b25f971aa",
+        "rust/src/app/worker/config_open.rs": "074daf9b034a1d298cbfc92eb431d0ee9360573560396a582cc803c08d677faa",
+        "rust/src/app/worker/config_settings.rs": "b639b60bc3d69eb5af3d0832f5bb19c96b7c9ef4a2e1123e7ab9cb314ef869f7",
+        "rust/src/app/worker/protocol.rs": "49d90028a8029719fa61a747943721d3c4100c6eba8bbfdb66005bad108d04c8",
+        "rust/src/app/worker/runtime.rs": "b7888224558e9ef527be4d4362ec9c76f13308ca3af5c8b91910d94f6d46e3dd",
+        "rust/src/app/worker/search_perf.rs": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01",
+        "rust/src/app/worker/tasks.rs": "0f622abef6e1ed9e14175bae11bb84c4158e8ee29adb618886b4c8e1e230a119",
+        "rust/src/bin/fw.rs": "0a746c19acfea61234e5b3ec227e3c8290115261037f777ae8f5125f8e34c56f",
+        "rust/src/bin/generate_update_keypair.rs": "1cd0828c20d2ae29827579963c4db2b47f276f977fecf87ace41d771e06d587a",
+        "rust/src/bin/render_svg_png.rs": "494719a986fba57491f725310f01a8b8e5b9f6b55c0c0207bf35fb8173961a42",
+        "rust/src/bin/sign_update_manifest.rs": "e48de820c719f749e6bc0dcdd7ddec3d588f7a4ded9fcedcf334982b3c50a067",
+        "rust/src/cli.rs": "9686b205ac8eef772f249d68c9f601d1e7d027c12b1860fef77651b1efa8eb19",
+        "rust/src/cli/args.rs": "a8b0b7e5b237f9ce5c9a768b3b3a1dce03016b33b20c473d52fb7e5ee18de5dc",
+        "rust/src/cli/batch.rs": "181b6a92675d1f24077d8f7651b6242fe5ecd688409a7ad126d62d933772dd6b",
+        "rust/src/cli_tui.rs": "0acdb65c5b0833c9f4986ea47386fcd8fa4b596217af21abad55e1e8e580c2d5",
+        "rust/src/cli_tui/filelist.rs": "3fcc1b01d88e0114ef802b2830b18cca8cb3cbdd9698a1c27f3a4304611e68e9",
+        "rust/src/cli_tui/input.rs": "dfc9007030f2d0d526b5130909e8c9961018761e94b99fb82ac7724a98b079b9",
+        "rust/src/cli_tui/presets.rs": "193dd14ce4f4bd47145c2c1bee2ba93c29486f1b6a8bdf3d057ced7317a1311f",
+        "rust/src/cli_tui/protocol.rs": "4aaafa1ace1a18dc0fef5e45874fdd00ab9277b67abee565b8ff00e0a82458ec",
+        "rust/src/cli_tui/render.rs": "d13bbb1e88e48be1e0a8e4a4bdd73c3d3783fe2442daf3dd52574276bec90d65",
+        "rust/src/cli_tui/retirement.rs": "16b512b6e8273c839ccbec2cb2422e2925f9ffc7a269a4af4dafbbe324d32a0d",
+        "rust/src/cli_tui/state.rs": "92af1c6aebc267ba3c2b35149f36cc22c5a3b96cdb6dc9e7eb1efe82de6dff5b",
+        "rust/src/cli_tui/terminal.rs": "1fd23017fba7c4ed786ad5a0c5e9c1ad31e36b0b9239cb593839f1985baa10f7",
+        "rust/src/cli_tui/tests.rs": "09d0afa60e51e5bb11a39157f761f25644972fe80602b5703c2f9e5a868e7a90",
+        "rust/src/cli_tui/workers.rs": "ce6730d3522446a0d19be3e92bfe277617044138cd66bd203a305efd007050f8",
+        "rust/src/command_exec.rs": "52fc1d25cdd61add9ddc99c9e046f6aef9ab37f4ae596d34f2a5778c55e62907",
+        "rust/src/entry.rs": "d7d8854b406c2e04f8285a1c02bc2478ef4fe90af98c15502dcf58f4ddd2a666",
+        "rust/src/fs_atomic.rs": "cdf9cc18b4892c1950fa813e6f49650686dbd647415005a5e459419224ef92bb",
+        "rust/src/gui_launch.rs": "6e035a6d858a1fc9857ac7f2f1398b000b602a84af1d1237b03224780c72f1bd",
+        "rust/src/gui_launch/macos_menu.rs": "954d95df85edb5eb1945a1a25c97742b09ae6d3482da9e9ec9639e8315602310",
+        "rust/src/ignore_list.rs": "915c6f1133cbd9e6c658a8bcd45c958d401b1413ddd86716613bd6c732a8948f",
+        "rust/src/indexer/depth.rs": "d6b10d7a6eb59e20f03cabb68194c05922421a821bcf85129f6924506b31cb44",
+        "rust/src/indexer/filelist_hierarchy.rs": "d13cf7533121242e509adc2528014beaec047e04792b367bd94dca93e4633b94",
+        "rust/src/indexer/filelist_reader.rs": "d8786d82954a200c688aaffc2ae31ffd47aa01cc0b15d078a04f5e42446a3711",
+        "rust/src/indexer/filelist_writer.rs": "f73ba3b5fef52e653a9c254a801b3aba06e7c47b3b1a5e95befc1b5a7d1d763c",
+        "rust/src/indexer/mod.rs": "53f3f9772d14865713dc5b06a136da7729807d9a7491b4cbc0b67d335d5b7098",
+        "rust/src/indexer/tests/mod.rs": "90e70310acab586dee4f7d1e3cb96b22a49a99a26406d2f66ff289b868d35a61",
+        "rust/src/indexer/tests/perf.rs": "78cd553414a64c9939b3264154edac195f058111b51b8df7b4aef8684a4f6b51",
+        "rust/src/indexer/walker.rs": "e628589a646ee4a5cb5c96e33b444d1429e2294b9253f87748f19c19d9a284e2",
+        "rust/src/launch_path.rs": "9a1b0822635257a9281cbd04ee4f8f9f7efbef65cf57ffed724331daaa13ea6d",
+        "rust/src/lib.rs": "ca3212d7d6b9a5ceb3fbc64944ed7040faa7c0a4107d763de2051290c51dfa1e",
+        "rust/src/main.rs": "e03d073c418b8be81c7fd470231e7e2e14d789972e30d9f2877252d540f8d8a2",
+        "rust/src/path_utils.rs": "1cbeb7c5f350580aedb0b7d9b4875aeb83b7bbace16c9e3b14ea94c685c5c49e",
+        "rust/src/persistence/mod.rs": "cea512c257f7be253ac01a7afe8d3706bfe459a7a6f2036ce010119d14bcd30e",
+        "rust/src/persistence/paths.rs": "e67419d33a1d1eed39010984ca5ffd6129f23f9dd92306f4206409c93d604074",
+        "rust/src/persistence/schema.rs": "818d37e60d23eb8dec9c1f063accb58428cb20d58703468970d5f8ef9e9c69d9",
+        "rust/src/persistence/worker.rs": "174079f210c0dc028f0462545e72d523fa14dafdf31b41f8494e379777e72b35",
+        "rust/src/persistence/worker/document.rs": "87e85350436a17ea11cf9374a71bdc33cad85e520b7edb18eb1186ad1f2f6c23",
+        "rust/src/persistence/worker/settings.rs": "d4e1569b981ac070a08dce55251df15ce63098099107906e76a86cc2cd6c7e47",
+        "rust/src/persistence/worker/tests.rs": "4e6343c329e8f0fb5301349073ab69e37a0dde145e634034e78887e800ba822d",
+        "rust/src/process_entry.rs": "9920e9c3fbe87abc4ff4127af6427d81c307a892a35ab8495ceb8dd6da08034b",
+        "rust/src/query.rs": "b5939b778cc7d67acd261106c336d95517b98f666e9339973004f0399359a089",
+        "rust/src/query/compiled.rs": "b27ebae3699fcff4ed750abe49e174a7a06df2846c71d8970ed31b5d77f8c910",
+        "rust/src/query_history.rs": "23e66c0ed0bd6cac9e037daaaf6aa2043dfc226da243af04742f33b6f4fc9adb",
+        "rust/src/runtime_config.rs": "689d7a12892892227dcd10668eb646822fe121b951c6183efc8337451169cd93",
+        "rust/src/runtime_config/tests/mod.rs": "ec2fd490a9c76169066ba1089214a3f93de11c06d8f2b06824a83db686708c14",
+        "rust/src/search/cache.rs": "91875e78c6f8bfaa3fc02379f574db695c7c79ec859377c5c319c41237064bdb",
+        "rust/src/search/config.rs": "40b1c411b3948d231daad90e6467062ae0266d29568f5db5c1f3fa37d453f5b5",
+        "rust/src/search/execute.rs": "a7b198524b4a7caee54a31f1b2c42601f01d07dd9d9f1edb3289e80aa5a9c7a4",
+        "rust/src/search/match_eval.rs": "1a968f439cb05572e17d992dc5510ca8f5e0c00b031949b9255269102959c297",
+        "rust/src/search/mod.rs": "82b53f17900c182c7dc76aae3faa1e1a873e59ab27aff62c67f499b191bfd6aa",
+        "rust/src/search/rank.rs": "2639aaa43d500ff2331b0155e872d34ce9773ee5b9bd8f5a6bc01b08b328c2c3",
+        "rust/src/search/tests/mod.rs": "66dc858aec873443c8eb188cf164148894d2ea3b1c9337b38e9a7a4e3a908fa6",
+        "rust/src/search_catalog.rs": "b5abd2aec8781345c338b4ae2402fa04ca2a37c01af20b130a35acc97f25c4ba",
+        "rust/src/text_editing.rs": "783dd1e7e8d4d203c583274bb731505da0d473ec7614c2c261de5ccae5c25dcf",
+        "rust/src/ui_model/display.rs": "15486a0aba6f5c1252ee93e25880b520570d00ab5bfa9355983152c77c815a15",
+        "rust/src/ui_model/highlight.rs": "b16c7d9b3293deb16aac04df8beeff0f8992bf1752946890a21f9f2b3d52cb5e",
+        "rust/src/ui_model/mod.rs": "6fc89c58615dc34d6d52e8a51e89f06e53c6dbd12d4a7b5139f53da32c5fb4a9",
+        "rust/src/ui_model/on_demand.rs": "23bb8b6e16b1e82374f9f3073dbce52ead4066daab3a9db45a0093021803e180",
+        "rust/src/ui_model/paged_preview.rs": "64703d78dfcaa824d8a35ef2c5687df28a6cb7543c3de39824f6c44cc52e71eb",
+        "rust/src/ui_model/preview.rs": "3f37219d6f7d33489f69cb53bdc9328211b0c8b715e4a0930b5277d89bcd4337",
+        "rust/src/ui_model/syntax_preview.rs": "2b35d780c97aa93894dde90081a8002fddf270cbd126c9d4fda2705db68cc1d6",
+        "rust/src/update_security.rs": "fb7535f61c9330888d99b5d362151d877001ccc423ff425ddd1d57de4840537c",
+        "rust/src/updater.rs": "98874bb81047ce78b648a0415da5873fe3a1f7d4281a2a45573173a8cc6be60f",
+        "rust/src/updater/apply.rs": "bf3ad30ec08ebe23e88540b78118fe380e98ef5aebd46fe07cd49c449da0d2e0",
+        "rust/src/updater/manifest.rs": "5e7fbaa9fbaae326c149e7224825f5c030e86664420c1c53623d3fe2a2e47f1c",
+        "rust/src/updater/release.rs": "a8fb7e17c1ac5eab488f9a0e237b1d2ca67b7fa81a4e5b9fff0cc70519c97b66",
+        "rust/src/updater/staging.rs": "29def6ce670a50dec32b3665543599b92196afec5d376b0f2038a597c0674198",
+        "rust/src/updater/transaction.rs": "801585bbf0ef8531db98fd20fe896092ad147c3e2e5e1392bc972c5fb9c53aa1",
+        "rust/src/updater/transaction/filesystem.rs": "84146b9052da971e3bec7c40cad3f84e4e6084ece7f7f3bb8b1ddf394ba12b6e",
+        "rust/src/updater/transaction/model.rs": "5dbb4e76c198f18f4c4227d032ef26b0f7adfb04a812f57c1a9459a5d780c55d",
+        "rust/src/updater/transaction/platform.rs": "0f9e191043832f561331544f21d7f0f539878e8ee397db6c088eacf9de994642",
+        "rust/src/updater/transaction/tests.rs": "cadc3d6a9f70538df952700def33f4d6db4a42dc43ec92c78d9fa4ab491c296c",
+        "rust/src/walker_runtime/adaptive.rs": "8c4cbface99bde1fe9575ef1395a7fe8c09b039ee618f2831df8c021c782e44a",
+        "rust/src/walker_runtime/adaptive/link_tests.rs": "f2adc85967e31536d20ca78de288ff89a2a3a656b8949066006d4d7e7ed8c81c",
+        "rust/src/walker_runtime/mod.rs": "a35a66b107f140aa36d060558784b223d059980649ea781883fc641cf109033e",
+        "rust/tests/architecture_boundaries.rs": "ee0953d81d14ac8cfc0ed097be869b9d65359549e2f49220ed3f899eddbeaea6",
+        "rust/tests/cli_contract.rs": "f1144dd4758aa396eed823d3ab62f5e05d475500456d2202d63bc888b7260ce9",
+        "rust/tests/fixtures/gui-smoke/SHA256SUMS": "5316fbd091f03124265b1e33ebf64939fff40b669b3c79a947a72f78af7d685d",
+        "rust/tests/fixtures/gui-smoke/fixture-spec.tsv": "34ef86ff836386837cd8013a65f29ed2a5775ec2ea8b91fc495d5b16fffb9b1a",
+        "rust/tests/fixtures/gui-smoke/flistwalker.ignore.txt": "17af696ce43b026245986ebaf8e2870b74a662ea1ecb088c0cacffa3c37a3222",
+        "rust/tests/fixtures/gui-smoke/root/FileList.txt": "b4abc3776c9ceb60120b58211ce0474849c47ad856d4df3a4edfedcaa912ef2e",
+        "rust/tests/fixtures/gui-smoke/root/README-preview.txt": "edbe715f3a19017497e3a246c2ab72cd10f0876aeaef6d6b6e6ac53d7c00bd23",
+        "rust/tests/fixtures/gui-smoke/root/actions/open-target.txt": "ae0c667afa6e7ead9a1ae44fd07570a4da5d9a1deffdb4ec146b2394ef1a552e",
+        "rust/tests/fixtures/gui-smoke/root/actions/space name.txt": "e3416450a837b978a26c85569ce60a61f0e3afd888e1e98edbaf55abf808ed70",
+        "rust/tests/fixtures/gui-smoke/root/docs/alpha-report.md": "3a6301485e090fe7b8893c81583ec09299cd1eef54f88a30c28ad7359c153ea5",
+        "rust/tests/fixtures/gui-smoke/root/docs/beta_notes.txt": "f7bf2ffe1d8d6592e89f9f6b67aad5cb4ea4c3e8705360416eb23f906d318c40",
+        "rust/tests/fixtures/gui-smoke/root/ignored/old.tmp": "7865d127cee194b85af7da9116457b746c2dd3d063438bc89459a1eed7dad6e1",
+        "rust/tests/fixtures/gui-smoke/root/nested/FileList.txt": "3eb321d9b61c91bb752df21a8ddd6759d3e7dae8efa8db7afa0eb79009234ae3",
+        "rust/tests/fixtures/gui-smoke/root/nested/child-one.txt": "edc7a30837a0789384c8e8c1a36932610bacf62f8b5c0551cd2aa4f6d5579ae2",
+        "rust/tests/fixtures/gui-smoke/root/nested/child-two.log": "b288622fdb5bedce334cf22755c233a0dfc7720a00dab02eb52737a3eb43e4c4",
+        "rust/tests/macos_quit_menu.rs": "324a41ab4d8e5dabe0d02151d85a7b7d83b212a0eb0e2b9ad72dbf9238f346d0",
+        "rust/tests/path_key_contract.rs": "b074527486014508deb98bd2a3d0e2aefd60c48d6c04bac314a509bc927142cb",
+        "rust/windows_resource_build.rs": "af2cf422cb879075320ccee8a4c30c948b2dd240c8bda24fcae90f56f1800b68",
+        "scripts/agent_worktree_preflight.py": "f4bbb1c41cd11daa7fe168365f62275b6a21ba4a4b763704329fb94c49f46312",
+        "scripts/build-rust-macos-clean.sh": "1a7c0c10f81a036389f1a064649fa0d3fef47addcfc6675f2c526733123f5466",
+        "scripts/build-rust-macos.sh": "739eddbde31d89f7bfeb95796867c681bc1c67ce3af6467fba9a662b91ecd939",
+        "scripts/build-rust-win-clean.ps1": "9a8b50ee49ec98f6274cbf6017dd045514149bdc62ab2076ca82a69fa6938ff0",
+        "scripts/build-rust-win-clean.sh": "d673e6b3dde27cc6faf4a3c6c5e90b5168b240507b2e5af0363bccf937084911",
+        "scripts/build-rust-win.ps1": "c7cabf2d14bca2f5830e9e12e81660543b5470e1c1fbf4ed85ed0832b3eef914",
+        "scripts/build-rust-win.sh": "a5286001c51b3a644b5815fbd76f95c0991c06fe9cfb3a7ddfc6cf98807cd97c",
+        "scripts/check-updater-n-minus-one-compatibility.py": "a2d25905443fbd201743abf5adbb89e3c7ec8569e9d47be0b548c8429c3c5cd1",
+        "scripts/check_ci_policy.py": "64eb541559c3504cc3e69eee06f599cedda0cbc034075f3fd1797574efdd1319",
+        "scripts/check_repo_contract.py": "72ac6fa8dc5be58e7648f27e592206521a9cc8a6f01dde9573d49dd9a13ccbd4",
+        "scripts/common-win-gnu.ps1": "9935d59c79a02bb670592879fe179bab8461875fb27b75149a5b78bf74b6ee38",
+        "scripts/common-win-gnu.sh": "f23effde141c9c42d0113bc91d4b5c65e7f37a02fb5ec08426c933395401955f",
+        "scripts/dev-check-windows.ps1": "94bedcb57fdda0472e7f4c4dabded485140e519a1fa75aa21e8d8d4a33f3aae8",
+        "scripts/gui-deterministic-scenarios.ps1": "b6ad08fed0b7f81426236d0a72d3eefce66546cbb38834506b51df7d94cf79d2",
+        "scripts/gui-deterministic-scenarios.sh": "d71eb534768da1d87e8d53b90226653fbb19e19c404b7216be49ed694b656a2f",
+        "scripts/gui-deterministic-scenarios.tsv": "7a26c1d077f56873bac86441f6e80ef7c0f95a46f9a4ce3ad6009483c867dbe1",
+        "scripts/gui-headful-smoke.ps1": "518235925ec9f1b7199f101d5c9781cc36c6dd211311901f538d0a25200d2297",
+        "scripts/gui-headful-smoke.sh": "b34ff5b825d3e3700260484eeae07d34510e3da57e942a65d2266af37254da99",
+        "scripts/gui-smoke-fixture.sh": "becb9a5731facc3f94eb1bf7238d078d4aa9922b167f78db335e8f0e6d83b4d2",
+        "scripts/indexing_perf.py": "22293cad85349471c69714c75a2f0bf5d8aa208813c8eb1c2d1bae623d36060f",
+        "scripts/indexing_perf_contract.py": "9a85b88d69529b263f7c7ef8f30b6d4bca933dce5719c712027b73c6ff0208ed",
+        "scripts/manual-self-update-test.ps1": "7d9735ffa1d7b38be2bd5077021c001a2af5ed326d66fb794a9d720f1e4b9b7b",
+        "scripts/prepare-release-linux.sh": "ba1c70f802526633db6312da5b1171798da2bc9811a648e9bd8a78ea992a79a6",
+        "scripts/prepare-release-macos.sh": "10bbbe9c318b0144423a405e3abd5df1936fd16bd3b437264d5ab3c510c22a07",
+        "scripts/prepare-release.ps1": "fce9cf104de7271f119f33944ad600d101442c898bad344e059ca09ec402a662",
+        "scripts/prepare-release.sh": "0580caeb095989909960aa99b7812d5e339d9e86a4c2a0c9436aa813edb18446",
+        "scripts/sign-notarize-macos.sh": "b150e7b14a1dc5aef27ad8ff0d174eb089dd99bae47d01553560ef8b3eeb4913",
+        "scripts/test-build-rust-win.ps1": "37c43939952a6cdee05e1b046b25904fe5c4fc1189a329a8b81c4fde54e67fff",
+        "scripts/test-prepare-release-archive.ps1": "7d1406602c5509895b6f72d67669f2da75efaac84ad51ffe677bbcdab28ea7aa",
+        "scripts/test-updater-n-minus-one-compatibility.py": "f1fe3a5d2d3e90eac8659ffa5b63e40789a3d17f5e66fc1ccb7fa5e415fad66b",
+        "scripts/test-validate-release-bundle.sh": "d2052e748c34fd2bdd0ee738cd987f68a9c2e3e4ddb90fd28b3a958f041148d4",
+        "scripts/test-windows-build-artifact.ps1": "e39821bb1cf5ceaff98e936a8e582511b3eae49398ea2867a610d441c5695353",
+        "scripts/tests/test_agent_worktree_preflight.py": "3f456afa7f19057423d7b061e7249d8a46b0df19439637c7715cfcce15a29e51",
+        "scripts/tests/test_check_ci_policy.py": "0d1d879764848e7d3298089c2c5be5aea651e92ba3295ff61838ac88a4ad0782",
+        "scripts/tests/test_check_repo_contract.py": "b1af29e81e5266d79937badb883e6f82586f6dd866e4adef7277a06e055890cd",
+        "scripts/tests/test_indexing_perf.py": "bd6851983332f5f576fe3b0b8ec3216f00d637ad224e3e6017416f283cf4aa82",
+        "scripts/tests/test_validate_change.py": "5222677e83890820c65f058596698cfb464b3841dc46993cfe6f45120ae4095d",
+        "scripts/validate-release-bundle.sh": "3bd83beaea189c7f4607f5993ed2b07f2b799794e8b964b419b1b8120e308ad1",
+        "scripts/validate_change.py": "aebb59fd56bd5303c03cacb52a18e6d3ceb92a5ccc9b77d439a03d397260e648",
+        "scripts/validation-rules.json": "ac33e28e013242897b42fc2491521257f6f4d8a0bf28cbce0b539c515a210110"
+      },
+      "local_controls": []
+    },
+    "toolchain": {
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)"
+    },
+    "cargo_config": {},
+    "hardware": {
+      "os": "linux",
+      "arch": "x86_64",
+      "kernel": "6.17.0-1022-azure",
+      "logical_cpus": 4,
+      "affinity": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "cpu_model": "AMD EPYC 7763 64-Core Processor",
+      "memory_total": "MemTotal:       16373448 kB",
+      "os_release": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n",
+      "storage": {
+        "device": 2049,
+        "block_size": 4096,
+        "total_bytes": 154894188544
+      }
+    },
+    "runner": {
+      "kind": "intended-ubuntu-24.04",
+      "ImageOS": "ubuntu24",
+      "ImageVersion": "20260927.320.1"
+    },
+    "build": {
+      "release": true,
+      "locked": true,
+      "default_features": true,
+      "additional_features": [],
+      "incremental": false
+    },
+    "environment": {
+      "arch": "x86_64",
+      "crate_version": "0.30.0",
+      "frame_period_ms": 16,
+      "logical_cpus": 4,
+      "optimized": true,
+      "os": "linux",
+      "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+    },
+    "settings": {
+      "ctrl_w_deletes_word_in_query": false,
+      "disable_self_update": false,
+      "emacs_keybindings_enabled": true,
+      "filelist_auto_check_enabled": true,
+      "force_update_check_failure": "",
+      "history_persist_disabled": false,
+      "restore_tabs_enabled": false,
+      "search_parallel_threshold": 25000,
+      "search_threads": 4,
+      "tab_pin_moves_to_next_row": false,
+      "update_allow_downgrade": false,
+      "update_allow_same_version": false,
+      "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+      "walker_max_entries": 500000,
+      "window_trace_enabled": false,
+      "window_trace_verbose": false
+    }
+  },
+  "run_count": 1,
+  "runs": [
+    {
+      "run_id": "b4c127f1-2830-4146-95da-5066e7b784af",
+      "cells": [
+        {
+          "case": "S1-ignore",
+          "source": "FileList",
+          "comparison_kind": "AB-operation-cost",
+          "phases": {
+            "data_publish_end_ms": {
+              "control": [
+                246.032434,
+                261.314079,
+                260.148144,
+                247.272899,
+                259.95919899999996,
+                262.441409,
+                244.538173
+              ],
+              "condition": [
+                277.296292,
+                276.980466,
+                427.46847199999996,
+                396.832647,
+                276.800977,
+                309.460021,
+                261.85677400000003
+              ],
+              "paired_ratios": [
+                1.1270720997703905,
+                1.0599523265640807,
+                1.6431732528524208,
+                1.6048367961262104,
+                1.0647862359354325,
+                1.1791585107668736,
+                1.0708216667669306
+              ],
+              "control_median": 259.95919899999996,
+              "condition_median": 277.296292,
+              "control_max": 262.441409,
+              "condition_max": 427.46847199999996,
+              "control_range": 17.90323600000002,
+              "condition_range": 165.61169799999993
+            },
+            "terminal_publish_ms": {
+              "control": [
+                246.868178,
+                262.355967,
+                261.118197,
+                248.278439,
+                260.922079,
+                263.284436,
+                245.092935
+              ],
+              "condition": [
+                278.414086,
+                276.997778,
+                428.76779799999997,
+                398.033079,
+                277.806818,
+                310.03745399999997,
+                262.858517
+              ],
+              "paired_ratios": [
+                1.1277844242849315,
+                1.0558089498303653,
+                1.6420448782433954,
+                1.6031721506030574,
+                1.0647118061634027,
+                1.177576079734542,
+                1.0724850840763729
+              ],
+              "control_median": 260.922079,
+              "condition_median": 278.414086,
+              "control_max": 263.284436,
+              "condition_max": 428.76779799999997,
+              "control_range": 18.191501000000017,
+              "condition_range": 165.90928099999996
+            },
+            "index_ready_ms": {
+              "control": [
+                508.98204599999997,
+                523.9189690000001,
+                509.526087,
+                508.86097100000006,
+                509.424953,
+                524.826782,
+                508.034808
+              ],
+              "condition": [
+                527.373157,
+                539.83211,
+                707.429942,
+                692.0858410000001,
+                556.582184,
+                558.769168,
+                526.838099
+              ],
+              "paired_ratios": [
+                1.036133123249695,
+                1.0303732865988287,
+                1.3884076989369143,
+                1.36006862471675,
+                1.0925695349674007,
+                1.0646735021232205,
+                1.0370118163242075
+              ],
+              "control_median": 509.424953,
+              "condition_median": 556.582184,
+              "control_max": 524.826782,
+              "condition_max": 707.429942,
+              "control_range": 16.791973999999982,
+              "condition_range": 180.59184299999993
+            },
+            "results_ready_ms": {
+              "control": [
+                508.98204599999997,
+                523.9189690000001,
+                509.526087,
+                508.86097100000006,
+                509.424953,
+                524.826782,
+                508.034808
+              ],
+              "condition": [
+                703.887877,
+                699.4653629999999,
+                933.868874,
+                911.4183019999999,
+                727.5790410000001,
+                727.034148,
+                710.675581
+              ],
+              "paired_ratios": [
+                1.3829326250930274,
+                1.3350640163593692,
+                1.832818569699651,
+                1.7910949236466394,
+                1.4282359682526193,
+                1.385284007857663,
+                1.3988718288767332
+              ],
+              "control_median": 509.424953,
+              "condition_median": 727.034148,
+              "control_max": 524.826782,
+              "condition_max": 933.868874,
+              "control_range": 16.791973999999982,
+              "condition_range": 234.4035110000001
+            },
+            "full_wait_ms": {
+              "control": [
+                55.540243000000004,
+                68.371737,
+                102.664849,
+                54.506601,
+                101.684172,
+                103.638105,
+                92.860854
+              ],
+              "condition": [
+                82.32159999999999,
+                85.39707800000001,
+                175.778475,
+                154.42428999999998,
+                119.564186,
+                142.086754,
+                104.578434
+              ],
+              "paired_ratios": [
+                1.482197332121863,
+                1.249011386093643,
+                1.7121583162314882,
+                2.8331300643751383,
+                1.175838713620051,
+                1.3709895023649845,
+                1.1261842799765764
+              ],
+              "control_median": 92.860854,
+              "condition_median": 119.564186,
+              "control_max": 103.638105,
+              "condition_max": 175.778475,
+              "control_range": 49.13150399999999,
+              "condition_range": 93.456875
+            },
+            "max_frame_ms": {
+              "control": [
+                10.247274,
+                10.049937,
+                10.308226,
+                10.548824,
+                11.095141,
+                9.866314,
+                9.929201
+              ],
+              "condition": [
+                10.298210000000001,
+                9.997772,
+                13.163156,
+                15.040617,
+                10.411428,
+                11.818264000000001,
+                9.678235
+              ],
+              "paired_ratios": [
+                1.0049706878141444,
+                0.9948094201983554,
+                1.2769564811636844,
+                1.4258098343474115,
+                0.9383772590181595,
+                1.1978398417078557,
+                0.9747244516452028
+              ],
+              "control_median": 10.247274,
+              "condition_median": 10.411428,
+              "control_max": 11.095141,
+              "condition_max": 15.040617,
+              "control_range": 1.2288270000000008,
+              "condition_range": 5.362381999999998
+            },
+            "max_ingest_gap_ms": {
+              "control": [
+                24.348824,
+                24.195446999999998,
+                24.323126000000002,
+                24.783573,
+                24.950453,
+                24.127409,
+                24.014592
+              ],
+              "condition": [
+                34.0738,
+                34.139671,
+                35.128839,
+                35.212354000000005,
+                35.399459,
+                34.955022,
+                34.295747
+              ],
+              "paired_ratios": [
+                1.3994022873548224,
+                1.4109956720369747,
+                1.4442567538399462,
+                1.420794088084071,
+                1.4187902319849663,
+                1.4487681623832878,
+                1.4281211606676474
+              ],
+              "control_median": 24.323126000000002,
+              "condition_median": 34.955022,
+              "control_max": 24.950453,
+              "condition_max": 35.399459,
+              "control_range": 0.9358609999999992,
+              "condition_range": 1.3256590000000017
+            },
+            "max_no_work_progress_ms": {
+              "control": [
+                24.348824,
+                24.195446999999998,
+                24.323126000000002,
+                24.783573,
+                24.950453,
+                24.127409,
+                24.014592
+              ],
+              "condition": [
+                176.51472,
+                172.68225800000002,
+                226.43893200000002,
+                219.332461,
+                186.534206,
+                168.26498,
+                183.837482
+              ],
+              "paired_ratios": [
+                7.249414591850514,
+                7.136973249553936,
+                9.309614726330818,
+                8.849912843479025,
+                7.476185141808848,
+                6.974017806885108,
+                7.655240696989563
+              ],
+              "control_median": 24.323126000000002,
+              "condition_median": 183.837482,
+              "control_max": 24.950453,
+              "condition_max": 226.43893200000002,
+              "control_range": 0.9358609999999992,
+              "condition_range": 58.173952000000014
+            },
+            "driver_overhead_ms": {
+              "control": [
+                149.045375,
+                153.893426,
+                158.071287,
+                151.794928,
+                153.733376,
+                161.00139099999998,
+                152.410429
+              ],
+              "condition": [
+                183.84509,
+                167.511232,
+                237.489125,
+                230.775608,
+                179.20508900000002,
+                176.161884,
+                191.725699
+              ],
+              "paired_ratios": [
+                1.233484031289129,
+                1.0884885492119722,
+                1.5024178616322645,
+                1.5203117195062013,
+                1.165687592784016,
+                1.0941637392437187,
+                1.2579565601773879
+              ],
+              "control_median": 153.733376,
+              "condition_median": 183.84509,
+              "control_max": 161.00139099999998,
+              "condition_max": 237.489125,
+              "control_range": 11.956015999999977,
+              "condition_range": 69.977893
+            }
+          }
+        },
+        {
+          "case": "S1-ignore",
+          "source": "Walker",
+          "comparison_kind": "AB-operation-cost",
+          "phases": {
+            "data_publish_end_ms": {
+              "control": [
+                789.730322,
+                788.95989,
+                793.0118470000001,
+                790.413456,
+                790.576907,
+                792.750175,
+                791.5554129999999
+              ],
+              "condition": [
+                809.645407,
+                805.520913,
+                805.707358,
+                806.049706,
+                804.130455,
+                809.4081570000001,
+                804.3232879999999
+              ],
+              "paired_ratios": [
+                1.0252175767413423,
+                1.0209909568406577,
+                1.0160092324572798,
+                1.0197823681787117,
+                1.01714387035593,
+                1.0210129023308006,
+                1.0161301088847459
+              ],
+              "control_median": 790.576907,
+              "condition_median": 805.707358,
+              "control_max": 793.0118470000001,
+              "condition_max": 809.645407,
+              "control_range": 4.0519570000001295,
+              "condition_range": 5.514951999999994
+            },
+            "terminal_publish_ms": {
+              "control": [
+                789.731685,
+                788.9610329999999,
+                793.01292,
+                790.414207,
+                790.578049,
+                792.7508359999999,
+                791.556244
+              ],
+              "condition": [
+                809.646199,
+                805.521915,
+                805.70838,
+                806.050658,
+                804.131377,
+                809.409029,
+                804.3241399999999
+              ],
+              "paired_ratios": [
+                1.0252168101878805,
+                1.0209907477141524,
+                1.0160091464840195,
+                1.019782603679845,
+                1.0171435673139972,
+                1.0210131509719407,
+                1.0161301184808795
+              ],
+              "control_median": 790.578049,
+              "condition_median": 805.70838,
+              "control_max": 793.01292,
+              "condition_max": 809.646199,
+              "control_range": 4.051887000000079,
+              "condition_range": 5.514821999999981
+            },
+            "index_ready_ms": {
+              "control": [
+                838.8742850000001,
+                854.5449470000001,
+                810.1921319999999,
+                853.763196,
+                806.786597,
+                906.354523,
+                971.493856
+              ],
+              "condition": [
+                903.9245609999999,
+                822.902167,
+                869.575891,
+                885.291369,
+                900.576159,
+                903.925604,
+                867.122183
+              ],
+              "paired_ratios": [
+                1.0775447253100623,
+                0.962971192900869,
+                1.0732958969292978,
+                1.0369284751881012,
+                1.1162507686031873,
+                0.9973201226028416,
+                0.8925657919961152
+              ],
+              "control_median": 853.763196,
+              "condition_median": 885.291369,
+              "control_max": 971.493856,
+              "condition_max": 903.925604,
+              "control_range": 164.70725900000002,
+              "condition_range": 81.02343700000006
+            },
+            "results_ready_ms": {
+              "control": [
+                838.8742850000001,
+                854.5449470000001,
+                810.1921319999999,
+                853.763196,
+                806.786597,
+                906.354523,
+                971.493856
+              ],
+              "condition": [
+                1058.526253,
+                974.3838489999999,
+                1021.039182,
+                1040.184185,
+                1053.623359,
+                1052.586222,
+                1023.8982750000001
+              ],
+              "paired_ratios": [
+                1.26184134133996,
+                1.140237096270607,
+                1.2602432702962858,
+                1.2183521026361976,
+                1.3059504990760276,
+                1.1613405078136294,
+                1.0539421002781926
+              ],
+              "control_median": 853.763196,
+              "condition_median": 1040.184185,
+              "control_max": 971.493856,
+              "condition_max": 1058.526253,
+              "control_range": 164.70725900000002,
+              "condition_range": 84.14240400000006
+            },
+            "full_wait_ms": {
+              "control": [
+                611.294792,
+                631.450782,
+                605.046573,
+                618.181239,
+                603.801346,
+                608.121796,
+                589.440453
+              ],
+              "condition": [
+                657.433613,
+                619.966055,
+                651.801534,
+                648.957752,
+                656.091072,
+                606.504597,
+                637.32628
+              ],
+              "paired_ratios": [
+                1.0754772028223005,
+                0.9818121580851886,
+                1.0772749786320994,
+                1.049785582379992,
+                1.0866008768387212,
+                0.9973406659477799,
+                1.0812394649133454
+              ],
+              "control_median": 608.121796,
+              "condition_median": 648.957752,
+              "control_max": 631.450782,
+              "condition_max": 657.433613,
+              "control_range": 42.010328999999956,
+              "condition_range": 50.92901600000005
+            },
+            "max_frame_ms": {
+              "control": [
+                18.701582000000002,
+                17.829046,
+                21.180608,
+                19.124468,
+                18.768127,
+                20.71491,
+                19.769352
+              ],
+              "condition": [
+                20.946462,
+                18.336309,
+                17.947461,
+                18.933122,
+                18.066606999999998,
+                20.584313,
+                17.506968
+              ],
+              "paired_ratios": [
+                1.120036903829847,
+                1.0284514942639107,
+                0.8473534376350292,
+                0.9899947020748499,
+                0.962621736308583,
+                0.9936955072457473,
+                0.8855610441859703
+              ],
+              "control_median": 19.124468,
+              "condition_median": 18.336309,
+              "control_max": 21.180608,
+              "condition_max": 20.946462,
+              "control_range": 3.3515619999999977,
+              "condition_range": 3.439494
+            },
+            "max_ingest_gap_ms": {
+              "control": [
+                30.806628999999997,
+                29.604818,
+                33.021891999999994,
+                30.820853,
+                30.747408,
+                32.522095,
+                31.364102
+              ],
+              "condition": [
+                34.220109,
+                34.170226,
+                34.559459000000004,
+                34.022742,
+                34.105003,
+                34.702667,
+                34.593194000000004
+              ],
+              "paired_ratios": [
+                1.1108034248083425,
+                1.1542116556838822,
+                1.0465620504118907,
+                1.1038870987769223,
+                1.1091992860016038,
+                1.0670489401128678,
+                1.1029550280125988
+              ],
+              "control_median": 30.820853,
+              "condition_median": 34.220109,
+              "control_max": 33.021891999999994,
+              "condition_max": 34.702667,
+              "control_range": 3.4170739999999924,
+              "condition_range": 0.6799249999999972
+            },
+            "max_no_work_progress_ms": {
+              "control": [
+                30.806628999999997,
+                29.604818,
+                33.021891999999994,
+                30.820853,
+                30.747408,
+                32.522095,
+                31.364102
+              ],
+              "condition": [
+                170.152263,
+                151.481682,
+                151.463291,
+                169.902578,
+                169.777228,
+                163.056258,
+                171.85441600000001
+              ],
+              "paired_ratios": [
+                5.523235372490772,
+                5.11679153035158,
+                4.586753872249356,
+                5.512585196782192,
+                5.521676103559689,
+                5.013707081293503,
+                5.479334814049515
+              ],
+              "control_median": 30.820853,
+              "condition_median": 169.777228,
+              "control_max": 33.021891999999994,
+              "condition_max": 171.85441600000001,
+              "control_range": 3.4170739999999924,
+              "condition_range": 20.391125000000017
+            },
+            "driver_overhead_ms": {
+              "control": [
+                149.874485,
+                144.878622,
+                148.950485,
+                145.63489199999998,
+                147.637126,
+                147.714936,
+                146.422843
+              ],
+              "condition": [
+                167.541923,
+                161.946108,
+                163.061708,
+                166.68940199999997,
+                164.976019,
+                161.855715,
+                168.50430699999998
+              ],
+              "paired_ratios": [
+                1.1178815593594866,
+                1.117805413693126,
+                1.094737677423474,
+                1.14457050580983,
+                1.1174426343140818,
+                1.0957301907506496,
+                1.150806141634608
+              ],
+              "control_median": 147.637126,
+              "condition_median": 164.976019,
+              "control_max": 149.874485,
+              "condition_max": 168.50430699999998,
+              "control_range": 4.995862999999986,
+              "condition_range": 6.648591999999979
+            }
+          }
+        },
+        {
+          "case": "S2-files",
+          "source": "Walker",
+          "comparison_kind": "AB-operation-cost",
+          "phases": {
+            "data_publish_end_ms": {
+              "control": [
+                631.598661,
+                640.334216,
+                640.795316,
+                640.8121450000001,
+                640.903791,
+                638.558749,
+                640.307389
+              ],
+              "condition": [
+                656.491239,
+                657.4561249999999,
+                656.48951,
+                644.870922,
+                656.673324,
+                656.969546,
+                655.638779
+              ],
+              "paired_ratios": [
+                1.039412018322819,
+                1.0267390193623511,
+                1.0244917426955724,
+                1.0063338016166967,
+                1.0246051485752563,
+                1.0288317982156407,
+                1.0239437967816425
+              ],
+              "control_median": 640.334216,
+              "condition_median": 656.491239,
+              "control_max": 640.903791,
+              "condition_max": 657.4561249999999,
+              "control_range": 9.305129999999963,
+              "condition_range": 12.585202999999979
+            },
+            "terminal_publish_ms": {
+              "control": [
+                631.5994019999999,
+                640.335588,
+                640.7964579999999,
+                640.8129769999999,
+                640.9048429999999,
+                638.559842,
+                640.308411
+              ],
+              "condition": [
+                656.4921310000001,
+                657.4570560000001,
+                656.491133,
+                644.8717029999999,
+                656.674687,
+                656.971189,
+                655.6397499999999
+              ],
+              "paired_ratios": [
+                1.0394122111597568,
+                1.0267382733692447,
+                1.0244924496758065,
+                1.0063337138067976,
+                1.0246055934390872,
+                1.0288326101784522,
+                1.0239436789156904
+              ],
+              "control_median": 640.335588,
+              "condition_median": 656.4921310000001,
+              "control_max": 640.9048429999999,
+              "condition_max": 657.4570560000001,
+              "control_range": 9.305440999999973,
+              "condition_range": 12.585353000000168
+            },
+            "index_ready_ms": {
+              "control": [
+                645.828595,
+                657.711571,
+                658.2105029999999,
+                657.9296,
+                657.976446,
+                656.417656,
+                657.696061
+              ],
+              "condition": [
+                674.5207009999999,
+                674.521705,
+                674.049489,
+                658.9665249999999,
+                674.460144,
+                674.505892,
+                673.1857150000001
+              ],
+              "paired_ratios": [
+                1.04442681265917,
+                1.0255585194805703,
+                1.0240637089925015,
+                1.0015760424823565,
+                1.0250521095401035,
+                1.0275559863977821,
+                1.0235513862990888
+              ],
+              "control_median": 657.711571,
+              "condition_median": 674.460144,
+              "control_max": 658.2105029999999,
+              "condition_max": 674.521705,
+              "control_range": 12.381907999999953,
+              "condition_range": 15.555180000000064
+            },
+            "results_ready_ms": {
+              "control": [
+                645.828595,
+                657.711571,
+                658.2105029999999,
+                657.9296,
+                657.976446,
+                656.417656,
+                657.696061
+              ],
+              "condition": [
+                674.5207009999999,
+                674.521705,
+                674.049489,
+                658.9665249999999,
+                674.460144,
+                674.505892,
+                673.1857150000001
+              ],
+              "paired_ratios": [
+                1.04442681265917,
+                1.0255585194805703,
+                1.0240637089925015,
+                1.0015760424823565,
+                1.0250521095401035,
+                1.0275559863977821,
+                1.0235513862990888
+              ],
+              "control_median": 657.711571,
+              "condition_median": 674.460144,
+              "control_max": 658.2105029999999,
+              "condition_max": 674.521705,
+              "control_range": 12.381907999999953,
+              "condition_range": 15.555180000000064
+            },
+            "full_wait_ms": {
+              "control": [
+                469.78974800000003,
+                468.441377,
+                471.18579700000004,
+                476.079573,
+                474.811852,
+                480.801843,
+                450.67195
+              ],
+              "condition": [
+                466.804459,
+                484.85645700000003,
+                494.943262,
+                482.743352,
+                493.672388,
+                487.000836,
+                483.315246
+              ],
+              "paired_ratios": [
+                0.9936454786152549,
+                1.0350419087765599,
+                1.0504205881231177,
+                1.0139971958007112,
+                1.0397221255546925,
+                1.0128930308613646,
+                1.0724324999592276
+              ],
+              "control_median": 471.18579700000004,
+              "condition_median": 484.85645700000003,
+              "control_max": 480.801843,
+              "condition_max": 494.943262,
+              "control_range": 30.12989300000004,
+              "condition_range": 28.138802999999996
+            },
+            "max_frame_ms": {
+              "control": [
+                21.508685,
+                18.087162,
+                18.883453000000003,
+                19.904797,
+                18.949963,
+                18.345453000000003,
+                19.208737
+              ],
+              "condition": [
+                18.801724,
+                18.885149000000002,
+                18.212626,
+                18.658134,
+                18.103659,
+                18.710147,
+                17.992347
+              ],
+              "paired_ratios": [
+                0.8741456765023059,
+                1.0441189723407134,
+                0.9644754060605334,
+                0.9373687156920014,
+                0.9553400711125399,
+                1.0198792583644567,
+                0.9366751702623655
+              ],
+              "control_median": 18.949963,
+              "condition_median": 18.658134,
+              "control_max": 21.508685,
+              "condition_max": 18.885149000000002,
+              "control_range": 3.4215230000000005,
+              "condition_range": 0.8928020000000032
+            },
+            "max_ingest_gap_ms": {
+              "control": [
+                34.899111,
+                32.336238,
+                32.397141999999995,
+                33.724451,
+                33.129707,
+                32.458739,
+                32.998482
+              ],
+              "condition": [
+                32.374590000000005,
+                33.002365999999995,
+                32.632729999999995,
+                32.771037,
+                32.577981,
+                32.469058000000004,
+                32.080866
+              ],
+              "paired_ratios": [
+                0.9276623120858295,
+                1.020600046300995,
+                1.0072718760191872,
+                0.9717292951633223,
+                0.9833464871874659,
+                1.0003179113027159,
+                0.9721921753855222
+              ],
+              "control_median": 32.998482,
+              "condition_median": 32.577981,
+              "control_max": 34.899111,
+              "condition_max": 33.002365999999995,
+              "control_range": 2.562872999999996,
+              "condition_range": 0.9214999999999947
+            },
+            "max_no_work_progress_ms": {
+              "control": [
+                34.899111,
+                32.336238,
+                32.397141999999995,
+                33.724451,
+                33.129707,
+                32.458739,
+                32.998482
+              ],
+              "condition": [
+                32.374590000000005,
+                33.002365999999995,
+                32.632729999999995,
+                32.076806,
+                32.10988,
+                32.469058000000004,
+                32.080866
+              ],
+              "paired_ratios": [
+                0.9276623120858295,
+                1.020600046300995,
+                1.0072718760191872,
+                0.95114390446267,
+                0.9692171439970777,
+                1.0003179113027159,
+                0.9721921753855222
+              ],
+              "control_median": 32.998482,
+              "condition_median": 32.374590000000005,
+              "control_max": 34.899111,
+              "condition_max": 33.002365999999995,
+              "control_range": 2.562872999999996,
+              "condition_range": 0.9255599999999973
+            },
+            "driver_overhead_ms": {
+              "control": [
+                121.17575799999999,
+                124.041331,
+                118.11607000000001,
+                126.11209000000001,
+                121.874995,
+                121.89102100000001,
+                120.449726
+              ],
+              "condition": [
+                124.16574700000001,
+                121.383931,
+                120.02649799999999,
+                124.035641,
+                126.73935,
+                121.478983,
+                118.842635
+              ],
+              "paired_ratios": [
+                1.0246748116071205,
+                0.9785764956037114,
+                1.0161741581818629,
+                0.9835348934428094,
+                1.0399126580476987,
+                0.9966196197503341,
+                0.9866575786149983
+              ],
+              "control_median": 121.874995,
+              "condition_median": 121.478983,
+              "control_max": 126.11209000000001,
+              "condition_max": 126.73935,
+              "control_range": 7.9960200000000015,
+              "condition_range": 7.896715
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "across_runs": [
+    {
+      "case": "S1-ignore",
+      "source": "FileList",
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": {
+            "values": [
+              259.95919899999996
+            ],
+            "median": 259.95919899999996,
+            "minimum": 259.95919899999996,
+            "maximum": 259.95919899999996,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              262.441409
+            ],
+            "median": 262.441409,
+            "minimum": 262.441409,
+            "maximum": 262.441409,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              277.296292
+            ],
+            "median": 277.296292,
+            "minimum": 277.296292,
+            "maximum": 277.296292,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              427.46847199999996
+            ],
+            "median": 427.46847199999996,
+            "minimum": 427.46847199999996,
+            "maximum": 427.46847199999996,
+            "spread": 0.0
+          }
+        },
+        "terminal_publish_ms": {
+          "control_median": {
+            "values": [
+              260.922079
+            ],
+            "median": 260.922079,
+            "minimum": 260.922079,
+            "maximum": 260.922079,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              263.284436
+            ],
+            "median": 263.284436,
+            "minimum": 263.284436,
+            "maximum": 263.284436,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              278.414086
+            ],
+            "median": 278.414086,
+            "minimum": 278.414086,
+            "maximum": 278.414086,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              428.76779799999997
+            ],
+            "median": 428.76779799999997,
+            "minimum": 428.76779799999997,
+            "maximum": 428.76779799999997,
+            "spread": 0.0
+          }
+        },
+        "index_ready_ms": {
+          "control_median": {
+            "values": [
+              509.424953
+            ],
+            "median": 509.424953,
+            "minimum": 509.424953,
+            "maximum": 509.424953,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              524.826782
+            ],
+            "median": 524.826782,
+            "minimum": 524.826782,
+            "maximum": 524.826782,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              556.582184
+            ],
+            "median": 556.582184,
+            "minimum": 556.582184,
+            "maximum": 556.582184,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              707.429942
+            ],
+            "median": 707.429942,
+            "minimum": 707.429942,
+            "maximum": 707.429942,
+            "spread": 0.0
+          }
+        },
+        "results_ready_ms": {
+          "control_median": {
+            "values": [
+              509.424953
+            ],
+            "median": 509.424953,
+            "minimum": 509.424953,
+            "maximum": 509.424953,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              524.826782
+            ],
+            "median": 524.826782,
+            "minimum": 524.826782,
+            "maximum": 524.826782,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              727.034148
+            ],
+            "median": 727.034148,
+            "minimum": 727.034148,
+            "maximum": 727.034148,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              933.868874
+            ],
+            "median": 933.868874,
+            "minimum": 933.868874,
+            "maximum": 933.868874,
+            "spread": 0.0
+          }
+        },
+        "full_wait_ms": {
+          "control_median": {
+            "values": [
+              92.860854
+            ],
+            "median": 92.860854,
+            "minimum": 92.860854,
+            "maximum": 92.860854,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              103.638105
+            ],
+            "median": 103.638105,
+            "minimum": 103.638105,
+            "maximum": 103.638105,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              119.564186
+            ],
+            "median": 119.564186,
+            "minimum": 119.564186,
+            "maximum": 119.564186,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              175.778475
+            ],
+            "median": 175.778475,
+            "minimum": 175.778475,
+            "maximum": 175.778475,
+            "spread": 0.0
+          }
+        },
+        "max_frame_ms": {
+          "control_median": {
+            "values": [
+              10.247274
+            ],
+            "median": 10.247274,
+            "minimum": 10.247274,
+            "maximum": 10.247274,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              11.095141
+            ],
+            "median": 11.095141,
+            "minimum": 11.095141,
+            "maximum": 11.095141,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              10.411428
+            ],
+            "median": 10.411428,
+            "minimum": 10.411428,
+            "maximum": 10.411428,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              15.040617
+            ],
+            "median": 15.040617,
+            "minimum": 15.040617,
+            "maximum": 15.040617,
+            "spread": 0.0
+          }
+        },
+        "max_ingest_gap_ms": {
+          "control_median": {
+            "values": [
+              24.323126000000002
+            ],
+            "median": 24.323126000000002,
+            "minimum": 24.323126000000002,
+            "maximum": 24.323126000000002,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              24.950453
+            ],
+            "median": 24.950453,
+            "minimum": 24.950453,
+            "maximum": 24.950453,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              34.955022
+            ],
+            "median": 34.955022,
+            "minimum": 34.955022,
+            "maximum": 34.955022,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              35.399459
+            ],
+            "median": 35.399459,
+            "minimum": 35.399459,
+            "maximum": 35.399459,
+            "spread": 0.0
+          }
+        },
+        "max_no_work_progress_ms": {
+          "control_median": {
+            "values": [
+              24.323126000000002
+            ],
+            "median": 24.323126000000002,
+            "minimum": 24.323126000000002,
+            "maximum": 24.323126000000002,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              24.950453
+            ],
+            "median": 24.950453,
+            "minimum": 24.950453,
+            "maximum": 24.950453,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              183.837482
+            ],
+            "median": 183.837482,
+            "minimum": 183.837482,
+            "maximum": 183.837482,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              226.43893200000002
+            ],
+            "median": 226.43893200000002,
+            "minimum": 226.43893200000002,
+            "maximum": 226.43893200000002,
+            "spread": 0.0
+          }
+        },
+        "driver_overhead_ms": {
+          "control_median": {
+            "values": [
+              153.733376
+            ],
+            "median": 153.733376,
+            "minimum": 153.733376,
+            "maximum": 153.733376,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              161.00139099999998
+            ],
+            "median": 161.00139099999998,
+            "minimum": 161.00139099999998,
+            "maximum": 161.00139099999998,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              183.84509
+            ],
+            "median": 183.84509,
+            "minimum": 183.84509,
+            "maximum": 183.84509,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              237.489125
+            ],
+            "median": 237.489125,
+            "minimum": 237.489125,
+            "maximum": 237.489125,
+            "spread": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "S1-ignore",
+      "source": "Walker",
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": {
+            "values": [
+              790.576907
+            ],
+            "median": 790.576907,
+            "minimum": 790.576907,
+            "maximum": 790.576907,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              793.0118470000001
+            ],
+            "median": 793.0118470000001,
+            "minimum": 793.0118470000001,
+            "maximum": 793.0118470000001,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              805.707358
+            ],
+            "median": 805.707358,
+            "minimum": 805.707358,
+            "maximum": 805.707358,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              809.645407
+            ],
+            "median": 809.645407,
+            "minimum": 809.645407,
+            "maximum": 809.645407,
+            "spread": 0.0
+          }
+        },
+        "terminal_publish_ms": {
+          "control_median": {
+            "values": [
+              790.578049
+            ],
+            "median": 790.578049,
+            "minimum": 790.578049,
+            "maximum": 790.578049,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              793.01292
+            ],
+            "median": 793.01292,
+            "minimum": 793.01292,
+            "maximum": 793.01292,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              805.70838
+            ],
+            "median": 805.70838,
+            "minimum": 805.70838,
+            "maximum": 805.70838,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              809.646199
+            ],
+            "median": 809.646199,
+            "minimum": 809.646199,
+            "maximum": 809.646199,
+            "spread": 0.0
+          }
+        },
+        "index_ready_ms": {
+          "control_median": {
+            "values": [
+              853.763196
+            ],
+            "median": 853.763196,
+            "minimum": 853.763196,
+            "maximum": 853.763196,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              971.493856
+            ],
+            "median": 971.493856,
+            "minimum": 971.493856,
+            "maximum": 971.493856,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              885.291369
+            ],
+            "median": 885.291369,
+            "minimum": 885.291369,
+            "maximum": 885.291369,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              903.925604
+            ],
+            "median": 903.925604,
+            "minimum": 903.925604,
+            "maximum": 903.925604,
+            "spread": 0.0
+          }
+        },
+        "results_ready_ms": {
+          "control_median": {
+            "values": [
+              853.763196
+            ],
+            "median": 853.763196,
+            "minimum": 853.763196,
+            "maximum": 853.763196,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              971.493856
+            ],
+            "median": 971.493856,
+            "minimum": 971.493856,
+            "maximum": 971.493856,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              1040.184185
+            ],
+            "median": 1040.184185,
+            "minimum": 1040.184185,
+            "maximum": 1040.184185,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              1058.526253
+            ],
+            "median": 1058.526253,
+            "minimum": 1058.526253,
+            "maximum": 1058.526253,
+            "spread": 0.0
+          }
+        },
+        "full_wait_ms": {
+          "control_median": {
+            "values": [
+              608.121796
+            ],
+            "median": 608.121796,
+            "minimum": 608.121796,
+            "maximum": 608.121796,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              631.450782
+            ],
+            "median": 631.450782,
+            "minimum": 631.450782,
+            "maximum": 631.450782,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              648.957752
+            ],
+            "median": 648.957752,
+            "minimum": 648.957752,
+            "maximum": 648.957752,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              657.433613
+            ],
+            "median": 657.433613,
+            "minimum": 657.433613,
+            "maximum": 657.433613,
+            "spread": 0.0
+          }
+        },
+        "max_frame_ms": {
+          "control_median": {
+            "values": [
+              19.124468
+            ],
+            "median": 19.124468,
+            "minimum": 19.124468,
+            "maximum": 19.124468,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              21.180608
+            ],
+            "median": 21.180608,
+            "minimum": 21.180608,
+            "maximum": 21.180608,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              18.336309
+            ],
+            "median": 18.336309,
+            "minimum": 18.336309,
+            "maximum": 18.336309,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              20.946462
+            ],
+            "median": 20.946462,
+            "minimum": 20.946462,
+            "maximum": 20.946462,
+            "spread": 0.0
+          }
+        },
+        "max_ingest_gap_ms": {
+          "control_median": {
+            "values": [
+              30.820853
+            ],
+            "median": 30.820853,
+            "minimum": 30.820853,
+            "maximum": 30.820853,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              33.021891999999994
+            ],
+            "median": 33.021891999999994,
+            "minimum": 33.021891999999994,
+            "maximum": 33.021891999999994,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              34.220109
+            ],
+            "median": 34.220109,
+            "minimum": 34.220109,
+            "maximum": 34.220109,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              34.702667
+            ],
+            "median": 34.702667,
+            "minimum": 34.702667,
+            "maximum": 34.702667,
+            "spread": 0.0
+          }
+        },
+        "max_no_work_progress_ms": {
+          "control_median": {
+            "values": [
+              30.820853
+            ],
+            "median": 30.820853,
+            "minimum": 30.820853,
+            "maximum": 30.820853,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              33.021891999999994
+            ],
+            "median": 33.021891999999994,
+            "minimum": 33.021891999999994,
+            "maximum": 33.021891999999994,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              169.777228
+            ],
+            "median": 169.777228,
+            "minimum": 169.777228,
+            "maximum": 169.777228,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              171.85441600000001
+            ],
+            "median": 171.85441600000001,
+            "minimum": 171.85441600000001,
+            "maximum": 171.85441600000001,
+            "spread": 0.0
+          }
+        },
+        "driver_overhead_ms": {
+          "control_median": {
+            "values": [
+              147.637126
+            ],
+            "median": 147.637126,
+            "minimum": 147.637126,
+            "maximum": 147.637126,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              149.874485
+            ],
+            "median": 149.874485,
+            "minimum": 149.874485,
+            "maximum": 149.874485,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              164.976019
+            ],
+            "median": 164.976019,
+            "minimum": 164.976019,
+            "maximum": 164.976019,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              168.50430699999998
+            ],
+            "median": 168.50430699999998,
+            "minimum": 168.50430699999998,
+            "maximum": 168.50430699999998,
+            "spread": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "S2-files",
+      "source": "Walker",
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": {
+            "values": [
+              640.334216
+            ],
+            "median": 640.334216,
+            "minimum": 640.334216,
+            "maximum": 640.334216,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              640.903791
+            ],
+            "median": 640.903791,
+            "minimum": 640.903791,
+            "maximum": 640.903791,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              656.491239
+            ],
+            "median": 656.491239,
+            "minimum": 656.491239,
+            "maximum": 656.491239,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              657.4561249999999
+            ],
+            "median": 657.4561249999999,
+            "minimum": 657.4561249999999,
+            "maximum": 657.4561249999999,
+            "spread": 0.0
+          }
+        },
+        "terminal_publish_ms": {
+          "control_median": {
+            "values": [
+              640.335588
+            ],
+            "median": 640.335588,
+            "minimum": 640.335588,
+            "maximum": 640.335588,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              640.9048429999999
+            ],
+            "median": 640.9048429999999,
+            "minimum": 640.9048429999999,
+            "maximum": 640.9048429999999,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              656.4921310000001
+            ],
+            "median": 656.4921310000001,
+            "minimum": 656.4921310000001,
+            "maximum": 656.4921310000001,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              657.4570560000001
+            ],
+            "median": 657.4570560000001,
+            "minimum": 657.4570560000001,
+            "maximum": 657.4570560000001,
+            "spread": 0.0
+          }
+        },
+        "index_ready_ms": {
+          "control_median": {
+            "values": [
+              657.711571
+            ],
+            "median": 657.711571,
+            "minimum": 657.711571,
+            "maximum": 657.711571,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              658.2105029999999
+            ],
+            "median": 658.2105029999999,
+            "minimum": 658.2105029999999,
+            "maximum": 658.2105029999999,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              674.460144
+            ],
+            "median": 674.460144,
+            "minimum": 674.460144,
+            "maximum": 674.460144,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              674.521705
+            ],
+            "median": 674.521705,
+            "minimum": 674.521705,
+            "maximum": 674.521705,
+            "spread": 0.0
+          }
+        },
+        "results_ready_ms": {
+          "control_median": {
+            "values": [
+              657.711571
+            ],
+            "median": 657.711571,
+            "minimum": 657.711571,
+            "maximum": 657.711571,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              658.2105029999999
+            ],
+            "median": 658.2105029999999,
+            "minimum": 658.2105029999999,
+            "maximum": 658.2105029999999,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              674.460144
+            ],
+            "median": 674.460144,
+            "minimum": 674.460144,
+            "maximum": 674.460144,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              674.521705
+            ],
+            "median": 674.521705,
+            "minimum": 674.521705,
+            "maximum": 674.521705,
+            "spread": 0.0
+          }
+        },
+        "full_wait_ms": {
+          "control_median": {
+            "values": [
+              471.18579700000004
+            ],
+            "median": 471.18579700000004,
+            "minimum": 471.18579700000004,
+            "maximum": 471.18579700000004,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              480.801843
+            ],
+            "median": 480.801843,
+            "minimum": 480.801843,
+            "maximum": 480.801843,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              484.85645700000003
+            ],
+            "median": 484.85645700000003,
+            "minimum": 484.85645700000003,
+            "maximum": 484.85645700000003,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              494.943262
+            ],
+            "median": 494.943262,
+            "minimum": 494.943262,
+            "maximum": 494.943262,
+            "spread": 0.0
+          }
+        },
+        "max_frame_ms": {
+          "control_median": {
+            "values": [
+              18.949963
+            ],
+            "median": 18.949963,
+            "minimum": 18.949963,
+            "maximum": 18.949963,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              21.508685
+            ],
+            "median": 21.508685,
+            "minimum": 21.508685,
+            "maximum": 21.508685,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              18.658134
+            ],
+            "median": 18.658134,
+            "minimum": 18.658134,
+            "maximum": 18.658134,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              18.885149000000002
+            ],
+            "median": 18.885149000000002,
+            "minimum": 18.885149000000002,
+            "maximum": 18.885149000000002,
+            "spread": 0.0
+          }
+        },
+        "max_ingest_gap_ms": {
+          "control_median": {
+            "values": [
+              32.998482
+            ],
+            "median": 32.998482,
+            "minimum": 32.998482,
+            "maximum": 32.998482,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              34.899111
+            ],
+            "median": 34.899111,
+            "minimum": 34.899111,
+            "maximum": 34.899111,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              32.577981
+            ],
+            "median": 32.577981,
+            "minimum": 32.577981,
+            "maximum": 32.577981,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              33.002365999999995
+            ],
+            "median": 33.002365999999995,
+            "minimum": 33.002365999999995,
+            "maximum": 33.002365999999995,
+            "spread": 0.0
+          }
+        },
+        "max_no_work_progress_ms": {
+          "control_median": {
+            "values": [
+              32.998482
+            ],
+            "median": 32.998482,
+            "minimum": 32.998482,
+            "maximum": 32.998482,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              34.899111
+            ],
+            "median": 34.899111,
+            "minimum": 34.899111,
+            "maximum": 34.899111,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              32.374590000000005
+            ],
+            "median": 32.374590000000005,
+            "minimum": 32.374590000000005,
+            "maximum": 32.374590000000005,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              33.002365999999995
+            ],
+            "median": 33.002365999999995,
+            "minimum": 33.002365999999995,
+            "maximum": 33.002365999999995,
+            "spread": 0.0
+          }
+        },
+        "driver_overhead_ms": {
+          "control_median": {
+            "values": [
+              121.874995
+            ],
+            "median": 121.874995,
+            "minimum": 121.874995,
+            "maximum": 121.874995,
+            "spread": 0.0
+          },
+          "control_max": {
+            "values": [
+              126.11209000000001
+            ],
+            "median": 126.11209000000001,
+            "minimum": 126.11209000000001,
+            "maximum": 126.11209000000001,
+            "spread": 0.0
+          },
+          "condition_median": {
+            "values": [
+              121.478983
+            ],
+            "median": 121.478983,
+            "minimum": 121.478983,
+            "maximum": 121.478983,
+            "spread": 0.0
+          },
+          "condition_max": {
+            "values": [
+              126.73935
+            ],
+            "median": 126.73935,
+            "minimum": 126.73935,
+            "maximum": 126.73935,
+            "spread": 0.0
+          }
+        }
+      }
+    }
+  ],
+  "timing_gate": null,
+  "limitation": "No timing threshold or statistical guarantee; all seven pairs retained. Different work and platform observations remain separate."
+}
