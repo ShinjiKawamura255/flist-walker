@@ -144,6 +144,32 @@ fn handoff_test_batch(
     }
 }
 
+fn handoff_fixture_name() -> String {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    format!(
+        "tc-207-handoff-guards-{}-{}",
+        std::process::id(),
+        NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+    )
+}
+
+#[test]
+fn tc_207_parallel_handoff_fixtures_have_distinct_names() {
+    let names = std::thread::scope(|scope| {
+        (0..16)
+            .map(|_| scope.spawn(handoff_fixture_name))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .map(|thread| thread.join().unwrap())
+            .collect::<std::collections::HashSet<_>>()
+    });
+    assert_eq!(
+        names.len(),
+        16,
+        "a clock tick cannot share fixture ownership"
+    );
+}
+
 fn handoff_test_app(
     started_active: bool,
 ) -> (
@@ -154,8 +180,9 @@ fn handoff_test_app(
     Arc<crate::app::index_mailbox::IndexResponseMailbox>,
 ) {
     use crate::app::index_response_effects::{IndexResponseApplicationOwner, RoutedIndexResponse};
-    let settings = test_settings_scope("tc-207-handoff-guards");
-    let root = test_root("tc-207-handoff-guards-root");
+    let name = handoff_fixture_name();
+    let settings = test_settings_scope(&name);
+    let root = test_root(&format!("{name}-root"));
     fs::create_dir(&root).unwrap();
     fs::write(root.join("FileList.txt"), "").unwrap();
     let mut app = settings.app(root.clone(), 50, String::new());
