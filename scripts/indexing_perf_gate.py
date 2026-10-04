@@ -211,9 +211,10 @@ def collect_triplet(args):
         prepare("reference-object-fetch", ["git","fetch","--no-tags","--depth=1","origin",REFERENCE], reference)
         prepare("reference-checkout", ["git","checkout","--detach",REFERENCE], reference)
         legs = {}
-        for role in ROLES:
+        for index, role in enumerate(ROLES, 1):
             candidate = role == "candidate"
-            leg = out/(role+"-session")
+            # Equal-length opaque ancestors avoid source-role path cost/query bias.
+            leg = out/f"leg-{index:02d}"
             options = dict(vars(args), root=str(root if candidate else reference),
                 revision=args.revision if candidate else REFERENCE, output=str(leg),
                 collector_source=source, budget=budget,

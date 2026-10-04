@@ -249,6 +249,8 @@ class OrchestrationTests(unittest.TestCase):
             self.assertNotEqual(calls[0].build_target,calls[1].build_target)
             self.assertIs(calls[0].budget,calls[2].budget)
             self.assertEqual([c.revision for c in calls],[REFERENCE,"a"*40,REFERENCE])
+            # Absolute candidate paths must not be longer only for reference legs.
+            self.assertEqual(len({len(str(Path(c.output)/"fixtures").encode()) for c in calls}),1)
             # Copy exactly the existing workflow upload selection; nested dirs excluded.
             uploaded = folder/"uploaded";uploaded.mkdir()
             for file in [out/"receipt.json",out/"summary.json",*out.glob("*.log")]:
