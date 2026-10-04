@@ -19,6 +19,52 @@ SPEC.loader.exec_module(POLICY)
 
 
 class CiPolicyTests(unittest.TestCase):
+    def test_indexing_weekly_contract_preserves_dispatch_and_evidence(self) -> None:
+        text = (ROOT / ".github/workflows/perf-regression.yml").read_text()
+        self.assertEqual([], POLICY.validate_indexing_perf_contract(text))
+        # The normal candidate-policy entrypoint must actually use this guard.
+        with mock.patch.object(POLICY, "validate_indexing_perf_contract", return_value=["indexing sentinel"]):
+            self.assertIn("indexing sentinel", POLICY.collect_violations(ROOT))
+
+    def test_indexing_weekly_contract_rejects_incomplete_or_weakened_runs(self) -> None:
+        text = (ROOT / ".github/workflows/perf-regression.yml").read_text()
+        mutations = [
+            ("default: false", "default: true"),
+            ('    - cron: "0 18 * * 1"', '#    - cron: "0 18 * * 1"'),
+            ('        if: ${{ always() }}', '#        if: ${{ always() }}'),
+            ("type: boolean", "type: string"),
+            ("group: [f1, matched, stable]", "group: [f1, matched]"),
+            ("group: [f1, matched, stable]", "group: [f1, matched, stable]\n        exclude: [{group: stable}]"),
+            ("fail-fast: false", "fail-fast: true"),
+            ("timeout-minutes: 90", "timeout-minutes: 20"),
+            ("github.event_name == 'schedule' || inputs.indexing_calibration", "inputs.indexing_calibration"),
+            ("github.event_name == 'schedule' || !inputs.indexing_calibration", "!inputs.indexing_calibration"),
+            ('--revision "$GITHUB_SHA"', '--revision "unmeasured"'),
+            ('--group "$INDEXING_GROUP"', '--group f1'),
+            ("--build-timeout 1800 --measurement-timeout 2700", "--build-timeout 1800 --measurement-timeout 1"),
+            ("      - name: Collect fixed indexing observations\n", "      - name: Collect fixed indexing observations\n        continue-on-error: true\n"),
+            ("    name: Indexing Contention (${{ matrix.group }})\n", "    name: Indexing Contention (${{ matrix.group }})\n    continue-on-error: true\n"),
+            ("if: ${{ always() }}", "if: ${{ success() }}"),
+            ("retention-days: 14", "retention-days: 1"),
+            ("/receipt.json", "/summary-only.json"),
+            ("/*.log", "/measurement.log"),
+            ("if-no-files-found: error", "if-no-files-found: ignore"),
+            ("INDEXING_GROUP: ${{ matrix.group }}", "INDEXING_GROUP: f1"),
+            ("--build-timeout 1800 --measurement-timeout 2700", "--build-timeout 1800 --measurement-timeout 2700 --local-observation"),
+            ("            ~/.cargo/git/db", "            ~/.cargo/git/db\n            /tmp/reused-release-build"),
+        ]
+        for old, new in mutations:
+            with self.subTest(mutation=old):
+                candidate = text.replace(old, new)
+                self.assertNotEqual(text, candidate)
+                self.assertTrue(POLICY.validate_indexing_perf_contract(candidate))
+        for name in ("perf_filelist_stream_is_faster_than_metadata_probe_baseline",
+                     "perf_walker_classification_is_faster_than_eager_metadata_resolution",
+                     "perf_adaptive_walker_reports_local_dataset_metrics",
+                     "perf_search_100k_cold_warm_query_shapes"):
+            with self.subTest(legacy=name):
+                self.assertTrue(POLICY.validate_indexing_perf_contract(text.replace(name, "removed_test")))
+
     def test_install_tool_pins_cover_explicit_rust_selector(self) -> None:
         workflow = (ROOT / ".github/workflows/release-tagged.yml").read_text()
         original = f"cargo +{POLICY.PINNED_RUST} install cargo-audit --version {POLICY.PINNED_CARGO_AUDIT} --locked --force"

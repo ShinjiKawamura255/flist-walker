@@ -3,6 +3,12 @@ name: Heavy Weekly Perf Regression
 
 on:
   workflow_dispatch:
+    inputs:
+      indexing_calibration:
+        description: Run fixed indexing contention observations
+        type: boolean
+        required: false
+        default: false
   schedule:
     - cron: "0 18 * * 1"
 
@@ -20,6 +26,7 @@ env:
 jobs:
   perf-regression:
     name: Heavy Perf Regression Checks
+    if: ${{ github.event_name == 'schedule' || !inputs.indexing_calibration }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     defaults:
@@ -64,3 +71,62 @@ jobs:
 
       - name: Run TC-156 search cold warm query-shape regression
         run: cargo test --release --locked perf_search_100k_cold_warm_query_shapes --lib -- --ignored --nocapture
+
+  indexing-contention:
+    name: Indexing Contention (${{ matrix.group }})
+    if: ${{ github.event_name == 'schedule' || inputs.indexing_calibration }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [f1, matched, stable]
+    defaults:
+      run:
+        shell: bash
+        working-directory: .
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Record runner image
+        run: |
+          echo "runner_image_os=${ImageOS:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "runner_image_version=${ImageVersion:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable action branch
+        with:
+          toolchain: 1.97.1
+
+      - name: Cache Cargo downloads
+        continue-on-error: true
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-perf-rust-${{ env.RUST_VERSION }}-${{ hashFiles('rust/Cargo.lock', 'rust/Cargo.toml') }}
+
+      - name: Collect fixed indexing observations
+        env:
+          INDEXING_GROUP: ${{ matrix.group }}
+        run: |
+          python3 scripts/indexing_perf.py collect \
+            --root "$GITHUB_WORKSPACE" --group "$INDEXING_GROUP" \
+            --revision "$GITHUB_SHA" \
+            --output "$RUNNER_TEMP/indexing-contention-$INDEXING_GROUP" \
+            --build-timeout 1800 --measurement-timeout 2700
+
+      - name: Retain indexing evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: indexing-contention-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.group }}
+          path: |
+            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/receipt.json
+            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/summary.json
+            ${{ runner.temp }}/indexing-contention-${{ matrix.group }}/*.log
+          if-no-files-found: error
+          retention-days: 14
