@@ -172,12 +172,233 @@ fn capture_deferred(
         record_planned_new(driver, plans, tab, 1);
     }
 }
+#[derive(Debug, PartialEq)]
+enum SwitchAdmission {
+    Activated(bool),
+    WaitForFinishedWarm(u64),
+}
+#[test]
+fn tc_229_finished_warm_switch_waits_for_own_commit_before_eviction() {
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.create_new_tab();
+    driver.app.create_new_tab();
+    driver.settle_startup();
+    let warm = driver.app.shell.tabs.get(1).unwrap().id;
+    let active = driver.app.current_tab_id();
+    let root = driver.app.shell.tabs.get(1).unwrap().root.clone();
+    let now = Instant::now();
+    let observation = crate::app::index_mailbox::IndexPerfObservation {
+        terminal_kind: Some("finished"),
+        terminal_offer_kind: Some("finished"),
+        terminal_published: Some(now),
+        started_root: Some(root),
+        started_source: Some("Walker"),
+        terminal_source: Some("Walker"),
+        request_processing_returned: Some(now),
+        entries_emitted: 8,
+        ..Default::default()
+    };
+    let handle = Arc::new(std::sync::Mutex::new(observation));
+    let i = &mut driver.app.shell.indexing;
+    i.warm_tab_id = Some(warm);
+    i.latest_request_ids.lock().unwrap().insert(warm, 777);
+    i.request_tabs.insert(777, warm);
+    i.perf_allocations
+        .push(crate::app::index_coordinator::IndexPerfAllocation {
+            id: 777,
+            tab: Some(warm),
+            at: now,
+            observation: handle,
+        });
+    let mut plans = vec![PlannedRequest {
+        id: 777,
+        tab: warm,
+        ..Default::default()
+    }];
+    let mut future = HashMap::new();
+    // Finished can arrive after an outer checkpoint. Admission itself must
+    // notice it; old equal-count data is not this request's committed snapshot.
+    assert_eq!(
+        planned_switch_guarded(&mut driver, 0, &mut plans, &mut future, true),
+        SwitchAdmission::WaitForFinishedWarm(777)
+    );
+    assert_eq!(driver.app.current_tab_id(), active);
+    assert_eq!(
+        driver.app.shell.indexing.latest_request_for_tab(warm),
+        Some(777)
+    );
+    assert_eq!(
+        driver.app.shell.indexing.request_tabs.get(&777),
+        Some(&warm)
+    );
+    assert!(plans[0].permission_at.is_none());
+    assert!(future.is_empty());
+}
+fn finished_warm_commit_pending(
+    driver: &Driver,
+    plans: &[PlannedRequest],
+    warm: u64,
+) -> Option<u64> {
+    let p = plans
+        .iter()
+        .filter(|p| p.tab == warm)
+        .max_by_key(|p| p.id)?;
+    let a = driver
+        .app
+        .shell
+        .indexing
+        .perf_allocations
+        .iter()
+        .find(|a| a.id == p.id)?;
+    let o = a.observation.lock().unwrap().clone();
+    if o.terminal_kind != Some("finished") {
+        return None;
+    }
+    let t = driver
+        .app
+        .shell
+        .tabs
+        .iter()
+        .find(|t| t.id == warm)
+        .expect("owned Warm tab");
+    let snapshot = &t.result_state.committed;
+    let own_commit = snapshot.freshness.as_ref().is_some_and(|f| {
+        f.request_id == p.id
+            && f.root == t.root
+            && o.started_root.as_ref() == Some(&t.root)
+            && o.started_source == o.terminal_source
+            && match (&f.source, o.terminal_source) {
+                (IndexSource::Walker, Some("Walker")) => true,
+                (IndexSource::FileList(path), Some("FileList")) => {
+                    path == &t.root.join("FileList.txt")
+                }
+                _ => false,
+            }
+    });
+    let settled = own_commit
+        && snapshot.all_entries.len() == o.entries_emitted
+        && snapshot.entries.len() == o.entries_emitted
+        && !tab_debt(t)
+        && !driver
+            .app
+            .shell
+            .indexing
+            .background_finalizations
+            .contains_key(&p.id)
+        && !driver.app.shell.indexing.request_tabs.contains_key(&p.id)
+        && driver
+            .app
+            .shell
+            .indexing
+            .perf_released_requests
+            .contains_key(&p.id)
+        && physical_request_complete(&o);
+    (!settled).then_some(p.id)
+}
+#[test]
+fn tc_229_finished_warm_admission_accepts_actual_commit_and_rejects_stale_identity() {
+    if super::super::child_process::isolate(
+        module_path!(),
+        "tc_229_finished_warm_admission_accepts_actual_commit_and_rejects_stale_identity",
+    ) {
+        return;
+    }
+    let fixture = ExtendedFixture::new(32, super::fixture::Shape::FlatFiles);
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    configure(
+        &mut driver,
+        &fixture,
+        Source::Walker,
+        default_filter(),
+        false,
+    );
+    driver.app.shell.indexing.perf_observe_requests = true;
+    driver.app.shell.indexing.perf_observe_history = true;
+    driver.app.request_index_refresh();
+    let id = driver.app.shell.indexing.pending_request_id.unwrap();
+    let warm = driver.app.current_tab_id().unwrap();
+    settle_setup(&mut driver);
+    driver.app.create_new_tab();
+    settle_setup(&mut driver);
+    let plans = vec![PlannedRequest {
+        id,
+        tab: warm,
+        ..Default::default()
+    }];
+    let n = driver
+        .app
+        .shell
+        .tabs
+        .iter()
+        .position(|t| t.id == warm)
+        .unwrap();
+    assert_eq!(finished_warm_commit_pending(&driver, &plans, warm), None);
+    let tab = driver.app.shell.tabs.get_mut(n).unwrap();
+    tab.result_state
+        .committed
+        .freshness
+        .as_mut()
+        .unwrap()
+        .request_id = id + 1;
+    assert_eq!(
+        finished_warm_commit_pending(&driver, &plans, warm),
+        Some(id),
+        "same cardinality with another generation must defer"
+    );
+    driver
+        .app
+        .shell
+        .tabs
+        .get_mut(n)
+        .unwrap()
+        .result_state
+        .committed
+        .freshness
+        .as_mut()
+        .unwrap()
+        .request_id = id;
+    driver
+        .app
+        .shell
+        .tabs
+        .get_mut(n)
+        .unwrap()
+        .index_state
+        .kind_resolution_in_progress = true;
+    assert_eq!(
+        finished_warm_commit_pending(&driver, &plans, warm),
+        Some(id)
+    );
+    driver
+        .app
+        .shell
+        .tabs
+        .get_mut(n)
+        .unwrap()
+        .index_state
+        .kind_resolution_in_progress = false;
+    assert_eq!(finished_warm_commit_pending(&driver, &plans, warm), None);
+}
 fn planned_switch(
     driver: &mut Driver,
     n: usize,
     plans: &mut Vec<PlannedRequest>,
     future: &mut HashMap<u64, usize>,
 ) -> bool {
+    match planned_switch_guarded(driver, n, plans, future, false) {
+        SwitchAdmission::Activated(active) => active,
+        SwitchAdmission::WaitForFinishedWarm(_) => unreachable!("unguarded switch"),
+    }
+}
+fn planned_switch_guarded(
+    driver: &mut Driver,
+    n: usize,
+    plans: &mut Vec<PlannedRequest>,
+    future: &mut HashMap<u64, usize>,
+    wait_for_finished_warm: bool,
+) -> SwitchAdmission {
     let tab = driver.app.shell.tabs.get(n).expect("switch target");
     let id = tab.id;
     let lifecycle = tab.index_state.lifecycle();
@@ -196,7 +417,21 @@ fn planned_switch(
                 ));
     if let Some(warm) = driver.app.shell.indexing.warm_tab_id {
         if warm != id && Some(warm) != driver.app.current_tab_id() {
+            if wait_for_finished_warm {
+                if let Some(id) = finished_warm_commit_pending(driver, plans, warm) {
+                    return SwitchAdmission::WaitForFinishedWarm(id);
+                }
+            }
+            let before_permission = wait_for_finished_warm.then(|| plans.clone());
             permit_revocation(driver, plans, warm, "switch-evicts-previous-Warm");
+            // Publication may happen after the outer input checkpoint. Recheck
+            // the actual classification before any replacement mutation.
+            if wait_for_finished_warm {
+                if let Some(id) = finished_warm_commit_pending(driver, plans, warm) {
+                    *plans = before_permission.unwrap();
+                    return SwitchAdmission::WaitForFinishedWarm(id);
+                }
+            }
         }
     }
     if auto {
@@ -220,7 +455,7 @@ fn planned_switch(
             );
         }
     }
-    active
+    SwitchAdmission::Activated(active)
 }
 fn declare_tabchain_victim(
     driver: &Driver,
@@ -1057,6 +1292,7 @@ pub(super) fn run(
     }
     let mut events = Vec::<serde_json::Value>::new();
     let mut transition_events = Vec::<serde_json::Value>::new();
+    let mut finished_warm_waits = Vec::<serde_json::Value>::new();
     let mut pending_transition: Option<(usize, usize)> = None;
     let mut gui_sort_completions = Vec::new();
     let mut driver_overhead = Duration::ZERO;
@@ -1184,6 +1420,7 @@ pub(super) fn run(
             };
             if checkpoint >= threshold.max(1) {
                 let input_at = Instant::now();
+                let mut input_admitted = true;
                 match profile {
                     Profile::IgnoreCase => {
                         driver.app.set_ignore_case(true);
@@ -1250,6 +1487,7 @@ pub(super) fn run(
                     }
                     Profile::TabChain => {
                         let n = if stage == 2 { 0 } else { stage + 1 };
+                        let before_declaration = plans.clone();
                         declare_tabchain_victim(
                             &driver,
                             &mut plans,
@@ -1258,7 +1496,21 @@ pub(super) fn run(
                             &seed_witnesses,
                             &tabs,
                         );
-                        if planned_switch(&mut driver, n, &mut plans, &mut deferred_allocations) {
+                        let admission = planned_switch_guarded(
+                            &mut driver,
+                            n,
+                            &mut plans,
+                            &mut deferred_allocations,
+                            true,
+                        );
+                        if let SwitchAdmission::WaitForFinishedWarm(id) = admission {
+                            plans = before_declaration;
+                            input_admitted = false;
+                            if !finished_warm_waits.iter().any(|w| w["stage"] == stage) {
+                                assert!(finished_warm_waits.len() < 3, "bounded fixed trace waits");
+                                finished_warm_waits.push(serde_json::json!({"stage":stage,"request_id":id,"checkpoint":checkpoint,"start_ms":ms(input_at.duration_since(start)),"end_ms":null,"reason":"observed-Finished-own-commit-before-Warm-eviction"}));
+                            }
+                        } else if admission == SwitchAdmission::Activated(true) {
                             assert!(acknowledge_tabchain_switch(
                                 &driver,
                                 &mut plans,
@@ -1308,9 +1560,15 @@ pub(super) fn run(
                         done_inputs = true;
                     }
                 }
-                events.push(serde_json::json!({"stage":stage,"at_ms":ms(input_at.duration_since(start)),"GUI_ingested":checkpoint,"query":match profile{Profile::EditFiles|Profile::StableEdit=>match stage{0=>"item",1=>"needle",_=>""},_=>profile.query(true)},"active_tab":driver.app.current_tab_id(),"input":"production-handler","requested_tab":pending_transition.map(|(n,_)|tabs[n]).or(driver.app.current_tab_id()),"requested_root":pending_transition.map(|(n,_)|&roots[n].root).unwrap_or(&driver.app.shell.runtime.root)}));
-                if pending_transition.is_none() {
-                    stage += 1;
+                if input_admitted {
+                    if let Some(wait) = finished_warm_waits.iter_mut().find(|w| w["stage"] == stage)
+                    {
+                        wait["end_ms"] = ms(input_at.duration_since(start)).into();
+                    }
+                    events.push(serde_json::json!({"stage":stage,"at_ms":ms(input_at.duration_since(start)),"GUI_ingested":checkpoint,"query":match profile{Profile::EditFiles|Profile::StableEdit=>match stage{0=>"item",1=>"needle",_=>""},_=>profile.query(true)},"active_tab":driver.app.current_tab_id(),"input":"production-handler","requested_tab":pending_transition.map(|(n,_)|tabs[n]).or(driver.app.current_tab_id()),"requested_root":pending_transition.map(|(n,_)|&roots[n].root).unwrap_or(&driver.app.shell.runtime.root)}));
+                    if pending_transition.is_none() {
+                        stage += 1;
+                    }
                 }
             }
         }
@@ -2030,7 +2288,7 @@ pub(super) fn run(
     let preemption_rows=driver.app.shell.indexing.perf_preemptions.iter().map(|e|serde_json::json!({"mutation_ms":ms(e.at.duration_since(start)),"warm_removal_mutation_ms":driver.app.shell.indexing.perf_warm_removals.iter().find(|m|m.removed_request_id==e.victim_id).map(|m|ms(m.at.duration_since(start))),"victim_request_id":e.victim_id,"victim_tab":e.victim_tab,"prior_latest_request_id":e.prior_latest,"replacement_request_id":e.replacement_id,"actual_active_tab":e.active_tab,"actual_warm_tab":e.warm_tab,"pending_active_request_id":e.pending_active_id,"latest_active_request_id":e.latest_active_id,"queued_active_request_ids":e.queued_active_ids,"actual_inflight_count":e.inflight_count})).collect::<Vec<_>>();
     let warm_removal_rows=driver.app.shell.indexing.perf_warm_removals.iter().map(|m|serde_json::json!({"mutation_ms":ms(m.at.duration_since(start)),"removed_request_id":m.removed_request_id,"previous_warm_tab":m.previous_warm_tab,"replacement_warm_tab":m.replacement_warm_tab,"route_tab":m.route_tab})).collect::<Vec<_>>();
     let mut row = serde_json::json!({"schema_version":1,"profile_family":"extension","source":source.name(),"comparison":profile.name(),"case":if condition{profile.name()}else{"B0"},"sample_entries":fixture.records.len(),"fixture_shape":format!("{:?}",fixture.shape),"fixture_signature":fixture.signature(),"request_id":primary,"index_ready_ms":ms(t2),"results_ready_ms":ms(t3),"data_publish_end_ms":ms(observation.data_publish_end.unwrap().duration_since(start)),"terminal_publish_ms":ms(observation.terminal_published.unwrap().duration_since(start)),"bookkeeping_released_ms":ms(driver.app.shell.indexing.perf_released_requests[&primary].duration_since(start)),"last_confirmed_snapshot_unsettled_ms":ms(cutoff),"max_no_work_progress_ms":ms(max_gap),"max_ingest_gap_ms":ms(max_ingest_gap),"max_frame_ms":ms(frame_max),"frames":frames,"correct":true,"contention_eligible":eligible,"snapshot_signature":actual_signature(&roots[target].root,snapshot),"results_signature":format!("{:016x}",signature(&roots[0].root,driver.app.shell.runtime.results.iter().map(|(p,_)|p))),"full_wait_ms":ms(observation.full_wait),"full_count":observation.full_retries,"blocked_batches":observation.blocked_batches,"batches":observation.batches,"entries_emitted":observation.entries_emitted});
-    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
+    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":"observed-Finished waits for own committed snapshot before eviction; t0-included production frames; final publication/removal race remains strict failure","index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
     row.as_object_mut().unwrap().extend(serde_json::json!({"declared_retained_victims":victim_rows,"declared_eviction_edges":declared_edges,"actual_preemption_events":preemption_rows,"actual_warm_removal_events":warm_removal_rows,"warm_removal_observer_limit":128,"warm_removal_observer_overflow":driver.app.shell.indexing.perf_warm_removal_overflow,"active_at_removal":"NOT_DIRECTLY_OBSERVED; fixed switch source ordering and actual switch acknowledgement binding only","preemption_observer_limit":128,"preemption_observer_overflow":driver.app.shell.indexing.perf_preemption_overflow,"retained_seed_validation_policy":"full independent oracle after tentative t3; no extra frame/input before output"}).as_object().unwrap().clone());
     drop(driver);
     drop(roots);
