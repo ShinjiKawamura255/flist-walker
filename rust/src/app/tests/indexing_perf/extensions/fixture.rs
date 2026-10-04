@@ -530,6 +530,7 @@ impl ExtendedFixture {
     pub(super) fn paths(&self) -> Vec<PathBuf> {
         self.expected.iter().map(|r| r.path.clone()).collect()
     }
+    #[cfg(unix)]
     pub(super) fn expected_for_follow_links(&self, follow: bool) -> Vec<Record> {
         if self.shape == Shape::InternalLinks && !follow {
             self.records.clone()
