@@ -177,8 +177,37 @@ enum SwitchAdmission {
     Activated(bool),
     WaitForFinishedWarm(u64),
 }
+#[derive(Clone, Copy, PartialEq)]
+enum WarmSwitchPolicy {
+    Unrestricted,
+    ObservedCompletion,
+    CommittedSmall,
+}
+pub(super) fn tabchain_input_policy(full: bool) -> &'static str {
+    if full {
+        "observed-completion (data-end/Finished-offer/publication) waits for own committed snapshot before eviction; t0-included production frames; final unobserved publication/removal race remains strict failure"
+    } else {
+        "sub100k correctness/diagnostic trace waits for old-Warm own committed snapshot before eviction; t0-included production frames; not full contention or abort pressure evidence"
+    }
+}
 #[test]
 fn tc_229_finished_warm_switch_waits_for_own_commit_before_eviction() {
+    assert_warm_admission_waits("published");
+}
+
+#[test]
+fn tc_229_completion_offer_warm_switch_waits_for_own_commit() {
+    for stage in ["offered", "data-complete"] {
+        assert_warm_admission_waits(stage);
+    }
+}
+
+#[test]
+fn tc_229_small_smoke_waits_for_unfinished_warm_commit() {
+    assert_warm_admission_waits("unfinished");
+}
+
+fn assert_warm_admission_waits(stage: &str) {
     let mut driver = Driver::new();
     driver.settle_startup();
     driver.app.create_new_tab();
@@ -188,7 +217,7 @@ fn tc_229_finished_warm_switch_waits_for_own_commit_before_eviction() {
     let active = driver.app.current_tab_id();
     let root = driver.app.shell.tabs.get(1).unwrap().root.clone();
     let now = Instant::now();
-    let observation = crate::app::index_mailbox::IndexPerfObservation {
+    let mut observation = crate::app::index_mailbox::IndexPerfObservation {
         terminal_kind: Some("finished"),
         terminal_offer_kind: Some("finished"),
         terminal_published: Some(now),
@@ -199,6 +228,19 @@ fn tc_229_finished_warm_switch_waits_for_own_commit_before_eviction() {
         entries_emitted: 8,
         ..Default::default()
     };
+    if stage != "published" {
+        observation.terminal_kind = None;
+        observation.terminal_published = None;
+        observation.terminal_source = None;
+        observation.request_processing_returned = None;
+        observation.data_publish_end = Some(now);
+        if stage == "data-complete" {
+            observation.terminal_offer_kind = None;
+        } else if stage == "unfinished" {
+            observation.terminal_offer_kind = None;
+            observation.data_publish_end = None;
+        }
+    }
     let handle = Arc::new(std::sync::Mutex::new(observation));
     let i = &mut driver.app.shell.indexing;
     i.warm_tab_id = Some(warm);
@@ -220,7 +262,17 @@ fn tc_229_finished_warm_switch_waits_for_own_commit_before_eviction() {
     // Finished can arrive after an outer checkpoint. Admission itself must
     // notice it; old equal-count data is not this request's committed snapshot.
     assert_eq!(
-        planned_switch_guarded(&mut driver, 0, &mut plans, &mut future, true),
+        planned_switch_guarded(
+            &mut driver,
+            0,
+            &mut plans,
+            &mut future,
+            if stage == "unfinished" {
+                WarmSwitchPolicy::CommittedSmall
+            } else {
+                WarmSwitchPolicy::ObservedCompletion
+            },
+        ),
         SwitchAdmission::WaitForFinishedWarm(777)
     );
     assert_eq!(driver.app.current_tab_id(), active);
@@ -240,6 +292,14 @@ fn finished_warm_commit_pending(
     plans: &[PlannedRequest],
     warm: u64,
 ) -> Option<u64> {
+    warm_commit_pending(driver, plans, warm, WarmSwitchPolicy::ObservedCompletion)
+}
+fn warm_commit_pending(
+    driver: &Driver,
+    plans: &[PlannedRequest],
+    warm: u64,
+    policy: WarmSwitchPolicy,
+) -> Option<u64> {
     let p = plans
         .iter()
         .filter(|p| p.tab == warm)
@@ -252,7 +312,11 @@ fn finished_warm_commit_pending(
         .iter()
         .find(|a| a.id == p.id)?;
     let o = a.observation.lock().unwrap().clone();
-    if o.terminal_kind != Some("finished") {
+    if policy != WarmSwitchPolicy::CommittedSmall
+        && o.terminal_kind != Some("finished")
+        && o.terminal_offer_kind != Some("finished")
+        && o.data_publish_end.is_none()
+    {
         return None;
     }
     let t = driver
@@ -387,7 +451,7 @@ fn planned_switch(
     plans: &mut Vec<PlannedRequest>,
     future: &mut HashMap<u64, usize>,
 ) -> bool {
-    match planned_switch_guarded(driver, n, plans, future, false) {
+    match planned_switch_guarded(driver, n, plans, future, WarmSwitchPolicy::Unrestricted) {
         SwitchAdmission::Activated(active) => active,
         SwitchAdmission::WaitForFinishedWarm(_) => unreachable!("unguarded switch"),
     }
@@ -397,7 +461,7 @@ fn planned_switch_guarded(
     n: usize,
     plans: &mut Vec<PlannedRequest>,
     future: &mut HashMap<u64, usize>,
-    wait_for_finished_warm: bool,
+    policy: WarmSwitchPolicy,
 ) -> SwitchAdmission {
     let tab = driver.app.shell.tabs.get(n).expect("switch target");
     let id = tab.id;
@@ -417,17 +481,18 @@ fn planned_switch_guarded(
                 ));
     if let Some(warm) = driver.app.shell.indexing.warm_tab_id {
         if warm != id && Some(warm) != driver.app.current_tab_id() {
-            if wait_for_finished_warm {
-                if let Some(id) = finished_warm_commit_pending(driver, plans, warm) {
+            if policy != WarmSwitchPolicy::Unrestricted {
+                if let Some(id) = warm_commit_pending(driver, plans, warm, policy) {
                     return SwitchAdmission::WaitForFinishedWarm(id);
                 }
             }
-            let before_permission = wait_for_finished_warm.then(|| plans.clone());
+            let before_permission =
+                (policy != WarmSwitchPolicy::Unrestricted).then(|| plans.clone());
             permit_revocation(driver, plans, warm, "switch-evicts-previous-Warm");
             // Publication may happen after the outer input checkpoint. Recheck
             // the actual classification before any replacement mutation.
-            if wait_for_finished_warm {
-                if let Some(id) = finished_warm_commit_pending(driver, plans, warm) {
+            if policy != WarmSwitchPolicy::Unrestricted {
+                if let Some(id) = warm_commit_pending(driver, plans, warm, policy) {
                     *plans = before_permission.unwrap();
                     return SwitchAdmission::WaitForFinishedWarm(id);
                 }
@@ -1501,14 +1566,18 @@ pub(super) fn run(
                             n,
                             &mut plans,
                             &mut deferred_allocations,
-                            true,
+                            if full {
+                                WarmSwitchPolicy::ObservedCompletion
+                            } else {
+                                WarmSwitchPolicy::CommittedSmall
+                            },
                         );
                         if let SwitchAdmission::WaitForFinishedWarm(id) = admission {
                             plans = before_declaration;
                             input_admitted = false;
                             if !finished_warm_waits.iter().any(|w| w["stage"] == stage) {
                                 assert!(finished_warm_waits.len() < 3, "bounded fixed trace waits");
-                                finished_warm_waits.push(serde_json::json!({"stage":stage,"request_id":id,"checkpoint":checkpoint,"start_ms":ms(input_at.duration_since(start)),"end_ms":null,"reason":"observed-Finished-own-commit-before-Warm-eviction"}));
+                                finished_warm_waits.push(serde_json::json!({"stage":stage,"request_id":id,"checkpoint":checkpoint,"start_ms":ms(input_at.duration_since(start)),"end_ms":null,"reason":if full{"observed-completion-own-commit-before-Warm-eviction"}else{"sub100k-correctness-old-Warm-own-commit-before-eviction"}}));
                             }
                         } else if admission == SwitchAdmission::Activated(true) {
                             assert!(acknowledge_tabchain_switch(
@@ -2007,6 +2076,27 @@ pub(super) fn run(
         victim_rows.push(serde_json::json!({"request_id":p.id,"tab_id":p.tab,"role":retained_victim_role(&victim_observation),"stage":c.stage,"declared_ms":ms(c.declared_at.duration_since(start)),"closed_ms":c.closed_at.map(|at|ms(at.duration_since(start))),"incoming_request_ids":c.incoming_ids,"seed_request_id":c.seed.id,"seed_root":c.seed.root,"seed_source":c.seed.source.name(),"seed_all_count":c.seed.all_count,"seed_visible_count":c.seed.visible_count,"seed_all_signature":c.seed.all_signature,"seed_visible_signature":c.seed.visible_signature,"actual_seed_request_id":snapshot.freshness.as_ref().unwrap().request_id,"actual_seed_root":snapshot.freshness.as_ref().unwrap().root,"actual_seed_source":if matches!(&snapshot.freshness.as_ref().unwrap().source,IndexSource::Walker){"Walker"}else{"FileList"},"actual_all_count":snapshot.all_entries.len(),"actual_visible_count":snapshot.entries.len(),"actual_all_signature":seed_entry_signature(&c.seed.root,&snapshot.all_entries),"actual_visible_signature":seed_entry_signature(&c.seed.root,&snapshot.entries),"full_seed_oracle_after_t3":true,"partial_emitted_entries":ledger.iter().find(|r|r.id==p.id).unwrap().observation().entries_emitted,"workload_semantics":if victim_observation.terminal_kind==Some("failed"){"actual partial stale-full-failed work; not 100k indexing throughput"}else{"actual partial canceled work; not 100k indexing throughput"}}));
     }
     let t2 = t2.unwrap();
+    if profile == Profile::TabChain && condition && !full {
+        assert_eq!(ledger.len(), 4, "small TabChain owns exactly four requests");
+        assert_eq!(events.len(), 3, "small TabChain admits all three inputs");
+        for (event, tab) in events.iter().zip([tabs[1], tabs[2], tabs[0]]) {
+            assert_eq!(event["requested_tab"], tab);
+        }
+        for (tab, count) in [(tabs[0], 2), (tabs[1], 1), (tabs[2], 1)] {
+            assert_eq!(ledger.iter().filter(|r| r.tab == tab).count(), count);
+        }
+        for request in &ledger {
+            let observation = request.observation();
+            assert_eq!(observation.terminal_kind, Some("finished"));
+            assert!(physical_request_complete(&observation));
+            assert_eq!(observation.started_source, Some(source.name()));
+            assert_eq!(observation.terminal_source, Some(source.name()));
+            assert_eq!(
+                observation.started_root.as_ref(),
+                Some(&roots[tabs.iter().position(|tab| *tab == request.tab).unwrap()].root)
+            );
+        }
+    }
     let allocated = driver
         .app
         .shell
@@ -2288,7 +2378,7 @@ pub(super) fn run(
     let preemption_rows=driver.app.shell.indexing.perf_preemptions.iter().map(|e|serde_json::json!({"mutation_ms":ms(e.at.duration_since(start)),"warm_removal_mutation_ms":driver.app.shell.indexing.perf_warm_removals.iter().find(|m|m.removed_request_id==e.victim_id).map(|m|ms(m.at.duration_since(start))),"victim_request_id":e.victim_id,"victim_tab":e.victim_tab,"prior_latest_request_id":e.prior_latest,"replacement_request_id":e.replacement_id,"actual_active_tab":e.active_tab,"actual_warm_tab":e.warm_tab,"pending_active_request_id":e.pending_active_id,"latest_active_request_id":e.latest_active_id,"queued_active_request_ids":e.queued_active_ids,"actual_inflight_count":e.inflight_count})).collect::<Vec<_>>();
     let warm_removal_rows=driver.app.shell.indexing.perf_warm_removals.iter().map(|m|serde_json::json!({"mutation_ms":ms(m.at.duration_since(start)),"removed_request_id":m.removed_request_id,"previous_warm_tab":m.previous_warm_tab,"replacement_warm_tab":m.replacement_warm_tab,"route_tab":m.route_tab})).collect::<Vec<_>>();
     let mut row = serde_json::json!({"schema_version":1,"profile_family":"extension","source":source.name(),"comparison":profile.name(),"case":if condition{profile.name()}else{"B0"},"sample_entries":fixture.records.len(),"fixture_shape":format!("{:?}",fixture.shape),"fixture_signature":fixture.signature(),"request_id":primary,"index_ready_ms":ms(t2),"results_ready_ms":ms(t3),"data_publish_end_ms":ms(observation.data_publish_end.unwrap().duration_since(start)),"terminal_publish_ms":ms(observation.terminal_published.unwrap().duration_since(start)),"bookkeeping_released_ms":ms(driver.app.shell.indexing.perf_released_requests[&primary].duration_since(start)),"last_confirmed_snapshot_unsettled_ms":ms(cutoff),"max_no_work_progress_ms":ms(max_gap),"max_ingest_gap_ms":ms(max_ingest_gap),"max_frame_ms":ms(frame_max),"frames":frames,"correct":true,"contention_eligible":eligible,"snapshot_signature":actual_signature(&roots[target].root,snapshot),"results_signature":format!("{:016x}",signature(&roots[0].root,driver.app.shell.runtime.results.iter().map(|(p,_)|p))),"full_wait_ms":ms(observation.full_wait),"full_count":observation.full_retries,"blocked_batches":observation.blocked_batches,"batches":observation.batches,"entries_emitted":observation.entries_emitted});
-    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":"observed-Finished waits for own committed snapshot before eviction; t0-included production frames; final publication/removal race remains strict failure","index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
+    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":tabchain_input_policy(full),"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
     row.as_object_mut().unwrap().extend(serde_json::json!({"declared_retained_victims":victim_rows,"declared_eviction_edges":declared_edges,"actual_preemption_events":preemption_rows,"actual_warm_removal_events":warm_removal_rows,"warm_removal_observer_limit":128,"warm_removal_observer_overflow":driver.app.shell.indexing.perf_warm_removal_overflow,"active_at_removal":"NOT_DIRECTLY_OBSERVED; fixed switch source ordering and actual switch acknowledgement binding only","preemption_observer_limit":128,"preemption_observer_overflow":driver.app.shell.indexing.perf_preemption_overflow,"retained_seed_validation_policy":"full independent oracle after tentative t3; no extra frame/input before output"}).as_object().unwrap().clone());
     drop(driver);
     drop(roots);
