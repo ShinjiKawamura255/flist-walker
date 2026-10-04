@@ -1,0 +1,264 @@
+{
+  "status": "historical validator source/controls FROZEN; STOP for independent focused AFTER; performance NOT_RUN",
+  "frozen_at": "2026-10-04T04:29:15.358031+00:00",
+  "guard_checkpoint": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/guard-execution-packet.json",
+    "sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+    "bytes": 75693
+  },
+  "accepted_R4_export_sources_unchanged": true,
+  "current_213_unchanged": true,
+  "current_collector": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+    "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+    "bytes": 12522
+  },
+  "reuse_identity": {
+    "frozen_collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+    "victim_text_sha256": "e29506d574c35d3b0a64262d1c17f1363a540f2c3b7d6aa78db7a1bdb2ac9fa1",
+    "row_and_aggregation_text_sha256": "11793dc1fb7655edf508e947d933dc1f4b3bf5a8c5500a17aca3adfd5b3db560",
+    "adaptation": "Only function wrapper + indentation plus metas=[sealed_cell_meta]; original assertions/typed victim/ABBA/chronology/pair/zero-denominator aggregation body unchanged. Raw whole-log success gate is independently enforced by historical process FSM, never spoofed.",
+    "generated_module_sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429"
+  },
+  "synthetic_controls": {
+    "actual_exit_code": 0,
+    "actual_passed": 130,
+    "actual_failed": 0,
+    "actual_errors": 0,
+    "actual_skipped": 0,
+    "evidence_kind": "synthetic-control; no Rust/historical/performance run",
+    "result": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/final-controls.json",
+      "sha256": "26d2fa7a676abb045a56c2edc8f6c8d7ec9ca67fe421760be00e7555db72a499",
+      "bytes": 18270
+    },
+    "log": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/final-controls.log",
+      "sha256": "ea49aa9f9d4abbda288c9675551e29497d7c6f3dc815b652f15597d3c0a56829",
+      "bytes": 16256
+    }
+  },
+  "meaningful_first_red": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input-result.json",
+    "sha256": "124ed2ab8224d4fd19a4c877ab1c1315a4af5095051e9cfde87c5150340bf496",
+    "bytes": 821
+  },
+  "first_red_caveat": "Initial synthetic selection incomplete; exact initial logs retained, supplemented valid-selection admission RED. This does not claim live historical FAIL.",
+  "CLI_synthetic_mixed": {
+    "actual_exit_code": 0,
+    "accepted_rows": 28,
+    "excluded_partial_rows": 14,
+    "preserved_original_input_exit": 101,
+    "real_historical_evidence": false
+  },
+  "current_fbd9_actual_failed_log_rejection": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/current-fbd9-real-failed-rejection.json",
+    "sha256": "2338f71e0e383b118a58522dbcd393899e91d6ff578b96a6636811240b2af6fc",
+    "bytes": 789
+  },
+  "classification": "PASS/FAIL/NOT_RUN only; never NON_ELIGIBLE/unsupported inferred from panic text",
+  "original_current69_controls": "immutable prior evidence; not replayed/claimed fresh here",
+  "actual_historical_performance": "NOT_RUN; no samples collected",
+  "protocol": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/protocol.txt",
+    "sha256": "92170779b79b84fefb9099c87634250dfb604bb83be243a58da8da738b00cd15",
+    "bytes": 5169
+  },
+  "references": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-initial-shell-result.json",
+      "sha256": "3fe2bb1e2f37051b3c7e739774830e25c1691cf7a66b6379d2cc1c63a976d8d6",
+      "bytes": 659
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input.events.log",
+      "sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "bytes": 200392
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/current-fbd9-real-failed-rejection.log",
+      "sha256": "b8b11b340e568f0ec29e6e137f0ed6a509253a1b730e5b4d03c7738696be4546",
+      "bytes": 479
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input.sidecar.json",
+      "sha256": "294e6715302b4030c817c4cea26d923c968b9a73f3b9601fb58e23f1e13e6b91",
+      "bytes": 2902
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt4.json",
+      "sha256": "681659b423b288881f9b8b42b3cdc8a7dfba33eccba1ba869064f7a653ba5fdd",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/minimal-green-attempt2.json",
+      "sha256": "7428c3e23ecca65edfe63cb0486c340343028400270ecb7b347955a09257ff59",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/synthetic-mixed.events.log",
+      "sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "bytes": 200392
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/synthetic-cli.log",
+      "sha256": "9e99a4480d9867038f6fd63bc876164660635e8b1f3768c1c863652e56c71e5f",
+      "bytes": 128
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt4.log",
+      "sha256": "4b03230b47728118920a71b5d71390b33aebc168daa85ab7e6a05f801e775dae",
+      "bytes": 230
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/synthetic-mixed.sidecar.json",
+      "sha256": "25bab9fb93713a9bf844a78ff120795667d9c4fd9b3f382036aa9eeb69d26b9b",
+      "bytes": 2999
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/freeze-packet.py",
+      "sha256": "82be13fc906164bc4696895c6372fac00c668789b5d31aab564bf0163e05426a",
+      "bytes": 3158
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/protocol.txt",
+      "sha256": "92170779b79b84fefb9099c87634250dfb604bb83be243a58da8da738b00cd15",
+      "bytes": 5169
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/synthetic-cli.json",
+      "sha256": "7ec95a02d015a08e0f0c74ece6d2baf352f0ff67caf17a3b7727de2270a6d748",
+      "bytes": 985
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt3.json",
+      "sha256": "24132b91b236b46534d564aca31ab6356ffe3c64ab9a783e9d2c1339e80181ae",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/minimal-green-attempt1.log",
+      "sha256": "4ea032a7143a1dad104d0977a7ecd5031962bb385594c587b78b95b33250a1a0",
+      "bytes": 1829
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt2.json",
+      "sha256": "7fbc6d4dcb22d98fea073681bcc207996f6c479d736a12ce591703f8702a402a",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/collect_historical.py",
+      "sha256": "fe9252bdc8e5412ccbf0a6866b6b34b918a3f68c071c3e61c38741dda70a3c4c",
+      "bytes": 24106
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-test.py.txt",
+      "sha256": "977469d6f923dc4ad09d12f65fe66d69babc58ef5c1ef185b972872f1c3571a7",
+      "bytes": 6453
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/final-controls.log",
+      "sha256": "ea49aa9f9d4abbda288c9675551e29497d7c6f3dc815b652f15597d3c0a56829",
+      "bytes": 16256
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt3.log",
+      "sha256": "9e9192702d42e8638bfa124261b602a3b6b687ae62cd4a3928a96b90c3b0d44f",
+      "bytes": 1484
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt2.log",
+      "sha256": "1b81af9385ab21547ad4447851fb048de1c7d2ee801264d2f0e2696bf3d627cf",
+      "bytes": 220
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/minimal-green-attempt2.log",
+      "sha256": "1635a6194f78c5e89329e41ae3b95909ced52dd425f9291840b91d6deaa41ba0",
+      "bytes": 98
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-source.py.txt",
+      "sha256": "7237b7870f107fe456260177f37ab87dd23ee6694cde8496bee92f874b0ce829",
+      "bytes": 362
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt1.log",
+      "sha256": "ba32563fd4eba7c5bd16b3ffca75b52c19ac46be7a35fad6abff48711046ae6a",
+      "bytes": 1365
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input-result.json",
+      "sha256": "124ed2ab8224d4fd19a4c877ab1c1315a4af5095051e9cfde87c5150340bf496",
+      "bytes": 821
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red.json",
+      "sha256": "e95b4387841dd98022a2b328dbde0a792e04c8a506ae028c094618583a464c70",
+      "bytes": 751
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/controls-attempt1.json",
+      "sha256": "03603fec0ea673f5733fce4dcd083795b0a128eae21cf52d020ba970f23d4e47",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/fbd9-reuse-identity.json",
+      "sha256": "4393754019f2a679c05d32ce523ac0050bb009edb290fc21c360b4a413a608e1",
+      "bytes": 674
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/synthetic-mixed.validated.json",
+      "sha256": "a12601c7779ccd5e015ab52c2c96c87b46e5f7d35d41cec6bce3dd05ebca27fe",
+      "bytes": 270019
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input.py",
+      "sha256": "c7bf8de7e01ff4029c9c6f0dcfc6147bb5c62a1139571317154a03d16c55b3db",
+      "bytes": 927
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/test_historical.py",
+      "sha256": "314d5dfef5d4ff1defc7bffaab47f6d3654f100c1ab3c2732c4e5562ae3afa63",
+      "bytes": 26221
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red.log",
+      "sha256": "daa078d3de2a1074f054060cb47a1b1d70f4df6b33027765f108467321f494d9",
+      "bytes": 763
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-valid-input.log",
+      "sha256": "5818185f4f948e5b075188d30cf9ce1143409b6569cf55aa76b4d74d09122321",
+      "bytes": 397
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/minimal-green-attempt1.json",
+      "sha256": "ca81a6d03856aa9ebd4ef058adba5c61eb2f68206fea48a2faa843268d4d140d",
+      "bytes": 315
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/final-controls.json",
+      "sha256": "26d2fa7a676abb045a56c2edc8f6c8d7ec9ca67fe421760be00e7555db72a499",
+      "bytes": 18270
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/run-controls.py",
+      "sha256": "eb2e44b5b5172b4792f31bb3e1feac01f090822fa0ef3eeb351dd0238e1dd5fd",
+      "bytes": 1899
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/fbd9_predicates.py",
+      "sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429",
+      "bytes": 11716
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/first-red-actual.log",
+      "sha256": "daa078d3de2a1074f054060cb47a1b1d70f4df6b33027765f108467321f494d9",
+      "bytes": 763
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r1/current-fbd9-real-failed-rejection.json",
+      "sha256": "2338f71e0e383b118a58522dbcd393899e91d6ff578b96a6636811240b2af6fc",
+      "bytes": 789
+    }
+  ]
+}

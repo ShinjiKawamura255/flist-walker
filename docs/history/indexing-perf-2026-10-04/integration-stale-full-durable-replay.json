@@ -1,0 +1,25 @@
+{
+  "collector_sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa",
+  "component_source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "total_checks": 69,
+  "checks": [
+    {
+      "test": "test_stale_full_collector.py",
+      "checks": 28,
+      "exit_code": 0,
+      "stdout": "PASS 28 stale Full collector checks",
+      "valid": 2
+    },
+    {
+      "test": "test_warm_removal_collector.py",
+      "checks": 41,
+      "exit_code": 0,
+      "stdout": "PASS 41 collector checks",
+      "valid": 6
+    }
+  ],
+  "durable_asset_sha_readback": true,
+  "first_failed336log_retained_sha256": "36d187c3651e5b31caa1cb0af4b91a1b54d460aff2ef5044cf3f3caf00b7d432",
+  "performance_acceptance": false,
+  "scope": "Independent replay of exact durable synthetic controls and two retired failure logs; no Rust build or perf measurement."
+}

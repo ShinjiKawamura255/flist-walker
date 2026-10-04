@@ -1,0 +1,468 @@
+{
+  "log_sha256": "36d187c3651e5b31caa1cb0af4b91a1b54d460aff2ef5044cf3f3caf00b7d432",
+  "partial_raw_count": 336,
+  "raw_acceptance": "REJECTED whole full run; no performance conclusion",
+  "last_run_start": {
+    "condition": true,
+    "entries": 100000,
+    "profile": "T1-A-B-C-A",
+    "role": "untimed-warmup",
+    "source": "Walker"
+  },
+  "stall": {
+    "actual_switch_acks": [
+      {
+        "ack": {
+          "at": "Instant { tv_sec: 61252, tv_nsec: 136273000 }",
+          "pending_activation": null,
+          "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+          "tab": 3
+        },
+        "stage": 1,
+        "victim_id": 5
+      },
+      {
+        "ack": {
+          "at": "Instant { tv_sec: 61252, tv_nsec: 287904166 }",
+          "pending_activation": null,
+          "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+          "tab": 1
+        },
+        "stage": 2,
+        "victim_id": 6
+      }
+    ],
+    "case": "T1-A-B-C-A",
+    "condition": true,
+    "current_tab": 1,
+    "deferred_allocations": {},
+    "done_inputs": true,
+    "elapsed_ms": 32344.458832999997,
+    "frame": 1467,
+    "index_debt": false,
+    "inflight": [],
+    "input_trace": [
+      {
+        "GUI_ingested": 10240,
+        "active_tab": 2,
+        "at_ms": 128.470792,
+        "input": "production-handler",
+        "query": "",
+        "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+        "requested_tab": 2,
+        "stage": 0
+      },
+      {
+        "GUI_ingested": 10240,
+        "active_tab": 3,
+        "at_ms": 245.480583,
+        "input": "production-handler",
+        "query": "",
+        "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+        "requested_tab": 3,
+        "stage": 1
+      },
+      {
+        "GUI_ingested": 10240,
+        "active_tab": 1,
+        "at_ms": 397.12325,
+        "input": "production-handler",
+        "query": "",
+        "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+        "requested_tab": 1,
+        "stage": 2
+      }
+    ],
+    "last_progress_ms": 2325.9626249999997,
+    "latest_map": "{2: 0}",
+    "load": {
+      "capacity": 2,
+      "inflight": 0,
+      "queued": 0
+    },
+    "pending_request": null,
+    "pending_transition": null,
+    "planned": [
+      {
+        "completed_predecessor": false,
+        "id": 5,
+        "permission_at": "Some(Instant { tv_sec: 61252, tv_nsec: 136246333 })",
+        "permission_reason": "switch-evicts-previous-Warm",
+        "requires_latest_generation": false,
+        "revoked_by": 8,
+        "tab": 1
+      },
+      {
+        "completed_predecessor": false,
+        "id": 6,
+        "permission_at": "Some(Instant { tv_sec: 61252, tv_nsec: 287887875 })",
+        "permission_reason": "switch-evicts-previous-Warm",
+        "requires_latest_generation": true,
+        "revoked_by": null,
+        "tab": 2
+      },
+      {
+        "completed_predecessor": false,
+        "id": 7,
+        "permission_at": "None",
+        "permission_reason": null,
+        "requires_latest_generation": true,
+        "revoked_by": null,
+        "tab": 3
+      },
+      {
+        "completed_predecessor": false,
+        "id": 8,
+        "permission_at": "None",
+        "permission_reason": null,
+        "requires_latest_generation": true,
+        "revoked_by": null,
+        "tab": 1
+      }
+    ],
+    "plans_valid": false,
+    "preemption_diagnostics": [
+      {
+        "active_tab": 3,
+        "at": "Instant { tv_sec: 61252, tv_nsec: 136298958 }",
+        "inflight_count": 2,
+        "latest_active_id": 7,
+        "pending_active_id": 7,
+        "prior_latest": null,
+        "queued_active_ids": [
+          7
+        ],
+        "replacement_id": 0,
+        "victim_id": 5,
+        "victim_tab": 1,
+        "warm_tab": 2
+      },
+      {
+        "active_tab": 1,
+        "at": "Instant { tv_sec: 61252, tv_nsec: 287930083 }",
+        "inflight_count": 2,
+        "latest_active_id": 8,
+        "pending_active_id": 8,
+        "prior_latest": null,
+        "queued_active_ids": [
+          8
+        ],
+        "replacement_id": 0,
+        "victim_id": 6,
+        "victim_tab": 2,
+        "warm_tab": 3
+      }
+    ],
+    "preemption_overflow": false,
+    "preemption_set_valid": true,
+    "primary": 8,
+    "proofs": [
+      {
+        "finished": false,
+        "id": 5,
+        "last_good_victim": false,
+        "physical_complete": true,
+        "revoked_abort": true,
+        "source_root_correct": false,
+        "tab": 1
+      },
+      {
+        "finished": false,
+        "id": 6,
+        "last_good_victim": false,
+        "physical_complete": true,
+        "revoked_abort": false,
+        "source_root_correct": false,
+        "tab": 2
+      },
+      {
+        "finished": true,
+        "id": 7,
+        "last_good_victim": false,
+        "physical_complete": true,
+        "revoked_abort": false,
+        "source_root_correct": true,
+        "tab": 3
+      },
+      {
+        "finished": true,
+        "id": 8,
+        "last_good_victim": false,
+        "physical_complete": true,
+        "revoked_abort": false,
+        "source_root_correct": true,
+        "tab": 1
+      }
+    ],
+    "queue": [],
+    "request_tabs": {},
+    "requests": [
+      {
+        "id": 5,
+        "observation": "IndexPerfObservation { batches: 97, entries_emitted: 24832, replacements: 0, full_wait: 239.678459ms, full_retries: 159, blocked_batches: 12, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 61252, tv_nsec: 137503125 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61251, tv_nsec: 890833166 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61252, tv_nsec: 137502791 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 61252, tv_nsec: 137503416 }), request_processing_returned: Some(Instant { tv_sec: 61252, tv_nsec: 137504125 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61252, tv_nsec: 174370500 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61251, tv_nsec: 890775875 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), skipped_closed_before_start: false }",
+        "physical_complete": true,
+        "released": true,
+        "tab": 1
+      },
+      {
+        "id": 6,
+        "observation": "IndexPerfObservation { batches: 104, entries_emitted: 26624, replacements: 0, full_wait: 257.108627ms, full_retries: 172, blocked_batches: 13, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 61252, tv_nsec: 288198666 }), terminal_kind: Some(\"failed\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61252, tv_nsec: 19369250 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61252, tv_nsec: 288198416 }), terminal_offer_kind: Some(\"failed\"), terminal_offer_current: Some(false), terminal_offer_error: Some(\"index receiver closed\"), terminal_send_returned: Some(Instant { tv_sec: 61252, tv_nsec: 288199083 }), request_processing_returned: Some(Instant { tv_sec: 61252, tv_nsec: 288199833 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61252, tv_nsec: 310797166 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61252, tv_nsec: 19254583 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000\"), skipped_closed_before_start: false }",
+        "physical_complete": true,
+        "released": true,
+        "tab": 2
+      },
+      {
+        "id": 7,
+        "observation": "IndexPerfObservation { batches: 391, entries_emitted: 100000, replacements: 0, full_wait: 934.330205ms, full_retries: 627, blocked_batches: 49, data_publish_end: Some(Instant { tv_sec: 61253, tv_nsec: 141332541 }), terminal_published: Some(Instant { tv_sec: 61253, tv_nsec: 141333833 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61252, tv_nsec: 156396625 }), terminal_source: Some(\"Walker\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61253, tv_nsec: 141333125 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 61253, tv_nsec: 141334166 }), request_processing_returned: Some(Instant { tv_sec: 61253, tv_nsec: 141335375 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61254, tv_nsec: 216221833 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61252, tv_nsec: 156278000 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000\"), skipped_closed_before_start: false }",
+        "physical_complete": true,
+        "released": true,
+        "tab": 3
+      },
+      {
+        "id": 8,
+        "observation": "IndexPerfObservation { batches: 391, entries_emitted: 100000, replacements: 0, full_wait: 927.460912ms, full_retries: 622, blocked_batches: 48, data_publish_end: Some(Instant { tv_sec: 61253, tv_nsec: 293389333 }), terminal_published: Some(Instant { tv_sec: 61253, tv_nsec: 293390875 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61252, tv_nsec: 310911166 }), terminal_source: Some(\"Walker\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61253, tv_nsec: 293389833 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 61253, tv_nsec: 293391333 }), request_processing_returned: Some(Instant { tv_sec: 61253, tv_nsec: 293392166 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61253, tv_nsec: 311290375 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61252, tv_nsec: 310766916 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), skipped_closed_before_start: false }",
+        "physical_complete": true,
+        "released": true,
+        "tab": 1
+      }
+    ],
+    "result_debt": false,
+    "snapshots": [
+      {
+        "active": true,
+        "all_count": 100000,
+        "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+        "freshness_request": 8,
+        "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+        "freshness_source": "Walker",
+        "lifecycle": "Dormant",
+        "oracle_valid": true,
+        "signature": "aba2cba2c08e2afd",
+        "tab": 1,
+        "visible_count": 100000
+      },
+      {
+        "active": false,
+        "all_count": 100000,
+        "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+        "freshness_request": 3,
+        "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+        "freshness_source": "Walker",
+        "lifecycle": "Ready",
+        "oracle_valid": true,
+        "signature": "aba2cba2c08e2afd",
+        "tab": 2,
+        "visible_count": 100000
+      },
+      {
+        "active": false,
+        "all_count": 100000,
+        "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+        "freshness_request": 7,
+        "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+        "freshness_source": "Walker",
+        "lifecycle": "Ready",
+        "oracle_valid": true,
+        "signature": "aba2cba2c08e2afd",
+        "tab": 3,
+        "visible_count": 100000
+      }
+    ],
+    "source": "Walker",
+    "stage": 3,
+    "transition_trace": [
+      {
+        "actual_activated_ms": 128.480333,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+        "stage": 0,
+        "tab_id": 2
+      },
+      {
+        "explicit_refresh_ms": 128.494167,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+        "stage": 0,
+        "tab_id": 2
+      },
+      {
+        "actual_activated_ms": 245.513667,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+        "stage": 1,
+        "tab_id": 3
+      },
+      {
+        "explicit_refresh_ms": 245.540708,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-8-1791070993932155000",
+        "stage": 1,
+        "tab_id": 3
+      },
+      {
+        "actual_activated_ms": 397.1445,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+        "stage": 2,
+        "tab_id": 1
+      },
+      {
+        "explicit_refresh_ms": 397.171125,
+        "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+        "stage": 2,
+        "tab_id": 1
+      }
+    ],
+    "victim_diagnostics": [
+      {
+        "completed_predecessor_observed_at": "None",
+        "declaration": {
+          "active_tab": 3,
+          "closed_at": "Some(Instant { tv_sec: 61252, tv_nsec: 287884875 })",
+          "current_warm_tab": 2,
+          "declared_at": "Instant { tv_sec: 61252, tv_nsec: 136242041 }",
+          "incoming_ids": [
+            7
+          ],
+          "old_warm_tab": 1,
+          "profile": "T1-A-B-C-A",
+          "stage": 1,
+          "trace_tabs": [
+            1,
+            2,
+            3
+          ],
+          "victim_id": 5,
+          "victim_tab": 1
+        },
+        "fast_state": {
+          "counts_match": true,
+          "index_debt_zero": true,
+          "latest_without_successor": false,
+          "released": true,
+          "result_debt_zero": true,
+          "root_source_match": true,
+          "route_absent": true,
+          "seed_id": 8,
+          "worker_load_zero": true
+        },
+        "id": 5,
+        "matching_events": [
+          {
+            "cause_valid": false,
+            "chronology": {
+              "admitted_before_started": true,
+              "mutation_before_offer": true,
+              "offer_before_published": true,
+              "published_before_return": true,
+              "started_before_mutation": true
+            },
+            "event": {
+              "active_tab": 3,
+              "at": "Instant { tv_sec: 61252, tv_nsec: 136298958 }",
+              "inflight_count": 2,
+              "latest_active_id": 7,
+              "pending_active_id": 7,
+              "prior_latest": null,
+              "queued_active_ids": [
+                7
+              ],
+              "replacement_id": 0,
+              "victim_id": 5,
+              "victim_tab": 1,
+              "warm_tab": 2
+            },
+            "execution_valid": false,
+            "last_good_fast_valid": false
+          }
+        ],
+        "observation": "IndexPerfObservation { batches: 97, entries_emitted: 24832, replacements: 0, full_wait: 239.678459ms, full_retries: 159, blocked_batches: 12, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 61252, tv_nsec: 137503125 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61251, tv_nsec: 890833166 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61252, tv_nsec: 137502791 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 61252, tv_nsec: 137503416 }), request_processing_returned: Some(Instant { tv_sec: 61252, tv_nsec: 137504125 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61252, tv_nsec: 174370500 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61251, tv_nsec: 890775875 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000\"), skipped_closed_before_start: false }",
+        "seed": {
+          "all_count": 100000,
+          "all_signature": "1b6d50b02bf5adc7",
+          "id": 2,
+          "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-1-1791070946145591000",
+          "source": "Walker",
+          "verified": true,
+          "visible_count": 100000,
+          "visible_signature": "1b6d50b02bf5adc7"
+        },
+        "tab": 1
+      },
+      {
+        "completed_predecessor_observed_at": "None",
+        "declaration": {
+          "active_tab": 1,
+          "closed_at": "None",
+          "current_warm_tab": 3,
+          "declared_at": "Instant { tv_sec: 61252, tv_nsec: 287884875 }",
+          "incoming_ids": [
+            8
+          ],
+          "old_warm_tab": 2,
+          "profile": "T1-A-B-C-A",
+          "stage": 2,
+          "trace_tabs": [
+            1,
+            2,
+            3
+          ],
+          "victim_id": 6,
+          "victim_tab": 2
+        },
+        "fast_state": {
+          "counts_match": true,
+          "index_debt_zero": true,
+          "latest_without_successor": true,
+          "released": true,
+          "result_debt_zero": true,
+          "root_source_match": true,
+          "route_absent": true,
+          "seed_id": 3,
+          "worker_load_zero": true
+        },
+        "id": 6,
+        "matching_events": [
+          {
+            "cause_valid": false,
+            "chronology": {
+              "admitted_before_started": true,
+              "mutation_before_offer": true,
+              "offer_before_published": true,
+              "published_before_return": true,
+              "started_before_mutation": true
+            },
+            "event": {
+              "active_tab": 1,
+              "at": "Instant { tv_sec: 61252, tv_nsec: 287930083 }",
+              "inflight_count": 2,
+              "latest_active_id": 8,
+              "pending_active_id": 8,
+              "prior_latest": null,
+              "queued_active_ids": [
+                8
+              ],
+              "replacement_id": 0,
+              "victim_id": 6,
+              "victim_tab": 2,
+              "warm_tab": 3
+            },
+            "execution_valid": false,
+            "last_good_fast_valid": false
+          }
+        ],
+        "observation": "IndexPerfObservation { batches: 104, entries_emitted: 26624, replacements: 0, full_wait: 257.108627ms, full_retries: 172, blocked_batches: 13, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 61252, tv_nsec: 288198666 }), terminal_kind: Some(\"failed\"), truncated_limit: None, started_source: Some(\"Walker\"), started_published: Some(Instant { tv_sec: 61252, tv_nsec: 19369250 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 61252, tv_nsec: 288198416 }), terminal_offer_kind: Some(\"failed\"), terminal_offer_current: Some(false), terminal_offer_error: Some(\"index receiver closed\"), terminal_send_returned: Some(Instant { tv_sec: 61252, tv_nsec: 288199083 }), request_processing_returned: Some(Instant { tv_sec: 61252, tv_nsec: 288199833 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 61252, tv_nsec: 310797166 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 61252, tv_nsec: 19254583 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000\"), skipped_closed_before_start: false }",
+        "seed": {
+          "all_count": 100000,
+          "all_signature": "1b6d50b02bf5adc7",
+          "id": 3,
+          "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-93638-7-1791070987649466000",
+          "source": "Walker",
+          "verified": true,
+          "visible_count": 100000,
+          "visible_signature": "1b6d50b02bf5adc7"
+        },
+        "tab": 2
+      }
+    ],
+    "warm_removal_overflow": false,
+    "warm_removals": "[IndexPerfWarmRemoval { at: Instant { tv_sec: 61252, tv_nsec: 136268625 }, removed_request_id: 5, previous_warm_tab: 1, replacement_warm_tab: Some(2), route_tab: 1 }, IndexPerfWarmRemoval { at: Instant { tv_sec: 61252, tv_nsec: 287901458 }, removed_request_id: 6, previous_warm_tab: 2, replacement_warm_tab: Some(3), route_tab: 2 }]"
+  },
+  "source_identity": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "next": "read-only diagnosis; no retry or predicate repair authorized yet"
+}

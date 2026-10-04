@@ -1,0 +1,28 @@
+    let before_config=serde_json::to_value(crate::runtime_config::current_runtime_config()).expect("serialize original config");
+    let mut fixture=None;
+    let mut rows=0;
+    eprintln!("INDEX_PERF_CELL_START {}",serde_json::json!({"case":"W1-truncated","source":"Walker","pairs":pairs,"entries":500001,"expected_rows":pairs*2}));
+    let outcome=std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        fixture=Some(ExtendedFixture::new(500001,Shape::FlatFiles));
+        let owned=fixture.as_ref().unwrap();
+        for _ in 0..2 {let _=supplementary::truncated_run(owned,500000);}
+        for pair in 0..pairs {
+            for (position,condition) in (if pair%2==0 {[false,true]}else{[true,false]}).into_iter().enumerate() {
+                let mut row=supplementary::truncated_run(owned,500000);
+                let o=row.as_object_mut().unwrap();
+                o.insert("pair".into(),pair.into());o.insert("position".into(),position.into());
+                o.insert("order".into(),if pair%2==0 {"AB"}else{"BA"}.into());
+                o.insert("case".into(),if condition {"W1-truncated"}else{"B0"}.into());
+                eprintln!("INDEX_PERF_SAMPLE {row}");rows+=1;
+            }
+        }
+    }));
+    let positive_cleanup=cleanup.safe();
+    if !positive_cleanup {if let Some(owned)=&fixture {owned.retain_historical_root();}}
+    let root_restored=positive_cleanup && fixture.as_ref().is_some_and(|owned|restored_fixture(owned,Source::Walker));
+    let after_config=serde_json::to_value(crate::runtime_config::current_runtime_config()).expect("serialize actual final config");
+    let config_equal_before=before_config==after_config;
+    let succeeded=outcome.is_ok() && positive_cleanup && root_restored && config_equal_before && rows==pairs*2;
+    eprintln!("INDEX_PERF_CELL_STATUS {}",serde_json::json!({"case":"W1-truncated","source":"Walker","status":if succeeded{"PASS"}else{"FAIL"},"actual_partial_rows":rows,"accepted_rows":if succeeded{rows}else{0},"positive_cleanup":positive_cleanup,"root_restored":root_restored,"config_equal_before":config_equal_before,"config_restoration_authorized":positive_cleanup,"actual_config_before":before_config,"actual_config_after":after_config,"cleanup_evidence":cleanup.evidence(),"panic":outcome.as_ref().err().map(|e|e.downcast_ref::<String>().cloned().or_else(||e.downcast_ref::<&str>().map(|s|s.to_string())).unwrap_or_else(||"non-string panic".into()))}));
+    assert!(succeeded,"historical truncated cell failure; partial rows are not accepted timing; no continuation");
+}

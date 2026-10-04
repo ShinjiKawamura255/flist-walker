@@ -1,0 +1,65 @@
+Independent narrow BEFORE: already-Finished TabChain mutation candidate
+
+Decision: PASS WITH IMPLEMENTATION ACCEPTANCE CONDITIONS for main-approved
+scalar completed-observedAt refinement. This does not close the earlier failed
+AFTER findings until frozen source/evidence is independently re-reviewed.
+Reviewer /root/plan_review, independent design/checkpoint reviewer only;
+no implementation/test authorship. Checkout /private/tmp/flistwalker-indexing-perf-20261003,
+base/head8a452b3858c80f70a5f3064834c8add4d9b1d347, task uncommitted.
+Prior victim-contract-after-review.txt remains immutable audit history.
+
+Reason
+permit_revocation observes actual terminal_kind Finished and sets
+completed_predecessor without granting cancel permission. A typed candidate can
+finish before declaration OR after declaration but before that observation.
+Requiring publication<=declaration rejects the latter legitimate race. Matching
+the typed scheduler mutation must not fabricate cancellation authority or force
+an actual Finished predecessor to be Canceled.
+
+Accepted minimal shape
+1. Preserve common exact declared edge/candidate/trigger/stage/role/window and
+   actual mutation matching. Candidate intent is declared before operation.
+2. In the actual already-Finished observation branch, retain a scalar observedAt
+   timestamp. Require actual owned Finished publication<=observedAt<=mutation,
+   matching terminal offer/kind, source/root/acquisition and candidate identity.
+   Publication can precede or follow declaration. Do not accept the completed
+   flag alone, a future timestamp, or an unobserved/unpublished terminal.
+3. Do not invent cancellation permission for this branch. Keep explicit prior
+   Warm permission and chronology for actual canceled last-good victims separate.
+4. A5 still follows ordinary exact-successor/predecessor proof and A8/C7 success.
+   Required latest B Finished needs its own latest new-generation freshness and
+   full oracle. Completed observedAt never permits old-seed fallback, Failed,
+   latest required cancellation or arbitrary unplanned mutation.
+5. Physical body return can occur after declaration/observation/mutation;
+   completion still requires actual return, bookkeeping release, route removal,
+   sender/debt0 and independent required generation/result oracles. Observed
+   Finished publication is not physical completion or t2 proof.
+6. Keep the change bounded and scalar, fixed TabChain only; no payload/Arc pin,
+   production scheduling/protocol change or historical backport.
+7. Raw cause/role metadata and strict collector reflect the same two distinct
+   authorization/observation branches. A completed-observed event must not be
+   mislabeled as permission-authorized Canceled work. Maximum same-tab latest
+   identity is derived/cross-checked, not waived by self-reported role flags.
+
+Required meaningful guards
+- Positive published-before-declaration and published-after-declaration-but-
+  before-permit-observation, each with exact typed mutation/ordinary completion.
+- Positive body return later than completed observation: selection/cause may
+  match, but t2/t3 remain false until actual return and other truth is ready.
+- Negative missing/unpublished actual Finished, completed flag only, wrong
+  publication/observation/mutation ordering, wrong candidate/trigger/window,
+  source/root mismatch, required A/C cancellation, and Finished B old-seed fallback.
+- No cancelpermission fabricated; latest B oldseed exception remains prior
+  Warm permission+actual Canceled+!completed_predecessor, with post-t3 full oracle.
+- Composed cause+planned outcomes+physical/debt truth and collector guards,
+  not an isolated helper assertion alone.
+
+Main owns implementation and SDD/plan metadata consistency. Scope remains the
+fixed-TabChain repair. Prior BEFORE/AFTER evidence remains point-in-time; no new
+normal/perf PASS is inferred from this design decision.
+
+NOT RUN
+No additional reads/tests/build/perf/source edits/Git mutation were needed or
+performed for saving this note. Only the requested ignored review file was
+written. Await new frozen AFTER packet; real100k/pilot/full/historical/native/
+platform/CI and final fresh review remain separate unverified gates.

@@ -1,0 +1,67 @@
+{
+  "status": "PASS",
+  "scope": "Default parallel normal plus100k7pair basic84 and observer14. Timing observational; no individual-worker/native signal claim.",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "assets": [
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-cargo-host.log.gz",
+      "sha256": "0e8621dca2624219f332daa73769806b707e07ceca7fff9b7ef9bff8f9005fc1",
+      "uncompressed_sha256": "fdd93c633c8b6eb340f97562020f5f0ea912852b453de8a7085dcd7f065c15f8",
+      "bytes": 166710
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-cargo-host.sidecar.json",
+      "sha256": "bc582776b4f205c6fd175b10748b7c8ab1c397a98b89d0281867d30e1a7b688e",
+      "uncompressed_sha256": "bc582776b4f205c6fd175b10748b7c8ab1c397a98b89d0281867d30e1a7b688e",
+      "bytes": 47233
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-basic.jsonl",
+      "sha256": "be3d8092921b298611c593f652a8af84abafdcd125ad71e429a82405a11c435f",
+      "uncompressed_sha256": "be3d8092921b298611c593f652a8af84abafdcd125ad71e429a82405a11c435f",
+      "bytes": 131880
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-basic.log.gz",
+      "sha256": "ff8de3e71c1a0f1226c44e9f1feb94a256b86bfa7e7d0408b74a211b8d689f08",
+      "uncompressed_sha256": "3f189ee2f370dc779ba30f919ae2984b72bd577260477a66d2b9e8d2463f9a8e",
+      "bytes": 134301
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-basic.sidecar.json",
+      "sha256": "d5266c25da528741d9056199bf402575283daaa9bba8fedc79c0c7bf38a6de68",
+      "uncompressed_sha256": "d5266c25da528741d9056199bf402575283daaa9bba8fedc79c0c7bf38a6de68",
+      "bytes": 47772
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/current-e2efece3-observer.jsonl",
+      "sha256": "dabea5db6e93f38bd20fc13ef09a43d903b4ff77c7d56df0c2644341e1a2e15d",
+      "uncompressed_sha256": "dabea5db6e93f38bd20fc13ef09a43d903b4ff77c7d56df0c2644341e1a2e15d",
+      "bytes": 2054
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-observer.log.gz",
+      "sha256": "f88499d2c6ac053ba9400023c9a1e01af06707ace706e8e325f4ea34344cd56c",
+      "uncompressed_sha256": "633f7e922fb0573f65151b4a0e178a35673b2f6fc60c73c333654aa1cfe2143d",
+      "bytes": 2669
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-observer.sidecar.json",
+      "sha256": "ea6c6b05fa18d700336ed3ead9c4533678c59be8b93954b667cccb13e07601b1",
+      "uncompressed_sha256": "ea6c6b05fa18d700336ed3ead9c4533678c59be8b93954b667cccb13e07601b1",
+      "bytes": 46962
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-common-packet.json",
+      "sha256": "c90de0f0f77cafa7e36992ba2af47ea348643f716a55227525a96a470a616032",
+      "uncompressed_sha256": "c90de0f0f77cafa7e36992ba2af47ea348643f716a55227525a96a470a616032",
+      "bytes": 9929
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/integration-e2efece3-common-check.json",
+      "sha256": "9b2397efc20e13817b6ad40764e63463283c06f832934b1e9d036490d4251108",
+      "uncompressed_sha256": "9b2397efc20e13817b6ad40764e63463283c06f832934b1e9d036490d4251108",
+      "bytes": 5365
+    }
+  ]
+}

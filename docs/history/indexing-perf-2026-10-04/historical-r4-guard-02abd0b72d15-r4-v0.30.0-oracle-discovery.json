@@ -1,0 +1,52 @@
+{
+  "stage": "r4-v0.30.0-oracle-discovery",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::oracle::",
+    "--",
+    "--list"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r4-v0.30.0"
+  },
+  "started_utc": "2026-10-04T04:03:56.245807+00:00",
+  "source_manifest_before": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+  "Cargo_lock_before": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "watchdog_seconds": 600,
+  "watchdog_expired": false,
+  "termination": null,
+  "actual_process_pid": 16483,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "continuation_authorized": true,
+  "exit_code": 0,
+  "ended_utc": "2026-10-04T04:03:56.397455+00:00",
+  "elapsed_seconds": 0.14136212499579415,
+  "log_sha256": "1d3db6da708794cf81200001d2d376e2366ec471d16b27142f363925269d3e06",
+  "source_manifest_after": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+  "Cargo_lock_after": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [],
+  "discovered_tests": [
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_ignore_case_changes_membership",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_metadata_order_cannot_be_swapped",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_missing_higher_score_cannot_hide_in_cutoff_ties",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_rejects_wrong_kind_and_old_nested_member",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_same_root_old_generation_cannot_pass",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_shown_sort_uses_valid_actual_subset",
+    "app::tests::indexing_perf::harness::extensions::oracle::tc_229_extended_oracle_size_sort_keeps_directory_missing_values_last"
+  ],
+  "first_errors": []
+}

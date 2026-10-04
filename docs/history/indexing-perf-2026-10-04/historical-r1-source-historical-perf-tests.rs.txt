@@ -1,0 +1,85 @@
+#[cfg(test)]
+pub(crate) fn historical_prove_runtime_for_guard() {
+    let token=Arc::new(AtomicBool::new(false));let mut runtime=super::worker::runtime::WorkerRuntime::new(Arc::clone(&token));
+    runtime.push("historical-real-join",std::thread::spawn(||{}));
+    let summary=runtime.join_all_with_timeout(std::time::Duration::from_secs(1));
+    runtime_joined(&token,summary.joined,summary.total,&summary.pending,NATIVE_PANICS);
+}
+#[test]
+fn historical_actual_worker_success_is_positive() {
+    let cleanup=CellGuard::begin();historical_prove_runtime_for_guard();assert!(cleanup.safe());
+}
+#[test]
+fn historical_actual_worker_panic_is_not_positive() {
+    let cleanup=CellGuard::begin();let token=Arc::new(AtomicBool::new(false));
+    let mut runtime=super::worker::runtime::WorkerRuntime::new(Arc::clone(&token));
+    runtime.push("actual-panic",std::thread::spawn(||panic!("guard worker panic")));
+    let summary=runtime.join_all_with_timeout(std::time::Duration::from_secs(1));
+    runtime_joined(&token,summary.joined,summary.total,&summary.pending,NATIVE_PANICS);
+    assert_eq!(summary.joined,1);assert!(!cleanup.safe());
+}
+#[test]
+fn historical_actual_worker_timeout_cannot_be_healed() {
+    let cleanup=CellGuard::begin();let token=Arc::new(AtomicBool::new(false));
+    let mut runtime=super::worker::runtime::WorkerRuntime::new(Arc::clone(&token));
+    let (release,blocked)=std::sync::mpsc::channel();runtime.push("blocked",std::thread::spawn(move||{let _=blocked.recv();}));
+    let summary=runtime.join_all_with_timeout(std::time::Duration::from_millis(5));
+    runtime_joined(&token,summary.joined,summary.total,&summary.pending,NATIVE_PANICS);
+    assert_eq!(summary.joined,0);assert!(!cleanup.safe());drop(release);
+    // An empty subsequent cleanup is not allowed to overwrite the first bounded failure.
+    runtime_joined(&token,0,0,&[],None);assert!(!cleanup.safe());
+}
+#[test]
+fn historical_default_off_and_unrelated_path_have_no_owner() {
+    assert!(!cleanup_unproven());let token=Arc::new(AtomicBool::new(false));assert!(runtime_join_observer(&token).is_none());
+    let path=std::path::Path::new("historical-unrelated-no-file-access");bind_settings_writer(path);assert!(owned_writer(path).is_none());
+    let _cleanup=CellGuard::begin();bind_settings_writer(std::path::Path::new("historical-declared-only"));assert!(owned_writer(path).is_none());
+}
+fn declared_guard_writer(label:&str)->WriterObserver {
+    static NEXT:AtomicU64=AtomicU64::new(1);
+    let path=std::env::temp_dir().join(format!("historical-observer-only-{label}-{}-{}",std::process::id(),NEXT.fetch_add(1,Ordering::Relaxed)));
+    bind_settings_writer(&path);owned_writer(&path).unwrap()
+}
+#[test]
+fn historical_writer_actual_ack_and_join_are_required() {
+    let cleanup=CellGuard::begin();historical_prove_runtime_for_guard();let observer=declared_guard_writer("success");
+    let (stop,rx)=std::sync::mpsc::channel::<std::sync::mpsc::Sender<()>>();
+    observer.spawned(std::thread::spawn(move||{let reply=rx.recv().unwrap();reply.send(()).unwrap();}));
+    assert!(!cleanup.safe());let (reply,ack)=std::sync::mpsc::channel();let sent=stop.send(reply).is_ok();let received=ack.recv_timeout(std::time::Duration::from_secs(1)).map_err(|error|error.to_string());
+    observer.stopping(sent,Some(received),false);observer.join(std::time::Duration::from_secs(1));assert!(cleanup.safe());
+    // Empty repeated teardown retains the first real result and never erases it.
+    observer.stopping(false,None,true);observer.join(std::time::Duration::ZERO);assert!(cleanup.safe());
+}
+#[test]
+fn historical_writer_actual_panic_is_not_positive() {
+    let cleanup=CellGuard::begin();historical_prove_runtime_for_guard();let observer=declared_guard_writer("panic");
+    let (stop,rx)=std::sync::mpsc::channel::<std::sync::mpsc::Sender<()>>();observer.spawned(std::thread::spawn(move||{let reply=rx.recv().unwrap();reply.send(()).unwrap();panic!("actual writer panic");}));
+    let (reply,ack)=std::sync::mpsc::channel();let sent=stop.send(reply).is_ok();let received=ack.recv_timeout(std::time::Duration::from_secs(1)).map_err(|error|error.to_string());observer.stopping(sent,Some(received),false);observer.join(std::time::Duration::from_secs(1));assert!(!cleanup.safe());
+}
+#[test]
+fn historical_writer_actual_join_timeout_cannot_be_healed() {
+    let cleanup=CellGuard::begin();historical_prove_runtime_for_guard();let observer=declared_guard_writer("timeout");
+    let (stop,rx)=std::sync::mpsc::channel::<std::sync::mpsc::Sender<()>>();let (release,blocked)=std::sync::mpsc::channel();
+    observer.spawned(std::thread::spawn(move||{let reply=rx.recv().unwrap();reply.send(()).unwrap();let _=blocked.recv();}));
+    let (reply,ack)=std::sync::mpsc::channel();let sent=stop.send(reply).is_ok();let received=ack.recv_timeout(std::time::Duration::from_secs(1)).map_err(|error|error.to_string());observer.stopping(sent,Some(received),false);observer.join(std::time::Duration::from_millis(5));assert!(!cleanup.safe());
+    drop(release);observer.join(std::time::Duration::from_secs(1));assert!(!cleanup.safe());
+}
+#[test]
+fn historical_writer_actual_ack_timeout_cannot_be_healed() {
+    let cleanup=CellGuard::begin();historical_prove_runtime_for_guard();let observer=declared_guard_writer("ack-timeout");
+    let (stop,rx)=std::sync::mpsc::channel::<std::sync::mpsc::Sender<()>>();let (release,blocked)=std::sync::mpsc::channel();let (ready,wait_ready)=std::sync::mpsc::channel();
+    observer.spawned(std::thread::spawn(move||{let reply=rx.recv().unwrap();ready.send(()).unwrap();let _=blocked.recv();drop(reply);}));
+    let (reply,ack)=std::sync::mpsc::channel();let sent=stop.send(reply).is_ok();wait_ready.recv_timeout(std::time::Duration::from_secs(1)).unwrap();
+    let received=ack.recv_timeout(std::time::Duration::from_millis(5));assert!(matches!(received,Err(std::sync::mpsc::RecvTimeoutError::Timeout)));
+    observer.stopping(sent,None,true);drop(release);observer.join(std::time::Duration::from_secs(1));assert!(!cleanup.safe());
+    observer.stopping(true,Some(Ok(())),false);assert!(!cleanup.safe());
+}
+#[test]
+fn historical_parser_empty_second_stop_cannot_overwrite_timeout() {
+    let cleanup=CellGuard::begin();let id=parser_started(2);parser_joined(id,2,1,0,true);parser_joined(id,0,0,0,false);assert!(!cleanup.safe());
+}
+#[test]
+fn historical_commit_rejects_different_or_dead_arc() {
+    let first=Arc::new(Vec::<Entry>::new());let other=Arc::new(Vec::<Entry>::new());let witness=CommitWitness::capture(7,3,std::path::Path::new("owned"),&IndexSource::Walker,&first);
+    assert!(witness.matches(&first));assert!(!witness.matches(&other));drop(first);assert!(!witness.matches(&other));
+}

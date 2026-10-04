@@ -1,0 +1,87 @@
+{
+  "scope": "Selector integration frozen checkpoint; independent AFTER pending, no renewed measurements",
+  "rust_source_map_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "assets": [
+    {
+      "file": "victim-selector-final-packet.json",
+      "sha256": "82f49033b3d4f12f586b4203ad9bd3b890292d2e4f51a23c5bf3d4769dc649a1",
+      "bytes": 35801
+    },
+    {
+      "file": "victim-selector-final-source-hashes.json",
+      "sha256": "0ad33dd4d9fb965c4f6e367753c1e2c5e7d3a8e8b237a3d866fc789977dd53e5",
+      "bytes": 25238
+    },
+    {
+      "file": "victim-selector-integration-final-green.log.gz",
+      "sha256": "9700cdc0540ea7e0f1ce425814ca3c186c3d8269920c06c6a235175b674a63ce",
+      "bytes": 478,
+      "uncompressed_sha256": "d0797bbabb50e6102b0569ab6660bd6721f6fcb127c35ced28f6f2f54f085ed5",
+      "uncompressed_bytes": 857
+    },
+    {
+      "file": "victim-selector-final-indexing-normal.log.gz",
+      "sha256": "6ddd53dfdd7ad634879b9376112798d7c6f66a60db213ff3f4601f646302a6b6",
+      "bytes": 2016,
+      "uncompressed_sha256": "b73ffe43d14af0fca74c5497d731e88c6ed52bcbde34a2646a424936ba4b1815",
+      "uncompressed_bytes": 8455
+    },
+    {
+      "file": "victim-selector-final-search-observer.log.gz",
+      "sha256": "8707e8a20cbd2d3af3b5d450190af10023ff78726b07e89635ec4393b594fde9",
+      "bytes": 497,
+      "uncompressed_sha256": "76d009938bd39911c5495c466ebd5f20d51fa2f87dd866e6944402c34419e06b",
+      "uncompressed_bytes": 1223
+    },
+    {
+      "file": "victim-selector-final-fmt.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "file": "victim-selector-final-clippy.log.gz",
+      "sha256": "3d89371bdcbad452f1ef81f61606649585517f7d5af0785df8475f3c08713510",
+      "bytes": 153,
+      "uncompressed_sha256": "1232d091bb3e9dd0211dd04da3ddeb24c979be1604d482b21c36d465f6ce0ceb",
+      "uncompressed_bytes": 161
+    },
+    {
+      "file": "victim-selector-final-ordering-focused.log.gz",
+      "sha256": "d815cac9371eebf7eeae119f4e7221f75c7f5de47cb13849108313e94227c200",
+      "bytes": 533,
+      "uncompressed_sha256": "5c1a3f406f8fda08596de9d184a7a45e1ebb8749a2c606db05da516fffce276a",
+      "uncompressed_bytes": 1533
+    },
+    {
+      "file": "victim-selector-final-tc207.log.gz",
+      "sha256": "25beaf7c6def36b7282f80c31ffff326dea984db9ab3cee6f72354e7d91f4f07",
+      "bytes": 2446,
+      "uncompressed_sha256": "832f35c5dcffa82273610781e6713b4af94fe2cbb29525ad1dd4cda3b4cf0e25",
+      "uncompressed_bytes": 10623
+    },
+    {
+      "file": "victim-selector-final-index-pipeline.log.gz",
+      "sha256": "e9c8a101eb8d2c988927d478892b3f25d9dee365af682f1342e4d1b01c50182d",
+      "bytes": 3598,
+      "uncompressed_sha256": "89567c55b41c555dcbf98d992a66335e71ef46c266d1d11bdba25a2b545e664c",
+      "uncompressed_bytes": 19343
+    },
+    {
+      "file": "victim-selector-integration-first-red.log.gz",
+      "sha256": "a7fb1162d4da35af270f245fd2c308f93571c56e7da3c196ddcef5676394fb22",
+      "bytes": 817,
+      "uncompressed_sha256": "6afbdfc84d3ecdd3bbee70fda1a00a580f4e8ef5f50be3f1a3497c6a4ac5e933",
+      "uncompressed_bytes": 2664
+    },
+    {
+      "file": "victim-selector-final-vs-87e.patch.gz",
+      "sha256": "d6fb212d6e15b112d138d1b876dd661a58bdea6b4fab03593a312641f37f1c90",
+      "bytes": 2781,
+      "uncompressed_sha256": "91e0953afeb80c8bf5fe6748c14b981dac74afac3b8edc8f7eeb8e75a10d1fc7",
+      "uncompressed_bytes": 11289
+    }
+  ],
+  "decompression": "gzip -dc <file.log.gz> restores exact original bytes; victim-selector-final-vs-87e.patch applies from rust/ with patch -p1 to the immutable 87e source"
+}

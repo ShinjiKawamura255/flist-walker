@@ -1,0 +1,1914 @@
+{
+  "schema_version": 1,
+  "trace": "empty-startup-held10-edit25-clear50-v4",
+  "fixture": "flat-real-files-ascii-japanese-v2",
+  "frame_period_ms": 16,
+  "entries": 100000,
+  "pairs": 7,
+  "toolchain": "1.97.1",
+  "features": "Cargo.toml defaults; no added feature flags",
+  "flags": [
+    "--release",
+    "--locked",
+    "--offline",
+    "--lib",
+    "--exact",
+    "--ignored",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "targets": "separate export rust/target per immutable tag",
+  "runtime_settings": {
+    "search_threads": 12,
+    "search_parallel_threshold": 25000,
+    "walker_max_entries": 500000
+  },
+  "native_gui": "NOT_RUN",
+  "matrix": [
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-perf.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\",\"S1-dense\",\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":true,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\",\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (524615) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S1Selective/FileList;t2=254.874833ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25400, tv_nsec: 29259541 }), completed_at: Some(Instant { tv_sec: 25400, tv_nsec: 29259666 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 25400, tv_nsec: 229110208 }), evaluation_completed_at: Some(Instant { tv_sec: 25400, tv_nsec: 243139000 }), completed_at: Some(Instant { tv_sec: 25400, tv_nsec: 243139041 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 7.64s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "5859b725b9adf33022244ebbeeb72b8dece5e2b44eee2853b2ec08805ddeeb31"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-FileList-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (526509) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S1Dense/FileList;t2=237.073375ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25442, tv_nsec: 717643916 }), completed_at: Some(Instant { tv_sec: 25442, tv_nsec: 717643958 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 25442, tv_nsec: 897506708 }), evaluation_completed_at: Some(Instant { tv_sec: 25442, tv_nsec: 915770791 }), completed_at: Some(Instant { tv_sec: 25442, tv_nsec: 915770791 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 7.74s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "78af9b4bd1d76764af22ade78fb78fb6be877407b43b90c7f85a77541e8fad4b"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-FileList-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (526689) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S2/FileList;t2=255.199542ms;workers=[(2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25450, tv_nsec: 803118291 }), completed_at: Some(Instant { tv_sec: 25450, tv_nsec: 803118375 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25450, tv_nsec: 756025416 }), completed_at: Some(Instant { tv_sec: 25450, tv_nsec: 756025458 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 7.77s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "f547f28151a23d3d42d58ce524f86c49fd92f132fdde80fcf5210cf89c6b3b65"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-Walker-S1-selective-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (527089) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S1Selective/Walker;t2=1.034044334s;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 25460, tv_nsec: 256517208 }), evaluation_completed_at: Some(Instant { tv_sec: 25460, tv_nsec: 276879791 }), completed_at: Some(Instant { tv_sec: 25460, tv_nsec: 276879916 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25459, tv_nsec: 334414625 }), completed_at: Some(Instant { tv_sec: 25459, tv_nsec: 334414708 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 9.34s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "28b87d95a161eee746a56be148b1e2866af94d9dfb7bb6c80e18d14741c15042"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-Walker-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (527336) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S1Dense/Walker;t2=981.459167ms;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 25469, tv_nsec: 721589208 }), evaluation_completed_at: Some(Instant { tv_sec: 25469, tv_nsec: 749679458 }), completed_at: Some(Instant { tv_sec: 25469, tv_nsec: 749679583 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25468, tv_nsec: 856538666 }), completed_at: Some(Instant { tv_sec: 25468, tv_nsec: 856538708 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 9.33s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "63943038f3993a101a61c98dabe85e1353fd795a7738b22eeafdbc1f915763f0"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.27.0-Walker-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-7f12a5ba9ef9fc3e)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.27.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (527531) panicked at src/app/tests/indexing_perf/harness.rs:706:9:\nsubstantive actual search execution overlapping indexing: S2/Walker;t2=970.177958ms;workers=[(2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25478, tv_nsec: 434517458 }), completed_at: Some(Instant { tv_sec: 25478, tv_nsec: 434517583 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25478, tv_nsec: 274285875 }), completed_at: Some(Instant { tv_sec: 25478, tv_nsec: 274285958 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1188 filtered out; finished in 9.05s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "e289309c2073e2bf8203bc5497ed4b9155ccf637f877b9bce91cb84f5d3991d8"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-perf.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\",\"S1-dense\",\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":true,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\",\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (500065) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S1Selective/FileList;t2=240.484375ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24720, tv_nsec: 349358625 }), completed_at: Some(Instant { tv_sec: 24720, tv_nsec: 349358666 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24720, tv_nsec: 533021666 }), evaluation_completed_at: Some(Instant { tv_sec: 24720, tv_nsec: 546933291 }), completed_at: Some(Instant { tv_sec: 24720, tv_nsec: 546933333 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 7.77s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "16612c83afedbf7c6b7371061740ff0f25e34c42aed820e6c4775df55fb30a88"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-FileList-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (504986) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S1Dense/FileList;t2=242.7295ms;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24920, tv_nsec: 158674041 }), evaluation_completed_at: Some(Instant { tv_sec: 24920, tv_nsec: 179400875 }), completed_at: Some(Instant { tv_sec: 24920, tv_nsec: 179400916 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24919, tv_nsec: 964788583 }), completed_at: Some(Instant { tv_sec: 24919, tv_nsec: 964788625 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 7.68s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "46025eab054c87613a41f27de224ead957f650439cb9f62c0ab49a781f63e4f5"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-FileList-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (505155) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S2/FileList;t2=271.400667ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24927, tv_nsec: 780714083 }), completed_at: Some(Instant { tv_sec: 24927, tv_nsec: 780714125 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24927, tv_nsec: 797030500 }), completed_at: Some(Instant { tv_sec: 24927, tv_nsec: 797030500 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 7.68s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "626d800939d22222db5955e7ada2481bf0eb41cda6db55e80971d395b34539f0"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-Walker-S1-selective-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (505317) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S1Selective/Walker;t2=988.643584ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24936, tv_nsec: 495406958 }), completed_at: Some(Instant { tv_sec: 24936, tv_nsec: 495407000 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24937, tv_nsec: 364924291 }), evaluation_completed_at: Some(Instant { tv_sec: 24937, tv_nsec: 385209000 }), completed_at: Some(Instant { tv_sec: 24937, tv_nsec: 385209083 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 9.34s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "e2ea71b4c5fa30234ce37f7885bc6be06af4ad0d905d29af66d704d7df173458"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-Walker-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (512683) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S1Dense/Walker;t2=986.632625ms;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 25099, tv_nsec: 118299625 }), evaluation_completed_at: Some(Instant { tv_sec: 25099, tv_nsec: 146712458 }), completed_at: Some(Instant { tv_sec: 25099, tv_nsec: 146712583 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25098, tv_nsec: 250597125 }), completed_at: Some(Instant { tv_sec: 25098, tv_nsec: 250597166 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 9.37s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "27a4b3e5eb1c9339d7b9b43e74db60b6d85dcf052cbf11e9d6700b6cc299e02f"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.28.0-Walker-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-603e220b144e97ab)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.28.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (512884) panicked at src/app/tests/indexing_perf/harness.rs:704:9:\nsubstantive actual search execution overlapping indexing: S2/Walker;t2=980.804083ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25107, tv_nsec: 742246083 }), completed_at: Some(Instant { tv_sec: 25107, tv_nsec: 742246125 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 25107, tv_nsec: 900664166 }), completed_at: Some(Instant { tv_sec: 25107, tv_nsec: 900664500 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1380 filtered out; finished in 9.35s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "d40b6927d72d703ded577230a170160dd8fd96fe9d635bf06fb728f261dcabb1"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-perf.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\",\"S1-dense\",\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":true,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\",\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (492725) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S1Selective/FileList;t2=265.594208ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24609, tv_nsec: 943217000 }), completed_at: Some(Instant { tv_sec: 24609, tv_nsec: 943217083 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24610, tv_nsec: 156049583 }), evaluation_completed_at: Some(Instant { tv_sec: 24610, tv_nsec: 169584333 }), completed_at: Some(Instant { tv_sec: 24610, tv_nsec: 169584375 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 7.75s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "3a154a4ebec8f850f34028543122a132657828308b122c6a0cd246b488205dcd"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-FileList-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (502391) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S1Dense/FileList;t2=251.165333ms;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24841, tv_nsec: 148637708 }), evaluation_completed_at: Some(Instant { tv_sec: 24841, tv_nsec: 169715833 }), completed_at: Some(Instant { tv_sec: 24841, tv_nsec: 169715875 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24840, tv_nsec: 953727583 }), completed_at: Some(Instant { tv_sec: 24840, tv_nsec: 953727625 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 7.59s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "821a8a5c9f668f2f1251bda6422d4788d287e785f3fd03e488222073b117c2f1"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-FileList-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"FileList\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (502568) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S2/FileList;t2=271.133959ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24848, tv_nsec: 790281583 }), completed_at: Some(Instant { tv_sec: 24848, tv_nsec: 790281625 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24848, tv_nsec: 808302458 }), completed_at: Some(Instant { tv_sec: 24848, tv_nsec: 808302500 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 7.72s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "46d90cc45e644569252bfdd3fa85b80c473ce973019e50a04a2c6b7c52127b0a"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-Walker-S1-selective-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-selective\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (502731) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S1Selective/Walker;t2=984.358083ms;workers=[(2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24858, tv_nsec: 430072291 }), evaluation_completed_at: Some(Instant { tv_sec: 24858, tv_nsec: 451260666 }), completed_at: Some(Instant { tv_sec: 24858, tv_nsec: 451260791 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false }), (1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24857, tv_nsec: 565434875 }), completed_at: Some(Instant { tv_sec: 24857, tv_nsec: 565434958 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 9.21s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "6e0fe3c6c5b371a234796f2bb4b7fd8dd03f3743fe28aaf741beef67663586a8"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-Walker-S1-dense-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S1-dense\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (502913) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S1Dense/Walker;t2=1.006182458s;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24866, tv_nsec: 941545625 }), completed_at: Some(Instant { tv_sec: 24866, tv_nsec: 941545666 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 24867, tv_nsec: 834952958 }), evaluation_completed_at: Some(Instant { tv_sec: 24867, tv_nsec: 862107250 }), completed_at: Some(Instant { tv_sec: 24867, tv_nsec: 862107333 }), canceled_at: None, candidates: 100000, evaluated_candidates: 100000, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 9.23s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "94713113420e898d182d6ea38ab0938e8c551986c1b66c4c956dd5e09bd28b95"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 0,
+      "status": "NON_ELIGIBLE",
+      "evidence": "v0.29.0-Walker-S2-remaining.log",
+      "reason": "Actual nonempty evaluated search did not satisfy the request-owned overlap guard; no indexing speed regression/improvement inference.",
+      "diagnostic_tail": "     Running unittests src/lib.rs (target/release/deps/flist_walker-002c2a2f1e5f69fb)\n\nrunning 1 test\ntest app::tests::indexing_perf::perf_indexing_contention_paired ... INDEX_PERF_META {\"arch\":\"aarch64\",\"cargo_profile\":\"release\",\"cases\":[\"S2\"],\"cpu_parallelism\":12,\"fixture\":\"flat-real-files-ascii-japanese-v2\",\"fixture_signature\":\"68ffba3edf24a1d5\",\"frame_period_ms\":16,\"full_profile\":false,\"host\":\"macos\",\"native\":false,\"observer\":\"cfg-test-opt-in-batch-phase-v2\",\"package_version\":\"0.29.0\",\"pairs\":7,\"sample_entries\":100000,\"schema_version\":1,\"sources\":[\"Walker\"],\"trace\":\"empty-startup-held10-edit25-clear50-v4\"}\n\nthread 'app::tests::indexing_perf::perf_indexing_contention_paired' (503101) panicked at src/app/tests/indexing_perf/harness.rs:716:9:\nsubstantive actual search execution overlapping indexing: S2/Walker;t2=978.927833ms;workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24876, tv_nsec: 253580541 }), completed_at: Some(Instant { tv_sec: 24876, tv_nsec: 253580541 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 24876, tv_nsec: 415695875 }), completed_at: Some(Instant { tv_sec: 24876, tv_nsec: 415696041 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false })]\nnote: run with `RUST_BACKTRACE=1` environment variable to display a backtrace\nFAILED\n\nfailures:\n\nfailures:\n    app::tests::indexing_perf::perf_indexing_contention_paired\n\ntest result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1430 filtered out; finished in 9.15s\n\nerror: test failed, to rerun pass `--lib`",
+      "log_sha256": "cc8956afe7b8dbe22ef681ceb783ad4f59a9fa69b5369fc06848ed0183cc6297"
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "FileList",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 279.128125,
+      "maximum_index_ms": 319.399875,
+      "median_results_ms": 303.362083,
+      "maximum_results_ms": 362.749458,
+      "median_paired_index_ratio": 1.1033990051685987,
+      "all_eligible": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 277.105083,
+      "maximum_index_ms": 285.94462500000003,
+      "median_results_ms": 302.573667,
+      "maximum_results_ms": 307.59524999999996,
+      "median_paired_index_ratio": 1.102244640456621,
+      "all_eligible": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "FileList",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 272.1505,
+      "maximum_index_ms": 282.61525,
+      "median_results_ms": 272.1505,
+      "maximum_results_ms": 282.61525,
+      "median_paired_index_ratio": 1.0182245299766306,
+      "all_eligible": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 1003.6700000000001,
+      "maximum_index_ms": 1038.989583,
+      "median_results_ms": 1048.263041,
+      "maximum_results_ms": 1078.8849579999999,
+      "median_paired_index_ratio": 1.0023509417140029,
+      "all_eligible": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 1016.7497910000001,
+      "maximum_index_ms": 1054.8971250000002,
+      "median_results_ms": 1065.925125,
+      "maximum_results_ms": 1099.8612910000002,
+      "median_paired_index_ratio": 1.0214249129325341,
+      "all_eligible": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "Walker",
+      "case": "S2",
+      "expected_pairs": 7,
+      "expected_raw_rows": 14,
+      "accepted_raw_rows": 14,
+      "status": "PASS",
+      "evidence": "v0.30.0-perf.log",
+      "median_index_ms": 1007.409083,
+      "maximum_index_ms": 1023.7043749999999,
+      "median_results_ms": 1007.409083,
+      "maximum_results_ms": 1023.7043749999999,
+      "median_paired_index_ratio": 1.037729198992865,
+      "all_eligible": true
+    }
+  ],
+  "baselines": [
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 253.9023745,
+      "maximum_index_ms": 273.253584,
+      "median_results_ms": 253.9023745,
+      "correct": true
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 993.707604,
+      "maximum_index_ms": 1015.589291,
+      "median_results_ms": 993.707604,
+      "correct": true
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 256.325917,
+      "maximum_index_ms": 274.951292,
+      "median_results_ms": 256.325917,
+      "correct": true
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 992.7974165,
+      "maximum_index_ms": 1060.908209,
+      "median_results_ms": 992.7974165,
+      "correct": true
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 253.71743750000002,
+      "maximum_index_ms": 306.57520900000003,
+      "median_results_ms": 253.71743750000002,
+      "correct": true
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "raw_rows": 14,
+      "profile": "AA controls: seven pairs, both positions B0",
+      "median_index_ms": 979.3403745,
+      "maximum_index_ms": 1011.639208,
+      "median_results_ms": 979.3403745,
+      "correct": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "FileList",
+      "raw_rows": 21,
+      "profile": "paired B0 controls against three query conditions",
+      "median_index_ms": 257.103417,
+      "maximum_index_ms": 277.92145800000003,
+      "median_results_ms": 257.103417,
+      "correct": true
+    },
+    {
+      "tag": "v0.30.0",
+      "source": "Walker",
+      "raw_rows": 21,
+      "profile": "paired B0 controls against three query conditions",
+      "median_index_ms": 1001.379041,
+      "maximum_index_ms": 1073.255041,
+      "median_results_ms": 1001.379041,
+      "correct": true
+    }
+  ],
+  "execution": [
+    {
+      "tag": "v0.30.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.30.0/rust",
+      "timeout": 600,
+      "log": "v0.30.0-build.log",
+      "started": 1791034562.019881,
+      "exit_code": 0,
+      "elapsed_seconds": 82.452467918396,
+      "log_sha256": "08cbc6a3e1c6e6a4f64e1f21ae688e10ac6165460cc4297017504dd3bd17cdfd"
+    },
+    {
+      "tag": "v0.30.0",
+      "stage": "smoke",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.30.0/rust",
+      "timeout": 420,
+      "log": "v0.30.0-smoke.log",
+      "started": 1791034690.731771,
+      "exit_code": 0,
+      "elapsed_seconds": 3.4510109424591064,
+      "log_sha256": "b8393926fad4cb5370fa88142d3da301a82b3f2531650d8a4ba18003c4ccab90"
+    },
+    {
+      "tag": "v0.30.0",
+      "stage": "perf",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.30.0/rust",
+      "timeout": 1500,
+      "log": "v0.30.0-perf.log",
+      "started": 1791034694.18308,
+      "exit_code": 0,
+      "elapsed_seconds": 93.7974009513855,
+      "log_sha256": "fef7b1e2b444330deb94f3040442cd9306d3e23dd6c50707b1dd90195178685a"
+    },
+    {
+      "tag": "v0.29.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.29.0/rust",
+      "timeout": 600,
+      "log": "v0.29.0-build.log",
+      "started": 1791034787.981054,
+      "exit_code": 0,
+      "elapsed_seconds": 79.7604341506958,
+      "log_sha256": "50ad6ac9131d5743c75d22cefce4b34e550940b4dcc6afe488903c770ce1069b"
+    },
+    {
+      "tag": "v0.29.0",
+      "stage": "smoke",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.29.0/rust",
+      "timeout": 420,
+      "log": "v0.29.0-smoke.log",
+      "started": 1791034867.741794,
+      "exit_code": 0,
+      "elapsed_seconds": 3.7661960124969482,
+      "log_sha256": "f9107f7e652120725eb1b6f667999fe24e4c900b614801b747c21e92db5591fa"
+    },
+    {
+      "tag": "v0.29.0",
+      "stage": "perf",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.29.0/rust",
+      "timeout": 1500,
+      "log": "v0.29.0-perf.log",
+      "started": 1791034871.508447,
+      "exit_code": 101,
+      "elapsed_seconds": 7.908092021942139,
+      "log_sha256": "3a154a4ebec8f850f34028543122a132657828308b122c6a0cd246b488205dcd"
+    },
+    {
+      "tag": "v0.28.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.28.0/rust",
+      "timeout": 600,
+      "log": "v0.28.0-build.log",
+      "started": 1791034879.416992,
+      "exit_code": 0,
+      "elapsed_seconds": 98.635901927948,
+      "log_sha256": "0138c43213d2a99ccf651791ae4a1ef18433fd051faf3215558cc8d84f81f483"
+    },
+    {
+      "tag": "v0.28.0",
+      "stage": "smoke",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.28.0/rust",
+      "timeout": 420,
+      "log": "v0.28.0-smoke.log",
+      "started": 1791034978.053199,
+      "exit_code": 0,
+      "elapsed_seconds": 3.8343429565429688,
+      "log_sha256": "31a8c8492a48dea6720781d759c940a9a3c57b22663dcc1981381f7f3c9822ba"
+    },
+    {
+      "tag": "v0.28.0",
+      "stage": "perf",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.28.0/rust",
+      "timeout": 1500,
+      "log": "v0.28.0-perf.log",
+      "started": 1791034981.888188,
+      "exit_code": 101,
+      "elapsed_seconds": 7.929646015167236,
+      "log_sha256": "16612c83afedbf7c6b7371061740ff0f25e34c42aed820e6c4775df55fb30a88"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.27.0/rust",
+      "timeout": 600,
+      "log": "v0.27.0-build-offline-missing-cache.log",
+      "started": 1791034989.818319,
+      "exit_code": 101,
+      "elapsed_seconds": 0.13761687278747559,
+      "log_sha256": "2621948d0be965adbbadebf51aa3978280c340919ad7f2e12ed8cd6db8e7d66e"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-build-compatibility-errors.log",
+      "started": 1791035335.1396759,
+      "exit_code": 101,
+      "elapsed_seconds": 23.53268814086914,
+      "log_sha256": "2077b3fc8517035f33baee0abad5d85c2a941e44d1b29fa37accf5334958e667"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-build-status-borrow-error.log",
+      "started": 1791035470.6363451,
+      "exit_code": 101,
+      "elapsed_seconds": 2.630889892578125,
+      "log_sha256": "cb6bad5b9fb2c39c785cf8e5d453cfc8eb5855e5fa141c1f923f49ef90ceb128"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-build.log",
+      "started": 1791035593.87219,
+      "exit_code": 0,
+      "elapsed_seconds": 64.08634686470032,
+      "log_sha256": "2328e794a9b7e4db098c8eef9da1b4b36bc12aae51beafb2cf8cf2b3e773e978"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "smoke",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-smoke.log",
+      "started": 1791035657.958845,
+      "exit_code": 0,
+      "elapsed_seconds": 3.6246111392974854,
+      "log_sha256": "4811b26d2a239b135ee0922e29f3b0e055513ff87127f9855dce88c8d2abca32"
+    },
+    {
+      "tag": "v0.27.0",
+      "stage": "perf",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-perf.log",
+      "started": 1791035661.5839622,
+      "exit_code": 101,
+      "elapsed_seconds": 7.831025838851929,
+      "log_sha256": "5859b725b9adf33022244ebbeeb72b8dece5e2b44eee2853b2ec08805ddeeb31"
+    }
+  ],
+  "remaining_execution": [
+    {
+      "tag": "v0.29.0",
+      "source": "FileList,Walker",
+      "case": "B0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "B0",
+        "FW_INDEX_PERF_SOURCES": "FileList,Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-FileList,Walker-B0-remaining.log",
+      "started": 1791035067.514584,
+      "exit_code": 0,
+      "elapsed_seconds": 35.067959785461426,
+      "log_sha256": "f75fcefa294199cc5876251d326183a1e04eaba946ef68dd62eefde021a8c22d"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-FileList-S1-dense-remaining.log",
+      "started": 1791035102.5830212,
+      "exit_code": 101,
+      "elapsed_seconds": 7.782521724700928,
+      "log_sha256": "821a8a5c9f668f2f1251bda6422d4788d287e785f3fd03e488222073b117c2f1"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "FileList",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-FileList-S2-remaining.log",
+      "started": 1791035110.3660889,
+      "exit_code": 101,
+      "elapsed_seconds": 7.914268255233765,
+      "log_sha256": "46d90cc45e644569252bfdd3fa85b80c473ce973019e50a04a2c6b7c52127b0a"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-selective",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-Walker-S1-selective-remaining.log",
+      "started": 1791035118.280889,
+      "exit_code": 101,
+      "elapsed_seconds": 9.369227170944214,
+      "log_sha256": "6e0fe3c6c5b371a234796f2bb4b7fd8dd03f3743fe28aaf741beef67663586a8"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-Walker-S1-dense-remaining.log",
+      "started": 1791035127.650472,
+      "exit_code": 101,
+      "elapsed_seconds": 9.382053136825562,
+      "log_sha256": "94713113420e898d182d6ea38ab0938e8c551986c1b66c4c956dd5e09bd28b95"
+    },
+    {
+      "tag": "v0.29.0",
+      "source": "Walker",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.29.0/rust",
+      "log": "v0.29.0-Walker-S2-remaining.log",
+      "started": 1791035137.033031,
+      "exit_code": 101,
+      "elapsed_seconds": 9.328963994979858,
+      "log_sha256": "cc8956afe7b8dbe22ef681ceb783ad4f59a9fa69b5369fc06848ed0183cc6297"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList,Walker",
+      "case": "B0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "B0",
+        "FW_INDEX_PERF_SOURCES": "FileList,Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-FileList,Walker-B0-remaining.log",
+      "started": 1791035146.362657,
+      "exit_code": 0,
+      "elapsed_seconds": 35.178462982177734,
+      "log_sha256": "f53720015b1780f9754447cce2257ecaa6ffcbc6c75a064571adaee85aca7369"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-FileList-S1-dense-remaining.log",
+      "started": 1791035181.541549,
+      "exit_code": 101,
+      "elapsed_seconds": 7.842627048492432,
+      "log_sha256": "46025eab054c87613a41f27de224ead957f650439cb9f62c0ab49a781f63e4f5"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "FileList",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-FileList-S2-remaining.log",
+      "started": 1791035189.384725,
+      "exit_code": 101,
+      "elapsed_seconds": 7.853879928588867,
+      "log_sha256": "626d800939d22222db5955e7ada2481bf0eb41cda6db55e80971d395b34539f0"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-selective",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-Walker-S1-selective-remaining.log",
+      "started": 1791035197.239157,
+      "exit_code": 101,
+      "elapsed_seconds": 9.496165037155151,
+      "log_sha256": "e2ea71b4c5fa30234ce37f7885bc6be06af4ad0d905d29af66d704d7df173458"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-Walker-S1-dense-remaining-fetch-pause.log",
+      "started": 1791035206.7358248,
+      "exit_code": 130,
+      "status": "interrupted-to-release-fetch-window",
+      "elapsed_seconds": 24.979462146759033,
+      "log_sha256": "c1745cb8c07c37d755516aba45ec889056ff05caca395e3ec0ddd3747571b034"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-Walker-S1-dense-remaining.log",
+      "started": 1791035358.6972082,
+      "exit_code": 101,
+      "elapsed_seconds": 9.705205917358398,
+      "log_sha256": "27a4b3e5eb1c9339d7b9b43e74db60b6d85dcf052cbf11e9d6700b6cc299e02f"
+    },
+    {
+      "tag": "v0.28.0",
+      "source": "Walker",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.28.0/rust",
+      "log": "v0.28.0-Walker-S2-remaining.log",
+      "started": 1791035368.402993,
+      "exit_code": 101,
+      "elapsed_seconds": 9.542600154876709,
+      "log_sha256": "d40b6927d72d703ded577230a170160dd8fd96fe9d635bf06fb728f261dcabb1"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "FileList,Walker",
+      "case": "B0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "B0",
+        "FW_INDEX_PERF_SOURCES": "FileList,Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-FileList,Walker-B0-remaining.log",
+      "started": 1791035669.434439,
+      "exit_code": 0,
+      "elapsed_seconds": 34.84234595298767,
+      "log_sha256": "4adac6706ddcca8a6615667c87fa97f8bc34478c260d2d54dd5453971b2daf39"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-FileList-S1-dense-remaining.log",
+      "started": 1791035704.2772858,
+      "exit_code": 101,
+      "elapsed_seconds": 7.902773141860962,
+      "log_sha256": "78af9b4bd1d76764af22ade78fb78fb6be877407b43b90c7f85a77541e8fad4b"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "FileList",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "FileList",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-FileList-S2-remaining.log",
+      "started": 1791035712.180623,
+      "exit_code": 101,
+      "elapsed_seconds": 7.91435694694519,
+      "log_sha256": "f547f28151a23d3d42d58ce524f86c49fd92f132fdde80fcf5210cf89c6b3b65"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S1-selective",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-selective",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-Walker-S1-selective-remaining.log",
+      "started": 1791035720.095358,
+      "exit_code": 101,
+      "elapsed_seconds": 9.490439891815186,
+      "log_sha256": "28b87d95a161eee746a56be148b1e2866af94d9dfb7bb6c80e18d14741c15042"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S1-dense",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S1-dense",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-Walker-S1-dense-remaining.log",
+      "started": 1791035729.586194,
+      "exit_code": 101,
+      "elapsed_seconds": 9.479310989379883,
+      "log_sha256": "63943038f3993a101a61c98dabe85e1353fd795a7738b22eeafdbc1f915763f0"
+    },
+    {
+      "tag": "v0.27.0",
+      "source": "Walker",
+      "case": "S2",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FW_INDEX_PERF_CASES": "S2",
+        "FW_INDEX_PERF_SOURCES": "Walker",
+        "FW_INDEX_PERF_ENTRIES": "100000",
+        "FW_INDEX_PERF_PAIRS": "7"
+      },
+      "cwd": "v0.27.0/rust",
+      "log": "v0.27.0-Walker-S2-remaining.log",
+      "started": 1791035739.066041,
+      "exit_code": 101,
+      "elapsed_seconds": 9.187419891357422,
+      "log_sha256": "e289309c2073e2bf8203bc5497ed4b9155ccf637f877b9bce91cb84f5d3991d8"
+    }
+  ],
+  "identities": [
+    {
+      "tag": "v0.27.0",
+      "commit": "37195d639338f10549efabb1abad729546230914",
+      "archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+      "lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+      "adapter_sha256": "9189c9798e6f43e2e2fc9214712bf96d12c6ed3e98262f58d848ae0a34a5621d",
+      "modified": [
+        {
+          "path": "rust/src/app/index_coordinator.rs",
+          "original_sha256": "995148780f48bc63387b93229ccbebde90131495ec904435345cf90172a0224b",
+          "adapter_sha256": "78517f9d85fe32ee50e328ef68442c582621a24378fe0cdefa1bcab2d67d8318"
+        },
+        {
+          "path": "rust/src/app/index_mailbox.rs",
+          "original_sha256": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+          "adapter_sha256": "9bed49830dd4491fe6b1782dacf7843044d2785a7c5a7d75b40c20fe2535338c"
+        },
+        {
+          "path": "rust/src/app/index_worker.rs",
+          "original_sha256": "27bf2da1bc94131deaa52a2859f9423d75c03de42be34e9f624268fdc441d889",
+          "adapter_sha256": "4cbc19dc27d9f9107efe97cf5ba6d2a26f7ce37945980013c408417f90225c49"
+        },
+        {
+          "path": "rust/src/app/pipeline_owner.rs",
+          "original_sha256": "5050f2045edfc29750301ddfc5de25a8d9507a642fcacdb89f12f402c2aec6d1",
+          "adapter_sha256": "72babd2579dd1e37ccf898a4b935a5663c39f06778adc755c34acab8e1858c6e"
+        },
+        {
+          "path": "rust/src/app/search_coordinator.rs",
+          "original_sha256": "cb6fc168fe89714f57f9561568bf0e5d663bee4e9610de7810c69125cc54fc38",
+          "adapter_sha256": "88e73c13dd8ce4d552ec38c384d7415f0bbcf5186a2b8b51295292bdf5619c7e"
+        },
+        {
+          "path": "rust/src/app/session.rs",
+          "original_sha256": "e2ce6ce15eaa184e332e07489ff9e2654dc5d10ed59284c20b56ca38cb91551e",
+          "adapter_sha256": "cdcd4716e90a25209df48c13e50be1d647ba18748b741477e57edb95b5f29a21"
+        },
+        {
+          "path": "rust/src/app/tests/mod.rs",
+          "original_sha256": "a32975b1e6696d78d73f33b84c294d6d26f88fb9f91b67dc94b9ef24456d2143",
+          "adapter_sha256": "b9d5e0ca5a5df5a931b84fc3d35e7fec61068755e3960740578bddb71c3ff0d3"
+        },
+        {
+          "path": "rust/src/app/tests/support.rs",
+          "original_sha256": "9196e11bf591d07c7e9b5e507b76bf20b90f05eb467b833b026cad2686fcff8e",
+          "adapter_sha256": "10cf85bd7678e23c31a0e92689c283dc497a51794982a7fcb43893b0b567e17c"
+        },
+        {
+          "path": "rust/src/app/worker.rs",
+          "original_sha256": "bb4a2fb4459562b4d21928ed4f72b09c06d82e3db28ebd854a1a869799da35f9",
+          "adapter_sha256": "5b2df7bcb9862fd7281466deae65f150fc15e5468223b33c445fff5c4836ef80"
+        },
+        {
+          "path": "rust/src/app/worker/tasks.rs",
+          "original_sha256": "f924500cbc5ede33d00c7133ace9eaa097cd5be94f20ec6dd48375e87c90b959",
+          "adapter_sha256": "9247b8003d7b6ed8cf2f878ecfaff1e6a7b82fe18a89f5c641aa388359d3a2ee"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/mod.rs",
+          "original_sha256": null,
+          "adapter_sha256": "ab446f90be98e3821bde6b8b50f4ce42a6eba5a19fab4cb3ef0648bd1f2c46b0"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/harness.rs",
+          "original_sha256": null,
+          "adapter_sha256": "bc00e0d6cf5d9b48f4de9c6e70b4a525d9068449cfacbfad5a071588838e9517"
+        },
+        {
+          "path": "rust/src/app/worker/search_perf.rs",
+          "original_sha256": null,
+          "adapter_sha256": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01"
+        }
+      ],
+      "toolchain_sha256": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+      "source_files": 337,
+      "unchanged_outside_adapter_paths": true
+    },
+    {
+      "tag": "v0.28.0",
+      "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+      "archive_sha256": "0710519dd506d9a97037264dce102754024501086081ab7280eabe9c0fba6817",
+      "lock_sha256": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+      "adapter_sha256": "3f1bb28113e7e45a2f7448a725fcc28536a20145a21afc289836a39ac6237502",
+      "modified": [
+        {
+          "path": "rust/src/app/index_coordinator.rs",
+          "original_sha256": "b6c18b854aced14d04934b823f4666b0abf6e07260bcd58901da7a8c5e04abc2",
+          "adapter_sha256": "d9a67aa3974594ec26c4cbbb590cfbf7531b3542749f0de0b6d20b4a5eb4c043"
+        },
+        {
+          "path": "rust/src/app/index_mailbox.rs",
+          "original_sha256": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+          "adapter_sha256": "9bed49830dd4491fe6b1782dacf7843044d2785a7c5a7d75b40c20fe2535338c"
+        },
+        {
+          "path": "rust/src/app/index_worker.rs",
+          "original_sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+          "adapter_sha256": "5594a4508889a3c5a88a83d7de96a09995738aa536aa71ef29644333f1243cf7"
+        },
+        {
+          "path": "rust/src/app/pipeline_owner.rs",
+          "original_sha256": "ef7d424f9e6f276e44b2aaa1c12b65f209c5a8f75d2009500be5e0e20a5ccb1e",
+          "adapter_sha256": "a3b182a21239509da18e57921ada1fcaee2964079aff9afb248edb4381bdbdf9"
+        },
+        {
+          "path": "rust/src/app/search_coordinator.rs",
+          "original_sha256": "f6c5881f8a7a6d01c1a36694502d9c2aa01ee3e255d080daf6018e9c5cfdc999",
+          "adapter_sha256": "fb6a0fe8bd331367a9f4bce6ca31fef394112c57af8fe47c937abdcb92e95fee"
+        },
+        {
+          "path": "rust/src/app/tests/mod.rs",
+          "original_sha256": "f90b4cba2b05ed4a75be2535e11b9ccb7960158855e07af3b386944e49a42311",
+          "adapter_sha256": "8511a4d8c49e236eb535b27a4c4ef7fd2f7ebc902bbc8d5255f13de0f5b52a68"
+        },
+        {
+          "path": "rust/src/app/worker.rs",
+          "original_sha256": "e38cd651fd4097206a37aad6d5f9010454d40c0cf7bff507d19b5e00524d8d99",
+          "adapter_sha256": "db274f5e465a9f15d04197e13170608c04367d99c0bcf2900b19f57edf3e1e0b"
+        },
+        {
+          "path": "rust/src/app/worker/tasks.rs",
+          "original_sha256": "53ef583e5b722ec649f476a6d19922eddf76e22a07cc7450df721e9b85c79648",
+          "adapter_sha256": "0f622abef6e1ed9e14175bae11bb84c4158e8ee29adb618886b4c8e1e230a119"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/mod.rs",
+          "original_sha256": null,
+          "adapter_sha256": "ab446f90be98e3821bde6b8b50f4ce42a6eba5a19fab4cb3ef0648bd1f2c46b0"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/harness.rs",
+          "original_sha256": null,
+          "adapter_sha256": "f9bf8cbe492847714ab01a798ad138d4d405c5f9abc08ea0537f560a1c24fad5"
+        },
+        {
+          "path": "rust/src/app/worker/search_perf.rs",
+          "original_sha256": null,
+          "adapter_sha256": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01"
+        }
+      ],
+      "toolchain_sha256": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+      "source_files": 356,
+      "unchanged_outside_adapter_paths": true
+    },
+    {
+      "tag": "v0.29.0",
+      "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+      "archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+      "lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+      "adapter_sha256": "5faac3182cc72a1bce418f80bead6fc4f81b50f689240ac177658cb90bf43953",
+      "modified": [
+        {
+          "path": "rust/src/app/index_coordinator.rs",
+          "original_sha256": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+          "adapter_sha256": "4f37dcba0eb75b69b81068a31f748b196a73afed21b2caa2a1303e280b4f7341"
+        },
+        {
+          "path": "rust/src/app/index_mailbox.rs",
+          "original_sha256": "d76b82bf7b3192ea2607a24d90804522242876b566ceec60148b3e6a0de35d40",
+          "adapter_sha256": "9bed49830dd4491fe6b1782dacf7843044d2785a7c5a7d75b40c20fe2535338c"
+        },
+        {
+          "path": "rust/src/app/index_worker.rs",
+          "original_sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+          "adapter_sha256": "5594a4508889a3c5a88a83d7de96a09995738aa536aa71ef29644333f1243cf7"
+        },
+        {
+          "path": "rust/src/app/pipeline_owner.rs",
+          "original_sha256": "4664d136580354c8cfc0b797586238372aae74fb37dace41bf7f01a71362a6b9",
+          "adapter_sha256": "fc4899559e1df5fcba6832a0a13fbb39c8e972943f0227390af9b5c829812641"
+        },
+        {
+          "path": "rust/src/app/search_coordinator.rs",
+          "original_sha256": "f6c5881f8a7a6d01c1a36694502d9c2aa01ee3e255d080daf6018e9c5cfdc999",
+          "adapter_sha256": "fb6a0fe8bd331367a9f4bce6ca31fef394112c57af8fe47c937abdcb92e95fee"
+        },
+        {
+          "path": "rust/src/app/tests/mod.rs",
+          "original_sha256": "490139a0059293a3c59d07787ec4beb841497015e60e1b810cb67a93dbdecbae",
+          "adapter_sha256": "7d4a6c9b595f104afe5ba1ef4e570e88e8efd9dd92824ae2e76542b395a7dc7a"
+        },
+        {
+          "path": "rust/src/app/worker.rs",
+          "original_sha256": "e38cd651fd4097206a37aad6d5f9010454d40c0cf7bff507d19b5e00524d8d99",
+          "adapter_sha256": "db274f5e465a9f15d04197e13170608c04367d99c0bcf2900b19f57edf3e1e0b"
+        },
+        {
+          "path": "rust/src/app/worker/tasks.rs",
+          "original_sha256": "53ef583e5b722ec649f476a6d19922eddf76e22a07cc7450df721e9b85c79648",
+          "adapter_sha256": "0f622abef6e1ed9e14175bae11bb84c4158e8ee29adb618886b4c8e1e230a119"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/mod.rs",
+          "original_sha256": null,
+          "adapter_sha256": "ab446f90be98e3821bde6b8b50f4ce42a6eba5a19fab4cb3ef0648bd1f2c46b0"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/harness.rs",
+          "original_sha256": null,
+          "adapter_sha256": "9d55acd38e1ecff8e5b1b363e28d6f587d1e87704cdbed8f9e73a267cd6b20f3"
+        },
+        {
+          "path": "rust/src/app/worker/search_perf.rs",
+          "original_sha256": null,
+          "adapter_sha256": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01"
+        }
+      ],
+      "toolchain_sha256": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+      "source_files": 370,
+      "unchanged_outside_adapter_paths": true
+    },
+    {
+      "tag": "v0.30.0",
+      "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+      "archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+      "lock_sha256": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+      "adapter_sha256": "c369186f9fb95676d4f1abe2b0045dfe3a86bc50463220814c826a98eaaf2e3f",
+      "modified": [
+        {
+          "path": "rust/src/app/index_coordinator.rs",
+          "original_sha256": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+          "adapter_sha256": "4f37dcba0eb75b69b81068a31f748b196a73afed21b2caa2a1303e280b4f7341"
+        },
+        {
+          "path": "rust/src/app/index_mailbox.rs",
+          "original_sha256": "deda23d1cd36653ba50f7dcc6867e9e406debae0eb606e7f98c24f554f5852d7",
+          "adapter_sha256": "b28bfcd526ecca79ca1abd56e52f3386dc098ed6d1c8bc7ef27c30854e1b3081"
+        },
+        {
+          "path": "rust/src/app/index_worker.rs",
+          "original_sha256": "bac9aeabd11baa426721c4c69d6a4956a4c3cc45b07da99d983f52559c781f12",
+          "adapter_sha256": "726154980e122916cbf42f45caaae56937da18ab63d63ce17691601ab79f8427"
+        },
+        {
+          "path": "rust/src/app/pipeline_owner.rs",
+          "original_sha256": "ef3636b0bf34aeae374f5020c2ab9133834bbdccdc2fe7660bd24faef03479ea",
+          "adapter_sha256": "004567507605aa1de6e07b31f2f1bd2b32e25355f10bc15282691f53f58449f3"
+        },
+        {
+          "path": "rust/src/app/search_coordinator.rs",
+          "original_sha256": "f6c5881f8a7a6d01c1a36694502d9c2aa01ee3e255d080daf6018e9c5cfdc999",
+          "adapter_sha256": "fb6a0fe8bd331367a9f4bce6ca31fef394112c57af8fe47c937abdcb92e95fee"
+        },
+        {
+          "path": "rust/src/app/tests/mod.rs",
+          "original_sha256": "dcbf6c217c9e845cabd441965dd4ffbbb96f978a0cbcc2a231a01de6917b00f3",
+          "adapter_sha256": "8dba46128f4c1a08410972c821c8ba6208ad7249e8b9e5864f5caa7b84bfcdb0"
+        },
+        {
+          "path": "rust/src/app/worker.rs",
+          "original_sha256": "e38cd651fd4097206a37aad6d5f9010454d40c0cf7bff507d19b5e00524d8d99",
+          "adapter_sha256": "db274f5e465a9f15d04197e13170608c04367d99c0bcf2900b19f57edf3e1e0b"
+        },
+        {
+          "path": "rust/src/app/worker/tasks.rs",
+          "original_sha256": "53ef583e5b722ec649f476a6d19922eddf76e22a07cc7450df721e9b85c79648",
+          "adapter_sha256": "0f622abef6e1ed9e14175bae11bb84c4158e8ee29adb618886b4c8e1e230a119"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/mod.rs",
+          "original_sha256": null,
+          "adapter_sha256": "ab446f90be98e3821bde6b8b50f4ce42a6eba5a19fab4cb3ef0648bd1f2c46b0"
+        },
+        {
+          "path": "rust/src/app/tests/indexing_perf/harness.rs",
+          "original_sha256": null,
+          "adapter_sha256": "6d0ef20835f06a2067308351c3b0cde7bcd33d815b2acbfe0d06cc0c9de9aa92"
+        },
+        {
+          "path": "rust/src/app/worker/search_perf.rs",
+          "original_sha256": null,
+          "adapter_sha256": "335e25b044e41e062a6c5573aca91cb4cd09b520514f3121bb402cc0a05fcb01"
+        }
+      ],
+      "toolchain_sha256": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+      "source_files": 394,
+      "unchanged_outside_adapter_paths": true
+    }
+  ],
+  "accepted_raw_rows": 168,
+  "expected_hypothetical_full_raw_rows": 336,
+  "profile_note": "Old versions that do not execute substantive search while indexing are unsupported by this contention comparison; command guard failures are preserved rather than classified as speed failures.",
+  "all_guards": [
+    {
+      "tag": "v0.27.0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.27.0/rust",
+      "exit_code": 0,
+      "elapsed_seconds": 3.1499431133270264,
+      "log": "v0.27.0-all-guards.log",
+      "log_sha256": "3338172818b2264b8c09448f8aa2fadcfb75163d08f2be31f57f1640ae37afbc",
+      "result": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 1180 filtered out; finished in 3.02s"
+      ]
+    },
+    {
+      "tag": "v0.28.0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.28.0/rust",
+      "exit_code": 0,
+      "elapsed_seconds": 3.222174882888794,
+      "log": "v0.28.0-all-guards.log",
+      "log_sha256": "a8276c6bfdce5a05da92b98a00f1d59883aa997244524abce75b7af18b64d487",
+      "result": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 1372 filtered out; finished in 3.09s"
+      ]
+    },
+    {
+      "tag": "v0.29.0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.29.0/rust",
+      "exit_code": 0,
+      "elapsed_seconds": 3.3250648975372314,
+      "log": "v0.29.0-all-guards.log",
+      "log_sha256": "9aaf24b999322766d0ffa5bd69bd34273f19e58cbdbf5a3005cce94bda9d520f",
+      "result": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 1422 filtered out; finished in 3.10s"
+      ]
+    },
+    {
+      "tag": "v0.30.0",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::indexing_perf",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "v0.30.0/rust",
+      "exit_code": 0,
+      "elapsed_seconds": 3.473846197128296,
+      "log": "v0.30.0-all-guards.log",
+      "log_sha256": "8557520226f3e79d880c7a9befaaffac2dc6e4adc4e28a2e705cb057afa070d0",
+      "result": [
+        "test result: ok. 7 passed; 0 failed; 2 ignored; 0 measured; 1490 filtered out; finished in 3.26s"
+      ]
+    }
+  ],
+  "retired_execution": [
+    {
+      "tag": "v0.30.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/history/v0.30.0/rust",
+      "timeout": 600,
+      "log": "v0.30.0-build.log",
+      "started": 1791033727.0431879,
+      "exit_code": 0,
+      "elapsed_seconds": 105.23972821235657,
+      "log_sha256": "582111ff82475fc1775b8a293ea9f0ebdafbd7bab78f18badc5138ff6e4c4a10"
+    },
+    {
+      "tag": "v0.30.0",
+      "stage": "smoke",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/history/v0.30.0/rust",
+      "timeout": 420,
+      "log": "v0.30.0-smoke.log",
+      "started": 1791033832.283314,
+      "exit_code": 0,
+      "elapsed_seconds": 4.002871990203857,
+      "log_sha256": "95cd824a9a5d98ecf8b60ba21c7883dd734ee77ad65e8444e74c6a868155d31c"
+    },
+    {
+      "tag": "v0.30.0",
+      "stage": "perf",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--lib",
+        "app::tests::indexing_perf::perf_indexing_contention_paired",
+        "--",
+        "--exact",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/history/v0.30.0/rust",
+      "timeout": 1500,
+      "log": "v0.30.0-perf.log",
+      "started": 1791033836.286659,
+      "exit_code": 0,
+      "elapsed_seconds": 93.4622368812561,
+      "log_sha256": "81458e4160e34758936cb0fe7b09aa60a100fc09f431d30d36e7e1a490459472"
+    },
+    {
+      "tag": "v0.29.0",
+      "stage": "build",
+      "argv": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--lib",
+        "app::tests::indexing_perf::tc_228",
+        "--no-run"
+      ],
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/history/v0.29.0/rust",
+      "timeout": 600,
+      "log": "v0.29.0-build.log",
+      "started": 1791033929.749452,
+      "exit_code": 130,
+      "status": "interrupted-by-main-for-common-oracle-strengthening",
+      "elapsed_seconds": 114.66865992546082,
+      "log_sha256": "1a2a4bbdb30582532ffbd0165362d4485d735367aaad3bd92b2d14aa5eddc314"
+    }
+  ],
+  "interruption_notes": [
+    {
+      "reason": "Old and new stage logs had the same filenames. Clearing stale paths raced new smoke/perf log creation; stopped runner immediately and repeat those stages to retain actual logs.",
+      "build_log_retained": true,
+      "smoke_prior_exit": 0,
+      "perf_prior": "interrupted without retained raw log",
+      "production_or_trace_changed": false
+    },
+    {
+      "reason": "Main requested stopping after v30 to strengthen common oracle/overlap/stall predicates",
+      "historical_perf_accepted": false,
+      "v30_rows": 84,
+      "v29_build": "interrupted",
+      "v28": "not run",
+      "v27": "not run"
+    }
+  ],
+  "adapter_notes": {
+    "v0.27.0": [
+      "Thread-local owned settings path override; UI state/roots pre-created to suppress legacy migration",
+      "Missing active_filter observer/cursor removed without scheduling backport",
+      "Missing filelist auto-check toggle removed",
+      "New settings helper imports added",
+      "Missing QueryState.search_error checked via existing Search failed notice before borrowing perf event list"
+    ],
+    "v0.28.0": [
+      "Missing active_filter observer/cursor removed without scheduling backport",
+      "Missing filelist auto-check toggle removed"
+    ],
+    "v0.29.0": [
+      "Missing filelist auto-check toggle removed"
+    ],
+    "v0.30.0": [
+      "Common frozen strengthened driver; no harness compatibility adaptation"
+    ]
+  },
+  "evidence_integrity_errors": []
+}

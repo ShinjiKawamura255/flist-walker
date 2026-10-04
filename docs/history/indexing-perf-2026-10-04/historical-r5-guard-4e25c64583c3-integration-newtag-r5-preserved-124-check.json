@@ -1,0 +1,98 @@
+{
+  "scope": "Independent original124 discovery identity inclusion; actual PASS cardinality/process/source check separately retained",
+  "families": [
+    {
+      "tag": "v0.27.0",
+      "family": "historical",
+      "original_names_retained": 16,
+      "new_names": [
+        "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+        "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+      ]
+    },
+    {
+      "tag": "v0.27.0",
+      "family": "fixture",
+      "original_names_retained": 8,
+      "new_names": []
+    },
+    {
+      "tag": "v0.27.0",
+      "family": "oracle",
+      "original_names_retained": 7,
+      "new_names": []
+    },
+    {
+      "tag": "v0.28.0",
+      "family": "historical",
+      "original_names_retained": 16,
+      "new_names": [
+        "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+        "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+      ]
+    },
+    {
+      "tag": "v0.28.0",
+      "family": "fixture",
+      "original_names_retained": 8,
+      "new_names": []
+    },
+    {
+      "tag": "v0.28.0",
+      "family": "oracle",
+      "original_names_retained": 7,
+      "new_names": []
+    },
+    {
+      "tag": "v0.29.0",
+      "family": "historical",
+      "original_names_retained": 16,
+      "new_names": [
+        "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+        "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+      ]
+    },
+    {
+      "tag": "v0.29.0",
+      "family": "fixture",
+      "original_names_retained": 8,
+      "new_names": []
+    },
+    {
+      "tag": "v0.29.0",
+      "family": "oracle",
+      "original_names_retained": 7,
+      "new_names": []
+    },
+    {
+      "tag": "v0.30.0",
+      "family": "historical",
+      "original_names_retained": 16,
+      "new_names": [
+        "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+        "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+      ]
+    },
+    {
+      "tag": "v0.30.0",
+      "family": "fixture",
+      "original_names_retained": 8,
+      "new_names": []
+    },
+    {
+      "tag": "v0.30.0",
+      "family": "oracle",
+      "original_names_retained": 7,
+      "new_names": []
+    }
+  ],
+  "preserved": 124,
+  "fresh": 15
+}

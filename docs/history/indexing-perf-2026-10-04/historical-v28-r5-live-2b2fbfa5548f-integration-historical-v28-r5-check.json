@@ -1,0 +1,51 @@
+{
+  "utc": "2026-10-04T07:40:33.466022+00:00",
+  "packet_sha256": "685d3e9aff43a689e07466dc092f7b075804dff1b65ee550f7832f39f51348f8",
+  "refs": 16,
+  "live_source_count": 199,
+  "live_source_and_original_Cargo_lock_exact": true,
+  "current213_unchanged": true,
+  "stages5_sidecar_raw_process_root_lock_exact": true,
+  "measurement_checks": [
+    {
+      "stage": "v28-ordinary-full",
+      "actual_exit": 101,
+      "accepted_rows": 518,
+      "status_counts": {
+        "PASS": 37,
+        "FAIL": 7,
+        "NOT_RUN": 0
+      },
+      "raw_libtest_trailer": "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1458 filtered out; finished in 2396.40s",
+      "collector_replay_equal": true
+    },
+    {
+      "stage": "v28-cap-full",
+      "actual_exit": 0,
+      "accepted_rows": 14,
+      "status_counts": {
+        "PASS": 1,
+        "FAIL": 0,
+        "NOT_RUN": 0
+      },
+      "raw_libtest_trailer": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1458 filtered out; finished in 171.54s",
+      "collector_replay_equal": true
+    }
+  ],
+  "host_ps_independent": {
+    "argv": [
+      "ps",
+      "-p",
+      "29265,30515,30517,32165,32167",
+      "-o",
+      "pid=,pgid=,command="
+    ],
+    "actual_exit": 1,
+    "stdout": "",
+    "authority": "Main separately ran exact host ps command and verified no matching PIDs; known sandbox ps boundary."
+  },
+  "accepted_total": 532,
+  "whole_ordinary_benchmark": "FAILED-exit101",
+  "cap": "PASS-exit0",
+  "historical_speed_verdict": "not yet assessed; compare identical accepted condition only"
+}

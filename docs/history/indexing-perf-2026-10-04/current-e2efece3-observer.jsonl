@@ -1,0 +1,14 @@
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":0,"results_ready_ms":256.56125000000003,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":0,"results_ready_ms":271.913917,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":1,"results_ready_ms":257.048875,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":1,"results_ready_ms":266.513833,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":2,"results_ready_ms":240.74479100000002,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":2,"results_ready_ms":267.76633300000003,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":3,"results_ready_ms":266.01491599999997,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":3,"results_ready_ms":255.43058299999998,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":4,"results_ready_ms":240.04025000000001,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":4,"results_ready_ms":251.533375,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":5,"results_ready_ms":257.322458,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":5,"results_ready_ms":274.513125,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":false,"pair":6,"results_ready_ms":250.923083,"sample_entries":100000,"schema_version":1}
+{"correct":true,"full_profile":true,"observer_enabled":true,"pair":6,"results_ready_ms":242.657,"sample_entries":100000,"schema_version":1}

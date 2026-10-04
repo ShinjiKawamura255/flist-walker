@@ -1,0 +1,41 @@
+//! Historical-only observers; this module is registered only under cfg(test).
+use crate::entry::Entry;
+use crate::indexer::IndexSource;
+use std::cell::RefCell;
+use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, Weak};
+use std::time::Instant;
+
+#[derive(Debug, Clone)]
+pub(super) struct CommitWitness {
+    pub(super) request_id: u64,
+    pub(super) tab_id: u64,
+    pub(super) root: std::path::PathBuf,
+    pub(super) source: IndexSource,
+    pub(super) at: Instant,
+    all_entries: Weak<Vec<Entry>>,
+}
+impl CommitWitness {
+    pub(super) fn capture(
+        request_id: u64,
+        tab_id: u64,
+        root: &std::path::Path,
+        source: &IndexSource,
+        all: &Arc<Vec<Entry>>,
+    ) -> Self {
+        Self {
+            request_id,
+            tab_id,
+            root: root.to_path_buf(),
+            source: source.clone(),
+            at: Instant::now(),
+            all_entries: Arc::downgrade(all),
+        }
+    }
+    pub(super) fn matches(&self, all: &Arc<Vec<Entry>>) -> bool {
+        self.all_entries
+            .upgrade()
+            .is_some_and(|owned| Arc::ptr_eq(&owned, all))
+    }
+}

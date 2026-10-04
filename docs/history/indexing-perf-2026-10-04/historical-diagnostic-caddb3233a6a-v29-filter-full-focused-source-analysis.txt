@@ -1,0 +1,90 @@
+v29 files-only / IgnoreList producer Full 待ちの候補機構分析
+
+範囲
+低影響のsource読取と先頭sealed cell原票14行の読取のみ。build/test/perf/compression/source/shared docs/plan/manifest/Git変更は行っていない。production分類/スケジューリングを変更する案・backportは提案しない。R5 adapterは承認済cfg-only、以下の行番号はそのexportの実ファイル行であり、upstream tagの未適用行番号とは限らない。currentは受入済e2ef source213 manifest e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d。
+
+版別source root（以下 v28/v29/current をこの実パスへ解決する）
+/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.28.0/rust/src
+/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0/rust/src
+/private/tmp/flistwalker-indexing-perf-20261003/rust/src
+
+観測事実
+main報告のv29 F1-files/Walker AA sampleでは80k emitted/expected（fixture100k）、query空、t1約60.54s/Full待ち約60.42s/40051 Full retries、t2/t3約64s、frame最大約20.8ms/ingest gap約3.48s。Folders20kは別workloadとしてより短いと報告。IgnoreList/FileListは依頼時点live/unsealedで、その速度の完成判定はしない。
+独立読取は次のlive logの先頭14 SAMPLE行だけ。whole process exit/後続cell完了は判定していない。
+/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-full.log
+先頭14は全Walker/F1-files、AA-variability、fixture sample_entries100000、actual emitted/expected final logical entriesは全80000、全correct/eligible。B0もfiles-onlyの同設定であり、80k仕事のAAであって100k完成throughputやfeature-cost ABではない。
+data_publish_end_ms: min=56670.829750, median=61024.442083, max=62855.754000
+full_wait_ms: min=56635.113290, median=60915.742314, max=62736.395918
+full_count: min=37643.000000, median=40522.500000, max=41586.000000
+index_ready_ms: min=59825.851625, median=64911.236687, max=66463.054083
+max_frame_ms: min=11.676584, median=24.100708, max=27.888709
+max_ingest_gap_ms: min=3134.347875, median=3442.501666, max=3588.802209
+Full waitは各sendのfirst Full→成功/abortまでの累積interval（freshness checks/sleepsを含む）。full_countはretry回数で、blocked batch数/純sleep時間ではない。actual root、Started/source、offered terminal/physical body等は既存raw観測値を維持し、expected値によるobserver注入は行っていない。
+
+sourceで確認した差分と候補経路
+1. producer側単体の変更では説明しにくい。
+v28/v29の app/index_worker.rs、app/index_mailbox.rs、walker_runtime/adaptive.rs、app/index_response_effects.rs はそれぞれ完全byte同一（末尾hash表）。walker_runtime/mod.rs のv28→v29差はunused re-export除去のみ、classify_walker_entry本体は同じ。v29 walker_runtime/mod.rs:137–166 は通常file/dirをknown trueとしてinclude flagsで選択する。app/index_worker.rs:768–784 は同じmaskをclassifyへ渡し、known情報付きIndexEntryを256件ごとにbatch送信する。FileListは同file:528–568でinclude flagsをstream parserへ渡し、kind_known=is_dir.is_some()。app/index_mailbox.rs:6,200–208 はdata capacity8。app/index_worker.rs:206–231 はFullならcurrent確認後1mssleepして再試行。従って既存consumerの受信停止だけでもproducer Full intervalが増える構造。通常flat file/dirについてkind未知・metadata解決が大量に発生する必然性はsourceから見つからない（link/shortcut等は別branchで一般化しない）。
+
+2. v29の空query＋filter pathは、ingest→全prefix再走査→ingestの連鎖を作れる。
+共通 app/index_response_effects.rs:284–322 はdrain進捗がありpendingFinish無しなら空queryに apply_incremental_empty_query_resultsを毎progress frameで呼ぶ。100ms incremental search cadenceのbranchではない。
+v28 app/pipeline_owner.rs:334–379 はneeds_filteringなら既にingestで蓄積したincremental_filtered_entriesを sync_entries_from_incremental経由でvisibleへ同期する。同file:480–487はruntime ownerのsnapshot copy/unique Arc allocation reuse。v28 app/pipeline.rs:1151–1154にはactive_filterによる受信停止gateが無く、同file:1311以降drainにもそのgateが無い。
+v29 app/pipeline_owner.rs:230–260 はfilterが不要ならlive empty-query fast path、filterが必要なら request_active_entry_filter(true)。app/active_filter.rs:133–181 はlive時source=None・source_len=build.index.entries.len()・cursor=0、files-only/folders-onlyまたは有効非空IgnoreListをneeds_filterとする。app/active_filter.rs:207–271 は全live prefixを1poll最大512件（定数:9）で再評価し、終わるまでcontinuationを保持する。
+v29 app/pipeline.rs:1152–1157 はactive_filter pending中poll_index_response全体をreturn、1300–1302および1327–1329はqueued drainもreturn。app/worker/runtime.rs:346–351の順はindex poll→search/routed/kind→filter pollで、filterはフレームpollで前進。source_lenが大きいと、その間bounded mailboxが埋まりproducerがFull待ちできる。filter完了後の次ingest進捗は再びcursor0から新しいprefixを準備し得る。
+推論: 長いt1の大半がFull wait、低いframe単発時間、秒単位ingest gapという組合せと整合する主要候補。known80kを512件/frameで一回scanするだけでもceil(80000/512)=157poll、16ms開始cadenceの理想下限約2.512s。これは観測gap3.1–3.6sと同じ桁。新prefixを何度もscanすれば合計数十秒になり得る。ただし実restart回数・各phase滞在時間・cadence遅延の分解は未観測で、60s全量の因果寄与を計算確定したものではない。20kと80kは仕事量も異なるため比を版性能の倍率にしない。
+
+3. v30 currentの緩和経路はこの候補と構造的に対応する。
+current app/active_filter.rs:20–61,152–163 はrequest/tab/root/filter/kind/source_len等でincremental membership identityを保持し、app/pipeline.rs:1377–1430はingest済prefixがcurrentなら更新する。app/pipeline_owner.rs:247–267は先にtry_publish_live_empty_query_resultsを試みる。app/active_filter.rs:166–232 はpolicy一致のlive空queryならincremental_filtered_entriesからcountとlimit結果を直接publishし、全prefix再clone/再filterを避ける。再構築が必要な場合も同file:14–15,405–427はknown候補32768/4msを別budgetにし、unknown kindのみ512件の上限を残す。同file:297–299,415–455はidentity付きincremental候補の再利用を行う。これは候補mechanismの緩和に一致するが、今回source読取だけでv30改善量を定量化・比較確定していない。
+
+4. reclaimer/kindは追加の候補であり、待ち原因の実観測が必要。
+v29 app/active_filter.rs:192–203 は512より重いcontinuationをtab reclaimerへ渡す。同file:302–317はretirement拒否でincremental/visible ownerをrollbackしactive_filterを保持する。その間上記ingest gateが続く。v29 app/tab_resources.rs:88,845はcapacity4、1009–1054はslot不足/Full/disconnectedならownerを返す。v28→v29 tab_resources差分はactive_filter payload取込/取出の追加（148–162）で、同reclaimer capacity・基本send flowを新規変更していない。repeated clone/retirementは追加workになり得るが、この14rowsにreclaimer Full実phaseが直接証明されていないので主要原因と断定しない。
+v29 app/index_coordinator.rs:928–929 はkind filterが必要な条件をinclude flagsで決める。app/active_filter.rs:239–283はunknown kind backlog4096・revision変化によりpause/restartする。通常Walkerfile/dirはknownだからこれが80k全件に必ずかかるとは言えない。IgnoreListだけ（files/dirs両方）ではkind_resolution_needed_for_filters=falseであり、同じfilter continuation自体はneeds_filter=true。app/shell_support.rs:514–540のignore matcher/path clone/entry-kind lookupも再走査毎のworkになるが、CPU分布/term費用は未profile。
+
+限界/次に必要な証拠の種類（実行はしない）
+これはcandidate mechanism analysisで、原因確定・production bug判定・wholeversion性能順位ではない。sourceから辿れるblocking pathとsealed firstcell原票の整合を示しただけ。filter cursor/restart/retirement拒否別の時刻とingest resumeを同requestへ結ぶphase証拠、実known/unknown比、reclaimer受入待ちの実発生があれば寄与を分けられる。新expected injection/consumer受信条件変更/人工wait/backportはしない。v27/v28の33/37cells完成という件数やignorecase/promotion/sortoverlap correctness不成立は別軸であり、速度結論へ代替しない。unsealed IgnoreList runや後続v29 runをcomplete/PASSと扱わない。
+
+対象source hash（R5 cfg-only seamを含む実ファイル、版とlocator確認用）
+{
+  "v0.28.0 R5": {
+    "app/index_worker.rs": "329bd843c6756af62836928882e5a2df53746a436e27c0e0197ad52e78bc4e7f",
+    "app/index_mailbox.rs": "82c5803745332d93b72b03b9dd7a039c148e51fcf2bd592435737a71385dcff3",
+    "walker_runtime/adaptive.rs": "8c4cbface99bde1fe9575ef1395a7fe8c09b039ee618f2831df8c021c782e44a",
+    "walker_runtime/mod.rs": "c23eb5eac6aa0c3d71435ac37a85c7c00d2c054aaec147a4505d3dec19479570",
+    "app/index_response_effects.rs": "ab683d4cc088126230978b8980a7f97598e82401eb0024cc02022de0b85750ff",
+    "app/pipeline_owner.rs": "e13f0d757f77d8aff425f36b42f6cd48863c8f0e07c1b098707b531c57ce617b",
+    "app/pipeline.rs": "fb7fef3dc84ef036fe2ca94a09cfbeb6df25bc67ef8a78245961c2f1590206c1",
+    "app/active_filter.rs": "ABSENT",
+    "app/tab_resources.rs": "a0ec94c463a555ae79fe9eac5d3d564cfdf638ccc231c1d586f02afbe99d2948",
+    "app/index_coordinator.rs": "f37851ad6864053643226f6c41b4d9f7867e8bb573d993036d600cec6600418f",
+    "app/shell_support.rs": "ea44cf4c6444b4039e457248b1969bd1a978a214e546db055bcc5f36d3763e96",
+    "app/worker/runtime.rs": "d45e3dfcd7a22e949539ad60e520c044f08964d55f74dfc74725f919a2fef61f"
+  },
+  "v0.29.0 R5": {
+    "app/index_worker.rs": "329bd843c6756af62836928882e5a2df53746a436e27c0e0197ad52e78bc4e7f",
+    "app/index_mailbox.rs": "82c5803745332d93b72b03b9dd7a039c148e51fcf2bd592435737a71385dcff3",
+    "walker_runtime/adaptive.rs": "8c4cbface99bde1fe9575ef1395a7fe8c09b039ee618f2831df8c021c782e44a",
+    "walker_runtime/mod.rs": "a35a66b107f140aa36d060558784b223d059980649ea781883fc641cf109033e",
+    "app/index_response_effects.rs": "ab683d4cc088126230978b8980a7f97598e82401eb0024cc02022de0b85750ff",
+    "app/pipeline_owner.rs": "a0f24fc8eda55006d435921a5757f9260bc8079b88e7587d7ddd0cecc831aeae",
+    "app/pipeline.rs": "deea772c1127ce60eefb015507aeaf387ff92d5b04f6797501ef608f35adf8c3",
+    "app/active_filter.rs": "a9d6a6bf011b60044084d62b881d2fee60fd9b26528a1a132946e40822f343fd",
+    "app/tab_resources.rs": "cb18ef106e65a1315282c13c875718d77127313e23acbe8635987d3d3b096fc2",
+    "app/index_coordinator.rs": "6e58c11297a48ab76d85255780f08fc51713811209701b0eae256087f3ff38ed",
+    "app/shell_support.rs": "ded1b8e9ec43eea7835be29ab61611bffa3411b512a5ce5f3be1c5615a5f6180",
+    "app/worker/runtime.rs": "2752994b741ad25f3d97fd6c1c8fa4394951e34b7114dfb2b8e8e0db86e813df"
+  },
+  "current v0.30.0 e2ef": {
+    "app/index_worker.rs": "3bcd307b2a93aa3c6f31127bfa806eb3d7e52a162978005c9d638e495cd65347",
+    "app/index_mailbox.rs": "6880d7b70b925c32105686c145ab667ddb1d899f1d4c7fb7590a98d13c758035",
+    "walker_runtime/adaptive.rs": "8c4cbface99bde1fe9575ef1395a7fe8c09b039ee618f2831df8c021c782e44a",
+    "walker_runtime/mod.rs": "a35a66b107f140aa36d060558784b223d059980649ea781883fc641cf109033e",
+    "app/index_response_effects.rs": "ab683d4cc088126230978b8980a7f97598e82401eb0024cc02022de0b85750ff",
+    "app/pipeline_owner.rs": "a6fb92d9b52be71299a570727ed094e83e05bfecf1de7fe1cd0aaa03e5486161",
+    "app/pipeline.rs": "e2fd23b9f2eb72222da952c87f18241090e7c5868abf5ead48d01f55579d1e6d",
+    "app/active_filter.rs": "b276ccd789d59da7e6cb5062e94d5a432df5eafe1cdf85f323b744215bccd377",
+    "app/tab_resources.rs": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b",
+    "app/index_coordinator.rs": "398dbba9b990147adb21c8e1fea8b3e6874a6e0b898bdacde3739f4920844982",
+    "app/shell_support.rs": "3c5bdb518cc908cc0b01c76dbd799e447bdc221df3e44fb0701660e4d81c70cf",
+    "app/worker/runtime.rs": "b7888224558e9ef527be4d4362ec9c76f13308ca3af5c8b91910d94f6d46e3dd"
+  }
+}
+作成UTC 2026-10-04T08:14:38.665268+00:00

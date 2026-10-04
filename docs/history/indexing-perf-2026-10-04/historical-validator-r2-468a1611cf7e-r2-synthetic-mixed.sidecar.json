@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "guard_checkpoint_sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+  "evidence_kind": "synthetic-control",
+  "synthetic_provenance": {
+    "rows_log": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-full.log",
+    "rows_sha256": "da576b4141fcb6b03b9ff14bd2a483f4940119dbeaff3c1449ae2d4fba460d45",
+    "failed_trailer_log": "warm-final-extra-full.log",
+    "notice": "No live historical test/performance outcome; copied trailers are explicit protocol inputs only; current collector never invoked"
+  },
+  "log_sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+  "exit_code": 101,
+  "process_completed": true,
+  "actual_wait_returned": true,
+  "watchdog_expired": false,
+  "owned_process_group_absent": true,
+  "runner_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--release",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+    "--",
+    "--ignored",
+    "--exact",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+    "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+    "FW_INDEX_PERF_EXTRA_CASES": "F1-files,F1-folders,W1-deep",
+    "FW_INDEX_PERF_EXTRA_SOURCES": "Walker",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.30.0"
+  },
+  "selection": {
+    "runner": "extended",
+    "cells": [
+      {
+        "case": "F1-files",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-folders",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-deep",
+        "source": "Walker"
+      }
+    ],
+    "selected_cases": [
+      "F1-files",
+      "F1-folders",
+      "W1-deep"
+    ],
+    "selected_sources": [
+      "Walker"
+    ],
+    "pairs": 7,
+    "entries": 100000,
+    "expected_rows": 42,
+    "coverage_kind": "selected-subset",
+    "cap": 500000
+  },
+  "source_identity": {
+    "tag": "v0.30.0",
+    "original_commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+    "original_archive_sha256": "5e759f1613d154dfe8a885e7f64901ec4cd40b67ff36cd83979b3ebc11e3e652",
+    "Cargo_lock_sha256": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+    "source_manifest_sha256": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+    "adapter_sha256": "9fa2a5f57ee063c74612d53b19ae7f152b6a743f057577ce6b9ab0994873462b"
+  },
+  "validator_sha256": "7dc087126948cb16dd4f8362d471f1416a47f38cc00948906d7d6b8f55bd4416"
+}

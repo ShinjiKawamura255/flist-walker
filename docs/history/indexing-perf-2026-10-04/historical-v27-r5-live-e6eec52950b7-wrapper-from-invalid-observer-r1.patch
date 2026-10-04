@@ -1,0 +1,29 @@
+--- old-wrapper/run_v27.py
++++ R5-R3-wrapper/run_v27.py
+@@ -2,8 +2,8 @@
+ import datetime,hashlib,json,os,re,signal,subprocess,sys,tempfile,time
+ from pathlib import Path
+ if not __debug__:raise SystemExit('wrapper refuses optimized Python')
+-B=Path(__file__).resolve().parent;S=B.parent;TAG='v0.27.0';ROOT=S/'newtag-repair-r4'/TAG/'rust';V=S/'historical-validator-r2';sys.path.insert(0,str(V));import collect_historical as validator
+-GUARD=S/'newtag-repair-r4/guard-execution-packet.json';G=json.loads(GUARD.read_text());T=next(t for t in G['tags'] if t['tag']==TAG);TARGET=validator.dedicated_release_targets(G)[TAG]
++B=Path(__file__).resolve().parent;S=B.parent;TAG='v0.27.0';ROOT=S/'newtag-repair-r5'/TAG/'rust';V=S/'historical-validator-r3';sys.path.insert(0,str(V));import collect_historical as validator
++GUARD=S/'newtag-r5-guards-execution/guard-execution-packet.json';G=json.loads(GUARD.read_text());T=next(t for t in G['tags'] if t['tag']==TAG);TARGET=validator.dedicated_release_targets(G)[TAG]
+ ENV={'FLISTWALKER_SEARCH_THREADS':'12','FLISTWALKER_SEARCH_PARALLEL_THRESHOLD':'25000','FLISTWALKER_WALKER_MAX_ENTRIES':'500000','FW_INDEX_PERF_EXTRA_PAIRS':'7','FW_INDEX_PERF_EXTRA_ENTRIES':'100000','FW_INDEX_PERF_EXTRA_CASES':','.join(validator.PROFILE_ORDER),'FW_INDEX_PERF_EXTRA_SOURCES':'FileList,Walker','CARGO_TARGET_DIR':TARGET}
+ ORD=validator.ORDINARY_TEST;CAP=validator.TRUNC_TEST;RESULTS=[]
+ def now():return datetime.datetime.now(datetime.timezone.utc).isoformat()
+@@ -27,7 +27,7 @@
+     if log.exists() or side.exists():raise RuntimeError('no retry/overwrite authorized: '+stage)
+     before=source();lock=sha(ROOT/'Cargo.lock');original_cargo=sha(ROOT/'Cargo.toml');base_inventory=inventory()
+     if before!=json.loads(Path(T['source_map']['path']).read_text()) or lock!=T['Cargo_lock_sha256']:raise RuntimeError('source/lock pre-readback mismatch')
+-    if sha(V/'collect_historical.py')!='7dc087126948cb16dd4f8362d471f1416a47f38cc00948906d7d6b8f55bd4416':raise RuntimeError('frozen validator mismatch')
++    if sha(V/'collect_historical.py')!='6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e':raise RuntimeError('frozen validator mismatch')
+     env=os.environ.copy();env.update(ENV);cmd=command(test,mode)
+     x={'stage':stage,'tag':TAG,'phase':mode,'status':'RUNNING','cwd':str(ROOT),'command':cmd,'env':ENV,'watchdog_seconds':bound,'watchdog_scope':'outer owned process bound only; native 30s progress/120s per-run/joins unchanged','started_utc':now(),'source_manifest_before':T['source_manifest_sha256'],'source_map_before':before,'Cargo_lock_before':lock,'Cargo_toml_before':original_cargo,'temp_base':tempfile.gettempdir(),'possible_test_roots_before':base_inventory,'script_sha256':sha(__file__)}
+     save(side,x);start=time.monotonic();stats={'CELL_START':0,'CELL_STATUS':0,'SAMPLE':0};last=None;offset=0;carry=b'';events=[]
+@@ -111,5 +111,5 @@
+ except Exception as e:failure=repr(e);print(json.dumps({'tag':TAG,'STOP':failure,'cap_status':cap,'roots':'no wrapper deletion/restoration performed'}),flush=True)
+ finally:
+     refs=[{'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size} for p in B.iterdir() if p.is_file() and p.name!='v27-final-execution-packet.json']
+-    save(B/'v27-final-execution-packet.json',{'tag':TAG,'status':'STOP for main actual readback; v28 not authorized','failure':failure,'cap_status':cap,'phases':[{k:x.get(k) for k in ['stage','exit_code','actual_wait_returned','owned_process_group_absent','watchdog_expired','source_and_lock_readback_unchanged','actual_counters','actual_status_counts','positive_product_cleanup_restoration_for_next_phase']} for x in RESULTS],'source_identity':source_identity(),'guard_packet_sha256':sha(GUARD),'validator_packet_sha256':sha(V/'r2-validator-packet.json'),'script_sha256':sha(__file__),'v27_original_precleanup_Flush':'unobserved; proof covers added final owned cleanup Flush only','references':refs,'no_cross_tag_continuation':True})
++    save(B/'v27-final-execution-packet.json',{'tag':TAG,'status':'STOP for main actual readback; v28 not authorized','failure':failure,'cap_status':cap,'phases':[{k:x.get(k) for k in ['stage','exit_code','actual_wait_returned','owned_process_group_absent','watchdog_expired','source_and_lock_readback_unchanged','actual_counters','actual_status_counts','positive_product_cleanup_restoration_for_next_phase']} for x in RESULTS],'source_identity':source_identity(),'guard_packet_sha256':sha(GUARD),'validator_packet_sha256':sha(V/'r3-validator-packet.json'),'script_sha256':sha(__file__),'v27_original_precleanup_Flush':'unobserved; proof covers added final owned cleanup Flush only','references':refs,'no_cross_tag_continuation':True})
+ raise SystemExit(2 if failure else 0)

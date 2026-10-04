@@ -1,0 +1,283 @@
+{
+  "status": "PREPARATION ONLY; execution NOT_RUN pending main authorization",
+  "tag": "v0.29.0",
+  "wrapper": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/run_v29.py",
+    "sha256": "2ebc8aea963bec25ddddf3bdcc01d6bd1e78519ca98efa98388fb2a6aecdd37f"
+  },
+  "donor": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/run_v28.py",
+    "sha256": "d29210d029287458873b64856fb337e469b4c4e05a07812e934a8f15a696da54"
+  },
+  "changes": "TAG, exact five stage/file identities, next-tag STOP display only",
+  "diff": [
+    "--- /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v28-live-r1/run_v28.py",
+    "+++ /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/run_v29.py",
+    "@@ -2,7 +2,7 @@",
+    " import datetime,hashlib,json,os,re,signal,subprocess,sys,tempfile,time",
+    " from pathlib import Path",
+    " if not __debug__:raise SystemExit('wrapper refuses optimized Python')",
+    "-B=Path(__file__).resolve().parent;S=B.parent;TAG='v0.28.0';ROOT=S/'newtag-repair-r5'/TAG/'rust';V=S/'historical-validator-r3';sys.path.insert(0,str(V));import collect_historical as validator",
+    "+B=Path(__file__).resolve().parent;S=B.parent;TAG='v0.29.0';ROOT=S/'newtag-repair-r5'/TAG/'rust';V=S/'historical-validator-r3';sys.path.insert(0,str(V));import collect_historical as validator",
+    " GUARD=S/'newtag-r5-guards-execution/guard-execution-packet.json';G=json.loads(GUARD.read_text());T=next(t for t in G['tags'] if t['tag']==TAG);TARGET=validator.dedicated_release_targets(G)[TAG]",
+    " ENV={'FLISTWALKER_SEARCH_THREADS':'12','FLISTWALKER_SEARCH_PARALLEL_THRESHOLD':'25000','FLISTWALKER_WALKER_MAX_ENTRIES':'500000','FW_INDEX_PERF_EXTRA_PAIRS':'7','FW_INDEX_PERF_EXTRA_ENTRIES':'100000','FW_INDEX_PERF_EXTRA_CASES':','.join(validator.PROFILE_ORDER),'FW_INDEX_PERF_EXTRA_SOURCES':'FileList,Walker','CARGO_TARGET_DIR':TARGET}",
+    " ORD=validator.ORDINARY_TEST;CAP=validator.TRUNC_TEST;RESULTS=[]",
+    "@@ -103,13 +103,13 @@",
+    " ",
+    " failure=None;cap='NOT_RUN'",
+    " try:",
+    "-    execute('v28-release-build',ORD,'build',1200)",
+    "-    execute('v28-ordinary-discovery',ORD,'discover',120)",
+    "-    ordinary=measure('v28-ordinary-full',ORD,10800)",
+    "-    execute('v28-cap-discovery',CAP,'discover',120)",
+    "-    cap='RUNNING';measure('v28-cap-full',CAP,3600,True);cap='COMPLETED'",
+    "+    execute('v29-release-build',ORD,'build',1200)",
+    "+    execute('v29-ordinary-discovery',ORD,'discover',120)",
+    "+    ordinary=measure('v29-ordinary-full',ORD,10800)",
+    "+    execute('v29-cap-discovery',CAP,'discover',120)",
+    "+    cap='RUNNING';measure('v29-cap-full',CAP,3600,True);cap='COMPLETED'",
+    " except Exception as e:failure=repr(e);print(json.dumps({'tag':TAG,'STOP':failure,'cap_status':cap,'roots':'no wrapper deletion/restoration performed'}),flush=True)",
+    " finally:",
+    "-    refs=[{'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size} for p in B.iterdir() if p.is_file() and p.name!='v28-final-execution-packet.json']",
+    "-    save(B/'v28-final-execution-packet.json',{'tag':TAG,'status':'STOP for main actual readback; v29 not authorized','failure':failure,'cap_status':cap,'phases':[{k:x.get(k) for k in ['stage','exit_code','actual_wait_returned','owned_process_group_absent','watchdog_expired','source_and_lock_readback_unchanged','actual_counters','actual_status_counts','positive_product_cleanup_restoration_for_next_phase']} for x in RESULTS],'source_identity':source_identity(),'guard_packet_sha256':sha(GUARD),'validator_packet_sha256':sha(V/'r3-validator-packet.json'),'script_sha256':sha(__file__),'v27_original_precleanup_Flush':'unobserved; proof covers added final owned cleanup Flush only','references':refs,'no_cross_tag_continuation':True})",
+    "+    refs=[{'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size} for p in B.iterdir() if p.is_file() and p.name!='v29-final-execution-packet.json']",
+    "+    save(B/'v29-final-execution-packet.json',{'tag':TAG,'status':'STOP for main actual readback; v30 not authorized','failure':failure,'cap_status':cap,'phases':[{k:x.get(k) for k in ['stage','exit_code','actual_wait_returned','owned_process_group_absent','watchdog_expired','source_and_lock_readback_unchanged','actual_counters','actual_status_counts','positive_product_cleanup_restoration_for_next_phase']} for x in RESULTS],'source_identity':source_identity(),'guard_packet_sha256':sha(GUARD),'validator_packet_sha256':sha(V/'r3-validator-packet.json'),'script_sha256':sha(__file__),'v27_original_precleanup_Flush':'unobserved; proof covers added final owned cleanup Flush only','references':refs,'no_cross_tag_continuation':True})",
+    " raise SystemExit(2 if failure else 0)"
+  ],
+  "syntax": "ast.parse PASS; wrapper NOT imported/executed",
+  "guard_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json",
+    "sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7"
+  },
+  "validator_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-validator-packet.json",
+    "sha256": "d9623e9b026910627c530a79ad52957f012fdc06fc815b76802d903abbc05329"
+  },
+  "validator_source": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py",
+    "sha256": "6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e"
+  },
+  "tag_identity": {
+    "tag": "v0.29.0",
+    "export": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0",
+    "original_commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+    "original_archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+    "Cargo_lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+    "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+    "source_map": {
+      "bytes": 20132,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-source-hashes.json",
+      "sha256": "46ab2cc5b685cd2e026854b69f49ee680549dbe927d4b8179185672a3dbd2ad3"
+    },
+    "full_patch": {
+      "bytes": 485466,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-full.patch",
+      "sha256": "77560d30d65c4841bd171b95d9f2c717d953e89cee5c50e3378090d76a91c43e"
+    },
+    "additive_r4_patch": {
+      "bytes": 6434,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-r4.patch",
+      "sha256": "f8d3c241024c7ba38860aa784ffa9721aa21526b92f28dff80c8ba60bb723c5f"
+    },
+    "additive_basic_patch": {
+      "bytes": 425703,
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0-additive-basic.patch",
+      "sha256": "8f71e33af445e863936e8faee82faf9cae90c09cb71e3737b1d9995d1c304b33"
+    },
+    "original_Cargo_toml_sha256": "f60615a0ecb4ba348f57ff85939cb1d423907734e1f5301400115fb187d53707",
+    "source_subjects": 207,
+    "original_native_runtime_unchanged": true,
+    "production_cfg_disabled_equivalence": true,
+    "full_original_patch_replay_matches_source": true,
+    "guards": [
+      {
+        "family": "historical",
+        "discovery_stage": "v0.29.0-historical-discovery",
+        "execution_stage": "v0.29.0-historical-guards",
+        "discovered_count": 20,
+        "exit_code": 0,
+        "actual_summary": [
+          "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1489 filtered out; finished in 3.00s"
+        ],
+        "actual_wait_returned": true,
+        "owned_process_group_absent": true,
+        "watchdog_expired": false,
+        "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+        "actual_owned_roots_before": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "actual_owned_roots_after": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "new_owned_roots_retained": []
+      },
+      {
+        "family": "fixture",
+        "discovery_stage": "v0.29.0-fixture-discovery",
+        "execution_stage": "v0.29.0-fixture-guards",
+        "discovered_count": 8,
+        "exit_code": 0,
+        "actual_summary": [
+          "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1501 filtered out; finished in 0.91s"
+        ],
+        "actual_wait_returned": true,
+        "owned_process_group_absent": true,
+        "watchdog_expired": false,
+        "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+        "actual_owned_roots_before": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "actual_owned_roots_after": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "new_owned_roots_retained": []
+      },
+      {
+        "family": "oracle",
+        "discovery_stage": "v0.29.0-oracle-discovery",
+        "execution_stage": "v0.29.0-oracle-guards",
+        "discovered_count": 7,
+        "exit_code": 0,
+        "actual_summary": [
+          "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1502 filtered out; finished in 0.50s"
+        ],
+        "actual_wait_returned": true,
+        "owned_process_group_absent": true,
+        "watchdog_expired": false,
+        "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+        "actual_owned_roots_before": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "actual_owned_roots_after": [
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034648391351000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791034689715375000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791035206865248000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-1791091110268033000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791034689715428000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-empty-1791091110268165000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-0-1791090580562469000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-1-1791090587014237000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-2-1791090593258813000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-3-1791090600871107000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-4-1791090608477015000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-5-1791090614991932000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-6-1791090622315418000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-7-1791090628816525000",
+          "/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-19149-8-1791090635141093000"
+        ],
+        "new_owned_roots_retained": []
+      }
+    ],
+    "discovery_membership_preservation": [
+      {
+        "family": "historical",
+        "original_names_preserved": 16,
+        "fresh_names": [
+          "app::index_worker::root_projection::tests::historical_projection_forwards_nested_observations_in_order",
+          "app::index_worker::root_projection::tests::historical_projection_forwards_original_started_root_argument",
+          "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_nested_callback_and_final_hierarchy",
+          "app::tests::indexing_perf::harness::extensions::runner::historical_actual_worker_small_membership_and_root_proof"
+        ]
+      },
+      {
+        "family": "fixture",
+        "original_names_preserved": 8,
+        "fresh_names": []
+      },
+      {
+        "family": "oracle",
+        "original_names_preserved": 7,
+        "fresh_names": []
+      }
+    ],
+    "dedicated_normal_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-normal-v0.29.0",
+    "dedicated_release_target_planned": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.29.0"
+  },
+  "source_actual_file_count": 207,
+  "source_map_byte_identity": true,
+  "Cargo_lock_actual_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+  "Cargo_toml_actual_sha256": "f60615a0ecb4ba348f57ff85939cb1d423907734e1f5301400115fb187d53707",
+  "original_Cargo_lock_matches": true,
+  "exact_release_target": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.29.0",
+  "outer_watchdogs": {
+    "build": 1200,
+    "discovery": 120,
+    "ordinary": 10800,
+    "cap": 3600
+  },
+  "native_deadlines": "unchanged 30s progress / 120s per-run and native joins",
+  "cap_gates": "44 exact sealed PASS/FAIL statuses; positive actual cleanup/root restore; exact validator acceptance; actual exit/reap/group absence; sources/lock unchanged; no new root retention; unknown/rejection/timeout stops with cap NOT_RUN",
+  "inherited_v27_caveat": "wrapper field v27_original_precleanup_Flush retains prior v27 caveat only, not a v29 assertion; v29 native shutdown actual first outcome/physical join remain recorded by accepted R5 runner",
+  "Rust_edits": false,
+  "build_perf_executed": false
+}

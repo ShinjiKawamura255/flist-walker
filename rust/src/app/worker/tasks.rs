@@ -158,12 +158,28 @@ pub(in crate::app) fn spawn_search_worker(
     let handle = thread::spawn(move || {
         let mut prefix_cache = SearchPrefixCache::default();
         while let Ok(req) = rx_req.recv() {
+            #[cfg(test)]
+            let perf_observation = super::search_perf::take(&req.cancel);
             if shutdown.load(Ordering::Relaxed) {
+                #[cfg(test)]
+                if let Some(observation) = &perf_observation {
+                    observation
+                        .lock()
+                        .expect("search perf observation")
+                        .begin(req.entries.len(), true);
+                }
                 break;
             }
             trace_worker_started("search", req.request_id);
             let cancellation_requested =
                 || shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Acquire);
+            #[cfg(test)]
+            if let Some(observation) = &perf_observation {
+                observation
+                    .lock()
+                    .expect("search perf observation")
+                    .begin(req.entries.len(), cancellation_requested());
+            }
             let SearchRunOutcome::Completed(result_set, error) = rank_search_results_cancellable(
                 &req.entries,
                 &req.query,
@@ -177,6 +193,13 @@ pub(in crate::app) fn spawn_search_worker(
                 req.sort_scope,
                 &cancellation_requested,
             ) else {
+                #[cfg(test)]
+                if let Some(observation) = &perf_observation {
+                    observation
+                        .lock()
+                        .expect("search perf observation")
+                        .finish(true);
+                }
                 info!(
                     flow = "search",
                     event = "canceled",
@@ -185,7 +208,21 @@ pub(in crate::app) fn spawn_search_worker(
                 );
                 continue;
             };
+            #[cfg(test)]
+            if let Some(observation) = &perf_observation {
+                observation
+                    .lock()
+                    .expect("search perf observation")
+                    .evaluated(result_set.evaluated_candidate_count);
+            }
             if cancellation_requested() {
+                #[cfg(test)]
+                if let Some(observation) = &perf_observation {
+                    observation
+                        .lock()
+                        .expect("search perf observation")
+                        .finish(true);
+                }
                 info!(
                     flow = "search",
                     event = "canceled",
@@ -193,6 +230,13 @@ pub(in crate::app) fn spawn_search_worker(
                     "worker request canceled before response publication"
                 );
                 continue;
+            }
+            #[cfg(test)]
+            if let Some(observation) = &perf_observation {
+                observation
+                    .lock()
+                    .expect("search perf observation")
+                    .finish(false);
             }
             info!(
                 flow = "search",

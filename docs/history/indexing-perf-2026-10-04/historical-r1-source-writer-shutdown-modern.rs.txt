@@ -1,0 +1,20 @@
+    // Historical-only owned path: retain the first original ack and actual physical join separately.
+    if let Some(observer)=crate::app::historical_perf::owned_writer(path) {
+        let sender=ui_state_persistence_registry().lock().ok().and_then(|mut registry| {
+            registry.history_snapshots.remove(path);
+            REMOVE_STARTUP
+            registry.senders.remove(path)
+        });
+        let Some(sender)=sender else {observer.stopping(false,None,false);observer.join(timeout);return;};
+        let (tx,rx)=mpsc::channel();
+        let sent=SEND_SHUTDOWN.is_ok();
+        let (ack,timed_out)=if sent {match rx.recv_timeout(timeout) {
+            Ok(result)=>(Some(result),false),
+            Err(mpsc::RecvTimeoutError::Timeout)=>(None,true),
+            Err(mpsc::RecvTimeoutError::Disconnected)=>(None,false),
+        }}else{(None,false)};
+        observer.stopping(sent,ack,timed_out);
+        drop(sender);
+        observer.join(timeout);
+        return;
+    }

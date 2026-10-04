@@ -1,0 +1,126 @@
+Independent focused AFTER: TabChain victim contract
+
+Decision: NOT ACCEPTED at this checkpoint; major1 and minor1 OPEN.
+Reviewer: /root/plan_review; prior design/reference/checkpoint reviewer only,
+no implementation/test authorship. Read-only source/evidence inspection;
+no build/test/perf/Rust edits/Git mutation. This ignored record alone was saved
+as explicitly requested. Fresh final independent review remains necessary.
+Checkout /private/tmp/flistwalker-indexing-perf-20261003; base/head
+8a452b3858c80f70a5f3064834c8add4d9b1d347, task-owned uncommitted diff.
+
+Identity verified independently
+213 live Rust files and all213 saved source copies match the manifest.
+Stable nested all_rust_source canonical map SHA256:
+8e28946bdf28e1d731995ff8fd5b075483d9eecc72ddeee08d216636ba89d5d4
+Manifest wrapper FILE SHA256 (distinct from nested map identity):
+99dff99a4452f1558eed16f8114c86f841a659528bb2e4de683a2cb2e20ed8a1
+Final packet FILE SHA256:
+d02a10d35d0e307c722d4e918982b4eb8e430aaad56e3f78a77d6b5288f7c9d5
+Actual4 changed Rust paths vs accepted5657 map:
+src/app/index_coordinator.rs, src/app/pipeline.rs,
+src/app/tests/indexing_perf/extensions/driver.rs,
+src/app/tests/indexing_perf/extensions/mod.rs.
+Reversible scoped patch SHA256:
+a2131f60a2d0106cf1893d96d105769f4d75f692542ef11df8ee0805da7e2a9e
+Collector summarize_extensions.py SHA256:
+789a3ffb4d87c9c578c367e91f3ab6b0af7306d00c94d85ff30389a35d74f3f3
+
+Finding1
+Severity: major
+Evidence: extensions/mod.rs:1073-1100 validates EVERY observed preemption by
+declared_victim_execution, whose1067 requires Canceled (and its chronology
+requires mutation before terminal offer). Driver1331-1332 gates all completion
+on that set;1467 repeats it. Collector summarize_extensions.py35-40 likewise
+requires every event's request to be Canceled. The ordinary planned-request
+validator still accepts a superseded predecessor's owned Finished/source/root
+or its strictly authorized closed-receiver failure. SDD runner78 and accepted
+BEFORE condition5 explicitly preserve A5->A8's existing supersession path.
+Impact: A valid observed preemption ATTEMPT is over-constrained as proof of
+actual cancellation even when only B's last-good role needs that proof. For
+example A5 can finish its computation before preemption and offer Finished;
+index_worker.rs1043-1056 sends Finished on Ok(source) without a new freshness
+branch at that point. The latest mutation/worker terminal publication can race.
+With A8's required successful replacement and all physical/root/source/debt
+proofs intact, the preserved ordinary A5 predecessor path is valid, but the new
+global event validator makes it permanently invalid. The same blanket gate
+also overrides the explicitly retained authorized closed-receiver predecessor
+classification. Current guards test Finished B through planned_requests_valid
+alone, not the composition with the global event gate. This is a newly
+introduced false-FAIL/time-out risk, not an observed throughput regression.
+Recommended Fix: Separate matching an observed typed scheduler mutation
+(exact identity/edge/trigger/permission/role/interval) from proving an actually
+Canceled LastGoodVictim. Require strict Canceled/false-current/chronology/seed
+proof only for the latest-B last-good exception. Preserve strict ordinary
+successor/predecessor outcomes for A5->A8; never exempt required A8/C7 or use a
+Failed/Finished B old-seed fallback. Add a composed negative/positive guard
+showing exact A5 event plus valid Finished predecessor and A8/C7 success can
+settle, while unrelated/missing events and invalid latest outcomes still fail.
+Reflect the same typed distinction in collector validation. Do not modify
+production scheduling or force workers to emit a terminal merely for the test.
+Residual Risk: A5 Finished race not measured here; physical completion and
+independent full oracles still mandatory. New100k measurements remain STOP
+until minimal repair/frozen focused re-review resolves this gate.
+
+Finding2
+Severity: minor
+Evidence: summarize_extensions.py47-50 only checks
+latest_generation_required == (latest_measured_request and role != victim).
+It never derives latest_measured_request from the maximum same-tab ID in the
+actual request/planned ledger and does not validate a revoked-predecessor role
+against a real higher same-tab successor. Therefore a required A8 Canceled row
+can evade the new latest-success check by setting both latest flags false and
+role=revoked-predecessor. The existing required-A-canceled synthetic guard
+changes the terminal alone, so it does not catch this role/identity mismatch.
+Impact: The strict raw collector can accept internally contradictory role
+labels despite claiming required latest success validation. The Rust producer
+currently computes these labels correctly and its own oracle gates remain
+strict, so this is a collector evidence-consistency gap, not proof current
+unmodified Rust emits an incorrect successful sample.
+Recommended Fix: Derive maximum request ID per tab from the exact ledger and
+compare latest_measured_request to that derived fact. Validate predecessor role
+against the recorded higher same-tab planned successor/completion classification;
+retain the exact latest victim exception. Add synthetic guard with canceled A8
+and falsified latest flags/predecessor role; no output should be accepted.
+Residual Risk: Collector trusts full oracle producer evidence by design; this
+fix need not create another filesystem oracle or general validation framework.
+
+Verified unaffected/positive boundaries
+- Typed declaration is before TabChain switch; max planned old-Warm owner and
+  stage geometry distinguish old victim from current preferred Warm. Incoming
+  IDs bind only owned operation allocations while the edge remains open.
+- Actual opt-in cfg event is timestamped under latest mutex before insert,
+  appended after unlock. History128/innerqueue128 (take129 detection), sticky
+  overflow and explicit lock-drop before panic; no payload/mailbox/Entry Arc pin.
+- Latest-B fast exception strictly requires actual Started/admitted root/source,
+  Canceled false-current, emitted work, return/release/route absence, no newer
+  successor, exact initial seed identity/count and sender/index/result debt0.
+- A8/C7 and stable profiles preserve successful latest root/source/freshness and
+  oracle. Finished B cannot substitute older seed in planned outcome logic.
+- Seed independent oracle/signature verified beforet0; scalar witness only.
+  Full retained-seed membership/kind/order/signature runs once after tentative
+  t3, before any additional frame/input/raw output. Corrupt seed fast-ready
+  guard rejects path/kind/order/count/duplicate faults. No per-frame100k scan
+  or new oracle cache/payload pin was introduced for the victim.
+- Raw roles/cause/emitted work distinguish canceled partial work from100k
+  throughput. SDD fixed-profile/post-t3 wording and preserved predecessor
+  outcome wording are aligned with accepted BEFORE; normal leaf wording now
+  avoids stale fixed counts (new hook guard is the11th isolated entrypoint).
+
+Saved validation checked, NOT rerun
+All packet result log hashes match actual logs, exit0 and warnings0:
+normal59 PASS /4 ignored (38.46s), search observer9 PASS, ordered focused10 PASS,
+TC20782 PASS, index_pipeline152 PASS, fmt and clippy -D warnings PASS.
+First-red0P1F, hook-red parent/leaf0P1F, guards-red47P4F and nested0P1F are
+overlapping logs and are not summed into independent test totals. Their hashes
+match. Macro-recursion compile diagnostic retained honestly as diagnostic, not
+green; final JSON split fixes it without increasing recursionlimit.
+Collector saved18 checks: synthetic positive1, synthetic negative15, actual
+retired-partial rejection2; purpose correctly says NOT performance evidence.
+
+NOT RUN / remaining gates
+Review did not execute any build/test/perf or external/native action. Renewed
+fullhost defaultparallel, basic84, observer14, targeted real100k TabChain,
+pilot/full/truncated, historical expanded matrix, native GUI, Windows/Linux,
+SIGINT/SIGKILL cleanup and individual App worker join outcomes remain NOT RUN.
+Focused green/strict manifest/collector synthetic checks do not certify speed
+or complete the task. Parent owns disposition and subsequent gate sequencing.

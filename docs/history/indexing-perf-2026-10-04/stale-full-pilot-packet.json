@@ -1,0 +1,541 @@
+{
+  "status": "target4 and pilot88 PASS; stopped before full616/truncated14 pending main acceptance",
+  "created_utc": "2026-10-04T00:58:00.376480+00:00",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source-hashes.json",
+    "sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source",
+  "collector": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+    "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa"
+  },
+  "common_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-common-packet.json",
+    "sha256": "c90de0f0f77cafa7e36992ba2af47ea348643f716a55227525a96a470a616032"
+  },
+  "records": [
+    {
+      "stage": "tabchain-target",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_extended_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "1",
+        "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FW_INDEX_PERF_EXTRA_CASES": "T1-A-B-C-A"
+      },
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T00:43:51.708247+00:00",
+      "ended_utc": "2026-10-04T00:44:59.386741+00:00",
+      "elapsed_seconds": 67.64216237499932,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 67.48s"
+      ],
+      "raw_rows": 4,
+      "actual_untimed_warmups": 4,
+      "actual_sample_starts": 4,
+      "collector_command": [
+        "python3",
+        "target/indexing-perf-study/summarize_extensions.py",
+        "target/indexing-perf-study/stale-full-tabchain-target.log",
+        "--rows",
+        "4",
+        "--output",
+        "target/indexing-perf-study/stale-full-tabchain-target.summary.json"
+      ],
+      "collector_exit_code": 0,
+      "complete_cells": 2,
+      "unique_keys": 4,
+      "metadata": [
+        {
+          "coverage_kind": "selected-subset",
+          "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+          "entries": 100000,
+          "environment_identity": {
+            "arch": "aarch64",
+            "crate_version": "0.30.0",
+            "frame_period_ms": 16,
+            "logical_cpus": 12,
+            "optimized": true,
+            "os": "macos",
+            "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+          },
+          "expected_rows": 4,
+          "native": false,
+          "pairs": 1,
+          "runner": "extended",
+          "runtime_settings": {
+            "ctrl_w_deletes_word_in_query": false,
+            "disable_self_update": false,
+            "emacs_keybindings_enabled": true,
+            "filelist_auto_check_enabled": true,
+            "force_update_check_failure": "",
+            "history_persist_disabled": false,
+            "restore_tabs_enabled": false,
+            "search_parallel_threshold": 25000,
+            "search_threads": 12,
+            "tab_pin_moves_to_next_row": false,
+            "update_allow_downgrade": false,
+            "update_allow_same_version": false,
+            "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+            "walker_max_entries": 500000,
+            "window_trace_enabled": false,
+            "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+            "window_trace_verbose": false
+          },
+          "schema_version": 1,
+          "selected_cases": [
+            "T1-A-B-C-A"
+          ],
+          "selected_source_cells": 2,
+          "selected_sources": [
+            "FileList",
+            "Walker"
+          ],
+          "supported_cells": [
+            {
+              "case": "T1-A-B-C-A",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "Walker"
+            }
+          ],
+          "unsupported_cells": []
+        }
+      ],
+      "all_correct": true,
+      "all_contention_eligible": true,
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-tabchain-target.log",
+        "sha256": "c77f421f75272f7cee3e4978b4b895e34a5aac1c60750c1e95b5a03927462577"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-tabchain-target.sidecar.json",
+        "sha256": "7ae983862b3f389fd724f46c51d56d84872e0f0078693a89680b958def3686b1"
+      },
+      "strict_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-tabchain-target.summary.json",
+        "sha256": "bd70ed97455cc0b7cd7573e523b2e0c5ee4cddcae8a074e0fe1d76e87bfbba9e"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-tabchain-target.collector.log",
+        "sha256": "a3c88104ea003f2170372c37c0e7844e116296e767df138d0648a5327b1ddb21"
+      },
+      "request_terminal_roles": {
+        "required-latest-success": 6,
+        "revoked-predecessor": 2,
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "request_actual_terminal_kinds": {
+        "finished": 6,
+        "canceled": 4
+      },
+      "actual_stale_full_abort_witnesses": 0,
+      "retained_victim_roles": {
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "retained_full_seed_oracles_after_t3": true,
+      "actual_warm_removal_events": 4,
+      "actual_optional_preemption_events": 4,
+      "condition_t2_ms": [
+        {
+          "source": "FileList",
+          "comparison": "T1-A-B-C-A",
+          "index_ready_ms": 1458.764291,
+          "results_ready_ms": 1458.764291
+        },
+        {
+          "source": "Walker",
+          "comparison": "T1-A-B-C-A",
+          "index_ready_ms": 2354.70475,
+          "results_ready_ms": 2354.70475
+        }
+      ]
+    },
+    {
+      "stage": "extra-pilot",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_extended_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "1",
+        "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000"
+      },
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T00:45:10.738845+00:00",
+      "ended_utc": "2026-10-04T00:57:07.942742+00:00",
+      "elapsed_seconds": 717.066861875006,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 716.66s"
+      ],
+      "raw_rows": 88,
+      "actual_untimed_warmups": 88,
+      "actual_sample_starts": 88,
+      "collector_command": [
+        "python3",
+        "target/indexing-perf-study/summarize_extensions.py",
+        "target/indexing-perf-study/stale-full-extra-pilot.log",
+        "--rows",
+        "88",
+        "--output",
+        "target/indexing-perf-study/stale-full-extra-pilot.summary.json"
+      ],
+      "collector_exit_code": 0,
+      "complete_cells": 44,
+      "unique_keys": 88,
+      "metadata": [
+        {
+          "coverage_kind": "all-extended-nontruncated",
+          "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+          "entries": 100000,
+          "environment_identity": {
+            "arch": "aarch64",
+            "crate_version": "0.30.0",
+            "frame_period_ms": 16,
+            "logical_cpus": 12,
+            "optimized": true,
+            "os": "macos",
+            "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+          },
+          "expected_rows": 88,
+          "native": false,
+          "pairs": 1,
+          "runner": "extended",
+          "runtime_settings": {
+            "ctrl_w_deletes_word_in_query": false,
+            "disable_self_update": false,
+            "emacs_keybindings_enabled": true,
+            "filelist_auto_check_enabled": true,
+            "force_update_check_failure": "",
+            "history_persist_disabled": false,
+            "restore_tabs_enabled": false,
+            "search_parallel_threshold": 25000,
+            "search_threads": 12,
+            "tab_pin_moves_to_next_row": false,
+            "update_allow_downgrade": false,
+            "update_allow_same_version": false,
+            "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+            "walker_max_entries": 500000,
+            "window_trace_enabled": false,
+            "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+            "window_trace_verbose": false
+          },
+          "schema_version": 1,
+          "selected_cases": [
+            "F1-files",
+            "F1-folders",
+            "F1-ignore-list",
+            "F1-ignore-case",
+            "F1-mid-ignore",
+            "S1-ignore",
+            "S2-files",
+            "O1-name-shown",
+            "O1-modified-shown",
+            "O1-name-all",
+            "O1-modified-all",
+            "T1-active-warm",
+            "T1-promotion",
+            "T1-A-B-C-A",
+            "T1-S1-selective",
+            "T1-S1-dense",
+            "T1-S2",
+            "R1-natural",
+            "T1-natural-reclaim",
+            "H1-early",
+            "H1-late",
+            "P1-preview",
+            "W1-follow-links",
+            "W1-deep",
+            "W1-wide",
+            "F1-filelist-parser-files",
+            "F1-filelist-parser-folders"
+          ],
+          "selected_source_cells": 44,
+          "selected_sources": [
+            "FileList",
+            "Walker"
+          ],
+          "supported_cells": [
+            {
+              "case": "F1-files",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-folders",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S2-files",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S2",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S2",
+              "source": "Walker"
+            },
+            {
+              "case": "R1-natural",
+              "source": "FileList"
+            },
+            {
+              "case": "R1-natural",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "Walker"
+            },
+            {
+              "case": "H1-early",
+              "source": "FileList"
+            },
+            {
+              "case": "H1-late",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-follow-links",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-deep",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-wide",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-filelist-parser-files",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-filelist-parser-folders",
+              "source": "FileList"
+            }
+          ],
+          "unsupported_cells": []
+        }
+      ],
+      "all_correct": true,
+      "all_contention_eligible": true,
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-pilot.log",
+        "sha256": "e43122763a94516b83cf26ff6df15ebd6068761f9889ed9e39c6edebec917d87"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-pilot.sidecar.json",
+        "sha256": "a75d56126c413939896bbb4eee47fec3f8fad7f101d5fe52d73d60fe0b63452b"
+      },
+      "strict_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-pilot.summary.json",
+        "sha256": "84eb6e4f61f040a48e6013a1c8395bbff97aac828262ee6c5c8eed1765d608a5"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-pilot.collector.log",
+        "sha256": "9eb33809d5bc9a5a312964207430d2b80ea257b702093b07d64723a547ef60f3"
+      },
+      "request_terminal_roles": {
+        "required-latest-success": 92,
+        "revoked-predecessor": 4,
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "request_actual_terminal_kinds": {
+        "finished": 92,
+        "null": 2,
+        "canceled": 4
+      },
+      "actual_stale_full_abort_witnesses": 0,
+      "retained_victim_roles": {
+        "declared-Warm-eviction-retained-last-good": 2
+      },
+      "retained_full_seed_oracles_after_t3": true,
+      "actual_warm_removal_events": 4,
+      "actual_optional_preemption_events": 4,
+      "condition_t2_ms": [
+        {
+          "source": "FileList",
+          "comparison": "T1-A-B-C-A",
+          "index_ready_ms": 1382.785666,
+          "results_ready_ms": 1382.785666
+        },
+        {
+          "source": "Walker",
+          "comparison": "T1-A-B-C-A",
+          "index_ready_ms": 2325.275625,
+          "results_ready_ms": 2325.275625
+        }
+      ]
+    }
+  ],
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "no_competing_heavy_jobs": true,
+  "settings_provenance": "Search threads12/parallel threshold25000/Walkercap500000 via Command.env; Walker concurrency retains adaptive defaults.",
+  "actual_vs_modeled": "These records observe actual production App/index/search workers, offered/published terminal hooks and individual physical body-return hooks. Prior focused sink control terminal/body models are separate TDD evidence and are not these measurements.",
+  "workload_semantics": "Canceled or witnessed stale-Full Failed partial work is explicitly labeled and is not full100k generation throughput. AA natural/parser/topology comparisons retain comparison_kind.",
+  "limitations": [
+    "1pair pilot is not 7pair full evidence; full616/trunc14/VM/tag not run.",
+    "Headless only; nativeGUI/Windows/Linux/CIactivation/nativeSIGINT/SIGKILL NOT RUN.",
+    "No new matching owned paths after test processes exit; individual AppDrop worker join guarantee unobserved.",
+    "Old failed336raw/source3cf untouched and rejected; no backward witness."
+  ]
+}

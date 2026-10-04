@@ -1,0 +1,69 @@
+Historical stream Err / closed-receiver classification (READ-ONLY)
+2026-10-04. Original git-show sources v0.27.0..v0.30.0; current frozen3cf unchanged.
+No port/source/test/build/perf changes. Current full stopped after336/616; this inspection does not accept that failure or authorize a relaxed outcome.
+
+All four tags share the following actual behavior.
+1. MailboxResponseSink::send returns Err(()) both for Full retry with !request_is_current() and for other mailbox publication errors (Closed / SlotOccupied). It erases the distinction. A Full canceled data send can fail even when mailbox is not physically closed.
+2. Walker callback flush failure sets stream_err='index receiver closed' (v27:622, v28/29:630, v30:640). The post-walk latest/shutdown check sets 'superseded' only if stream_err.is_none() (v27:655, v28/29:663, v30:673). Once a flush error exists, current=false does not replace it with superseded. Final flush and truncation-notice send failures also return the receiver-closed string directly.
+3. The outer worker Err arm classifies only exact error=='superseded' as Canceled. Every other stream error, including 'index receiver closed', attempts IndexResponse::Failed. It does not recheck request freshness to normalize the error. Thus Warm removal racing a full flush can yield an actual Failed offer with current=false under existing production semantics.
+4. Failed/Canceled/Finished offer is distinct from successful publication. Canceled send result is ignored then execution continues; Failed and Finished send failure logs receiver_closed then continues. Worker lifecycle trace 'failed'/'completed' is emitted only after successful corresponding send; Canceled trace is emitted after its ignored send result. No terminal trace or cleanup alone proves delivery/physical return.
+5. stream success -> Finished has no additional outer freshness check immediately before the offer. A naturally completed request can therefore race removal and offer Finished; its publication and actual committed generation still need exact existing proof. Genuine I/O errors remain Failed; current=false alone never proves every failure was authorized cancellation.
+6. FileList callback/final/replacement flush failures also map to 'index receiver closed' (v27:415/428/500/524; v28/29:+8; v30:+18). Do not treat this error label as a typed actual-Closed witness. Reader/discovery cancellation remains its original separate superseded handling.
+
+Implication for historical comparison / current diagnosis
+- Yes, existing Warm-cancellation races can have Failed offers as well as Canceled, and can race a Finished offer. This is present on all four original tags; it is not an absent API or historical unsupported operation.
+- Error text 'index receiver closed' does not distinguish actual Closed/SlotOccupied from the freshness-aborted Full retry. A future accepted contract would need the original publication reason plus exact owned invalidation, terminal/closure and physical-return evidence. This memo does not authorize adding a Failed allowance or changing production classification.
+- Preserve actual Failed outcome in retained evidence; no performance inference, no failure-to-unsupported reclassification, no whole current worker body backport. Current physical settlement and final latest-generation oracle remain necessary.
+
+Exact identities/line anchors
+File SHA is exact git-show bytes. Sink excerpt SHA is declaration through its matching outer closing brace with one final LF. Original line numbers, not basic-adapted export lines.
+[
+  {
+    "tag": "v0.27.0",
+    "commit": "37195d639338f10549efabb1abad729546230914",
+    "index_worker_sha256": "27bf2da1bc94131deaa52a2859f9423d75c03de42be34e9f624268fdc441d889",
+    "sink_impl_lines": [
+      64,
+      80
+    ],
+    "sink_impl_excerpt_sha256": "a8b0e90a556f3b4598653aa89d530a199a8119b09e0b08c0ce7b6b5fca452371",
+    "walker_postwalk_cancel_line": 655,
+    "terminal_err_arm_line": 963
+  },
+  {
+    "tag": "v0.28.0",
+    "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+    "index_worker_sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+    "sink_impl_lines": [
+      72,
+      88
+    ],
+    "sink_impl_excerpt_sha256": "a8b0e90a556f3b4598653aa89d530a199a8119b09e0b08c0ce7b6b5fca452371",
+    "walker_postwalk_cancel_line": 663,
+    "terminal_err_arm_line": 971
+  },
+  {
+    "tag": "v0.29.0",
+    "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+    "index_worker_sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+    "sink_impl_lines": [
+      72,
+      88
+    ],
+    "sink_impl_excerpt_sha256": "a8b0e90a556f3b4598653aa89d530a199a8119b09e0b08c0ce7b6b5fca452371",
+    "walker_postwalk_cancel_line": 663,
+    "terminal_err_arm_line": 971
+  },
+  {
+    "tag": "v0.30.0",
+    "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+    "index_worker_sha256": "bac9aeabd11baa426721c4c69d6a4956a4c3cc45b07da99d983f52559c781f12",
+    "sink_impl_lines": [
+      73,
+      98
+    ],
+    "sink_impl_excerpt_sha256": "54c495d04d306d0baf74ccb8536b6f8635766c2bf6beba804cad73a89cb79c2b",
+    "walker_postwalk_cancel_line": 673,
+    "terminal_err_arm_line": 982
+  }
+]

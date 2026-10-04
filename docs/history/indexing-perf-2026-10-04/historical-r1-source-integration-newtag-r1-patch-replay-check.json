@@ -1,0 +1,36 @@
+{
+  "scope": "Main independent exact r1 and first-red-candidate source reconstruction only; runtime NOT_RUN",
+  "packet_sha256": "e9fa00852a2e94c163a37b59477da13ef2eb0c38518ab8a6d78e2440bb32d49d",
+  "tags": [
+    {
+      "tag": "v0.27.0",
+      "original-full-to-r1": true,
+      "original-parent-to-r1": true,
+      "original_Cargo_lock_manifest_unchanged": true,
+      "source_files": 187
+    },
+    {
+      "tag": "v0.28.0",
+      "original-full-to-r1": true,
+      "original-parent-to-r1": true,
+      "original_Cargo_lock_manifest_unchanged": true,
+      "source_files": 199
+    },
+    {
+      "tag": "v0.29.0",
+      "original-full-to-r1": true,
+      "original-parent-to-r1": true,
+      "original_Cargo_lock_manifest_unchanged": true,
+      "source_files": 207
+    },
+    {
+      "tag": "v0.30.0",
+      "original-full-to-r1": true,
+      "original-parent-to-r1": true,
+      "original_Cargo_lock_manifest_unchanged": true,
+      "source_files": 214
+    }
+  ],
+  "red_original_plus_ecc58_plus_guard_replay": true,
+  "no_compile_or_guard_run": true
+}

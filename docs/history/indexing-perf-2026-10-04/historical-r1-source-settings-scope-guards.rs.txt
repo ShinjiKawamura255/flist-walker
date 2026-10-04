@@ -1,0 +1,16 @@
+#[test]
+fn historical_settings_scope_unknown_cleanup_retains_owned_path() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    let scope=TestSettingsScope::new("historical-settings-retain");let base=scope.base.clone();
+    drop(scope);assert!(base.is_dir());assert!(!cleanup.safe());
+    drop(cleanup);fs::remove_dir_all(base).unwrap();
+}
+#[test]
+fn historical_settings_scope_actual_app_join_allows_removal() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    let scope=TestSettingsScope::new("historical-settings-positive");let base=scope.base.clone();
+    let root=test_root("historical-settings-empty-root");fs::create_dir(&root).unwrap();
+    let app=scope.app(root.clone(),1000,String::new());drop(app);
+    assert!(cleanup.safe(),"App runtime and owned persistence writer require real physical joins");
+    drop(scope);assert!(!base.exists());fs::remove_dir(root).unwrap();
+}

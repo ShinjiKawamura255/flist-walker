@@ -1,0 +1,49 @@
+{
+  "status": "diagnostic-failed-not-performance-evidence",
+  "source_manifest_sha256": "c219598216fd0486dc4ad8487ddd4ad2bbbd5fdd6b3f95eadea5f9d1f4cf6442",
+  "prior_accepted_source": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "source_unchanged": true,
+  "source_count": 213,
+  "files": {
+    "selector-stall-diagnostic-before-driver.rs": "f8349b720159b62d322b348e9a7195a089abcba0183c79a06de59bbf4f8a83ab",
+    "selector-stall-diagnostic.patch": "408ac3d2fad3ea4406c0dd2fc69826f1882869b8b37a91470b338f8f0d0dc013",
+    "selector-stall-diagnostic-source-hashes.json": "5994789493143652b797207201dc295a934c4c26175f792b199f1651ad5df468",
+    "selector-stall-diagnostic-normal.log": "771cf64a2dfe97417344a4ff95cae54e445d3289831e7ae2285d495cdb3ad013",
+    "selector-stall-diagnostic-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "selector-stall-diagnostic-tabchain-target.log": "0d49dc23b1ec3c3a935dbf9f35f33324da2d778b2fbe948341a9fe7e5796ada3",
+    "selector-stall-diagnostic-tabchain-target.sidecar.json": "c9d51801d7a51dccc125cd8018cd4653a86439136957aa544dc58592ac0235fc",
+    "selector-stall-diagnostic-actual-state.json": "dadab79bdf61f936dfe2c831e669b35d7bd9872be570b59759b24ebb612f5550",
+    "selector-stall-diagnostic-collector-reject.log": "b8b11b340e568f0ec29e6e137f0ed6a509253a1b730e5b4d03c7738696be4546"
+  },
+  "normal_summary": "61 passed; 0 failed; 4 ignored; 38.38s",
+  "target_exit": 101,
+  "target_test_summary": [
+    "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1564 filtered out; finished in 67.45s"
+  ],
+  "raw_rows": 0,
+  "collector_exit": 1,
+  "collector_output_absent": true,
+  "observed_false_fields": [
+    {
+      "victim": 5,
+      "prior_latest": null,
+      "required_prior_latest": 5
+    },
+    {
+      "victim": 6,
+      "prior_latest": null,
+      "required_prior_latest": 6
+    }
+  ],
+  "root_cleanup_after_unwind": {
+    "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-0-1791065586933025000": true,
+    "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-1-1791065593187909000": true,
+    "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-87053-2-1791065599391628000": true
+  },
+  "not_observed": [
+    "individual App worker joins",
+    "native SIGKILL/SIGINT cleanup",
+    "actual Warm removal timestamp before new observation seam"
+  ],
+  "created_utc": "2026-10-03T22:16:33.529877+00:00"
+}

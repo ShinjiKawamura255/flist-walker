@@ -1,0 +1,593 @@
+{
+  "status": "full616 plus serialtruncated14 PASS; STOP before VM/tag/historical pending main acceptance",
+  "created_utc": "2026-10-04T01:46:12.053048+00:00",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source-hashes.json",
+    "sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source",
+  "collector": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+    "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa"
+  },
+  "accepted_common_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-common-packet.json",
+    "sha256": "c90de0f0f77cafa7e36992ba2af47ea348643f716a55227525a96a470a616032"
+  },
+  "accepted_pilot_packet": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-pilot-packet.json",
+    "sha256": "458f6cf2762a57996d4b5dd6526dffbe8c96699d56820d22155358a865ed3737"
+  },
+  "records": [
+    {
+      "stage": "extra-full",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_extended_paired",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+        "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker"
+      },
+      "cleared_inherited_selectors": [
+        "FW_INDEX_PERF_EXTRA_CASES",
+        "FW_INDEX_PERF_EXTRA_SOURCES",
+        "FW_INDEX_PERF_EXTRA_ENTRIES"
+      ],
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:00:17.941713+00:00",
+      "ended_utc": "2026-10-04T01:42:07.425380+00:00",
+      "elapsed_seconds": 2509.3432453330024,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 2508.89s"
+      ],
+      "raw_rows": 616,
+      "expected_untimed_warmups": 88,
+      "actual_untimed_warmup_markers": 88,
+      "actual_sample_markers": 616,
+      "truncated_warmup_provenance": null,
+      "collector_command": [
+        "python3",
+        "target/indexing-perf-study/summarize_extensions.py",
+        "target/indexing-perf-study/stale-full-extra-full.log",
+        "--rows",
+        "616",
+        "--output",
+        "target/indexing-perf-study/stale-full-extra-full.summary.json"
+      ],
+      "collector_exit_code": 0,
+      "complete_cells": 44,
+      "unique_keys": 616,
+      "metadata": [
+        {
+          "coverage_kind": "all-extended-nontruncated",
+          "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+          "entries": 100000,
+          "environment_identity": {
+            "arch": "aarch64",
+            "crate_version": "0.30.0",
+            "frame_period_ms": 16,
+            "logical_cpus": 12,
+            "optimized": true,
+            "os": "macos",
+            "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+          },
+          "expected_rows": 616,
+          "native": false,
+          "pairs": 7,
+          "runner": "extended",
+          "runtime_settings": {
+            "ctrl_w_deletes_word_in_query": false,
+            "disable_self_update": false,
+            "emacs_keybindings_enabled": true,
+            "filelist_auto_check_enabled": true,
+            "force_update_check_failure": "",
+            "history_persist_disabled": false,
+            "restore_tabs_enabled": false,
+            "search_parallel_threshold": 25000,
+            "search_threads": 12,
+            "tab_pin_moves_to_next_row": false,
+            "update_allow_downgrade": false,
+            "update_allow_same_version": false,
+            "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+            "walker_max_entries": 500000,
+            "window_trace_enabled": false,
+            "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+            "window_trace_verbose": false
+          },
+          "schema_version": 1,
+          "selected_cases": [
+            "F1-files",
+            "F1-folders",
+            "F1-ignore-list",
+            "F1-ignore-case",
+            "F1-mid-ignore",
+            "S1-ignore",
+            "S2-files",
+            "O1-name-shown",
+            "O1-modified-shown",
+            "O1-name-all",
+            "O1-modified-all",
+            "T1-active-warm",
+            "T1-promotion",
+            "T1-A-B-C-A",
+            "T1-S1-selective",
+            "T1-S1-dense",
+            "T1-S2",
+            "R1-natural",
+            "T1-natural-reclaim",
+            "H1-early",
+            "H1-late",
+            "P1-preview",
+            "W1-follow-links",
+            "W1-deep",
+            "W1-wide",
+            "F1-filelist-parser-files",
+            "F1-filelist-parser-folders"
+          ],
+          "selected_source_cells": 44,
+          "selected_sources": [
+            "FileList",
+            "Walker"
+          ],
+          "supported_cells": [
+            {
+              "case": "F1-files",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-folders",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-list",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-ignore-case",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-mid-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "FileList"
+            },
+            {
+              "case": "S1-ignore",
+              "source": "Walker"
+            },
+            {
+              "case": "S2-files",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-shown",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-name-all",
+              "source": "Walker"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "FileList"
+            },
+            {
+              "case": "O1-modified-all",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-active-warm",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-promotion",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-A-B-C-A",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-selective",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S1-dense",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-S2",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-S2",
+              "source": "Walker"
+            },
+            {
+              "case": "R1-natural",
+              "source": "FileList"
+            },
+            {
+              "case": "R1-natural",
+              "source": "Walker"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "FileList"
+            },
+            {
+              "case": "T1-natural-reclaim",
+              "source": "Walker"
+            },
+            {
+              "case": "H1-early",
+              "source": "FileList"
+            },
+            {
+              "case": "H1-late",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "FileList"
+            },
+            {
+              "case": "P1-preview",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-follow-links",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-deep",
+              "source": "Walker"
+            },
+            {
+              "case": "W1-wide",
+              "source": "Walker"
+            },
+            {
+              "case": "F1-filelist-parser-files",
+              "source": "FileList"
+            },
+            {
+              "case": "F1-filelist-parser-folders",
+              "source": "FileList"
+            }
+          ],
+          "unsupported_cells": []
+        }
+      ],
+      "all_correct": true,
+      "all_contention_eligible": true,
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-full.log",
+        "sha256": "da576b4141fcb6b03b9ff14bd2a483f4940119dbeaff3c1449ae2d4fba460d45"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-full.sidecar.json",
+        "sha256": "9e97b49fb5ec4c5907b730dd5a438e07d35777e7ff892e83c787949fd95a84b5"
+      },
+      "strict_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-full.summary.json",
+        "sha256": "2a06fa51ede9d63ee1244c1cf6f0070d2406fb2b682991117b9a278b6f98aba5"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-full.collector.log",
+        "sha256": "ee8d283d1f552ae0f6fb5b84913cb537db964f3b1edbd0d87fe15b00870dd5f1"
+      },
+      "comparison_kinds": {
+        "AA-variability": 154,
+        "AB-operation-cost": 462
+      },
+      "measurement_kinds": {
+        "headless-GUI-actual-workers": 588,
+        "worker-only-parser": 28
+      },
+      "request_terminal_roles": {
+        "required-latest-success": 644,
+        "revoked-predecessor": 28,
+        "declared-Warm-eviction-retained-last-good": 13,
+        "declared-Warm-eviction-stale-Full-retained-last-good": 1
+      },
+      "request_actual_terminal_kinds": {
+        "finished": 644,
+        "null": 14,
+        "canceled": 27,
+        "failed": 1
+      },
+      "actual_stale_full_abort_witnesses": 1,
+      "retained_victim_roles": {
+        "declared-Warm-eviction-retained-last-good": 13,
+        "declared-Warm-eviction-stale-Full-retained-last-good": 1
+      },
+      "retained_full_seed_oracles_after_t3": true,
+      "actual_warm_removal_events": 28,
+      "actual_optional_preemption_events": 28,
+      "specific_failed_terminal_records": [
+        {
+          "source": "Walker",
+          "comparison": "T1-A-B-C-A",
+          "pair": 6,
+          "position": 1,
+          "correct": true,
+          "contention_eligible": true,
+          "request": {
+            "actual_admitted_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+            "actual_cause_kind": "warm-replacement-removal",
+            "actual_started_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+            "actual_terminal_offer_kind": "failed",
+            "admitted_ms": 118.961833,
+            "admitted_root_matches": true,
+            "allocated_ms": 118.9575,
+            "allocation_observed": true,
+            "batches": 104,
+            "bookkeeping_released_ms": 395.444208,
+            "completed_predecessor": false,
+            "completed_predecessor_observed_ms": null,
+            "data_publish_end_ms": null,
+            "emitted_workload_semantics": "actual partial failed work; not full generation throughput",
+            "entries_emitted": 26624,
+            "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+            "followup_preempt_ms": 372.614583,
+            "invalidating_mutation_ms": 372.58333300000004,
+            "latest_generation_required": false,
+            "latest_measured_request": true,
+            "mailbox_closed": true,
+            "mailbox_closed_ms": 395.444,
+            "permission_ms": 372.569125,
+            "permission_reason": "switch-evicts-previous-Warm",
+            "planned_revocation": false,
+            "planned_revoked_by": null,
+            "replacements": 0,
+            "request_id": 6,
+            "request_processing_returned_ms": 372.803875,
+            "skipped_closed_before_start": false,
+            "stale_full_data_abort": {
+              "at_ms": 372.60004200000003,
+              "data_kind": "batch",
+              "latest_lookup_succeeded": true,
+              "latest_request_id": null,
+              "reason": "stale-full-data",
+              "request_id": 6,
+              "response_request_id": 6,
+              "shutdown": false,
+              "tab_id": 2
+            },
+            "stale_full_data_abort_duplicate": false,
+            "stale_full_data_abort_limit": 1,
+            "started_ms": 119.07229199999999,
+            "started_source": "Walker",
+            "tab_id": 2,
+            "terminal_kind": "failed",
+            "terminal_offer_current": false,
+            "terminal_offer_error": "index receiver closed",
+            "terminal_offered_ms": 372.802875,
+            "terminal_publish_ms": 372.803,
+            "terminal_role": "declared-Warm-eviction-stale-Full-retained-last-good",
+            "terminal_source": null,
+            "unsent_planned_discard": false
+          },
+          "retained_victims": [
+            {
+              "actual_all_count": 100000,
+              "actual_all_signature": "1b6d50b02bf5adc7",
+              "actual_seed_request_id": 3,
+              "actual_seed_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+              "actual_seed_source": "Walker",
+              "actual_visible_count": 100000,
+              "actual_visible_signature": "1b6d50b02bf5adc7",
+              "closed_ms": null,
+              "declared_ms": 372.565292,
+              "full_seed_oracle_after_t3": true,
+              "incoming_request_ids": [
+                8
+              ],
+              "partial_emitted_entries": 26624,
+              "request_id": 6,
+              "role": "declared-Warm-eviction-stale-Full-retained-last-good",
+              "seed_all_count": 100000,
+              "seed_all_signature": "1b6d50b02bf5adc7",
+              "seed_request_id": 3,
+              "seed_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-97974-7-1791075666044938000",
+              "seed_source": "Walker",
+              "seed_visible_count": 100000,
+              "seed_visible_signature": "1b6d50b02bf5adc7",
+              "stage": 2,
+              "tab_id": 2,
+              "workload_semantics": "actual partial stale-full-failed work; not 100k indexing throughput"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stage": "truncated",
+      "command": [
+        "cargo",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "perf_indexing_truncated_serial",
+        "--",
+        "--ignored",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "environment_overrides": {
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000"
+      },
+      "cleared_inherited_selectors": [
+        "FW_INDEX_PERF_EXTRA_CASES",
+        "FW_INDEX_PERF_EXTRA_SOURCES",
+        "FW_INDEX_PERF_EXTRA_ENTRIES"
+      ],
+      "exec_authority": "workspace sandbox",
+      "started_utc": "2026-10-04T01:42:32.592545+00:00",
+      "ended_utc": "2026-10-04T01:45:15.513098+00:00",
+      "elapsed_seconds": 162.79260108400194,
+      "exit_code": 0,
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 162.38s"
+      ],
+      "raw_rows": 14,
+      "expected_untimed_warmups": 2,
+      "actual_untimed_warmup_markers": 0,
+      "actual_sample_markers": 0,
+      "truncated_warmup_provenance": "two unconditional successful runner calls preceding measured loop; no warmup markers",
+      "collector_command": [
+        "python3",
+        "target/indexing-perf-study/summarize_extensions.py",
+        "target/indexing-perf-study/stale-full-extra-trunc.log",
+        "--rows",
+        "14",
+        "--output",
+        "target/indexing-perf-study/stale-full-extra-trunc.summary.json"
+      ],
+      "collector_exit_code": 0,
+      "complete_cells": 1,
+      "unique_keys": 14,
+      "metadata": [
+        {
+          "actual_cap": 500000,
+          "comparison_kind": "AA-variability",
+          "expected_rows": 14,
+          "input_entries": 500001,
+          "owned_global_config_restoration": true,
+          "pairs": 7,
+          "runner": "truncated-serial",
+          "schema_version": 1,
+          "selected_cases": [
+            "W1-truncated"
+          ],
+          "selected_sources": [
+            "Walker"
+          ]
+        }
+      ],
+      "all_correct": true,
+      "all_contention_eligible": true,
+      "source_start_end_unchanged": true,
+      "owned_fixture_remaining": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-trunc.log",
+        "sha256": "c9847b0d134e135ec0a7f1cf318ee7a633427db797f7d1f983fe2018bf04e79f"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-trunc.sidecar.json",
+        "sha256": "0e03c9192f22a214d74197dc906416f4fe871638ef60661c2e170b904cde7773"
+      },
+      "strict_summary": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-trunc.summary.json",
+        "sha256": "efcff9db3bab6f44c6ac9a0b328db46d275170a6b2bda3513ef16dcfa25de889"
+      },
+      "collector_log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-extra-trunc.collector.log",
+        "sha256": "0f7cb1da35d53f8696b49bf5c177b74907117672623bc4ede7cf3b8f9c42ef41"
+      },
+      "comparison_kinds": {
+        "AA-variability": 14
+      },
+      "measurement_kinds": {
+        "headless-GUI-actual-workers": 14
+      },
+      "request_terminal_roles": {},
+      "request_actual_terminal_kinds": {},
+      "actual_stale_full_abort_witnesses": 0,
+      "retained_victim_roles": {},
+      "retained_full_seed_oracles_after_t3": true,
+      "actual_warm_removal_events": 0,
+      "actual_optional_preemption_events": 0,
+      "specific_failed_terminal_records": []
+    }
+  ],
+  "total_raw_rows": 630,
+  "toolchain": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+  "cargo_version": "cargo 1.97.1 (c980f4866 2026-06-30)",
+  "no_competing_heavy_jobs": true,
+  "settings_provenance": "Search threads12/parallel threshold25000/Walkercap500000 via Command.env; Walker concurrency retains existing adaptive defaults.",
+  "actual_vs_models": "Measurements observe actual production App/index/search workers and individual sink/terminal/body-return hooks. Scoped earlier sink controls with modeled terminal/body/seed remain separate TDD. Full real narrow Failed1 has actual stale-Full DATA abort witness.",
+  "workload_semantics": "Partial canceled/Failed work is explicitly typed and not full100k generation throughput. Required newest generations and postt3 independent seed oracle remain strict; AA natural/parser/topology and feature-cost remain separate comparison kinds.",
+  "cleanup": "No new matching owned indexing-perf fixture paths after both subprocesses exit; individual AppDrop join/native signal behavior unobserved.",
+  "limitations": [
+    "Headless only; nativeGUI/Windows/Linux/CIactivation/nativeSIGINT/SIGKILL NOT RUN.",
+    "VM guards/remaining search/tab perf/tag/history heavy jobs not run; waiting main authority.",
+    "Old failed336raw/3cf source untouched and rejected; no inferred backward witness."
+  ]
+}

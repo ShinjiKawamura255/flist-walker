@@ -1,0 +1,18 @@
+{
+  "classification": "invalid-observer diagnostic; parent-authorized owned early stop, not product SIG cleanup proof",
+  "authorized_action": "TERM5s then only if necessary owned-group KILL5s",
+  "initial_attempt": "command index assertion rejected before any signal or file mutation; corrected from separator to exact test index",
+  "checked_utc": "2026-10-04T05:18:42.100419+00:00",
+  "sidecar_sha_before": "98c88d97fc3193001b37a6d91b06312a1ac1710d649b6e207204ea67cc15e464",
+  "pid": 19148,
+  "pgid": 19148,
+  "identity_ps": "19148 17875 19148 /Users/shinji/.rustup/toolchains/1.97.1-aarch64-apple-darwin/bin/cargo test --release --locked --offline --lib app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired -- --ignored --exact --nocapture --test-threads=1\n19149 19148 19148 /private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.27.0/release/deps/flist_walker-7f12a5ba9ef9fc3e app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired --ignored --exact --nocapture --test-threads=1\n",
+  "identity_cwd": "p19148\nfcwd\nn/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust\np19149\nfcwd\nn/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust\n",
+  "signals": [
+    {
+      "signal": "SIGTERM",
+      "utc": "2026-10-04T05:18:42.100781+00:00"
+    }
+  ],
+  "root_settings_deleted_or_restored": false
+}

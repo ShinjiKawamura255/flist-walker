@@ -1,0 +1,164 @@
+{
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_count": 213,
+  "verified_live_start_end": true,
+  "scoped_regates": [
+    {
+      "stage": "stale-full-accepted-terminal-negatives.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_229_stale_full_failed_victim_rejects_unproven_abort",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log_sha256": "1f1400314456b606274b4f12f3a73af1dc5e365f5b9187c6d90c9648f3cc20f6",
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-composed.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_229_preemption_observer_is_opt_in_bounded_and_scalar",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "log_sha256": "6127fa5a2fc0de0fcefd22a3ce0d54c6bbb78658912429b54de73192d4dc5e24",
+      "test_result_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.10s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-indexing-normal.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "indexing_perf",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log_sha256": "e0efdd414fa53f0cd68135464131f00460e06e42a448d5c3f001bb6cd9c4ee16",
+      "test_result_summaries": [
+        "test result: ok. 63 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.07s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-search-observer.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "worker::search_perf::tests"
+      ],
+      "exit_code": 0,
+      "log_sha256": "70e301b57a577d4e5845c86d9a4fd0f3e69c10f383d19d5ae49ba7887abb8b3c",
+      "test_result_summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1558 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-ordering.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log_sha256": "293f472945e78902381a2c0292aaf58b068c9a7db991d0b23e77733acef815f2",
+      "test_result_summaries": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 0.18s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-tc207.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log_sha256": "1ab92f829185bc2783124e859a5d769851524b22d3bfb97a4b0eaa68f6fbcff8",
+      "test_result_summaries": [
+        "test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 1485 filtered out; finished in 1.39s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-pipeline.sidecar",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::index_pipeline::",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "log_sha256": "d71eebf7d3395d043a266668e6e00ca2823df5ce0972c8cdbfdc6b01ac695aa5",
+      "test_result_summaries": [
+        "test result: ok. 152 passed; 0 failed; 0 ignored; 0 measured; 1415 filtered out; finished in 0.11s"
+      ]
+    },
+    {
+      "stage": "stale-full-accepted-fmt.sidecar",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "test_result_summaries": []
+    },
+    {
+      "stage": "stale-full-accepted-clippy.sidecar",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log_sha256": "b6f3b175a4b75a26601fb6f71da319eafa21cc6da9c237cc777a6d2158f041c3",
+      "test_result_summaries": []
+    }
+  ],
+  "scope": "Component only; no common fullhost/basic/observer or renewed perf acceptance inferred"
+}

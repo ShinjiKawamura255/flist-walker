@@ -1,0 +1,29 @@
+{
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "packet_refs_verified": 11,
+  "checks": [
+    {
+      "stage": "tabchain-target",
+      "raw_rows": 4,
+      "cells": 2,
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 67.48s",
+      "collector_replay": "PASS 2 cells 4 raw rows",
+      "source213_unchanged": true,
+      "tabchain_retained_canceled_roles": 2,
+      "staleFullFailed_actual_occurrences": 0,
+      "no_new_owned_paths": true
+    },
+    {
+      "stage": "extra-pilot",
+      "raw_rows": 88,
+      "cells": 44,
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 716.66s",
+      "collector_replay": "PASS 44 cells 88 raw rows",
+      "source213_unchanged": true,
+      "tabchain_retained_canceled_roles": 2,
+      "staleFullFailed_actual_occurrences": 0,
+      "no_new_owned_paths": true
+    }
+  ],
+  "scope": "1pair pilot/target only; no full7pairs inference, no actualFailed occurrence inferred fromTDD"
+}

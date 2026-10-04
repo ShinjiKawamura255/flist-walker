@@ -1,0 +1,21 @@
+{
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/collect_historical.py",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.events.log",
+    "--sidecar",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.sidecar.json",
+    "--identity-packet",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r5-guards-execution/guard-execution-packet.json",
+    "--output",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r3/r3-synthetic-mixed.validated.json"
+  ],
+  "exit_code": 0,
+  "actual_child_returned": true,
+  "watchdog_seconds": 10,
+  "elapsed_seconds": 0.03923791700799484,
+  "scope": "explicit synthetic mixed stream CLI; not a historical run",
+  "evidence_kind": "synthetic-control",
+  "log_sha256": "9e99a4480d9867038f6fd63bc876164660635e8b1f3768c1c863652e56c71e5f",
+  "finished_utc": "2026-10-04T05:51:58.199081+00:00"
+}

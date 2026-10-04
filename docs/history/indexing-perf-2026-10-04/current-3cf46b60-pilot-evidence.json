@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "scope": "Accepted3cf targeted4 and44cell1pairpilot88; pilot is not full7pair evidence",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "packet_sha256": "a76285e4c30d1d92dfb949e9b401f7fa8d5ba77e10c1b8bed8201e17cb5cf679",
+  "assets": [
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-warm-final-extra-pilot-accepted.json",
+      "path": "integration-warm-final-extra-pilot-accepted.json",
+      "sha256": "65a7143b66139ce19c185c78d598f08e82016afc0d421669859be5c0a91d233c",
+      "bytes": 147223,
+      "uncompressed_sha256": "65a7143b66139ce19c185c78d598f08e82016afc0d421669859be5c0a91d233c",
+      "uncompressed_bytes": 147223,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-warm-final-tabchain-target-accepted.json",
+      "path": "integration-warm-final-tabchain-target-accepted.json",
+      "sha256": "c04011c7456dd80b5b04c452bedb50191ad4b86901614f71053d29f595365f4f",
+      "bytes": 8396,
+      "uncompressed_sha256": "c04011c7456dd80b5b04c452bedb50191ad4b86901614f71053d29f595365f4f",
+      "uncompressed_bytes": 8396,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+      "path": "summarize_extensions-warm-removal.py",
+      "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+      "bytes": 11497,
+      "uncompressed_sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+      "uncompressed_bytes": 11497,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+      "path": "warm-ack-final-source-hashes.json",
+      "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "bytes": 22284,
+      "uncompressed_sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "uncompressed_bytes": 22284,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-common-packet.json",
+      "path": "warm-final-common-packet.json",
+      "sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263",
+      "bytes": 9737,
+      "uncompressed_sha256": "22e3ac88a57639b9f6bb83f8ddd8587913c53abdef97b5ea292abc88cc987263",
+      "uncompressed_bytes": 9737,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.collector.log",
+      "path": "warm-final-extra-pilot.collector.log.gz",
+      "sha256": "d6299d75c339368bc4739078cc102d5fa74187f7655136a79833eb18492429f7",
+      "bytes": 46,
+      "uncompressed_sha256": "9eb33809d5bc9a5a312964207430d2b80ea257b702093b07d64723a547ef60f3",
+      "uncompressed_bytes": 26,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.log",
+      "path": "warm-final-extra-pilot.log.gz",
+      "sha256": "3bbd078e02a7e40d5b439a73a380adc9c8ca6e0c327efd325b7bd4526eba5795",
+      "bytes": 27443,
+      "uncompressed_sha256": "b59d3de281baa3def166ec80544a2d335533de8b0aa648ccd84e7c603217904b",
+      "uncompressed_bytes": 477891,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.sidecar.json",
+      "path": "warm-final-extra-pilot.sidecar.json",
+      "sha256": "1a006d1f5fe357d7fc470cfee3574e12e8a30550b6dd275a6dac514d505144fa",
+      "bytes": 53483,
+      "uncompressed_sha256": "1a006d1f5fe357d7fc470cfee3574e12e8a30550b6dd275a6dac514d505144fa",
+      "uncompressed_bytes": 53483,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-extra-pilot.summary.json",
+      "path": "warm-final-extra-pilot.summary.json",
+      "sha256": "65a7143b66139ce19c185c78d598f08e82016afc0d421669859be5c0a91d233c",
+      "bytes": 147223,
+      "uncompressed_sha256": "65a7143b66139ce19c185c78d598f08e82016afc0d421669859be5c0a91d233c",
+      "uncompressed_bytes": 147223,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-pilot-packet.json",
+      "path": "warm-final-pilot-packet.json",
+      "sha256": "a76285e4c30d1d92dfb949e9b401f7fa8d5ba77e10c1b8bed8201e17cb5cf679",
+      "bytes": 25789,
+      "uncompressed_sha256": "a76285e4c30d1d92dfb949e9b401f7fa8d5ba77e10c1b8bed8201e17cb5cf679",
+      "uncompressed_bytes": 25789,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.collector.log",
+      "path": "warm-final-tabchain-target.collector.log.gz",
+      "sha256": "42c68410f4f5e4ce6e96459c6d1226a9dd828c7927cf2ed5217d26405b9c44fd",
+      "bytes": 44,
+      "uncompressed_sha256": "a3c88104ea003f2170372c37c0e7844e116296e767df138d0648a5327b1ddb21",
+      "uncompressed_bytes": 24,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.log",
+      "path": "warm-final-tabchain-target.log.gz",
+      "sha256": "6b24e4ac6cbfb032b6f0209b331e91d27d662fa12362adafce6beea0c0efe68b",
+      "bytes": 5494,
+      "uncompressed_sha256": "7092f1878043dbfea2abd290d3b0543ff15e508a3f97dfa14068360c82f29be4",
+      "uncompressed_bytes": 42913,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.sidecar.json",
+      "path": "warm-final-tabchain-target.sidecar.json",
+      "sha256": "227a2c37b84860aad00a7d86ee3268278e7fccda63418f060bbcf9c67f138ad5",
+      "bytes": 49299,
+      "uncompressed_sha256": "227a2c37b84860aad00a7d86ee3268278e7fccda63418f060bbcf9c67f138ad5",
+      "uncompressed_bytes": 49299,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-tabchain-target.summary.json",
+      "path": "warm-final-tabchain-target.summary.json",
+      "sha256": "c04011c7456dd80b5b04c452bedb50191ad4b86901614f71053d29f595365f4f",
+      "bytes": 8396,
+      "uncompressed_sha256": "c04011c7456dd80b5b04c452bedb50191ad4b86901614f71053d29f595365f4f",
+      "uncompressed_bytes": 8396,
+      "encoding": "unchanged"
+    }
+  ],
+  "source_overlay": "current-3cf46b60-source-overlay.json",
+  "cancellation_work_disclosure": "Fixed TabChain retained oldWarm B Canceled is partial actualwork; requiredA/C are freshFinished100k. Finite-trace time cannot be called100k victim throughput.",
+  "full_matrix_status": "NOT RUN at this pilot checkpoint; full616/trunc14 starts separately"
+}

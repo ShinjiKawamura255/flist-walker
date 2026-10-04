@@ -1,0 +1,1 @@
+R1 discovery compile failure exit101/14 errors preserved; R2 only cfg CellGuard visibility, std::fs guard qualification, channel<()> annotation, and stronger CommitWitness metadata assertions. Original production/Cargo/deadlines unchanged. No perf authority.

@@ -1,0 +1,93 @@
+Independent focused AFTER re-review: victim mutation and real Finished observation
+
+Decision: NOT ACCEPTED; prior major1/minor1 resolved in their reviewed gates,
+but one introduced integration major remains OPEN. All findings reported together.
+Reviewer /root/plan_review; prior independent design/checkpoint work only,
+no implementation/test authorship. Read-only source/evidence inspection. No build,
+test/perf execution, Rust edits or Git mutation. Requested ignored note only saved.
+Checkout /private/tmp/flistwalker-indexing-perf-20261003, base/head
+8a452b3858c80f70a5f3064834c8add4d9b1d347; task uncommitted.
+Prior failed8e victim-contract-after-review.txt was not modified.
+
+Frozen identity independently verified
+Nested canonical213 source-map SHA256:
+87e213a2c137edf55703f3ee74ec983494df246841ecf00da918cc4aa5cffea3
+Packet FILE SHA256:
+0a70f231aaa0019138ed0d2f23b28d50dac0e828b7e3f9f4266797f573f06812
+All213 live files and saved full-source copies match. Exactly extensions/driver.rs
+and extensions/mod.rs differ from rejected8e map. Collector actual SHA256:
+3679db4137e8279f77499d620a8ec4cb99e58d0acfc21d9d775d55fe1e22440c
+
+Prior finding disposition
+- Old major1 RESOLVED in the global event predicate: declared_preemption_cause
+  checks exact typed mutation independently of Canceled terminal/body chronology;
+  ordinary Finished and strictly authorized closed-receiver predecessor paths
+  remain under their existing planned/physical/source/root successor truth.
+- Old minor1 RESOLVED: collector derives maximum same-tab ID from actual ledger,
+  compares latest flags and checks actual higher same-tab predecessor successor.
+- Narrow observed branch implemented: permit_revocation reads real Finished
+  publication under its observation lock, records completed_predecessor_observed_at
+  and returns without inventing cancel permission. Cause requires actual Finished
+  publication<=observation<=mutation, own source/root/acquisition, and exact typed
+  edge/candidate/trigger/window. Publication can precede/follow declaration.
+  Physical body return still belongs to completion. Latest B oldseed exception
+  continues to require actual Canceled, prior Warm permission, !completed predecessor,
+  no successor, physical/debt and post-t3 full seed oracle. Finished B stays latest.
+
+New integration finding
+Severity: major
+Evidence: extensions/mod.rs:774-802 select_measured_request still accepts
+Some(0) only when the selected owner has permission_at and reason
+switch-evicts-previous-Warm. It does not recognize the newly accepted observed
+Finished typed-mutation branch, which intentionally has NO cancel permission.
+Driver:110 creates that no-permission observed classification; postframe:1160
+always selects primary through this helper for TabChain, and checkpoint:1008
+also calls it. The new observed test1256 verifies declared_preemption_set_valid
+and planned_requests_valid but never composes them with request-owner selection.
+Impact: At B->C, A5 can already be actual Finished while still a queued-terminal
+UI inflight candidate. The typed mutation correctly sets A's latest map to0;
+the new cause branch correctly accepts the observed Finished state, but A is
+still the driver's primary tab until its later A8 replacement. On that frame,
+measured_request_for(A) rejects Some0 because A5 has no cancel permission, so the
+driver panics before reaching later required A8/C7 success. This is the same
+legitimate race the narrow refinement intended to support, now blocked at an
+earlier selector seam. Completion predicates passing independently do not prove
+the real driver path can traverse this state.
+Recommended Fix: Extend owner selection ONLY for the exact selected latest
+measured owner with a verified matching typed observed-Finished mutation, using
+actual publication/observation/cause/identity proof. Compute that narrow proof
+from the real event and payload-free observation in measured_request_for;
+do not accept completed flag/observedAt alone or arbitrary Some0, synthesize
+permission, fall back to older IDs, or waive final physical/new-generation truth.
+Keep unknown nonzero/wrong-tab/setup/latest-missing and None retirement checks.
+Add composed positive for stage1 A5 latestmap0 with real observed Finished and no
+permission selecting owner5 until A8 exists, including body-return-later (selection
+allowed, t2/t3 not ready). Mirror negatives for missing/wrong/future cause/observation,
+Canceled/Failed/no permission, foreign tab/root/source and newer same-tab allocation
+so predecessor proof cannot authorize its successor. Exercise the actual helper
+used at postframe primary and checkpoint, not just event/outcome helper predicates.
+Residual Risk: Race is source-reachable but not measured here. Real100k remains
+STOP pending minimal selector repair and focused frozen re-review. Existing saved
+normal61 green does not cover this newly composed path; no performance assertion.
+
+Saved checks independently inspected, not rerun
+All packet log hashes verified, exit0/warnings0: observedFinished1 PASS,
+composed1 PASS, normal61 PASS/4ignored38.21s, search9, ordered10, TC20782,
+index_pipeline152, fmt and clippy -D warnings. Red/diagnostic log hashes match;
+focused failure logs and intermediate compile diagnostic remain classified
+separately and overlap is not summed. Collector saved24 checks comprise
+3syntheticvalid/19syntheticreject/2actual-retired-partialreject, not perf evidence.
+SDD runner reflects separate typed mutation/real observed Finished and actual
+Canceled last-good semantics, preserves ordinary predecessor outcomes, no post-t3
+frames/inputs, full seed validation before raw and partial workload labeling.
+
+Unchanged reviewed boundaries
+Default-off cfg event bounds and no payload retention; required A/C/stable B and
+Finished B success/freshness/full oracle; exact physical/debt; finite trace/oracle;
+post-t3 full independent seed; raw role/emitted/cause classifications preserved.
+
+NOT RUN
+Renewed fullhost/basic84/observer14 perf, targeted real100k TabChain, pilot/full/
+truncated, historical expanded, native GUI/Windows/Linux, SIGINT/SIGKILL cleanup
+and individual worker join outcomes. No build/test/perf run by reviewer. This is
+not fresh final review or task/speed acceptance. Parent owns fixes and next gates.

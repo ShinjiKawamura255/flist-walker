@@ -1,0 +1,448 @@
+{
+  "source_preparation_packet_sha256": "01895da191528b9bbfe94ef8279adcb09e954f16b053c569f84b9f8164530389",
+  "status": "STOP for main readback, no performance",
+  "failure": null,
+  "records": [
+    {
+      "stage": "r5-red-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "source_manifest_after": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "summary": [],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-red-0-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "source_manifest_after": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "summary": [],
+      "discovered_count": 1,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-red-0-exact",
+      "exit_code": 101,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "source_manifest_after": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "summary": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-red-1-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "source_manifest_after": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "summary": [],
+      "discovered_count": 1,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-red-1-exact",
+      "exit_code": 101,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "source_manifest_after": "694653e18ff8d54ad24d5f149ab02ff006f5bf6ee2fc5357b8746e58d212cac3",
+      "summary": [
+        "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-green-0-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 1,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-green-0-exact",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-green-1-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 1,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "r5-green-1-exact",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1266 filtered out; finished in 0.00s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-historical-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 20,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-historical-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [
+        "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1247 filtered out; finished in 2.74s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-fixture-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 8,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-fixture-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1259 filtered out; finished in 0.87s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-oracle-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [],
+      "discovered_count": 7,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.27.0-oracle-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "source_manifest_after": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1260 filtered out; finished in 0.50s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-historical-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [],
+      "discovered_count": 20,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-historical-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [
+        "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1439 filtered out; finished in 2.94s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-fixture-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [],
+      "discovered_count": 8,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-fixture-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1451 filtered out; finished in 0.87s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-oracle-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [],
+      "discovered_count": 7,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.28.0-oracle-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "source_manifest_after": "2a45492609907664f348edac0ec55cb601742f0adb75afa35226916e6bcf0ee6",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1452 filtered out; finished in 0.50s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-historical-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [],
+      "discovered_count": 20,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-historical-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [
+        "test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 1489 filtered out; finished in 3.00s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-fixture-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [],
+      "discovered_count": 8,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-fixture-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1501 filtered out; finished in 0.91s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-oracle-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [],
+      "discovered_count": 7,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.29.0-oracle-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "source_manifest_after": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1502 filtered out; finished in 0.50s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-historical-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [],
+      "discovered_count": 19,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-historical-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [
+        "test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 2.92s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-fixture-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [],
+      "discovered_count": 8,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-fixture-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1568 filtered out; finished in 0.88s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-oracle-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [],
+      "discovered_count": 7,
+      "continuation_authorized": true
+    },
+    {
+      "stage": "v0.30.0-oracle-guards",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "source_manifest_before": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "source_manifest_after": "b0326e143b7ddb20a6811c99293e5ee40cfe97d98eb6dd81e07fcb4b00b0f487",
+      "summary": [
+        "test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 1569 filtered out; finished in 0.50s"
+      ],
+      "discovered_count": 0,
+      "continuation_authorized": true
+    }
+  ],
+  "v27_precleanup_Flush": "unobserved; final owned cleanup Flush only",
+  "performance": "NOT_RUN"
+}

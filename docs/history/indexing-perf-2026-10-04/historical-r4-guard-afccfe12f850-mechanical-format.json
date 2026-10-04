@@ -1,0 +1,66 @@
+[
+  {
+    "tag": "v0.27.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.27.0/rust/src/app/session.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.27.0/rust/src/app/historical_perf.rs"
+    ],
+    "exit_code": 0
+  },
+  {
+    "tag": "v0.28.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.28.0/rust/src/app/session.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.28.0/rust/src/app/historical_perf.rs"
+    ],
+    "exit_code": 0
+  },
+  {
+    "tag": "v0.29.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0/rust/src/app/historical_perf.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0/rust/src/persistence/worker.rs"
+    ],
+    "exit_code": 0
+  },
+  {
+    "tag": "v0.30.0",
+    "command": [
+      "rustup",
+      "run",
+      "1.97.1",
+      "rustfmt",
+      "--edition",
+      "2021",
+      "--config",
+      "skip_children=true",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0/rust/src/app/historical_perf.rs",
+      "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0/rust/src/persistence/worker.rs"
+    ],
+    "exit_code": 0
+  }
+]

@@ -1,0 +1,299 @@
+Historical Warm-removal first-cause feasibility addendum
+Date: 2026-10-04. READ-ONLY original-tag source inspection; no Rust/adapters/build/perf/git mutation.
+Status: preparation only. Current full acceptance and adapter review/measurement authorization remain required.
+Proposal read: tabchain-warm-removal-cause-proposal-v2.txt
+Proposal SHA256: 3b45581f3dad813ea825c9e7eedf767dac3cd5012dc8bf6a3f90e785daa1569b
+
+1. Earliest actual invalidation, all four tags
+IndexCoordinator::replace_warm_tab is byte-identical across v0.27.0 through v0.30.0.
+The first mutation is latest_request_ids.remove(previous_warm), original-tag index_coordinator.rs:528 (v27), :558 (v28/29/30).
+It precedes the .filter(request_tabs.contains_key) and superseded_request_ids insertion. Removal can occur even if that filter rejects the removed ID.
+A valid scalar witness must come from the actually returned nonzero removed ID and independently match request_tabs[removedID] == previousWarm. Checking contains_key alone is insufficient as a witness; changing the existing production filter to route equality is prohibited.
+The fields warm_tab_id, latest_request_ids, request_tabs and superseded_request_ids exist in all four tags. No API absence makes this operation unsupported.
+Same-Warm early return, oldWarm=None, mutex-lock failure, missing latest ID, zero ID or missing/wrong route must not produce an authorized removal witness.
+promote_warm_tab only changes warm_tab_id. It never removes latest, and must not emit a warm-removal witness.
+clear_for_tab_after_reclaim and cleanup_request also remove latest entries (v27 :238/241 and :413; v28+ :268/271 and :443). Those removals do not constitute the typed replace-Warm cause and cannot authorize an unrelated None latest.
+
+2. Minimal cfg(test) scalar seam, subject to approved v2 contract
+All four tags can observe oldWarm, replacementWarm (method input), actual removed request ID and the actual request-to-tab route without a production API change.
+Opt-in/default-off bounded observation storage with sticky overflow is test-only. Capture owned scalar fields; no payload/Arc pin, queue replacement or production scheduling change.
+While latest mutex is held, take the observation clock immediately before the real remove only when observation is enabled and the exact eligible identity is available; record the actual returned removed value. Append the scalar after unlocking. Preserve the original remove/filter/insertion evaluation order and behavior.
+Disabled operation must add no observation clock/allocation. Invalid identity, unmatched operation, duplicate witness or sticky overflow fails proof, rather than yielding an unsupported classification.
+The coordinator lacks direct Active/root context. Do not populate invented currentActive/root fields or copy current production bodies to older versions. Any future callsite context extension requires separate scope approval.
+
+3. Actual activation and caller-specific order
+Normal switch_to_tab_index_at order is shared across all four tags:
+try_prepare/preflight -> deactivate old tab -> resource/commit guards -> set_active_tab_index_at(next,now) -> load_tab_payload(next) -> promote_warm_tab OR replace_warm_tab(previous indexing tab) -> activate_background_tab_after_transition -> enforce budget.
+replace-Warm call anchors: tabs.rs:1227 v27; :1349 v28/29; :1361 v30.
+A rejected/deferred preflight or commit returns without successful replacement/switch completion. Out-of-range and already-Active no-op calls are not a new switch acknowledgment; bind the declared distinct previous/target tabs. retry_pending_tab_activation executes the real switch later; a click/permission timestamp is not an actual switch acknowledgment.
+v28+ additionally cancels pending Create FileList work before deactivation, returning deferred if that gate cannot complete. v27 lacks that gate. The fixed indexing-only TabChain does not initiate Create FileList; preserve the real gate if encountered, and report any actual deferred/failure rather than fabricate acknowledgment.
+Actual driver acknowledgment is feasible on every tag using actual current_tab_id, shell.runtime.root, pending_activation_tab_id and a clock after successful activation but before dependent refresh. Bind the fixed declared target tab/root/stage and the permitted interval to the exact removed request. Root acknowledgment is not evidence of emitted source or committed membership; those need their independent actual request/source/commit witnesses.
+restore_recently_closed_tab uses the opposite order: replace-Warm at tabs.rs:1562 v27 / :1690 v28/29 / :1702 v30, then new Active set/load at :1572/1573, :1700/1701, :1712/1713. Thus a coordinator witness cannot universally imply target Active at removal. Fixed switch proof must not borrow a restoration event.
+request_background_index_refresh_for_tab_with_mode also replaces Warm, pipeline.rs:254 v27 / :310 v28 / :311 v29 / :321 v30, before allocating the new request and begin_background_refresh. This is not a tab-switch acknowledgment. Reject unrelated background-refresh witnesses.
+v28+ background-refresh differences include CreateFileList pending index ID tracking, PreserveSort mode and complete_walker_snapshot. These do not change the earliest Warm removal. Keep actual historical modes/protocol; do not backport these fields into v27.
+
+4. No-marker paths and terminal roles
+preempt_background_for_active_request has the same scheduler decision semantics in all tags: queued Active required and inflight >= 2; prefer non-Warm inactive victim, fallback Warm; replacement is queued ID or zero; equal latest value causes no mutation. INDEX_MAX_CONCURRENT is 2 in each tag.
+Warm replacement removal runs independently of dispatch pressure. If cleanup leaves inflight=1, the incoming Active request can dispatch without preempt; if victim cleanup already completed, it need not be a dispatch victim; no queued Active or an already-zero latest also produces no preempt marker. None priorlatest after a genuine Warm removal is plausible; a lone None without its exact earlier cause remains invalid.
+MailboxResponseSink::request_is_current uses shutdown plus latest[tab] == request ID on all tags. Real removal alone invalidates the running producer, so Canceled publication/physical return may precede any later preempt marker.
+Keep v2 cause vs terminal-role distinction: an ordinary intermediate predecessor may have a genuine Finished race or the strictly authorized closed-receiver path; do not require Canceled globally for every typed mutation. Latest declared B victim uses its specified real Canceled/last-good-seed role; latest A8/C7 still require Finished with actual source/root/commit and independent oracle.
+Earliest removal selects the exact owned victim; it cannot certify physical return, t2/t3 or debt settlement. Keep started/removal/terminal-publication/physical-return chronology, actual routing absence, worker/load zero and all-tab debt requirements. Last-good seed must be the exact same tab/root/source/generation and independently validated ordered membership. No predecessor or earlier A5 witness may authorize new A8.
+
+5. Handling and gates
+No absent API identified for the proposed scalar removal or post-switch acknowledgment on these four tags. Observed eligibility failure, wrong order/membership, unsupported terminal role, missing witness, worker panic or failed cleanup remains FAIL/NON_ELIGIBLE as specified; none is silently reclassified API-unsupported.
+Per-cell continuation still requires positive exact physical join/worker-return and owned root restoration proof. If cleanup/root restoration is uncertain, stop and mark remaining cells NOT_RUN with the actual reason; retain partial rows separately from accepted timing.
+No measurements were performed, no speed or regression classification is made, and frozen basic sources/patches/evidence remain unchanged. Do not start historical expansion before current full acceptance and independent cfg-only adapter review; never backport the current ordered-handoff production repair.
+
+6. Exact source identity and original-tag anchors
+Read command: git show TAG:rust/src/app/FILE (repo /private/tmp/flistwalker-indexing-perf-20261003).
+File hashes are SHA256 of exact git-show bytes. Function hashes use bytes beginning at the first indentation of the function declaration through its matching closing brace, followed by exactly one LF. Previous preparation notes may use another whitespace/trailing-newline extraction convention; identities below specify this convention explicitly.
+[
+  {
+    "tag": "v0.27.0",
+    "commit": "37195d639338f10549efabb1abad729546230914",
+    "files": {
+      "rust/src/app/index_coordinator.rs": {
+        "sha256": "995148780f48bc63387b93229ccbebde90131495ec904435345cf90172a0224b",
+        "functions": {
+          "replace_warm_tab": {
+            "line": 521,
+            "sha256": "bfc7e1b3e1c07faee17a3c6f5c4ddb6363e22403e4b18252def6ad9b0281ea58"
+          },
+          "promote_warm_tab": {
+            "line": 538,
+            "sha256": "9be7e4f5e58ccbc852f866f9aba653a8ab42b6855e4a6172b120719dde13dd96"
+          }
+        }
+      },
+      "rust/src/app/tabs.rs": {
+        "sha256": "03d807ee68dfffc827f5bb34de697e1536060f786a2b4694494dc411099b0a5f",
+        "functions": {
+          "switch_to_tab_index_at": {
+            "line": 1168,
+            "sha256": "964ed68834ee524e529aa1f416953108510919ec0b7585cea92d65e4dcf34ea0"
+          },
+          "retry_pending_tab_activation": {
+            "line": 1153,
+            "sha256": "4f4d7aad90ab30060190830456a949641c9df2c4c7dbe9bbd4c4efb58bc9ed99"
+          },
+          "restore_recently_closed_tab": {
+            "line": 1519,
+            "sha256": "a690514a9fce1f342bcfe17d22f2eb216a92d3c1eb5ee50b9cc91315db4240c0"
+          },
+          "activate_background_tab_after_transition": {
+            "line": 210,
+            "sha256": "2b9871cd092f35783fd9cc94221372486b2cfc99472c9c41d196589b45cebec4"
+          }
+        }
+      },
+      "rust/src/app/pipeline.rs": {
+        "sha256": "c8f91252fdad889d3501e52b6386799a978231f349f59066cdf179466238df08",
+        "functions": {
+          "request_background_index_refresh_for_tab_with_mode": {
+            "line": 198,
+            "sha256": "7133da5de5f96c2d60042b4761fa69799085ea39a38e5aa2cf689b945c027bac"
+          },
+          "preempt_background_for_active_request": {
+            "line": 481,
+            "sha256": "371cb8ade17b9e9ca89a78c506c42ae856fd3783fb54249e3f4b2d060b210d1c"
+          }
+        }
+      },
+      "rust/src/app/index_worker.rs": {
+        "sha256": "27bf2da1bc94131deaa52a2859f9423d75c03de42be34e9f624268fdc441d889",
+        "functions": {
+          "MailboxResponseSink::request_is_current": {
+            "line": 53,
+            "sha256": "7f3339d891ae7017bd475fa5230598b52038eeaa65a4f8662cd458335dce1c01"
+          }
+        }
+      }
+    }
+  },
+  {
+    "tag": "v0.28.0",
+    "commit": "ff7df8330f1ea7ec4a11c7f470dbbb8efeff74f8",
+    "files": {
+      "rust/src/app/index_coordinator.rs": {
+        "sha256": "b6c18b854aced14d04934b823f4666b0abf6e07260bcd58901da7a8c5e04abc2",
+        "functions": {
+          "replace_warm_tab": {
+            "line": 551,
+            "sha256": "bfc7e1b3e1c07faee17a3c6f5c4ddb6363e22403e4b18252def6ad9b0281ea58"
+          },
+          "promote_warm_tab": {
+            "line": 568,
+            "sha256": "9be7e4f5e58ccbc852f866f9aba653a8ab42b6855e4a6172b120719dde13dd96"
+          }
+        }
+      },
+      "rust/src/app/tabs.rs": {
+        "sha256": "e599682a7f3e54ecb5cc898ab4d85ec0ef1a03a427a97dfa8d599dea1c05af87",
+        "functions": {
+          "switch_to_tab_index_at": {
+            "line": 1282,
+            "sha256": "e67ee759f3474bd04b4cd6ba1894fae63998a6f834707723ab829fd48f424a02"
+          },
+          "retry_pending_tab_activation": {
+            "line": 1267,
+            "sha256": "4f4d7aad90ab30060190830456a949641c9df2c4c7dbe9bbd4c4efb58bc9ed99"
+          },
+          "restore_recently_closed_tab": {
+            "line": 1647,
+            "sha256": "a690514a9fce1f342bcfe17d22f2eb216a92d3c1eb5ee50b9cc91315db4240c0"
+          },
+          "activate_background_tab_after_transition": {
+            "line": 205,
+            "sha256": "2b9871cd092f35783fd9cc94221372486b2cfc99472c9c41d196589b45cebec4"
+          }
+        }
+      },
+      "rust/src/app/pipeline.rs": {
+        "sha256": "7e383c2b9101a00e9ff9818bb1b27c92ac43f4f8843833081b544203e22d6431",
+        "functions": {
+          "request_background_index_refresh_for_tab_with_mode": {
+            "line": 254,
+            "sha256": "9084c7abebc4ef50ca858de4c35f9766fbb1e62993a2f3518af5569b841adc62"
+          },
+          "preempt_background_for_active_request": {
+            "line": 516,
+            "sha256": "91f01c43ef9a417df2e26e23401244123f272659059a76e9454fd162c561a002"
+          }
+        }
+      },
+      "rust/src/app/index_worker.rs": {
+        "sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "functions": {
+          "MailboxResponseSink::request_is_current": {
+            "line": 61,
+            "sha256": "7f3339d891ae7017bd475fa5230598b52038eeaa65a4f8662cd458335dce1c01"
+          }
+        }
+      }
+    }
+  },
+  {
+    "tag": "v0.29.0",
+    "commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+    "files": {
+      "rust/src/app/index_coordinator.rs": {
+        "sha256": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+        "functions": {
+          "replace_warm_tab": {
+            "line": 551,
+            "sha256": "bfc7e1b3e1c07faee17a3c6f5c4ddb6363e22403e4b18252def6ad9b0281ea58"
+          },
+          "promote_warm_tab": {
+            "line": 568,
+            "sha256": "9be7e4f5e58ccbc852f866f9aba653a8ab42b6855e4a6172b120719dde13dd96"
+          }
+        }
+      },
+      "rust/src/app/tabs.rs": {
+        "sha256": "7d0a8ab63b5b323aa4918934f923706fd77dda660b2fa18ac93ec168074b7fd9",
+        "functions": {
+          "switch_to_tab_index_at": {
+            "line": 1282,
+            "sha256": "e67ee759f3474bd04b4cd6ba1894fae63998a6f834707723ab829fd48f424a02"
+          },
+          "retry_pending_tab_activation": {
+            "line": 1267,
+            "sha256": "4f4d7aad90ab30060190830456a949641c9df2c4c7dbe9bbd4c4efb58bc9ed99"
+          },
+          "restore_recently_closed_tab": {
+            "line": 1647,
+            "sha256": "a690514a9fce1f342bcfe17d22f2eb216a92d3c1eb5ee50b9cc91315db4240c0"
+          },
+          "activate_background_tab_after_transition": {
+            "line": 205,
+            "sha256": "2b9871cd092f35783fd9cc94221372486b2cfc99472c9c41d196589b45cebec4"
+          }
+        }
+      },
+      "rust/src/app/pipeline.rs": {
+        "sha256": "f7151dc1c57bc78550299bc168f786915baff41a4c9b992fff187dd986aaa270",
+        "functions": {
+          "request_background_index_refresh_for_tab_with_mode": {
+            "line": 255,
+            "sha256": "9084c7abebc4ef50ca858de4c35f9766fbb1e62993a2f3518af5569b841adc62"
+          },
+          "preempt_background_for_active_request": {
+            "line": 517,
+            "sha256": "91f01c43ef9a417df2e26e23401244123f272659059a76e9454fd162c561a002"
+          }
+        }
+      },
+      "rust/src/app/index_worker.rs": {
+        "sha256": "0df9f6a364219a6457ac7d235b0222b0ce6795363f9ed148cca605b40ac40876",
+        "functions": {
+          "MailboxResponseSink::request_is_current": {
+            "line": 61,
+            "sha256": "7f3339d891ae7017bd475fa5230598b52038eeaa65a4f8662cd458335dce1c01"
+          }
+        }
+      }
+    }
+  },
+  {
+    "tag": "v0.30.0",
+    "commit": "129ec84cbf24ffb02bba1cade5b75fa042fd0c45",
+    "files": {
+      "rust/src/app/index_coordinator.rs": {
+        "sha256": "5a383ea93bc574fa5dbad66e76471a2fd26a9580112aafda6e5e330a69793960",
+        "functions": {
+          "replace_warm_tab": {
+            "line": 551,
+            "sha256": "bfc7e1b3e1c07faee17a3c6f5c4ddb6363e22403e4b18252def6ad9b0281ea58"
+          },
+          "promote_warm_tab": {
+            "line": 568,
+            "sha256": "9be7e4f5e58ccbc852f866f9aba653a8ab42b6855e4a6172b120719dde13dd96"
+          }
+        }
+      },
+      "rust/src/app/tabs.rs": {
+        "sha256": "6bd7fca2e4af562faef501d5353457427e978acc2d67083d753be0c3db74a74b",
+        "functions": {
+          "switch_to_tab_index_at": {
+            "line": 1294,
+            "sha256": "e67ee759f3474bd04b4cd6ba1894fae63998a6f834707723ab829fd48f424a02"
+          },
+          "retry_pending_tab_activation": {
+            "line": 1279,
+            "sha256": "4f4d7aad90ab30060190830456a949641c9df2c4c7dbe9bbd4c4efb58bc9ed99"
+          },
+          "restore_recently_closed_tab": {
+            "line": 1659,
+            "sha256": "a690514a9fce1f342bcfe17d22f2eb216a92d3c1eb5ee50b9cc91315db4240c0"
+          },
+          "activate_background_tab_after_transition": {
+            "line": 205,
+            "sha256": "2b9871cd092f35783fd9cc94221372486b2cfc99472c9c41d196589b45cebec4"
+          }
+        }
+      },
+      "rust/src/app/pipeline.rs": {
+        "sha256": "32329c4cb2d46cc8c8b7ba30d48fa9cd00dd5f43944bc42eb54e744e72a36c69",
+        "functions": {
+          "request_background_index_refresh_for_tab_with_mode": {
+            "line": 265,
+            "sha256": "9084c7abebc4ef50ca858de4c35f9766fbb1e62993a2f3518af5569b841adc62"
+          },
+          "preempt_background_for_active_request": {
+            "line": 527,
+            "sha256": "91f01c43ef9a417df2e26e23401244123f272659059a76e9454fd162c561a002"
+          }
+        }
+      },
+      "rust/src/app/index_worker.rs": {
+        "sha256": "bac9aeabd11baa426721c4c69d6a4956a4c3cc45b07da99d983f52559c781f12",
+        "functions": {
+          "MailboxResponseSink::request_is_current": {
+            "line": 62,
+            "sha256": "7f3339d891ae7017bd475fa5230598b52038eeaa65a4f8662cd458335dce1c01"
+          }
+        }
+      }
+    }
+  }
+]

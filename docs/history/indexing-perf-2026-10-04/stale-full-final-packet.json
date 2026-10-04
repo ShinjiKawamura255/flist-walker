@@ -1,0 +1,425 @@
+{
+  "status": "frozen scoped green; AFTER pending; no fullhost/common/performance run",
+  "created_utc": "2026-10-04T00:24:38.495211+00:00",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_subjects": 213,
+  "source_map": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source-hashes.json",
+    "sha256": "81de17ea19d35517f9a51e0596b1fe1aa60f2731fae0dd527ee25e7db3106162"
+  },
+  "source_snapshot": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final-source",
+  "reversible_scoped_patch": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-final.patch",
+    "sha256": "b274ed11ec6e2ef901a772b6060539126213838f15333b5117df0b14c614f165"
+  },
+  "changed_since_3cf": [
+    "src/app/index_mailbox.rs",
+    "src/app/index_worker.rs",
+    "src/app/tests/indexing_perf/extensions/driver.rs",
+    "src/app/tests/indexing_perf/extensions/mod.rs"
+  ],
+  "actual_normal_leaf_callers": 11,
+  "normal_test_added": "tc_229_stale_full_failed_victim_rejects_unproven_abort (pure predicate)",
+  "actual_vs_models": {
+    "actual": [
+      "Owned capacity1 mailbox publication returned Full; real coordinator.replace_warm_tab removed routed request mapping.",
+      "Actual MailboxResponseSink Full freshness decision successful mutex lookup!=own/shutdownfalse stamped under latest lock; scalar stored after unlock.",
+      "Actual sink Failed terminal offer/publication, Closed/SlotOccupied/shutdown/poison/off/foreigndata/ReplaceAll and first-event duplicate controls."
+    ],
+    "controlled_models": [
+      "The control explicitly sends Failed response; it does not execute outer worker classification.",
+      "Admission/body-return/seed fast-state in composed predicate controls are explicitly modeled; no actual worker processing-return/join timing is claimed.",
+      "Actual published Failed worker classification/body chronology remains shown by retired3cf failure; no new backwards abort witness is attached.",
+      "Collector tests are synthetic raw-schema cases, not performance measurements."
+    ]
+  },
+  "implementation": [
+    "Default-disabled cfgtest request-local first scalar+sticky duplicate flag, no payload Arc retention/unbounded queue/protocol fields. Disabled freshness delegates original; no added observation clock/allocation/latest mutex.",
+    "Successful latest lookup None/0/nonown is distinct from poison/shutdown; only owned Batch/ReplaceAll Full rejection records. Closed/SlotOccupied/nonDATA/currentown/foreign response do not create witness.",
+    "Strict failed terminal helper only predeclared fixed TabChain latest retained B stage2, exact permission/acquisition/cause/abort<=offer<=publication<=body, receiver-closed error and false-current plus no Finished data endpoint. Canceled/observedFinished paths retained.",
+    "Required A/C/stableB/any newest-successor success remains strict. Physicalreturn/release/routes/load/debt/seed identity and once postt3 independentfulloracle unchanged. Duplicate observation fails physical readiness.",
+    "Production streaming/Err/worker classification/scheduler/trace/deadlines untouched."
+  ],
+  "raw": {
+    "new_failed_role": "declared-Warm-eviction-stale-Full-retained-last-good",
+    "original_canceled_role": "declared-Warm-eviction-retained-last-good",
+    "fields": [
+      "index_requests.stale_full_data_abort {reason,request_id,tab_id,response_request_id,data_kind,at_ms,latest_request_id,latest_lookup_succeeded,shutdown}",
+      "index_requests.stale_full_data_abort_limit=1",
+      "index_requests.stale_full_data_abort_duplicate"
+    ],
+    "terminal": "Actual Failed type/error preserved; distinct retained victim role and emitted workload semantics say partial aborted work, not100k throughput."
+  },
+  "TDD": [
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-observer-first-red-v2.log",
+        "sha256": "fd6e5550700bf3155c81dcd874c8c3c5991748148fe58bfca6be249a5810115f"
+      },
+      "result": "0P1F, actual observer absent at real staleFull rejection"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-observer-hook-green.log",
+        "sha256": "b2e3cf0de6c9a1d344f99d20d417ed92962bd51db6968cf325a5b0e2510ce1b8"
+      },
+      "result": "1P0F"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-canceled-only-first-red.log",
+        "sha256": "53dc5f1488775ca8acd255ace2a67dddb1ed25d99227b584df6ef4dfad6b53c3"
+      },
+      "result": "0P1F, original canceled-only predicate in then-current real-sink composition; not full unmodified old checkout"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-composed-green.log",
+        "sha256": "883af7fb35da75405221ec5acadd509ad74deaebc652fadaef694207d074f3f9"
+      },
+      "result": "0P1F, incorrect duplicate-control after terminal publication was actualClosed; retained, corrected topology only"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-composed-green-v2.log",
+        "sha256": "bef4c4f38a7e5aad7e90354daf77617b9ce7bfba40f4ea6bd6c6a85e6a9961d0"
+      },
+      "result": "1P0F, separate realFull duplicate control before terminal publication"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-first-red-v2.log",
+        "sha256": "0455581b82801130b776d1e7be1430fbb989109a3bff7cc573b45cab752fb487"
+      },
+      "result": "Old37fb rejected specific newFailed role; synthetic differential"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-final-green.log",
+        "sha256": "a117a655c4f387b0192f806467daeff8362fc21ee3546a1d4df6c4822663e6ab"
+      },
+      "result": "28PASS synthetic checks"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-prior-regression.log",
+        "sha256": "6b86bd13d517ef8780b265ae8afdb37bb3a822e8f52ace18426a809534354578"
+      },
+      "result": "41PASS prior synthetic/rejected actual failed logs"
+    }
+  ],
+  "nonTDD_attempts": [
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-observer-first-red.log",
+        "sha256": "54ac94c3f7026d4e7cd52804eaa9e0ef12f74b715f832b8dffb48d2205e053c5"
+      },
+      "reason": "Compilation attempt used wrong EntryKind constructor; not behavior red"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-predicate-negatives-green.log",
+        "sha256": "26f5152e7decd0d4706acbd108b99dbd402a9a37a8d60b6596796f13c1262d72"
+      },
+      "reason": "JSON macro recursion compile failure; split postt3 serialization into extension object, no recursion_limit/dependency change"
+    },
+    {
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-first-red.log",
+        "sha256": "ee4f701337a3247236309e67f1fdd4f66d2bd89c6a612e0b3c214c09ed4e10b6"
+      },
+      "reason": "Synthetic loader split SyntaxError, not semantic red"
+    }
+  ],
+  "regates": [
+    {
+      "stage": "terminal-negatives",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_229_stale_full_failed_victim_rejects_unproven_abort",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:19:49.190060+00:00",
+      "ended_utc": "2026-10-04T00:19:53.797948+00:00",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.00s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-terminal-negatives.log",
+        "sha256": "1f1400314456b606274b4f12f3a73af1dc5e365f5b9187c6d90c9648f3cc20f6"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-terminal-negatives.sidecar.json",
+        "sha256": "a4f1f2c81ad1c31ba532e2735b0e2772236148b81fabca94325e76159aa50790"
+      }
+    },
+    {
+      "stage": "composed",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_229_preemption_observer_is_opt_in_bounded_and_scalar",
+        "--",
+        "--nocapture"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:19:53.807787+00:00",
+      "ended_utc": "2026-10-04T00:19:54.053560+00:00",
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.10s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-composed.log",
+        "sha256": "6127fa5a2fc0de0fcefd22a3ce0d54c6bbb78658912429b54de73192d4dc5e24"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-composed.sidecar.json",
+        "sha256": "d9d6577a054bcc60f038f7450385014fc4149c4f8ca15aa82bb7a2ce57ee80ac"
+      }
+    },
+    {
+      "stage": "indexing-normal",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "indexing_perf",
+        "--",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:19:54.058801+00:00",
+      "ended_utc": "2026-10-04T00:20:32.264187+00:00",
+      "summaries": [
+        "test result: ok. 63 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.07s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-indexing-normal.log",
+        "sha256": "e0efdd414fa53f0cd68135464131f00460e06e42a448d5c3f001bb6cd9c4ee16"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-indexing-normal.sidecar.json",
+        "sha256": "b5c3647a5a3b87e6417a8f8b810aace01d8d8eaa41ff58a52061e146cebf4917"
+      }
+    },
+    {
+      "stage": "search-observer",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "worker::search_perf::tests"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:32.269550+00:00",
+      "ended_utc": "2026-10-04T00:20:32.400309+00:00",
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1558 filtered out; finished in 0.00s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-search-observer.log",
+        "sha256": "70e301b57a577d4e5845c86d9a4fd0f3e69c10f383d19d5ae49ba7887abb8b3c"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-search-observer.sidecar.json",
+        "sha256": "8bdef4a3a7f9dcc1d7dac255e1247ee58ba34f0f8822b87c2bffe55962146f95"
+      }
+    },
+    {
+      "stage": "ordering",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_promoted_handoff_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:32.405140+00:00",
+      "ended_utc": "2026-10-04T00:20:32.719247+00:00",
+      "summaries": [
+        "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 0.18s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-ordering.log",
+        "sha256": "293f472945e78902381a2c0292aaf58b068c9a7db991d0b23e77733acef815f2"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-ordering.sidecar.json",
+        "sha256": "630b3d3186532d7ad5562b254c3f48ab2509214bc751f3921335a98230ddf2ca"
+      }
+    },
+    {
+      "stage": "tc207",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "tc_207_",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:32.727455+00:00",
+      "ended_utc": "2026-10-04T00:20:34.259085+00:00",
+      "summaries": [
+        "test result: ok. 82 passed; 0 failed; 0 ignored; 0 measured; 1485 filtered out; finished in 1.39s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-tc207.log",
+        "sha256": "1ab92f829185bc2783124e859a5d769851524b22d3bfb97a4b0eaa68f6fbcff8"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-tc207.sidecar.json",
+        "sha256": "c2c77879b0bf1f7ca62614cf51ab4043c48dfa3cfdc09dc9d4f6bf067d7a9b61"
+      }
+    },
+    {
+      "stage": "pipeline",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "--offline",
+        "--lib",
+        "app::tests::index_pipeline::",
+        "--",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:34.264175+00:00",
+      "ended_utc": "2026-10-04T00:20:34.503634+00:00",
+      "summaries": [
+        "test result: ok. 152 passed; 0 failed; 0 ignored; 0 measured; 1415 filtered out; finished in 0.11s"
+      ],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-pipeline.log",
+        "sha256": "d71eebf7d3395d043a266668e6e00ca2823df5ce0972c8cdbfdc6b01ac695aa5"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-pipeline.sidecar.json",
+        "sha256": "dd117c72def81ee4cc65aa6b2c02ae14f81ece3e3f06b4bbbef209ccf2690450"
+      }
+    },
+    {
+      "stage": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:34.508610+00:00",
+      "ended_utc": "2026-10-04T00:20:35.058783+00:00",
+      "summaries": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-fmt.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-fmt.sidecar.json",
+        "sha256": "7ea74fe6a920da5128d82ca29b89458d7556f6dd6f730cc9316cf99922ffd6f1"
+      }
+    },
+    {
+      "stage": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--locked",
+        "--offline",
+        "--all-targets",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "started_utc": "2026-10-04T00:20:35.064056+00:00",
+      "ended_utc": "2026-10-04T00:20:39.156116+00:00",
+      "summaries": [],
+      "log": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-clippy.log",
+        "sha256": "b6f3b175a4b75a26601fb6f71da319eafa21cc6da9c237cc777a6d2158f041c3"
+      },
+      "sidecar": {
+        "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-accepted-clippy.sidecar.json",
+        "sha256": "c5fe6c24b077b6b653aace44c3ec0e34501be5dd54e3bf29d7cf00b84e6e34db"
+      }
+    }
+  ],
+  "collector": {
+    "source": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+      "sha256": "fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa"
+    },
+    "old_exact_37fb": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-before-summarize_extensions.py",
+      "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f"
+    },
+    "new_test": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_stale_full_collector.py",
+      "sha256": "6e6cee765079dbd1978ef86d842fa07dda35f6fac94b4910e60659bef8060c95"
+    },
+    "prior_test": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_warm_removal_collector.py",
+      "sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298"
+    },
+    "prerequisite": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_victim_final_collector_regression.py",
+      "sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1"
+    },
+    "new_guards": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-guards.json",
+      "sha256": "712d2a992269113701ecc8006f666e95d8cb0ae61364b551db4f9e24acbb7874"
+    },
+    "prior_guards": {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/stale-full-collector-prior-guards.json",
+      "sha256": "0e2ebb2c460e77202366d6ab6ab69bfadd3b006291ce6e9acb2fed1b6bd20ed6"
+    },
+    "new_checks": 28,
+    "new_valid": 2,
+    "new_rejects": 26,
+    "prior_checks": 41,
+    "same_exact_complete_summary_META_cells_keys_ABBA_gates": true
+  },
+  "before_review": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-stale-full-abort-before-review.txt",
+    "sha256": "8ac661acf60eeee9e176d25f862036006ac9c88ee0c2f0ecd88d300c5fa8aa1b"
+  },
+  "SDD_checkpoint": "Parent owns exact Failed staleFull exception and negative contracts/provenance updates; driver did not edit docs.",
+  "retired_failure": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-final-full-failure-packet.json",
+    "sha256": "576e3f226fb26ab22162cc560f5b8575bb14b0cafe30c1e45cc3ecdcec1713b2"
+  },
+  "settings_provenance": "No measurement settings changed. Known env means SEARCH threads12 / search threshold25000 / Walker cap500000; Walker concurrency uses existing adaptive defaults, not fixed12 Walker threads.",
+  "limitations": [
+    "No new fullhost/defaultparallel/basic84/observer14/target/pilot/full/truncated/VM/tag measurement. Wait AFTER and main authority.",
+    "NativeGUI/Windows/Linux/CIactivation/nativeSIGINT/SIGKILL cleanup NOT RUN; individual App worker join guarantee unobserved.",
+    "Retired336raw full run remains failed/rejected, no inferred/backward abort witness.",
+    "No uncalibrated bypass/timeout/fixture/oracle/production behavior changes."
+  ]
+}

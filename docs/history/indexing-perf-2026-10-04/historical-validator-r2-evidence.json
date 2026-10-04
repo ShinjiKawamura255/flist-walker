@@ -1,0 +1,739 @@
+{
+  "status": "PASS-source-control-AFTER-only",
+  "scope": "145 synthetic controls/main replay, optimized Python refusal and exact dedicated target binding; R1 findings closed; historical performance NOT_RUN",
+  "packet_sha256": "1f669c51a01d32d7727ed9f88fef38d338411ea4d2b228142af6f673cdf939f1",
+  "review_sha256": "b69735f8cdc8dc9cb3e13c20c6a9c16c2127980c8ed164b699d96191eb155452",
+  "synthetic_controls_passed": 145,
+  "historical_performance": "NOT_RUN",
+  "assets": [
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-imported_API_OO.json",
+      "path": "historical-validator-r2-eb33d3edf50f-r2-final-optimized-imported_API_OO.json",
+      "sha256": "eb33d3edf50f3d11216544df120d84844664d32a0d10971dda767c1558a9df87",
+      "bytes": 1824,
+      "uncompressed_sha256": "eb33d3edf50f3d11216544df120d84844664d32a0d10971dda767c1558a9df87",
+      "uncompressed_bytes": 1824,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-initial-shell-result.json",
+      "path": "historical-validator-r2-3fe2bb1e2f37-first-red-initial-shell-result.json",
+      "sha256": "3fe2bb1e2f37051b3c7e739774830e25c1691cf7a66b6379d2cc1c63a976d8d6",
+      "bytes": 659,
+      "uncompressed_sha256": "3fe2bb1e2f37051b3c7e739774830e25c1691cf7a66b6379d2cc1c63a976d8d6",
+      "uncompressed_bytes": 659,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-synthetic-cli.json",
+      "path": "historical-validator-r2-0fbaa899da56-r2-synthetic-cli.json",
+      "sha256": "0fbaa899da56d7f291a09e64fcfb639031c9016ba1a5973d5ceba099f9cc6fbb",
+      "bytes": 994,
+      "uncompressed_sha256": "0fbaa899da56d7f291a09e64fcfb639031c9016ba1a5973d5ceba099f9cc6fbb",
+      "uncompressed_bytes": 994,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-synthetic-cli.log",
+      "path": "historical-validator-r2-9e99a4480d98-r2-synthetic-cli.log.gz",
+      "sha256": "3e3e08eb38f57a41cd24e14c259022f88d8121acc0ddaaf8e9aa5b7a2a65c1f1",
+      "bytes": 134,
+      "uncompressed_sha256": "9e99a4480d9867038f6fd63bc876164660635e8b1f3768c1c863652e56c71e5f",
+      "uncompressed_bytes": 128,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-imported_API_OO.json",
+      "path": "historical-validator-r2-35818ef0bd13-r2-green-attempt1-optimized-imported_API_OO.json",
+      "sha256": "35818ef0bd1362d2d0ae4f3095ca781ce41b0afdab88690137bee9970a69c40d",
+      "bytes": 1824,
+      "uncompressed_sha256": "35818ef0bd1362d2d0ae4f3095ca781ce41b0afdab88690137bee9970a69c40d",
+      "uncompressed_bytes": 1824,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-41edb96e7fb2-r2-final-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "sha256": "41edb96e7fb292432aec13408685981e79b9a9ca5e0069449d193f41cca2d8fb",
+      "bytes": 1171,
+      "uncompressed_sha256": "41edb96e7fb292432aec13408685981e79b9a9ca5e0069449d193f41cca2d8fb",
+      "uncompressed_bytes": 1171,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-valid-input.events.log",
+      "path": "historical-validator-r2-fbc318628b27-first-red-valid-input.events.log.gz",
+      "sha256": "fbac86fc300a5b26edc52e90d881d461dbe8da816c5526eaa3d881da69715b7d",
+      "bytes": 10595,
+      "uncompressed_sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "uncompressed_bytes": 200392,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/current-fbd9-real-failed-rejection.log",
+      "path": "historical-validator-r2-b8b11b340e56-current-fbd9-real-failed-rejection.log.gz",
+      "sha256": "024c2fbc90c02d01ae4c87a97f49d9fa6dad74f3ef396d5e56d8cffa43e431ef",
+      "bytes": 273,
+      "uncompressed_sha256": "b8b11b340e568f0ec29e6e137f0ed6a509253a1b730e5b4d03c7738696be4546",
+      "uncompressed_bytes": 479,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-valid-input.sidecar.json",
+      "path": "historical-validator-r2-294e6715302b-first-red-valid-input.sidecar.json",
+      "sha256": "294e6715302b4030c817c4cea26d923c968b9a73f3b9601fb58e23f1e13e6b91",
+      "bytes": 2902,
+      "uncompressed_sha256": "294e6715302b4030c817c4cea26d923c968b9a73f3b9601fb58e23f1e13e6b91",
+      "uncompressed_bytes": 2902,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-protocol.txt",
+      "path": "historical-validator-r2-41aa66c71e33-r2-protocol.txt",
+      "sha256": "41aa66c71e330859d987267809c36b4249f2da888dfd8df3e654b11d3bcf3585",
+      "bytes": 3595,
+      "uncompressed_sha256": "41aa66c71e330859d987267809c36b4249f2da888dfd8df3e654b11d3bcf3585",
+      "uncompressed_bytes": 3595,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt4.json",
+      "path": "historical-validator-r2-681659b423b2-controls-attempt4.json",
+      "sha256": "681659b423b288881f9b8b42b3cdc8a7dfba33eccba1ba869064f7a653ba5fdd",
+      "bytes": 315,
+      "uncompressed_sha256": "681659b423b288881f9b8b42b3cdc8a7dfba33eccba1ba869064f7a653ba5fdd",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/minimal-green-attempt2.json",
+      "path": "historical-validator-r2-7428c3e23ecc-minimal-green-attempt2.json",
+      "sha256": "7428c3e23ecca65edfe63cb0486c340343028400270ecb7b347955a09257ff59",
+      "bytes": 315,
+      "uncompressed_sha256": "7428c3e23ecca65edfe63cb0486c340343028400270ecb7b347955a09257ff59",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-b0273788ff82-r2-green-attempt1-optimized-PYTHONOPTIMIZE2_corrupt_queued_debt.json",
+      "sha256": "b0273788ff82c124d7c54c331eeda099226894d746cb53dead8a219d844dc934",
+      "bytes": 1171,
+      "uncompressed_sha256": "b0273788ff82c124d7c54c331eeda099226894d746cb53dead8a219d844dc934",
+      "uncompressed_bytes": 1171,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-O_valid_input.json",
+      "path": "historical-validator-r2-2238bb7f2272-r2-green-attempt1-optimized-O_valid_input.json",
+      "sha256": "2238bb7f2272f0f3f9871cdd4bb9180bff1f81cc56467b9f79db9257d06d8521",
+      "bytes": 1160,
+      "uncompressed_sha256": "2238bb7f2272f0f3f9871cdd4bb9180bff1f81cc56467b9f79db9257d06d8521",
+      "uncompressed_bytes": 1160,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/synthetic-mixed.events.log",
+      "path": "historical-validator-r2-fbc318628b27-synthetic-mixed.events.log.gz",
+      "sha256": "fbac86fc300a5b26edc52e90d881d461dbe8da816c5526eaa3d881da69715b7d",
+      "bytes": 10595,
+      "uncompressed_sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "uncompressed_bytes": 200392,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-synthetic-mixed.sidecar.json",
+      "path": "historical-validator-r2-468a1611cf7e-r2-synthetic-mixed.sidecar.json",
+      "sha256": "468a1611cf7ed14b3eb4c2e8d1cb68497dc7f97f219940684c695962071b5fa5",
+      "bytes": 2990,
+      "uncompressed_sha256": "468a1611cf7ed14b3eb4c2e8d1cb68497dc7f97f219940684c695962071b5fa5",
+      "uncompressed_bytes": 2990,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-controls.log",
+      "path": "historical-validator-r2-e86e0b6bca48-r2-final-controls.log.gz",
+      "sha256": "f28cb1c80d9f6502af263735e536628bff09510fa858f9a49c1de1c5efb47f5f",
+      "bytes": 2398,
+      "uncompressed_sha256": "e86e0b6bca48445af7e6b55d570d8f0ee2e3fe66d0c4962cee91659fed832946",
+      "uncompressed_bytes": 18142,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-first-red-tests.py.txt",
+      "path": "historical-validator-r2-a77892ee8b7d-r2-first-red-tests.py.txt",
+      "sha256": "a77892ee8b7d66c7f5c28d496e28a3b17c93d8b6ea5050dae65e6fc164f24ada",
+      "bytes": 29437,
+      "uncompressed_sha256": "a77892ee8b7d66c7f5c28d496e28a3b17c93d8b6ea5050dae65e6fc164f24ada",
+      "uncompressed_bytes": 29437,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/synthetic-cli.log",
+      "path": "historical-validator-r2-9e99a4480d98-synthetic-cli.log.gz",
+      "sha256": "3e3e08eb38f57a41cd24e14c259022f88d8121acc0ddaaf8e9aa5b7a2a65c1f1",
+      "bytes": 134,
+      "uncompressed_sha256": "9e99a4480d9867038f6fd63bc876164660635e8b1f3768c1c863652e56c71e5f",
+      "uncompressed_bytes": 128,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt4.log",
+      "path": "historical-validator-r2-4b03230b4772-controls-attempt4.log.gz",
+      "sha256": "b333b99c369628752789053f0a207f523e1ae39105cbbf52dcd8a3b3c1af4664",
+      "bytes": 56,
+      "uncompressed_sha256": "4b03230b47728118920a71b5d71390b33aebc168daa85ab7e6a05f801e775dae",
+      "uncompressed_bytes": 230,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/synthetic-mixed.sidecar.json",
+      "path": "historical-validator-r2-25bab9fb9371-synthetic-mixed.sidecar.json",
+      "sha256": "25bab9fb93713a9bf844a78ff120795667d9c4fd9b3f382036aa9eeb69d26b9b",
+      "bytes": 2999,
+      "uncompressed_sha256": "25bab9fb93713a9bf844a78ff120795667d9c4fd9b3f382036aa9eeb69d26b9b",
+      "uncompressed_bytes": 2999,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/freeze-packet.py",
+      "path": "historical-validator-r2-82be13fc9061-freeze-packet.py",
+      "sha256": "82be13fc906164bc4696895c6372fac00c668789b5d31aab564bf0163e05426a",
+      "bytes": 3158,
+      "uncompressed_sha256": "82be13fc906164bc4696895c6372fac00c668789b5d31aab564bf0163e05426a",
+      "uncompressed_bytes": 3158,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "path": "historical-validator-r2-4fb1bec737ed-r2-final-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "sha256": "4fb1bec737ed4f643739dd6b29733cb990f5251b78defb4cd0867d2b2881ad56",
+      "bytes": 1163,
+      "uncompressed_sha256": "4fb1bec737ed4f643739dd6b29733cb990f5251b78defb4cd0867d2b2881ad56",
+      "uncompressed_bytes": 1163,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/protocol.txt",
+      "path": "historical-validator-r2-92170779b79b-protocol.txt",
+      "sha256": "92170779b79b84fefb9099c87634250dfb604bb83be243a58da8da738b00cd15",
+      "bytes": 5169,
+      "uncompressed_sha256": "92170779b79b84fefb9099c87634250dfb604bb83be243a58da8da738b00cd15",
+      "uncompressed_bytes": 5169,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/synthetic-cli.json",
+      "path": "historical-validator-r2-7ec95a02d015-synthetic-cli.json",
+      "sha256": "7ec95a02d015a08e0f0c74ece6d2baf352f0ff67caf17a3b7727de2270a6d748",
+      "bytes": 985,
+      "uncompressed_sha256": "7ec95a02d015a08e0f0c74ece6d2baf352f0ff67caf17a3b7727de2270a6d748",
+      "uncompressed_bytes": 985,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt3.json",
+      "path": "historical-validator-r2-24132b91b236-controls-attempt3.json",
+      "sha256": "24132b91b236b46534d564aca31ab6356ffe3c64ab9a783e9d2c1339e80181ae",
+      "bytes": 315,
+      "uncompressed_sha256": "24132b91b236b46534d564aca31ab6356ffe3c64ab9a783e9d2c1339e80181ae",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/minimal-green-attempt1.log",
+      "path": "historical-validator-r2-4ea032a7143a-minimal-green-attempt1.log.gz",
+      "sha256": "b16bf56e80fc606138d8a07a320d7eb0adecbd2dd9f50e1353129c6333662f9c",
+      "bytes": 541,
+      "uncompressed_sha256": "4ea032a7143a1dad104d0977a7ecd5031962bb385594c587b78b95b33250a1a0",
+      "uncompressed_bytes": 1829,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt2.json",
+      "path": "historical-validator-r2-7fbc6d4dcb22-controls-attempt2.json",
+      "sha256": "7fbc6d4dcb22d98fea073681bcc207996f6c479d736a12ce591703f8702a402a",
+      "bytes": 315,
+      "uncompressed_sha256": "7fbc6d4dcb22d98fea073681bcc207996f6c479d736a12ce591703f8702a402a",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/collect_historical.py",
+      "path": "historical-validator-r2-7dc087126948-collect_historical.py",
+      "sha256": "7dc087126948cb16dd4f8362d471f1416a47f38cc00948906d7d6b8f55bd4416",
+      "bytes": 25115,
+      "uncompressed_sha256": "7dc087126948cb16dd4f8362d471f1416a47f38cc00948906d7d6b8f55bd4416",
+      "uncompressed_bytes": 25115,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-test.py.txt",
+      "path": "historical-validator-r2-977469d6f923-first-red-test.py.txt",
+      "sha256": "977469d6f923dc4ad09d12f65fe66d69babc58ef5c1ef185b972872f1c3571a7",
+      "bytes": 6453,
+      "uncompressed_sha256": "977469d6f923dc4ad09d12f65fe66d69babc58ef5c1ef185b972872f1c3571a7",
+      "uncompressed_bytes": 6453,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/final-controls.log",
+      "path": "historical-validator-r2-ea49aa9f9d4a-final-controls.log.gz",
+      "sha256": "e717cbd277c0f171a407b70c0771f0cda8256c75f4478eb741806a77fdcd7c85",
+      "bytes": 2152,
+      "uncompressed_sha256": "ea49aa9f9d4abbda288c9675551e29497d7c6f3dc815b652f15597d3c0a56829",
+      "uncompressed_bytes": 16256,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt3.log",
+      "path": "historical-validator-r2-9e9192702d42-controls-attempt3.log.gz",
+      "sha256": "bf72dffdad5b6ed0cc4afdfac7f6e4dd42f99e8a7e574a3a5a285e7cdddb3046",
+      "bytes": 398,
+      "uncompressed_sha256": "9e9192702d42e8638bfa124261b602a3b6b687ae62cd4a3928a96b90c3b0d44f",
+      "uncompressed_bytes": 1484,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt2.log",
+      "path": "historical-validator-r2-1b81af9385ab-controls-attempt2.log.gz",
+      "sha256": "eb63789f0e3888a6358ced0af0859eb06134ae01535a815a2f39d684ad892d58",
+      "bytes": 56,
+      "uncompressed_sha256": "1b81af9385ab21547ad4447851fb048de1c7d2ee801264d2f0e2696bf3d627cf",
+      "uncompressed_bytes": 220,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-OO_valid_input.json",
+      "path": "historical-validator-r2-340819d72bd9-r2-green-attempt1-optimized-OO_valid_input.json",
+      "sha256": "340819d72bd9c194f1a10027870ef800600a810ca7f379ae5caa78de640f37f2",
+      "bytes": 1162,
+      "uncompressed_sha256": "340819d72bd9c194f1a10027870ef800600a810ca7f379ae5caa78de640f37f2",
+      "uncompressed_bytes": 1162,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "path": "historical-validator-r2-af4ac461f95f-r2-green-attempt1-optimized-PYTHONOPTIMIZE2_valid_input.json",
+      "sha256": "af4ac461f95f05fbe92cfaedfac550d0b5957aacf9d88aab9bdd80fe59d02833",
+      "bytes": 1163,
+      "uncompressed_sha256": "af4ac461f95f05fbe92cfaedfac550d0b5957aacf9d88aab9bdd80fe59d02833",
+      "uncompressed_bytes": 1163,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/minimal-green-attempt2.log",
+      "path": "historical-validator-r2-1635a6194f78-minimal-green-attempt2.log.gz",
+      "sha256": "2b776c70d6e4272ec81971cb6bfc3f41f998e8e882d4eaa03840e5067d130831",
+      "bytes": 51,
+      "uncompressed_sha256": "1635a6194f78c5e89329e41ae3b95909ced52dd425f9291840b91d6deaa41ba0",
+      "uncompressed_bytes": 98,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-source.py.txt",
+      "path": "historical-validator-r2-7237b7870f10-first-red-source.py.txt",
+      "sha256": "7237b7870f107fe456260177f37ab87dd23ee6694cde8496bee92f874b0ce829",
+      "bytes": 362,
+      "uncompressed_sha256": "7237b7870f107fe456260177f37ab87dd23ee6694cde8496bee92f874b0ce829",
+      "uncompressed_bytes": 362,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt1.log",
+      "path": "historical-validator-r2-ba32563fd4eb-controls-attempt1.log.gz",
+      "sha256": "7bfe5a8ad247f2c45d80c6b72c413a7ea4b77aedbce52b900e3e2ec8f19fe4b8",
+      "bytes": 431,
+      "uncompressed_sha256": "ba32563fd4eba7c5bd16b3ffca75b52c19ac46be7a35fad6abff48711046ae6a",
+      "uncompressed_bytes": 1365,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-valid-input-result.json",
+      "path": "historical-validator-r2-124ed2ab8224-first-red-valid-input-result.json",
+      "sha256": "124ed2ab8224d4fd19a4c877ab1c1315a4af5095051e9cfde87c5150340bf496",
+      "bytes": 821,
+      "uncompressed_sha256": "124ed2ab8224d4fd19a4c877ab1c1315a4af5095051e9cfde87c5150340bf496",
+      "uncompressed_bytes": 821,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-b0968fe82af0-r2-green-attempt1-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "sha256": "b0968fe82af0c7a6e40c3fd6ba9d8abe6c6babdfbe6ffad8de975f973c8e17da",
+      "bytes": 1171,
+      "uncompressed_sha256": "b0968fe82af0c7a6e40c3fd6ba9d8abe6c6babdfbe6ffad8de975f973c8e17da",
+      "uncompressed_bytes": 1171,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-OO_valid_input.json",
+      "path": "historical-validator-r2-5b807d1e70e2-r2-final-optimized-OO_valid_input.json",
+      "sha256": "5b807d1e70e23e6d730c999d0f818975b779c483749373941098b5828fc37a90",
+      "bytes": 1162,
+      "uncompressed_sha256": "5b807d1e70e23e6d730c999d0f818975b779c483749373941098b5828fc37a90",
+      "uncompressed_bytes": 1162,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-first-red-collector.py.txt",
+      "path": "historical-validator-r2-fe9252bdc8e5-r2-first-red-collector.py.txt",
+      "sha256": "fe9252bdc8e5412ccbf0a6866b6b34b918a3f68c071c3e61c38741dda70a3c4c",
+      "bytes": 24106,
+      "uncompressed_sha256": "fe9252bdc8e5412ccbf0a6866b6b34b918a3f68c071c3e61c38741dda70a3c4c",
+      "uncompressed_bytes": 24106,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/freeze-r2-packet.py",
+      "path": "historical-validator-r2-9c47b00e691e-freeze-r2-packet.py",
+      "sha256": "9c47b00e691e2cd15d3552463b75789edf379e34db20f738a2f9ec4a5213e37a",
+      "bytes": 5702,
+      "uncompressed_sha256": "9c47b00e691e2cd15d3552463b75789edf379e34db20f738a2f9ec4a5213e37a",
+      "uncompressed_bytes": 5702,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-O_valid_input.json",
+      "path": "historical-validator-r2-126c80d101ed-r2-final-optimized-O_valid_input.json",
+      "sha256": "126c80d101edb53d63796336c987298695d74ac983d2058c0f85fedb47b88a84",
+      "bytes": 1160,
+      "uncompressed_sha256": "126c80d101edb53d63796336c987298695d74ac983d2058c0f85fedb47b88a84",
+      "uncompressed_bytes": 1160,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red.json",
+      "path": "historical-validator-r2-e95b4387841d-first-red.json",
+      "sha256": "e95b4387841dd98022a2b328dbde0a792e04c8a506ae028c094618583a464c70",
+      "bytes": 751,
+      "uncompressed_sha256": "e95b4387841dd98022a2b328dbde0a792e04c8a506ae028c094618583a464c70",
+      "uncompressed_bytes": 751,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-first-red.log",
+      "path": "historical-validator-r2-310cf70f0791-r2-first-red.log.gz",
+      "sha256": "0f854f9ef23f6efca93fde27f3a31d71004a5f736c06b2dcf2ade62a9b65b18a",
+      "bytes": 782,
+      "uncompressed_sha256": "310cf70f07913f8f263995813045a1709a58fc7551bee46275adc45b8e37fc9f",
+      "uncompressed_bytes": 9743,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/controls-attempt1.json",
+      "path": "historical-validator-r2-03603fec0ea6-controls-attempt1.json",
+      "sha256": "03603fec0ea673f5733fce4dcd083795b0a128eae21cf52d020ba970f23d4e47",
+      "bytes": 315,
+      "uncompressed_sha256": "03603fec0ea673f5733fce4dcd083795b0a128eae21cf52d020ba970f23d4e47",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1.json",
+      "path": "historical-validator-r2-61f93c09fc5e-r2-green-attempt1.json",
+      "sha256": "61f93c09fc5e01c62ecd4d533cb0f71bd5b70de7d510e42a1886499ddb4b43fc",
+      "bytes": 376,
+      "uncompressed_sha256": "61f93c09fc5e01c62ecd4d533cb0f71bd5b70de7d510e42a1886499ddb4b43fc",
+      "uncompressed_bytes": 376,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-exact-release-target-plan.json",
+      "path": "historical-validator-r2-26b54e63355f-r2-exact-release-target-plan.json",
+      "sha256": "26b54e63355f2c4c181abd7feb633124b2ceae8ebf56ee00cc7db0dfa46f5383",
+      "bytes": 6536,
+      "uncompressed_sha256": "26b54e63355f2c4c181abd7feb633124b2ceae8ebf56ee00cc7db0dfa46f5383",
+      "uncompressed_bytes": 6536,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "path": "historical-validator-r2-28ca8c357a0a-r2-final-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "sha256": "28ca8c357a0a295258a01f63570cf5feaed3232ef47d06562b51624da6c520eb",
+      "bytes": 1163,
+      "uncompressed_sha256": "28ca8c357a0a295258a01f63570cf5feaed3232ef47d06562b51624da6c520eb",
+      "uncompressed_bytes": 1163,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/fbd9-reuse-identity.json",
+      "path": "historical-validator-r2-4393754019f2-fbd9-reuse-identity.json",
+      "sha256": "4393754019f2a679c05d32ce523ac0050bb009edb290fc21c360b4a413a608e1",
+      "bytes": 674,
+      "uncompressed_sha256": "4393754019f2a679c05d32ce523ac0050bb009edb290fc21c360b4a413a608e1",
+      "uncompressed_bytes": 674,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/run-controls-r2.py",
+      "path": "historical-validator-r2-863dbf6c1365-run-controls-r2.py",
+      "sha256": "863dbf6c1365469c4f372446a715e51ee17ae6d369e4648adb5bf47e4a856cc1",
+      "bytes": 1965,
+      "uncompressed_sha256": "863dbf6c1365469c4f372446a715e51ee17ae6d369e4648adb5bf47e4a856cc1",
+      "uncompressed_bytes": 1965,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-synthetic-mixed.validated.json",
+      "path": "historical-validator-r2-9d81076aace1-r2-synthetic-mixed.validated.json",
+      "sha256": "9d81076aace1e9e46428cd3e38bc069326b031ae85aaf8e92ba1a3117ab0b6af",
+      "bytes": 270025,
+      "uncompressed_sha256": "9d81076aace1e9e46428cd3e38bc069326b031ae85aaf8e92ba1a3117ab0b6af",
+      "uncompressed_bytes": 270025,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/synthetic-mixed.validated.json",
+      "path": "historical-validator-r2-a12601c7779c-synthetic-mixed.validated.json",
+      "sha256": "a12601c7779ccd5e015ab52c2c96c87b46e5f7d35d41cec6bce3dd05ebca27fe",
+      "bytes": 270019,
+      "uncompressed_sha256": "a12601c7779ccd5e015ab52c2c96c87b46e5f7d35d41cec6bce3dd05ebca27fe",
+      "uncompressed_bytes": 270019,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-valid-input.py",
+      "path": "historical-validator-r2-c7bf8de7e01f-first-red-valid-input.py",
+      "sha256": "c7bf8de7e01ff4029c9c6f0dcfc6147bb5c62a1139571317154a03d16c55b3db",
+      "bytes": 927,
+      "uncompressed_sha256": "c7bf8de7e01ff4029c9c6f0dcfc6147bb5c62a1139571317154a03d16c55b3db",
+      "uncompressed_bytes": 927,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-a746aa61ae34-r2-final-optimized-PYTHONOPTIMIZE1_corrupt_queued_debt.json",
+      "sha256": "a746aa61ae34f00d45aa187445c3ff5001c1a0e9e117a224eeed02fa36937c25",
+      "bytes": 1171,
+      "uncompressed_sha256": "a746aa61ae34f00d45aa187445c3ff5001c1a0e9e117a224eeed02fa36937c25",
+      "uncompressed_bytes": 1171,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/test_historical.py",
+      "path": "historical-validator-r2-155bcb20789f-test_historical.py",
+      "sha256": "155bcb20789faebff83487bea8f052358d8668324a37545fec376f7eeb2c6e8f",
+      "bytes": 30963,
+      "uncompressed_sha256": "155bcb20789faebff83487bea8f052358d8668324a37545fec376f7eeb2c6e8f",
+      "uncompressed_bytes": 30963,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-collector-from-r1.patch",
+      "path": "historical-validator-r2-5f93d3923d54-r2-collector-from-r1.patch.gz",
+      "sha256": "0b5ed5cadd0309359fa8c5f2c8dd2e0a941b2a0d6089e75494878b5e432abfb2",
+      "bytes": 1560,
+      "uncompressed_sha256": "5f93d3923d544dd67df9272867e9cffa9d12855cf373995e972ac7c3e4e21aea",
+      "uncompressed_bytes": 3343,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/validator-packet.json",
+      "path": "historical-validator-r2-ce186360b170-validator-packet.json",
+      "sha256": "ce186360b170672cfac453ae2ac89efbb3e82ba01169bd9b8b7cb91d49fb2b2e",
+      "bytes": 13977,
+      "uncompressed_sha256": "ce186360b170672cfac453ae2ac89efbb3e82ba01169bd9b8b7cb91d49fb2b2e",
+      "uncompressed_bytes": 13977,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/validator-after-review.txt",
+      "path": "historical-validator-r2-4ecc4e0814a8-validator-after-review.txt",
+      "sha256": "4ecc4e0814a8ac6238f9de9f2552712764ccab80a86152863af7e03f97f19105",
+      "bytes": 9163,
+      "uncompressed_sha256": "4ecc4e0814a8ac6238f9de9f2552712764ccab80a86152863af7e03f97f19105",
+      "uncompressed_bytes": 9163,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red.log",
+      "path": "historical-validator-r2-daa078d3de2a-first-red.log.gz",
+      "sha256": "d9ef71879dcdd6190d86a1f35ef871ff1257c437f5aedb10ed0bc05521a71e89",
+      "bytes": 326,
+      "uncompressed_sha256": "daa078d3de2a1074f054060cb47a1b1d70f4df6b33027765f108467321f494d9",
+      "uncompressed_bytes": 763,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-valid-input.log",
+      "path": "historical-validator-r2-5818185f4f94-first-red-valid-input.log.gz",
+      "sha256": "ca38b63b813a6f13b3e9fb55b5e515776c62d194ac783ab03325b9de52c0e526",
+      "bytes": 258,
+      "uncompressed_sha256": "5818185f4f948e5b075188d30cf9ce1143409b6569cf55aa76b4d74d09122321",
+      "uncompressed_bytes": 397,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "path": "historical-validator-r2-7fc52b4dc506-r2-green-attempt1-optimized-PYTHONOPTIMIZE1_valid_input.json",
+      "sha256": "7fc52b4dc50670bcbfcb1af96ff81dc12a3c5b361ea2468f3f6fd2d416407c93",
+      "bytes": 1163,
+      "uncompressed_sha256": "7fc52b4dc50670bcbfcb1af96ff81dc12a3c5b361ea2468f3f6fd2d416407c93",
+      "uncompressed_bytes": 1163,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/minimal-green-attempt1.json",
+      "path": "historical-validator-r2-ca81a6d03856-minimal-green-attempt1.json",
+      "sha256": "ca81a6d03856aa9ebd4ef058adba5c61eb2f68206fea48a2faa843268d4d140d",
+      "bytes": 315,
+      "uncompressed_sha256": "ca81a6d03856aa9ebd4ef058adba5c61eb2f68206fea48a2faa843268d4d140d",
+      "uncompressed_bytes": 315,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/final-controls.json",
+      "path": "historical-validator-r2-26d2fa7a676a-final-controls.json",
+      "sha256": "26d2fa7a676abb045a56c2edc8f6c8d7ec9ca67fe421760be00e7555db72a499",
+      "bytes": 18270,
+      "uncompressed_sha256": "26d2fa7a676abb045a56c2edc8f6c8d7ec9ca67fe421760be00e7555db72a499",
+      "uncompressed_bytes": 18270,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/run-controls.py",
+      "path": "historical-validator-r2-eb2e44b5b517-run-controls.py",
+      "sha256": "eb2e44b5b5172b4792f31bb3e1feac01f090822fa0ef3eeb351dd0238e1dd5fd",
+      "bytes": 1899,
+      "uncompressed_sha256": "eb2e44b5b5172b4792f31bb3e1feac01f090822fa0ef3eeb351dd0238e1dd5fd",
+      "uncompressed_bytes": 1899,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-O_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-b08c003af254-r2-green-attempt1-optimized-O_corrupt_queued_debt.json",
+      "sha256": "b08c003af25408a62f49ceeab050f8d513ce6b2ff5563c2b506497f36a2831c5",
+      "bytes": 1168,
+      "uncompressed_sha256": "b08c003af25408a62f49ceeab050f8d513ce6b2ff5563c2b506497f36a2831c5",
+      "uncompressed_bytes": 1168,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1.log",
+      "path": "historical-validator-r2-7a12dc1ea72c-r2-green-attempt1.log.gz",
+      "sha256": "2c0add8bf4a9e8883ffe37342628c5a63a91205147e0966dc44e227dcfb78594",
+      "bytes": 57,
+      "uncompressed_sha256": "7a12dc1ea72c450b307a019a3f8ea27c1482c8e0bea2a0445dd0013cbf82c908",
+      "uncompressed_bytes": 243,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-controls.json",
+      "path": "historical-validator-r2-98cb4742070e-r2-final-controls.json",
+      "sha256": "98cb4742070ebc9f911b24630052a966adfc7de9226c18f1f213370ba5fde1df",
+      "bytes": 20609,
+      "uncompressed_sha256": "98cb4742070ebc9f911b24630052a966adfc7de9226c18f1f213370ba5fde1df",
+      "uncompressed_bytes": 20609,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-first-red.json",
+      "path": "historical-validator-r2-2f1dea43b35d-r2-first-red.json",
+      "sha256": "2f1dea43b35dcb4f193dd2676960f252269ef6e84c37fa07e03ccc2470f995a3",
+      "bytes": 628,
+      "uncompressed_sha256": "2f1dea43b35dcb4f193dd2676960f252269ef6e84c37fa07e03ccc2470f995a3",
+      "uncompressed_bytes": 628,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-synthetic-mixed.events.log",
+      "path": "historical-validator-r2-fbc318628b27-r2-synthetic-mixed.events.log.gz",
+      "sha256": "fbac86fc300a5b26edc52e90d881d461dbe8da816c5526eaa3d881da69715b7d",
+      "bytes": 10595,
+      "uncompressed_sha256": "fbc318628b27e32674ea778aab6432bcc0dd76e817fba7930005ebf629ba808a",
+      "uncompressed_bytes": 200392,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/fbd9_predicates.py",
+      "path": "historical-validator-r2-22d9ca437991-fbd9_predicates.py",
+      "sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429",
+      "bytes": 11716,
+      "uncompressed_sha256": "22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429",
+      "uncompressed_bytes": 11716,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-O_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-70c7956e06c9-r2-final-optimized-O_corrupt_queued_debt.json",
+      "sha256": "70c7956e06c9565bd103c8d7fec89b861f744117240f36f8066665a9844917e4",
+      "bytes": 1168,
+      "uncompressed_sha256": "70c7956e06c9565bd103c8d7fec89b861f744117240f36f8066665a9844917e4",
+      "uncompressed_bytes": 1168,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/first-red-actual.log",
+      "path": "historical-validator-r2-daa078d3de2a-first-red-actual.log.gz",
+      "sha256": "d9ef71879dcdd6190d86a1f35ef871ff1257c437f5aedb10ed0bc05521a71e89",
+      "bytes": 326,
+      "uncompressed_sha256": "daa078d3de2a1074f054060cb47a1b1d70f4df6b33027765f108467321f494d9",
+      "uncompressed_bytes": 763,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-green-attempt1-optimized-OO_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-56e7416f1acf-r2-green-attempt1-optimized-OO_corrupt_queued_debt.json",
+      "sha256": "56e7416f1acf063c7f54bc15feac7c193c6a03be202e1ad53135b3f721979fb4",
+      "bytes": 1170,
+      "uncompressed_sha256": "56e7416f1acf063c7f54bc15feac7c193c6a03be202e1ad53135b3f721979fb4",
+      "uncompressed_bytes": 1170,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/current-fbd9-real-failed-rejection.json",
+      "path": "historical-validator-r2-2338f71e0e38-current-fbd9-real-failed-rejection.json",
+      "sha256": "2338f71e0e383b118a58522dbcd393899e91d6ff578b96a6636811240b2af6fc",
+      "bytes": 789,
+      "uncompressed_sha256": "2338f71e0e383b118a58522dbcd393899e91d6ff578b96a6636811240b2af6fc",
+      "uncompressed_bytes": 789,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-final-optimized-OO_corrupt_queued_debt.json",
+      "path": "historical-validator-r2-a18cd235f22f-r2-final-optimized-OO_corrupt_queued_debt.json",
+      "sha256": "a18cd235f22f4dd8b83f567c6aa34d34bf6f3b040dbdea9e3c3160bd45883718",
+      "bytes": 1170,
+      "uncompressed_sha256": "a18cd235f22f4dd8b83f567c6aa34d34bf6f3b040dbdea9e3c3160bd45883718",
+      "uncompressed_bytes": 1170,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-validator-packet.json",
+      "path": "historical-validator-r2-1f669c51a01d-r2-validator-packet.json",
+      "sha256": "1f669c51a01d32d7727ed9f88fef38d338411ea4d2b228142af6f673cdf939f1",
+      "bytes": 28425,
+      "uncompressed_sha256": "1f669c51a01d32d7727ed9f88fef38d338411ea4d2b228142af6f673cdf939f1",
+      "uncompressed_bytes": 28425,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/historical-validator-r2/r2-validator-after-review.txt",
+      "path": "historical-validator-r2-b69735f8cdc8-r2-validator-after-review.txt",
+      "sha256": "b69735f8cdc8dc9cb3e13c20c6a9c16c2127980c8ed164b699d96191eb155452",
+      "bytes": 7896,
+      "uncompressed_sha256": "b69735f8cdc8dc9cb3e13c20c6a9c16c2127980c8ed164b699d96191eb155452",
+      "uncompressed_bytes": 7896,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-historical-validator-r2-check.json",
+      "path": "historical-validator-r2-794f304171c3-integration-historical-validator-r2-check.json",
+      "sha256": "794f304171c33a4600bc13287921af3ddbcae9aeba4165a0d3794aa0c1730f66",
+      "bytes": 839,
+      "uncompressed_sha256": "794f304171c33a4600bc13287921af3ddbcae9aeba4165a0d3794aa0c1730f66",
+      "uncompressed_bytes": 839,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "rust/target/indexing-perf-study/integration-historical-validator-r2-controls.log",
+      "path": "historical-validator-r2-f85085669df7-integration-historical-validator-r2-controls.log.gz",
+      "sha256": "4f67740f65ac34a0ae3feb16466be88b9d57b7d96addbdf254f123437b1c01ad",
+      "bytes": 2397,
+      "uncompressed_sha256": "f85085669df78dfbb56f5eee8290ee6160dbdc4f96a74d8e04488aa439fded0f",
+      "uncompressed_bytes": 18142,
+      "encoding": "gzip-mtime0"
+    }
+  ]
+}

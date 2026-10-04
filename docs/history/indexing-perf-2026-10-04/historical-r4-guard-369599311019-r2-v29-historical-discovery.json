@@ -1,0 +1,42 @@
+{
+  "stage": "r2-v29-historical-discovery",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.29.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "historical_",
+    "--",
+    "--list"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r2-v0.29.0"
+  },
+  "started_utc": "2026-10-04T03:49:22.665118+00:00",
+  "source_manifest_before": "a10cdf59c8eff380c7ef2d98510789f126b5b5a972ad751da068d2accf3d3676",
+  "Cargo_lock_before": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "exit_code": 101,
+  "ended_utc": "2026-10-04T03:49:40.484311+00:00",
+  "elapsed_seconds": 17.788743916986277,
+  "log_sha256": "39859aefe6218a196a8b76fd8674560a8e2fee59a751e07624a6d8cf7e5b141d",
+  "source_manifest_after": "a10cdf59c8eff380c7ef2d98510789f126b5b5a972ad751da068d2accf3d3676",
+  "Cargo_lock_after": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [],
+  "discovered_tests": [],
+  "first_errors": [
+    "error[E0063]: missing field `perf_commit` in initializer of `tab_state::TabCommittedPayload`",
+    "error[E0599]: no method named `set_ignore_case` found for struct `app::FlistWalkerApp` in the current scope",
+    "error[E0594]: cannot assign to data in dereference of `AppRuntimeState`",
+    "error: could not compile `flist-walker` (lib test) due to 3 previous errors"
+  ]
+}

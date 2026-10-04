@@ -1,0 +1,78 @@
+{
+  "scope": "Actual100k failure-only diagnostic, no performance success",
+  "rust_source_manifest_sha256": "c219598216fd0486dc4ad8487ddd4ad2bbbd5fdd6b3f95eadea5f9d1f4cf6442",
+  "assets": [
+    {
+      "file": "selector-stall-diagnostic-before-driver.rs.gz",
+      "sha256": "9c014aeee05f52d95b31c238da111880fe78866ee9306e8bc0dedfe13f9271da",
+      "bytes": 19824,
+      "uncompressed_sha256": "f8349b720159b62d322b348e9a7195a089abcba0183c79a06de59bbf4f8a83ab",
+      "uncompressed_bytes": 99848
+    },
+    {
+      "file": "selector-stall-diagnostic.patch.gz",
+      "sha256": "6ea7da04b01099dcadadf6c1d084a748224db975b67fd8920afed7fb4511c295",
+      "bytes": 2532,
+      "uncompressed_sha256": "408ac3d2fad3ea4406c0dd2fc69826f1882869b8b37a91470b338f8f0d0dc013",
+      "uncompressed_bytes": 9712
+    },
+    {
+      "file": "selector-stall-diagnostic-source-hashes.json",
+      "sha256": "5994789493143652b797207201dc295a934c4c26175f792b199f1651ad5df468",
+      "bytes": 22374
+    },
+    {
+      "file": "selector-stall-diagnostic-normal.log.gz",
+      "sha256": "4aee90e0da0ac41ab2d4e21b53bfed999313b656b40b9678a35ba5bacc163cc6",
+      "bytes": 2070,
+      "uncompressed_sha256": "771cf64a2dfe97417344a4ff95cae54e445d3289831e7ae2285d495cdb3ad013",
+      "uncompressed_bytes": 8544
+    },
+    {
+      "file": "selector-stall-diagnostic-fmt.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "file": "selector-stall-diagnostic-tabchain-target.log.gz",
+      "sha256": "e006056cba88eced6db66c273c5e25f406c46d5467e24b184d4cfaf2a9db57f3",
+      "bytes": 3450,
+      "uncompressed_sha256": "0d49dc23b1ec3c3a935dbf9f35f33324da2d778b2fbe948341a9fe7e5796ada3",
+      "uncompressed_bytes": 19516
+    },
+    {
+      "file": "selector-stall-diagnostic-tabchain-target.sidecar.json",
+      "sha256": "c9d51801d7a51dccc125cd8018cd4653a86439136957aa544dc58592ac0235fc",
+      "bytes": 47431
+    },
+    {
+      "file": "selector-stall-diagnostic-actual-state.json",
+      "sha256": "dadab79bdf61f936dfe2c831e669b35d7bd9872be570b59759b24ebb612f5550",
+      "bytes": 20519
+    },
+    {
+      "file": "selector-stall-diagnostic-collector-reject.log.gz",
+      "sha256": "024c2fbc90c02d01ae4c87a97f49d9fa6dad74f3ef396d5e56d8cffa43e431ef",
+      "bytes": 273,
+      "uncompressed_sha256": "b8b11b340e568f0ec29e6e137f0ed6a509253a1b730e5b4d03c7738696be4546",
+      "uncompressed_bytes": 479
+    },
+    {
+      "file": "selector-stall-diagnostic-packet.json",
+      "sha256": "90c75ddcbd2569c8d0604ab16e83028e183fd13e380ea9aea43611c17d1b0997",
+      "bytes": 2543
+    }
+  ],
+  "raw_rows": 0,
+  "target_exit_code": 101,
+  "collector_rejected": true,
+  "main_checks": [
+    "live213 exact hash equality",
+    "actualevents5/6 prior_latestNone",
+    "B6 faststate all true, seed3",
+    "cause/execution/lastGood false"
+  ],
+  "root_cause_limit": "Earlier first Warmreplacement-removal timestamp not yet observed; new typed seam proposal required"
+}

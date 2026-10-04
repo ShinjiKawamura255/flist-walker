@@ -515,7 +515,7 @@ impl FlistWalkerApp {
                 discarded_pending_entries,
             ) = if use_state_only {
                 (
-                    state_entries.into(),
+                    state_entries,
                     Default::default(),
                     Default::default(),
                     existing_entries.into(),
@@ -525,7 +525,7 @@ impl FlistWalkerApp {
                 (
                     existing_entries.into(),
                     pending_entries,
-                    state_entries.into(),
+                    state_entries,
                     Default::default(),
                     Default::default(),
                 )
@@ -972,7 +972,7 @@ impl FlistWalkerApp {
                 }
                 let state = indexing.background_states.entry(request_id).or_default();
                 for entry in entries {
-                    state.entries.push(entry.into());
+                    state.entries.push_back(entry.into());
                 }
             }
             IndexResponse::ReplaceAll { .. } => unreachable!("replace-all handled above"),

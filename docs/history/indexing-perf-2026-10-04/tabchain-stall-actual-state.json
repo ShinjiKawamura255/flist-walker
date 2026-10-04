@@ -1,0 +1,240 @@
+{
+  "case": "T1-A-B-C-A",
+  "condition": true,
+  "current_tab": 1,
+  "deferred_allocations": {},
+  "done_inputs": true,
+  "elapsed_ms": 31421.257125,
+  "frame": 1436,
+  "index_debt": false,
+  "inflight": [],
+  "input_trace": [
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 2,
+      "at_ms": 61.508417,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "requested_tab": 2,
+      "stage": 0
+    },
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 3,
+      "at_ms": 113.11241700000001,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "requested_tab": 3,
+      "stage": 1
+    },
+    {
+      "GUI_ingested": 16384,
+      "active_tab": 1,
+      "at_ms": 197.552042,
+      "input": "production-handler",
+      "query": "",
+      "requested_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "requested_tab": 1,
+      "stage": 2
+    }
+  ],
+  "last_progress_ms": 1412.7052500000002,
+  "latest_map": "{2: 0}",
+  "load": {
+    "capacity": 2,
+    "inflight": 0,
+    "queued": 0
+  },
+  "pending_request": null,
+  "pending_transition": null,
+  "planned": [
+    {
+      "completed_predecessor": false,
+      "id": 5,
+      "permission_at": "Some(Instant { tv_sec: 48281, tv_nsec: 190354041 })",
+      "permission_reason": "switch-evicts-previous-Warm",
+      "requires_latest_generation": false,
+      "revoked_by": 8,
+      "tab": 1
+    },
+    {
+      "completed_predecessor": false,
+      "id": 6,
+      "permission_at": "Some(Instant { tv_sec: 48281, tv_nsec: 274793500 })",
+      "permission_reason": "switch-evicts-previous-Warm",
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 2
+    },
+    {
+      "completed_predecessor": false,
+      "id": 7,
+      "permission_at": "None",
+      "permission_reason": null,
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 3
+    },
+    {
+      "completed_predecessor": false,
+      "id": 8,
+      "permission_at": "None",
+      "permission_reason": null,
+      "requires_latest_generation": true,
+      "revoked_by": null,
+      "tab": 1
+    }
+  ],
+  "plans_valid": false,
+  "primary": 8,
+  "proofs": [
+    {
+      "finished": false,
+      "id": 5,
+      "physical_complete": true,
+      "revoked_abort": true,
+      "source_root_correct": false,
+      "tab": 1
+    },
+    {
+      "finished": false,
+      "id": 6,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": false,
+      "tab": 2
+    },
+    {
+      "finished": true,
+      "id": 7,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": true,
+      "tab": 3
+    },
+    {
+      "finished": true,
+      "id": 8,
+      "physical_complete": true,
+      "revoked_abort": false,
+      "source_root_correct": true,
+      "tab": 1
+    }
+  ],
+  "queue": [],
+  "request_tabs": {},
+  "requests": [
+    {
+      "id": 5,
+      "observation": "IndexPerfObservation { batches: 49, entries_emitted: 50176, replacements: 0, full_wait: 84.39825ms, full_retries: 56, blocked_batches: 6, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 48281, tv_nsec: 192723791 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 48281, tv_nsec: 77330625 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 48281, tv_nsec: 192723708 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 48281, tv_nsec: 192723916 }), request_processing_returned: Some(Instant { tv_sec: 48281, tv_nsec: 192724250 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 48281, tv_nsec: 235691125 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 48281, tv_nsec: 77252958 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 1
+    },
+    {
+      "id": 6,
+      "observation": "IndexPerfObservation { batches: 57, entries_emitted: 58368, replacements: 0, full_wait: 91.759207ms, full_retries: 61, blocked_batches: 7, data_publish_end: None, terminal_published: Some(Instant { tv_sec: 48281, tv_nsec: 276425041 }), terminal_kind: Some(\"canceled\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 48281, tv_nsec: 138858333 }), terminal_source: None, nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 48281, tv_nsec: 276425000 }), terminal_offer_kind: Some(\"canceled\"), terminal_offer_current: Some(false), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 48281, tv_nsec: 276425208 }), request_processing_returned: Some(Instant { tv_sec: 48281, tv_nsec: 276425375 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 48281, tv_nsec: 291896333 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 48281, tv_nsec: 138768833 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 2
+    },
+    {
+      "id": 7,
+      "observation": "IndexPerfObservation { batches: 98, entries_emitted: 100000, replacements: 0, full_wait: 155.569751ms, full_retries: 103, blocked_batches: 12, data_publish_end: Some(Instant { tv_sec: 48281, tv_nsec: 435908416 }), terminal_published: Some(Instant { tv_sec: 48281, tv_nsec: 435957458 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 48281, tv_nsec: 213769541 }), terminal_source: Some(\"FileList\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 48281, tv_nsec: 435908583 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 48281, tv_nsec: 435957625 }), request_processing_returned: Some(Instant { tv_sec: 48281, tv_nsec: 435957833 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 48282, tv_nsec: 489460666 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 48281, tv_nsec: 213701291 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 3
+    },
+    {
+      "id": 8,
+      "observation": "IndexPerfObservation { batches: 98, entries_emitted: 100000, replacements: 0, full_wait: 155.870291ms, full_retries: 104, blocked_batches: 12, data_publish_end: Some(Instant { tv_sec: 48281, tv_nsec: 511555333 }), terminal_published: Some(Instant { tv_sec: 48281, tv_nsec: 511592500 }), terminal_kind: Some(\"finished\"), truncated_limit: None, started_source: Some(\"FileList\"), started_published: Some(Instant { tv_sec: 48281, tv_nsec: 291989041 }), terminal_source: Some(\"FileList\"), nested_input_reused: None, terminal_offered: Some(Instant { tv_sec: 48281, tv_nsec: 511555458 }), terminal_offer_kind: Some(\"finished\"), terminal_offer_current: Some(true), terminal_offer_error: None, terminal_send_returned: Some(Instant { tv_sec: 48281, tv_nsec: 511592583 }), request_processing_returned: Some(Instant { tv_sec: 48281, tv_nsec: 511592750 }), mailbox_closed: true, mailbox_closed_at: Some(Instant { tv_sec: 48281, tv_nsec: 531956125 }), allocation_observed: true, admitted_at: Some(Instant { tv_sec: 48281, tv_nsec: 291873666 }), admitted_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000\"), started_root: Some(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000\"), skipped_closed_before_start: false }",
+      "physical_complete": true,
+      "released": true,
+      "tab": 1
+    }
+  ],
+  "result_debt": false,
+  "snapshots": [
+    {
+      "active": true,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "freshness_request": 8,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000/FileList.txt\")",
+      "lifecycle": "Dormant",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 1,
+      "visible_count": 100000
+    },
+    {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "freshness_request": 3,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 2,
+      "visible_count": 100000
+    },
+    {
+      "active": false,
+      "all_count": 100000,
+      "expected_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "freshness_request": 7,
+      "freshness_root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "freshness_source": "FileList(\"/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000/FileList.txt\")",
+      "lifecycle": "Ready",
+      "oracle_valid": true,
+      "signature": "aba2cba2c08e2afd",
+      "tab": 3,
+      "visible_count": 100000
+    }
+  ],
+  "source": "FileList",
+  "stage": 3,
+  "transition_trace": [
+    {
+      "actual_activated_ms": 61.515917,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "stage": 0,
+      "tab_id": 2
+    },
+    {
+      "explicit_refresh_ms": 61.528167,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-1-1791058531288302000",
+      "stage": 0,
+      "tab_id": 2
+    },
+    {
+      "actual_activated_ms": 113.118708,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "stage": 1,
+      "tab_id": 3
+    },
+    {
+      "explicit_refresh_ms": 113.127833,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-2-1791058537459915000",
+      "stage": 1,
+      "tab_id": 3
+    },
+    {
+      "actual_activated_ms": 197.55862499999998,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "stage": 2,
+      "tab_id": 1
+    },
+    {
+      "explicit_refresh_ms": 197.56558299999998,
+      "root": "/private/var/folders/19/kvfxx9md10gg7160z08scl200000gn/T/fff-rs-app-indexing-perf-extended-80528-0-1791058525092848000",
+      "stage": 2,
+      "tab_id": 1
+    }
+  ]
+}

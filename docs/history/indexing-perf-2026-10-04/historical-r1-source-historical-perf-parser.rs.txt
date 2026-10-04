@@ -1,0 +1,55 @@
+pub(super) fn parser_started(count: usize) -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    let id = NEXT.fetch_add(1, Ordering::Relaxed);
+    update(|p| {
+        if count == 0 || p.parsers.len() >= 32 {
+            p.invalid = true;
+            return;
+        }
+        p.parsers.insert(
+            id,
+            JoinProof {
+                expected: count,
+                ..Default::default()
+            },
+        );
+    });
+    id
+}
+pub(super) fn parser_joined(
+    id: u64,
+    expected: usize,
+    joined: usize,
+    panicked: usize,
+    timed_out: bool,
+) {
+    // Later Drop after an explicit stop has zero handles: retain the first real result.
+    if expected == 0 {
+        return;
+    }
+    update(|p| {
+        let Some(j) = p.parsers.get_mut(&id) else {
+            p.invalid = true;
+            return;
+        };
+        if j.first.is_some() {
+            j.duplicate = true;
+            return;
+        }
+        j.first = Some((
+            joined,
+            expected,
+            if timed_out {
+                vec!["parser-unjoined".into()]
+            } else {
+                vec![]
+            },
+            if panicked > 0 {
+                vec![format!("{panicked} parser panic(s)")]
+            } else {
+                vec![]
+            },
+            Instant::now(),
+        ));
+    });
+}

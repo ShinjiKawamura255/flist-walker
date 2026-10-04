@@ -1,0 +1,47 @@
+"""Explicit synthetic protocol controls; retained rows are not historical measurements."""
+import copy, hashlib, importlib.util, json, re, unittest
+from pathlib import Path
+B=Path(__file__).resolve().parent;S=B.parent
+spec=importlib.util.spec_from_file_location('historical_collector',B/'collect_historical.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+identity=json.loads((S/'newtag-repair-r4/guard-execution-packet.json').read_text())
+source_log=S/'stale-full-extra-full.log';native_lines=source_log.read_bytes().decode().splitlines();raw=[json.loads(l.split(' ',1)[1]) for l in native_lines if l.startswith('INDEX_PERF_SAMPLE ')];native_meta=next(json.loads(l.split('INDEX_PERF_META ',1)[1]) for l in native_lines if 'INDEX_PERF_META 'in l)
+PASS_TRAILER=next(l for l in native_lines if l.startswith('test result:'))
+FAIL_TRAILER=next(l for l in (S/'warm-final-extra-full.log').read_text().splitlines() if l.startswith('test result:'))
+RUNNER='app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired'
+DEFAULT_CELLS=[('F1-files','Walker'),('F1-folders','Walker'),('F1-ignore-list','FileList')]
+def event(name,x):return 'INDEX_PERF_'+name+' '+json.dumps(x,separators=(',',':'))
+def make(statuses=('PASS','FAIL','PASS'),counts=None,cleanup=None,cells=DEFAULT_CELLS,truncated=False):
+    counts=counts or [14]*len(statuses);cleanup=cleanup or [(True,True)]*len(statuses)
+    meta=copy.deepcopy(native_meta);meta.update(selected_cases=list(dict.fromkeys(c for c,s in cells)),selected_sources=list(dict.fromkeys(s for c,s in cells)),supported_cells=[{'case':c,'source':s} for c,s in cells],selected_source_cells=len(cells),expected_rows=len(cells)*14,coverage_kind='selected-subset')
+    test=RUNNER
+    if truncated:
+        tl=(S/'stale-full-extra-trunc.log').read_text().splitlines();meta=next(json.loads(l.split('INDEX_PERF_META ',1)[1]) for l in tl if 'INDEX_PERF_META 'in l);test=RUNNER.replace('perf_indexing_extended_paired','perf_indexing_truncated_serial');cells=[('W1-truncated','Walker')]
+        tr=[json.loads(l.split(' ',1)[1]) for l in tl if l.startswith('INDEX_PERF_SAMPLE ')]
+    lines=['running 1 test','test '+test+' ... '+event('META',meta)];retained=[]
+    for index,((case,source),status) in enumerate(zip(cells,statuses)):
+        if status=='NOT_RUN':lines.append(event('CELL_STATUS',{'case':case,'source':source,'status':'NOT_RUN','reason':'previous cell cleanup or restoration unproven'}));continue
+        entries=500001 if truncated else 100000;lines.append(event('CELL_START',{'case':case,'source':source,'pairs':7,'entries':entries,'expected_rows':14}))
+        rows=copy.deepcopy(tr if truncated else [r for r in raw if r['comparison']==case and r['source']==source]);assert len(rows)==14
+        if not truncated:
+            for cond in [False,True]:lines.append(event('RUN_START',{'profile':case,'source':source,'condition':cond,'role':'untimed-warmup','entries':entries}))
+        for row in rows[:counts[index]]:
+            if not truncated:lines.append(event('RUN_START',{'profile':case,'source':source,'condition':row['case']!='B0','role':'sample','entries':entries,'pair':row['pair'],'position':row['position']}))
+            lines.append(event('SAMPLE',row));retained.append(row)
+        a,z=cleanup[index];st={'case':case,'source':source,'status':status,'actual_partial_rows':counts[index],'accepted_rows':counts[index] if status=='PASS' else 0,'positive_cleanup':a,'root_restored':z,'cleanup_evidence':'synthetic-control; not a reconstructed Debug schema','panic':None if status=='PASS' else 'synthetic intentional failure'}
+        if truncated:st.update(config_equal_before=True,config_restoration_authorized=True,actual_config_before={'walker_max_entries':500000},actual_config_after={'walker_max_entries':500000})
+        lines.append(event('CELL_STATUS',st))
+    failed=any(s!='PASS' for s in statuses);lines.append(FAIL_TRAILER if failed else PASS_TRAILER);text='\n'.join(lines)+'\n'
+    tag=identity['tags'][-1];selection={'runner':meta['runner'],'cells':[{'case':c,'source':s} for c,s in cells],'selected_cases':meta['selected_cases'],'selected_sources':meta['selected_sources'],'pairs':7,'entries':500001 if truncated else 100000,'expected_rows':len(cells)*14,'coverage_kind':'cap+1' if truncated else 'selected-subset','cap':500000}
+    env={'FLISTWALKER_SEARCH_THREADS':'12','FLISTWALKER_SEARCH_PARALLEL_THRESHOLD':'25000','FLISTWALKER_WALKER_MAX_ENTRIES':'500000','FW_INDEX_PERF_EXTRA_PAIRS':'7'}
+    if not truncated:env.update(FW_INDEX_PERF_EXTRA_ENTRIES='100000',FW_INDEX_PERF_EXTRA_CASES=','.join(selection['selected_cases']),FW_INDEX_PERF_EXTRA_SOURCES=','.join(selection['selected_sources']))
+    side={'schema_version':1,'evidence_kind':'synthetic-control','synthetic_provenance':{'rows_log':str(source_log),'rows_sha256':hashlib.sha256(source_log.read_bytes()).hexdigest(),'failed_trailer_log':'warm-final-extra-full.log','notice':'No live historical test/performance outcome; copied trailers are explicit protocol inputs only; current collector never invoked'},'log_sha256':hashlib.sha256(text.encode()).hexdigest(),'exit_code':101 if failed else 0,'process_completed':True,'actual_wait_returned':True,'watchdog_expired':False,'owned_process_group_absent':True,'runner_test':test,'cwd':tag['export']+'/rust','command':['cargo','+1.97.1','test','--release','--locked','--offline','--lib',test,'--','--ignored','--exact','--nocapture','--test-threads=1'],'env':env|{'CARGO_TARGET_DIR':str(B/('synthetic-target-'+tag['tag']))},'selection':selection,'source_identity':{'tag':tag['tag'],'original_commit':tag['original_commit'],'original_archive_sha256':tag['original_archive_sha256'],'Cargo_lock_sha256':tag['Cargo_lock_sha256'],'source_manifest_sha256':tag['source_manifest_sha256'],'adapter_sha256':tag['full_patch']['sha256']},'validator_sha256':hashlib.sha256((B/'collect_historical.py').read_bytes()).hexdigest()}
+    return text,side
+class HistoricalControls(unittest.TestCase):
+    def test_failed_cell_complete_rows_never_enter_aggregation(self):
+        text,side=make();out=mod.collect(text,side,identity)
+        self.assertEqual(out['accepted_rows'],28)
+        self.assertEqual(out['excluded_partial_rows'],14)
+        self.assertEqual(out['raw_exit_code'],101)
+        self.assertEqual(out['process_outcome'],'FAILED')
+        self.assertEqual(len(out['comparisons']),2)
+if __name__=='__main__':unittest.main(verbosity=2)

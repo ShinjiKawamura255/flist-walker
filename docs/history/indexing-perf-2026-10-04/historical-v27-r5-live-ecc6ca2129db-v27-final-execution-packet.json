@@ -1,0 +1,191 @@
+{
+  "tag": "v0.27.0",
+  "status": "STOP for main actual readback; v28 not authorized",
+  "failure": null,
+  "cap_status": "COMPLETED",
+  "phases": [
+    {
+      "stage": "v27-release-build",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true,
+      "actual_counters": {
+        "CELL_START": 0,
+        "CELL_STATUS": 0,
+        "SAMPLE": 0
+      },
+      "actual_status_counts": null,
+      "positive_product_cleanup_restoration_for_next_phase": null
+    },
+    {
+      "stage": "v27-ordinary-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true,
+      "actual_counters": {
+        "CELL_START": 0,
+        "CELL_STATUS": 0,
+        "SAMPLE": 0
+      },
+      "actual_status_counts": null,
+      "positive_product_cleanup_restoration_for_next_phase": null
+    },
+    {
+      "stage": "v27-ordinary-full",
+      "exit_code": 101,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true,
+      "actual_counters": {
+        "CELL_START": 44,
+        "CELL_STATUS": 44,
+        "SAMPLE": 462
+      },
+      "actual_status_counts": {
+        "PASS": 33,
+        "FAIL": 11,
+        "NOT_RUN": 0
+      },
+      "positive_product_cleanup_restoration_for_next_phase": true
+    },
+    {
+      "stage": "v27-cap-discovery",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true,
+      "actual_counters": {
+        "CELL_START": 0,
+        "CELL_STATUS": 0,
+        "SAMPLE": 0
+      },
+      "actual_status_counts": null,
+      "positive_product_cleanup_restoration_for_next_phase": null
+    },
+    {
+      "stage": "v27-cap-full",
+      "exit_code": 0,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true,
+      "actual_counters": {
+        "CELL_START": 1,
+        "CELL_STATUS": 1,
+        "SAMPLE": 14
+      },
+      "actual_status_counts": {
+        "PASS": 1,
+        "FAIL": 0,
+        "NOT_RUN": 0
+      },
+      "positive_product_cleanup_restoration_for_next_phase": true
+    }
+  ],
+  "source_identity": {
+    "tag": "v0.27.0",
+    "original_commit": "37195d639338f10549efabb1abad729546230914",
+    "original_archive_sha256": "184fbc8ee238b37251084c931f8377b929e4992852af19ec0a6eaf85754c4554",
+    "Cargo_lock_sha256": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+    "source_manifest_sha256": "cd87c93fc5211e2669e811e0e8dc62195d90cd00789a8f0693ad2fabdfbc7ec6",
+    "adapter_sha256": "18722cff3116fd5cdd2e742e6e10ecaddfca51d83b86bbf2fadf09135a01a9d2"
+  },
+  "guard_packet_sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+  "validator_packet_sha256": "d9623e9b026910627c530a79ad52957f012fdc06fc815b76802d903abbc05329",
+  "script_sha256": "4f76a28f5b66466a9a7415ae9c8e8d1120103a56a9b6072d0536ab870b90b4a5",
+  "v27_original_precleanup_Flush": "unobserved; proof covers added final owned cleanup Flush only",
+  "references": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-full-validated.json",
+      "sha256": "12dd2b57bd0b9db25cfa02e7c031d76e84b2d1ceed22db14ecbd9206883ef100",
+      "bytes": 3913267
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-discovery.json",
+      "sha256": "839fd5db743329f1ecedeb532bd5a96f5a96b386f922aeb3eeb7c1145393ee82",
+      "bytes": 43805
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-release-build.log",
+      "sha256": "8430c9e06d448fbbf445482d3455aee2e878bce0e9f11061a2e8eea32e7c65be",
+      "bytes": 8838
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-full.log",
+      "sha256": "37235a4fee30929ee0794b4b2848e92facc601653f98ea9dfb1f83fb169765f8",
+      "bytes": 3013730
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/wrapper-preparation.json",
+      "sha256": "1cfb2ce32f4d902855c2fda892cd7a7ae9245c9710807023cc38c959788ec6c0",
+      "bytes": 8695
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-discovery.log",
+      "sha256": "59d6c0a4d2eebddc815b1251b95c8afc28d52ba493bbd400fca5093da81805b8",
+      "bytes": 376
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-full-validated.json",
+      "sha256": "2c705a2f1cb792b46b0d9b03a1c7614536669425d820badcd947388885c45ff9",
+      "bytes": 40073
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/run_v27.py",
+      "sha256": "4f76a28f5b66466a9a7415ae9c8e8d1120103a56a9b6072d0536ab870b90b4a5",
+      "bytes": 12730
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-full.log",
+      "sha256": "aa167890b128c7aeb5ca638def7cdbd690f7a2bf03b5738bad2aca7b3d959f6a",
+      "bytes": 29585
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-discovery.json",
+      "sha256": "a9641b3d04ef3f2906bbbdd434ae9970d60cc1e711af2fbb09c5d8848441cc3b",
+      "bytes": 43807
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-full.json",
+      "sha256": "f99cb207799adfe221001e0fec9ea8893a2cdaac639446cee728070ccf65b30d",
+      "bytes": 558071
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/wrapper-from-invalid-observer-r1.patch",
+      "sha256": "e6eec52950b720a2c1771de537e69c6285453e5428651fb00299c830ee3e445a",
+      "bytes": 4732
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-full-collector-sidecar.json",
+      "sha256": "0769c98bc306142d7a100b3ca90617f5a49d981f672a8594cf205c6c857c8ae5",
+      "bytes": 6641
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-full-collector-sidecar.json",
+      "sha256": "193eefc95ec4fe725a9d6b593d96a8b8d3a7153db28acb74c6f545e0f7d9c191",
+      "bytes": 2707
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-release-build.json",
+      "sha256": "e53907a73b7ba90223f0a64273ac426d986d8b2ecdfe4f7fa1402b258d83c581",
+      "bytes": 43632
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-ordinary-discovery.log",
+      "sha256": "144ec79347285f8e68b394e0733e038a1623de334f0013292912552a8866f15b",
+      "bytes": 375
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v27-live-r2/v27-cap-full.json",
+      "sha256": "4343f50ea6bd1e8eea4a988a452acf88701a28299cfbd70c901306b395dde617",
+      "bytes": 61228
+    }
+  ],
+  "no_cross_tag_continuation": true
+}

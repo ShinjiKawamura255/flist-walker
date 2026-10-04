@@ -1,0 +1,51 @@
+{
+  "stage": "r3-v27-historical-discovery",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r3/v0.27.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "historical_",
+    "--",
+    "--list"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r3-v0.27.0"
+  },
+  "started_utc": "2026-10-04T03:59:33.072201+00:00",
+  "source_manifest_before": "b02a3cf2c86a0b2831828566838ec45168b73afe370fb8c946c5a40e72e0733f",
+  "Cargo_lock_before": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "watchdog_seconds": 600,
+  "watchdog_expired": false,
+  "termination": null,
+  "actual_process_pid": 10538,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "continuation_authorized": true,
+  "exit_code": 101,
+  "ended_utc": "2026-10-04T03:59:50.068942+00:00",
+  "elapsed_seconds": 16.956815708006616,
+  "log_sha256": "8d4cb375e2a331cba44c552c85375d6b68a71d425eb2dcc1deb2231cfec89fef",
+  "source_manifest_after": "b02a3cf2c86a0b2831828566838ec45168b73afe370fb8c946c5a40e72e0733f",
+  "Cargo_lock_after": "f9c22fbf3a55f6d0fa71beca9c6801ec0d3f4f47414a55a17df2d3eff0008a16",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [],
+  "discovered_tests": [],
+  "first_errors": [
+    "error[E0425]: cannot find function `test_settings_scope` in this scope",
+    "error[E0599]: no method named `set_current_row` found for struct `AppRuntimeState` in the current scope",
+    "error[E0599]: no variant, associated function, or constant named `PathAsc` found for enum `search::SearchSortMode` in the current scope",
+    "error[E0599]: no variant, associated function, or constant named `PathDesc` found for enum `search::SearchSortMode` in the current scope",
+    "error[E0502]: cannot borrow `driver.app` as mutable because it is also borrowed as immutable",
+    "error: could not compile `flist-walker` (lib test) due to 5 previous errors"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "packet_refs_verified": 12,
+  "checks": [
+    {
+      "stage": "extra-full",
+      "rows": 616,
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 2508.89s",
+      "source213_unchanged": true,
+      "strict_collector_replay": "PASS 44 cells 616 raw rows",
+      "no_new_owned_paths": true
+    },
+    {
+      "stage": "truncated",
+      "rows": 14,
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 162.38s",
+      "source213_unchanged": true,
+      "strict_collector_replay": "PASS 1 cells 14 raw rows",
+      "no_new_owned_paths": true,
+      "warmup_and_restoration_provenance": "No markers; runner source performs two unconditional successful warmup calls. META restoration=true is an ownership declaration backed by inspected RAII Drop, not independent before/after runtime readback in this log."
+    }
+  ],
+  "total_raw_rows": 630,
+  "actualStaleFullFailed": 1,
+  "scope": "Complete successful630; actualpartial26624 retainedseed100k is not completedvictim throughput; native/individualjoins/SIG NOT RUN"
+}

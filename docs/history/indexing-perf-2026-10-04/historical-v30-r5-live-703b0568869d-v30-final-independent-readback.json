@@ -1,0 +1,242 @@
+{
+  "packet_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-final-execution-packet.json",
+  "packet_sha256": "41ffff3189f57d4663d9d85b5033202ed8ac19379305b22eeeef318a211efa58",
+  "reference_count": 16,
+  "all_final_refs_match": true,
+  "reference_readback": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-full.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-release-build.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/wrapper-preparation.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-discovery.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-discovery.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-full-validated.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-discovery.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-full.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-full-collector-sidecar.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-full-collector-sidecar.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-full.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-release-build.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/run_v30.py",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-ordinary-full-validated.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-full.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v30-live-r1/v30-cap-discovery.log",
+      "matches": true
+    }
+  ],
+  "actual_wrapper_exit": 0,
+  "wrapper_exit_evidence": "unified exec session29592 final write_stdin chunk e666f7 returned exit_code=0",
+  "actual_phase_PIDs": [
+    {
+      "stage": "v30-release-build",
+      "actual_pid": 38842,
+      "exit_code": 0,
+      "elapsed_seconds": 112.02253499999642,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v30-ordinary-discovery",
+      "actual_pid": 40136,
+      "exit_code": 0,
+      "elapsed_seconds": 0.6388423330063233,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v30-ordinary-full",
+      "actual_pid": 40138,
+      "exit_code": 101,
+      "elapsed_seconds": 2513.7598980420007,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v30-cap-discovery",
+      "actual_pid": 41062,
+      "exit_code": 0,
+      "elapsed_seconds": 0.44614687499415595,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v30-cap-full",
+      "actual_pid": 41064,
+      "exit_code": 0,
+      "elapsed_seconds": 166.55268504099513,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    }
+  ],
+  "ordinary_actual_whole_exit": 101,
+  "ordinary_libtest_trailer": [
+    "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1575 filtered out; finished in 2513.51s"
+  ],
+  "cap_actual_whole_exit": 0,
+  "cap_libtest_trailer": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1575 filtered out; finished in 166.38s"
+  ],
+  "collector_validation_execution": "frozen R3 collect_historical.collect called in wrapper process; both returned ACCEPTED. No independent collector process exit recorded; wrapper actual exit0 differs from ordinary libtest exit101. Main deterministic replay remains separate.",
+  "ordinary_counts": {
+    "PASS": 43,
+    "FAIL": 1,
+    "NOT_RUN": 0
+  },
+  "ordinary_accepted_rows": 602,
+  "ordinary_excluded_partial_rows": 0,
+  "cap_counts": {
+    "PASS": 1,
+    "FAIL": 0,
+    "NOT_RUN": 0
+  },
+  "cap_accepted_rows": 14,
+  "cap_excluded_partial_rows": 0,
+  "accepted_rows_total": 616,
+  "failed_cells": [
+    {
+      "case": "T1-promotion",
+      "source": "FileList",
+      "status": "FAIL",
+      "panic": "latest active request membership",
+      "positive_cleanup": true,
+      "root_restored": true,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "status_log_line": 686,
+      "cell_start": {
+        "case": "T1-promotion",
+        "entries": 100000,
+        "expected_rows": 14,
+        "pairs": 7,
+        "source": "FileList"
+      },
+      "actual_run_starts": [
+        {
+          "line": 679,
+          "condition": false,
+          "entries": 100000,
+          "profile": "T1-promotion",
+          "role": "untimed-warmup",
+          "source": "FileList"
+        },
+        {
+          "line": 680,
+          "condition": true,
+          "entries": 100000,
+          "profile": "T1-promotion",
+          "role": "untimed-warmup",
+          "source": "FileList"
+        }
+      ],
+      "raw_sample_count_within_cell": 0
+    }
+  ],
+  "ambient_inventory_before_count": 15,
+  "ambient_inventory_before_equals_final": true,
+  "new_root_candidates": [],
+  "config_restore_actual": [
+    {
+      "config_restoration_authorized": true,
+      "config_equal_before": true,
+      "actual_config_before": {
+        "ctrl_w_deletes_word_in_query": false,
+        "disable_self_update": false,
+        "emacs_keybindings_enabled": true,
+        "filelist_auto_check_enabled": true,
+        "force_update_check_failure": "",
+        "history_persist_disabled": false,
+        "restore_tabs_enabled": false,
+        "search_parallel_threshold": 25000,
+        "search_threads": 12,
+        "tab_pin_moves_to_next_row": false,
+        "update_allow_downgrade": false,
+        "update_allow_same_version": false,
+        "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+        "walker_max_entries": 500000,
+        "window_trace_enabled": false,
+        "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+        "window_trace_verbose": false
+      },
+      "actual_config_after": {
+        "ctrl_w_deletes_word_in_query": false,
+        "disable_self_update": false,
+        "emacs_keybindings_enabled": true,
+        "filelist_auto_check_enabled": true,
+        "force_update_check_failure": "",
+        "history_persist_disabled": false,
+        "restore_tabs_enabled": false,
+        "search_parallel_threshold": 25000,
+        "search_threads": 12,
+        "tab_pin_moves_to_next_row": false,
+        "update_allow_downgrade": false,
+        "update_allow_same_version": false,
+        "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+        "walker_max_entries": 500000,
+        "window_trace_enabled": false,
+        "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+        "window_trace_verbose": false
+      }
+    }
+  ],
+  "final_live_source_files_readback": 214,
+  "final_live_source_map_exact_frozen_before_after": true,
+  "Cargo_toml_lock_exact_before_after_actual": true,
+  "v27_only_caveat": "Inherited original precleanup Flush field is v27 donor-only; no claim of unobserved v30 Flush.",
+  "verdict": "Actual generic FAIL retained; excluded cell contributes no speed/unsupported/NON_ELIGIBLE inference. Comparable accepted rows only; no speed verdict in this packet.",
+  "next_tag": "STOP; final-tag main handoff; no retry/source change/build/perf pending main readback"
+}

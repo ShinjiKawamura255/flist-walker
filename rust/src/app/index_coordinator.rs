@@ -97,6 +97,70 @@ impl BackgroundIndexFinalizationSlots {
     }
 }
 
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct AuxPerfObservation {
+    pub(super) flow: &'static str,
+    pub(super) request_id: u64,
+    pub(super) tab_id: u64,
+    pub(super) epoch: u64,
+    pub(super) path: Option<PathBuf>,
+    pub(super) count: usize,
+    pub(super) dispatched_at: Instant,
+    pub(super) delivered_at: Option<Instant>,
+    pub(super) successful: bool,
+    pub(super) route: Option<&'static str>,
+    pub(super) received_kind_epoch: Option<u64>,
+}
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct SearchDispatchBinding {
+    pub(super) request_id: u64,
+    pub(super) tab_id: u64,
+    pub(super) root: PathBuf,
+    pub(super) query: String,
+    pub(super) candidates: usize,
+    pub(super) candidate_ptr: usize,
+    pub(super) sort_mode: super::ResultSortMode,
+    pub(super) sort_scope: super::ResultSortScope,
+    pub(super) epoch: u64,
+    pub(super) at: Instant,
+}
+
+#[cfg(test)]
+pub(super) struct IndexPerfAllocation {
+    pub(super) id: u64,
+    pub(super) tab: Option<u64>,
+    pub(super) at: Instant,
+    pub(super) observation: super::index_mailbox::IndexPerfHandle,
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct IndexPerfWarmRemoval {
+    pub(super) at: Instant,
+    pub(super) removed_request_id: u64,
+    pub(super) previous_warm_tab: u64,
+    pub(super) replacement_warm_tab: Option<u64>,
+    pub(super) route_tab: u64,
+}
+
+#[cfg(test)]
+#[derive(Clone, Debug)]
+pub(super) struct IndexPerfPreemption {
+    pub(super) at: Instant,
+    pub(super) victim_id: u64,
+    pub(super) victim_tab: u64,
+    pub(super) prior_latest: Option<u64>,
+    pub(super) replacement_id: u64,
+    pub(super) active_tab: u64,
+    pub(super) warm_tab: Option<u64>,
+    pub(super) pending_active_id: Option<u64>,
+    pub(super) latest_active_id: Option<u64>,
+    pub(super) queued_active_ids: Vec<u64>,
+    pub(super) inflight_count: usize,
+}
+
 pub(super) struct IndexCoordinator {
     pub(super) tx: BoundedSender<IndexRequest>,
     #[cfg(test)]
@@ -105,6 +169,30 @@ pub(super) struct IndexCoordinator {
     pub(super) pending_request_id: Option<u64>,
     resource_state: TabResourceState,
     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
+    #[cfg(test)]
+    pub(super) perf_observe_requests: bool,
+    #[cfg(test)]
+    pub(super) perf_observe_history: bool,
+    #[cfg(test)]
+    pub(super) perf_allocations: Vec<IndexPerfAllocation>,
+    #[cfg(test)]
+    pub(super) perf_preemptions: Vec<IndexPerfPreemption>,
+    #[cfg(test)]
+    pub(super) perf_preemption_overflow: bool,
+    #[cfg(test)]
+    pub(super) perf_warm_removals: Vec<IndexPerfWarmRemoval>,
+    #[cfg(test)]
+    pub(super) perf_warm_removal_overflow: bool,
+    #[cfg(test)]
+    pub(super) perf_settled_requests: HashMap<u64, Instant>,
+    #[cfg(test)]
+    pub(super) perf_released_requests: HashMap<u64, Instant>,
+    #[cfg(test)]
+    pub(super) perf_observe_aux: bool,
+    #[cfg(test)]
+    pub(super) perf_aux: Vec<AuxPerfObservation>,
+    #[cfg(test)]
+    pub(super) perf_search_bindings: Vec<SearchDispatchBinding>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
     pub(super) pending_queue: VecDeque<IndexRequest>,
@@ -138,7 +226,91 @@ pub(super) struct IndexCoordinator {
     pub(super) pending_replace_all: Option<IndexResponse>,
 }
 
+#[cfg(test)]
+pub(super) struct PerfSearchSortIdentity<'a> {
+    pub(super) tab: u64,
+    pub(super) epoch: u64,
+    pub(super) root: &'a std::path::Path,
+    pub(super) query: &'a str,
+}
+
 impl IndexCoordinator {
+    #[cfg(test)]
+    pub(super) fn perf_search_sort_owned(
+        &self,
+        response: &super::SearchResponse,
+        identity: PerfSearchSortIdentity<'_>,
+    ) -> bool {
+        !response.results.is_empty()
+            && response.error.is_none()
+            && response.sort_scope == super::ResultSortScope::AllMatches
+            && response.sort_mode != super::ResultSortMode::Score
+            && self.perf_search_bindings.iter().any(|b| {
+                b.request_id == response.request_id
+                    && b.tab_id == identity.tab
+                    && b.epoch == identity.epoch
+                    && b.root == identity.root
+                    && b.query == identity.query
+                    && b.sort_mode == response.sort_mode
+                    && b.sort_scope == response.sort_scope
+                    && b.candidates > 0
+            })
+    }
+    #[cfg(test)]
+    pub(super) fn perf_aux_dispatch(
+        &mut self,
+        flow: &'static str,
+        request_id: u64,
+        tab_id: u64,
+        epoch: u64,
+        path: Option<PathBuf>,
+        count: usize,
+    ) {
+        // Bound observation storage; no worker/per-entry observer locks. The
+        // basic observer leaves this separate, optional response observer off.
+        if !self.perf_observe_aux || self.perf_aux.iter().filter(|o| o.flow == flow).count() >= 256
+        {
+            return;
+        }
+        self.perf_aux.push(AuxPerfObservation {
+            flow,
+            request_id,
+            tab_id,
+            epoch,
+            path,
+            count,
+            dispatched_at: Instant::now(),
+            delivered_at: None,
+            successful: false,
+            route: None,
+            received_kind_epoch: None,
+        });
+    }
+    #[cfg(test)]
+    pub(super) fn perf_aux_delivered(
+        &mut self,
+        flow: &'static str,
+        request_id: u64,
+        tab_id: u64,
+        epoch: u64,
+        path: Option<&PathBuf>,
+        successful: bool,
+    ) {
+        if !self.perf_observe_aux {
+            return;
+        }
+        if let Some(observation) = self.perf_aux.iter_mut().rev().find(|o| {
+            o.flow == flow
+                && o.request_id == request_id
+                && o.tab_id == tab_id
+                && o.epoch == epoch
+                && o.path.as_ref() == path
+                && o.delivered_at.is_none()
+        }) {
+            observation.delivered_at = Some(Instant::now());
+            observation.successful = successful;
+        }
+    }
     pub(super) fn queued_request_for_tab_exists(&self, tab_id: u64) -> bool {
         self.pending_queue.iter().any(|req| req.tab_id == tab_id)
     }
@@ -224,6 +396,30 @@ impl IndexCoordinator {
             resource_state: TabResourceState::default(),
             latest_request_ids,
             response_mailboxes,
+            #[cfg(test)]
+            perf_observe_requests: false,
+            #[cfg(test)]
+            perf_observe_history: false,
+            #[cfg(test)]
+            perf_allocations: Vec::new(),
+            #[cfg(test)]
+            perf_preemptions: Vec::new(),
+            #[cfg(test)]
+            perf_preemption_overflow: false,
+            #[cfg(test)]
+            perf_warm_removals: Vec::new(),
+            #[cfg(test)]
+            perf_warm_removal_overflow: false,
+            #[cfg(test)]
+            perf_settled_requests: HashMap::new(),
+            #[cfg(test)]
+            perf_released_requests: HashMap::new(),
+            #[cfg(test)]
+            perf_observe_aux: false,
+            #[cfg(test)]
+            perf_aux: Vec::new(),
+            #[cfg(test)]
+            perf_search_bindings: Vec::new(),
             latest_kind_epochs,
             pending_queue: VecDeque::new(),
             inflight_requests: HashSet::new(),
@@ -386,7 +582,36 @@ impl IndexCoordinator {
             }
         }
         if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
-            mailboxes.insert(request_id, Arc::new(IndexResponseMailbox::new()));
+            let mailbox = Arc::new(IndexResponseMailbox::new());
+            #[cfg(test)]
+            if self.perf_observe_requests {
+                mailbox.enable_perf_observation();
+            }
+            #[cfg(test)]
+            if self.perf_observe_history {
+                assert!(
+                    self.perf_allocations.len() < 128,
+                    "index allocation observer overflow"
+                );
+                mailbox.enable_perf_observation();
+                let observation = mailbox.perf_handle();
+                observation
+                    .lock()
+                    .expect("index observation")
+                    .allocation_observed = true;
+                super::index_mailbox::register_perf_request(
+                    Arc::as_ptr(&self.latest_request_ids) as usize,
+                    request_id,
+                    &observation,
+                );
+                self.perf_allocations.push(IndexPerfAllocation {
+                    id: request_id,
+                    tab: tab_id,
+                    at: Instant::now(),
+                    observation,
+                });
+            }
+            mailboxes.insert(request_id, mailbox);
         }
         request_id
     }
@@ -432,6 +657,12 @@ impl IndexCoordinator {
     }
 
     pub(super) fn cleanup_request(&mut self, request_id: u64) {
+        #[cfg(test)]
+        if self.perf_observe_requests {
+            self.perf_released_requests
+                .entry(request_id)
+                .or_insert_with(Instant::now);
+        }
         let tab_id = self.request_tabs.remove(&request_id);
         self.background_states.remove(&request_id);
         self.background_finalizations.remove(&request_id);
@@ -554,11 +785,45 @@ impl IndexCoordinator {
         }
         if let Some(previous_warm) = self.warm_tab_id {
             if let Ok(mut latest) = self.latest_request_ids.lock() {
+                #[cfg(test)]
+                let observation = if self.perf_observe_history {
+                    latest
+                        .get(&previous_warm)
+                        .copied()
+                        .filter(|id| *id != 0)
+                        .and_then(|id| {
+                            self.request_tabs
+                                .get(&id)
+                                .copied()
+                                .filter(|tab| *tab == previous_warm)
+                                .map(|tab| (id, tab))
+                        })
+                        .map(|(id, tab)| IndexPerfWarmRemoval {
+                            removed_request_id: id,
+                            previous_warm_tab: previous_warm,
+                            replacement_warm_tab: tab_id,
+                            route_tab: tab,
+                            at: Instant::now(),
+                        })
+                } else {
+                    None
+                };
                 if let Some(request_id) = latest
                     .remove(&previous_warm)
                     .filter(|request_id| self.request_tabs.contains_key(request_id))
                 {
                     self.superseded_request_ids.insert(request_id);
+                }
+                #[cfg(test)]
+                {
+                    drop(latest);
+                    if let Some(observation) = observation {
+                        if self.perf_warm_removals.len() >= 128 {
+                            self.perf_warm_removal_overflow = true;
+                            panic!("Warm removal observation capacity exceeded");
+                        }
+                        self.perf_warm_removals.push(observation);
+                    }
                 }
             }
         }
@@ -572,6 +837,13 @@ impl IndexCoordinator {
     }
 
     pub(super) fn settle_active_terminal_state(&mut self) {
+        #[cfg(test)]
+        if self.perf_observe_requests {
+            if let Some(request_id) = self.pending_request_id {
+                self.perf_settled_requests
+                    .insert(request_id, Instant::now());
+            }
+        }
         self.in_progress = false;
         self.pending_request_id = None;
         self.search_resume_pending = false;
@@ -780,6 +1052,15 @@ impl FlistWalkerApp {
             };
             match self.shell.worker_bus.kind.tx.try_send(req) {
                 Ok(()) => {
+                    #[cfg(test)]
+                    self.shell.indexing.perf_aux_dispatch(
+                        "kind",
+                        0,
+                        tab_id,
+                        epoch,
+                        Some(path.clone()),
+                        1,
+                    );
                     super::worker::channel::trace_worker_load(
                         &self.shell.worker_bus.kind.tx,
                         "kind_resolver",
@@ -891,6 +1172,21 @@ impl FlistWalkerApp {
             if response.epoch != self.shell.indexing.kind_resolution_epoch {
                 continue;
             }
+            #[cfg(test)]
+            self.shell.indexing.perf_aux_delivered(
+                "kind",
+                0,
+                active_tab_id,
+                response.epoch,
+                Some(&response.path),
+                response.kind.is_some()
+                    && self
+                        .shell
+                        .indexing
+                        .build
+                        .in_flight_kind_paths
+                        .contains(&response.path),
+            );
             self.shell
                 .indexing
                 .build

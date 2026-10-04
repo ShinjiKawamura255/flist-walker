@@ -1,0 +1,28 @@
+from pathlib import Path
+import hashlib,json,datetime,difflib
+B=Path(__file__).resolve().parent;S=B.parent;R1=S/'historical-validator-r1'
+def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
+def ref(p):return {'path':str(p),'sha256':sha(p),'bytes':p.stat().st_size}
+p=R1/'validator-packet.json';assert sha(p)=='ce186360b170672cfac453ae2ac89efbb3e82ba01169bd9b8b7cb91d49fb2b2e';prior=json.loads(p.read_text())
+for r in prior['references']:assert sha(Path(r['path']))==r['sha256'],r['path']
+review=R1/'validator-after-review.txt';assert sha(review)=='4ecc4e0814a8ac6238f9de9f2552712764ccab80a86152863af7e03f97f19105'
+r4=S/'newtag-repair-r4/guard-execution-packet.json';assert sha(r4)=='19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d';guard=json.loads(r4.read_text())
+for t in guard['tags']:
+ src=Path(t['export'])/'rust/src';m={str(p.relative_to(src)):sha(p) for p in src.rglob('*') if p.is_file()};assert m==json.loads(Path(t['source_map']['path']).read_text());assert sha(Path(t['export'])/'rust/Cargo.lock')==t['Cargo_lock_sha256']
+current=json.loads((S/'stale-full-final-source-hashes.json').read_text())['all_rust_source'];assert len(current)==213
+for path,h in current.items():assert sha(S.parents[1]/path)==h,path
+assert sha(S/'summarize_extensions.py')=='fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa'
+assert (R1/'fbd9_predicates.py').read_bytes()==(B/'fbd9_predicates.py').read_bytes();assert (R1/'fbd9-reuse-identity.json').read_bytes()==(B/'fbd9-reuse-identity.json').read_bytes()
+control=json.loads((B/'r2-final-controls.json').read_text());assert control['exit_code']==0 and control['passed']==control['actual_test_count']==145 and control['failed']==control['errors']==control['skipped']==0;assert control['source_before']==control['source_after']
+for name,h in control['source_after'].items():assert sha(B/name)==h,name
+optimized=[]
+for p in sorted(B.glob('r2-final-optimized-*.json')):
+ x=json.loads(p.read_text());assert x['exit_code'] in (1,2) and not x['admission_output_created'] and x['actual_child_returned'] and 'optimized Python is forbidden' in x['stdout']+x['stderr'];optimized.append(ref(p))
+assert len(optimized)==9
+mapping={t['tag']:str(Path(t['export']).parent/('target-release-'+t['tag'])) for t in guard['tags']};assert len(set(mapping.values()))==4
+mp=B/'r2-exact-release-target-plan.json';assert not mp.exists();mp.write_text(json.dumps({'stage':'PLAN ONLY; release builds/measurements NOT_RUN','guard_checkpoint':ref(r4),'canonical_target_mapping':mapping,'exact_tag_command_plan':[{ 'tag':t['tag'],'cwd':t['export']+'/rust','CARGO_TARGET_DIR':mapping[t['tag']],'ordinary_selected44':'same frozen Profile::ALL minusTruncated; sourcesFileList,Walker;100k7pairs616','ordinary_test':'app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired','cap_test':'app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial','command_template':['cargo','+1.97.1','test','--release','--locked','--offline','--lib','<exact-test>','--','--ignored','--exact','--nocapture','--test-threads=1'],'env':{'FLISTWALKER_SEARCH_THREADS':'12','FLISTWALKER_SEARCH_PARALLEL_THRESHOLD':'25000','FLISTWALKER_WALKER_MAX_ENTRIES':'500000','FW_INDEX_PERF_EXTRA_PAIRS':'7'},'first_live_failures':'retain actual whole exit101/trailer; source and lock hashes before/after; actual wait/groupabsence; positive per-cell cleanup/root restore required before continuation; stop between tags for main acceptance'} for t in guard['tags']]},indent=2)+'\n')
+diff=B/'r2-collector-from-r1.patch';assert not diff.exists();diff.write_text(''.join(difflib.unified_diff((R1/'collect_historical.py').read_text().splitlines(True),(B/'collect_historical.py').read_text().splitlines(True),fromfile='r1/collect_historical.py',tofile='r2/collect_historical.py')))
+for p in B.glob('*.py'):compile(p.read_bytes(),str(p),'exec')
+refs=[ref(p) for p in B.iterdir() if p.is_file() and p.name!='r2-validator-packet.json']
+x={'status':'R2 scoped validator repair SOURCE/controls FROZEN; STOP for independent AFTER; performance NOT_RUN','frozen_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'parent_R1_packet':ref(R1/'validator-packet.json'),'parent_R1_review_HOLD':ref(review),'parent_R1_39_refs_reverified_unchanged':39,'R4_guard_checkpoint':ref(r4),'R4_all_sources_and_locks_unchanged':True,'current_213_unchanged':True,'current_fbd9':ref(S/'summarize_extensions.py'),'copied_fbd9_unchanged':ref(B/'fbd9_predicates.py'),'meaningful_first_red':{'suite_actual_exit':1,'actual_tests':143,'actual_passed':130,'actual_failed':13,'source':ref(B/'r2-first-red-collector.py.txt'),'tests':ref(B/'r2-first-red-tests.py.txt'),'result':ref(B/'r2-first-red.json')},'fresh_final_controls':{'actual_exit':0,'actual_tests':145,'actual_passed':145,'actual_failed':0,'actual_errors':0,'actual_skipped':0,'scope':'synthetic Python protocol controls only; no historical benchmark','result':ref(B/'r2-final-controls.json'),'log':ref(B/'r2-final-controls.log')},'actual_optimized_interpreter_rejections':optimized,'fixed_target_mapping':mapping,'source_diff':ref(diff),'CLI_mixed_synthetic':{'exit':0,'accepted_rows':28,'excluded_partial_rows':14,'preserved_input_process_exit':101,'actual_historical_evidence':False,'result':ref(B/'r2-synthetic-cli.json')},'protocol':ref(B/'r2-protocol.txt'),'release_target_setup_build_performance':'NOT_RUN; mapping remains plan only','no_fresh_historical_samples':True,'references':refs}
+p=B/'r2-validator-packet.json';assert not p.exists();p.write_text(json.dumps(x,indent=2)+'\n');print(json.dumps({'packet':str(p),'sha256':sha(p),'refs':len(refs),'actual_controls':145,'target_mapping':mapping}))

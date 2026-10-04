@@ -1,0 +1,10 @@
+{
+  "packet_sha256": "d9623e9b026910627c530a79ad52957f012fdc06fc815b76802d903abbc05329",
+  "references_checked": 28,
+  "normalized_collector_R2_exact": true,
+  "main_actual_controls": 145,
+  "actual_exit": 0,
+  "log_sha256": "1be58bbff129dabc97bef32a36b67ae0d88852b13e6ecd5594c0ca2bb0df254f",
+  "scope": "synthetic Python controls only, no Rust/perf",
+  "utc": "2026-10-04T05:58:51.028432+00:00"
+}

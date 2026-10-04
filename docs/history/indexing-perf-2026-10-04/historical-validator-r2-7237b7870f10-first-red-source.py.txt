@@ -1,0 +1,7 @@
+"""Historical collector TDD first-red candidate; never used for actual measurement."""
+import json
+
+def collect(text, sidecar, identity):
+    # The legacy bag-of-rows approach has no cell admission boundary.
+    rows=[json.loads(line.split(' ',1)[1]) for line in text.splitlines() if line.startswith('INDEX_PERF_SAMPLE ')]
+    return {'accepted_rows':len(rows)}

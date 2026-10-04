@@ -1,0 +1,40 @@
+--- r2/test_historical.py
++++ r3/test_historical.py
+@@ -3,7 +3,7 @@
+ from pathlib import Path
+ B=Path(__file__).resolve().parent;S=B.parent
+ spec=importlib.util.spec_from_file_location('historical_collector',B/'collect_historical.py');mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
+-identity=json.loads((S/'newtag-repair-r4/guard-execution-packet.json').read_text())
++identity=json.loads((S/'newtag-r5-guards-execution/guard-execution-packet.json').read_text())
+ source_log=S/'stale-full-extra-full.log';native_lines=source_log.read_bytes().decode().splitlines();raw=[json.loads(l.split(' ',1)[1]) for l in native_lines if l.startswith('INDEX_PERF_SAMPLE ')];native_meta=next(json.loads(l.split('INDEX_PERF_META ',1)[1]) for l in native_lines if 'INDEX_PERF_META 'in l)
+ PASS_TRAILER=next(l for l in native_lines if l.startswith('test result:'))
+ FAIL_TRAILER=next(l for l in (S/'warm-final-extra-full.log').read_text().splitlines() if l.startswith('test result:'))
+@@ -34,7 +34,7 @@
+     tag=identity['tags'][-1];selection={'runner':meta['runner'],'cells':[{'case':c,'source':s} for c,s in cells],'selected_cases':meta['selected_cases'],'selected_sources':meta['selected_sources'],'pairs':7,'entries':500001 if truncated else 100000,'expected_rows':len(cells)*14,'coverage_kind':'cap+1' if truncated else 'selected-subset','cap':500000}
+     env={'FLISTWALKER_SEARCH_THREADS':'12','FLISTWALKER_SEARCH_PARALLEL_THRESHOLD':'25000','FLISTWALKER_WALKER_MAX_ENTRIES':'500000','FW_INDEX_PERF_EXTRA_PAIRS':'7'}
+     if not truncated:env.update(FW_INDEX_PERF_EXTRA_ENTRIES='100000',FW_INDEX_PERF_EXTRA_CASES=','.join(selection['selected_cases']),FW_INDEX_PERF_EXTRA_SOURCES=','.join(selection['selected_sources']))
+-    side={'schema_version':1,'guard_checkpoint_sha256':'19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d','evidence_kind':'synthetic-control','synthetic_provenance':{'rows_log':str(source_log),'rows_sha256':hashlib.sha256(source_log.read_bytes()).hexdigest(),'failed_trailer_log':'warm-final-extra-full.log','notice':'No live historical test/performance outcome; copied trailers are explicit protocol inputs only; current collector never invoked'},'log_sha256':hashlib.sha256(text.encode()).hexdigest(),'exit_code':101 if failed else 0,'process_completed':True,'actual_wait_returned':True,'watchdog_expired':False,'owned_process_group_absent':True,'runner_test':test,'cwd':tag['export']+'/rust','command':['cargo','+1.97.1','test','--release','--locked','--offline','--lib',test,'--','--ignored','--exact','--nocapture','--test-threads=1'],'env':env|{'CARGO_TARGET_DIR':str(Path(tag['export']).parent/('target-release-'+tag['tag']))},'selection':selection,'source_identity':{'tag':tag['tag'],'original_commit':tag['original_commit'],'original_archive_sha256':tag['original_archive_sha256'],'Cargo_lock_sha256':tag['Cargo_lock_sha256'],'source_manifest_sha256':tag['source_manifest_sha256'],'adapter_sha256':tag['full_patch']['sha256']},'validator_sha256':hashlib.sha256((B/'collect_historical.py').read_bytes()).hexdigest()}
++    side={'schema_version':1,'guard_checkpoint_sha256':'04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7','evidence_kind':'synthetic-control','synthetic_provenance':{'rows_log':str(source_log),'rows_sha256':hashlib.sha256(source_log.read_bytes()).hexdigest(),'failed_trailer_log':'warm-final-extra-full.log','notice':'No live historical test/performance outcome; copied trailers are explicit protocol inputs only; current collector never invoked'},'log_sha256':hashlib.sha256(text.encode()).hexdigest(),'exit_code':101 if failed else 0,'process_completed':True,'actual_wait_returned':True,'watchdog_expired':False,'owned_process_group_absent':True,'runner_test':test,'cwd':tag['export']+'/rust','command':['cargo','+1.97.1','test','--release','--locked','--offline','--lib',test,'--','--ignored','--exact','--nocapture','--test-threads=1'],'env':env|{'CARGO_TARGET_DIR':str(Path(tag['export']).parent/('target-release-'+tag['tag']))},'selection':selection,'source_identity':{'tag':tag['tag'],'original_commit':tag['original_commit'],'original_archive_sha256':tag['original_archive_sha256'],'Cargo_lock_sha256':tag['Cargo_lock_sha256'],'source_manifest_sha256':tag['source_manifest_sha256'],'adapter_sha256':tag['full_patch']['sha256']},'validator_sha256':hashlib.sha256((B/'collect_historical.py').read_bytes()).hexdigest()}
+     return text,side
+ class HistoricalControls(unittest.TestCase):
+     def test_failed_cell_complete_rows_never_enter_aggregation(self):
+@@ -269,8 +269,8 @@
+             args=[sys.executable]+flags
+             if api:
+                 program='import sys,json; from pathlib import Path; import collect_historical as c; c.collect(Path(sys.argv[1]).read_text(),json.loads(Path(sys.argv[2]).read_text()),json.loads(Path(sys.argv[3]).read_text())); print("UNSAFE ACCEPT")'
+-                args+=['-c',program,str(log),str(meta),str(S/'newtag-repair-r4/guard-execution-packet.json')]
+-            else:args+=[str(B/'collect_historical.py'),str(log),'--sidecar',str(meta),'--identity-packet',str(S/'newtag-repair-r4/guard-execution-packet.json'),'--output',str(out)]
++                args+=['-c',program,str(log),str(meta),str(S/'newtag-r5-guards-execution/guard-execution-packet.json')]
++            else:args+=[str(B/'collect_historical.py'),str(log),'--sidecar',str(meta),'--identity-packet',str(S/'newtag-r5-guards-execution/guard-execution-packet.json'),'--output',str(out)]
+             env=os.environ.copy();env.pop('PYTHONOPTIMIZE',None)
+             if env_value is not None:env['PYTHONOPTIMIZE']=env_value
+             result=subprocess.run(args,cwd=B,env=env,text=True,capture_output=True,timeout=10)
+@@ -292,7 +292,7 @@
+         self.assertEqual(len(set(actual.values())),4)
+         for tag in identity['tags']:self.assertEqual(actual[tag['tag']],planned_target(tag));self.assertEqual(str(Path(actual[tag['tag']]).resolve(strict=False)),actual[tag['tag']])
+     def test_fixed_target_itself_cannot_be_symlink(self):
+-        # Pure path guard fixture; actual R4 release targets are not created/modified.
++        # Pure path guard fixture; actual R5 release targets are not created/modified.
+         with tempfile.TemporaryDirectory(prefix='mapped-target-alias-',dir=B) as tmp:
+             tmp=Path(tmp);stub={'tags':[{'tag':t['tag'],'export':str(tmp/t['tag'])} for t in identity['tags']]}
+             owner=tmp/'target-release-v0.27.0';owner.mkdir();alias=tmp/'target-release-v0.30.0';alias.symlink_to(owner,target_is_directory=True)

@@ -1,0 +1,36 @@
+{
+  "status": "PASS",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "packet_refs_verified": 11,
+  "checks": [
+    {
+      "stage": "filelist",
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 3.67s",
+      "source213_unchanged": true,
+      "log_sha256": "864e5bb8d124b7cd3a69083b22870fef1677b33afa77d7641aec1b0e8c4265a3",
+      "new_owned_paths": []
+    },
+    {
+      "stage": "walker",
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 2.84s",
+      "source213_unchanged": true,
+      "log_sha256": "18b4cf0d567c6fbc7cee84938e786108ac3194cac79b5bb554499251580838ca",
+      "new_owned_paths": []
+    },
+    {
+      "stage": "search",
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 3.88s",
+      "source213_unchanged": true,
+      "log_sha256": "ccad8d2affe262bc299ad9c1cd10a52b6251bd6d9d547b64475753d94f4e7270",
+      "new_owned_paths": []
+    },
+    {
+      "stage": "tab-transition",
+      "actual_summary": "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.01s",
+      "source213_unchanged": true,
+      "log_sha256": "3c99b82cdcfb7634eae75a93e2569d6bc827f94b09c848896166dc390234b491",
+      "new_owned_paths": []
+    }
+  ],
+  "scope": "Four existing local ignored guards; coordinator time is not nativeinput/whole operation settlement"
+}

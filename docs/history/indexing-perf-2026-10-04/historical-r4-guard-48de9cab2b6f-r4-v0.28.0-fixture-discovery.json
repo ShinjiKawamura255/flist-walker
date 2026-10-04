@@ -1,0 +1,53 @@
+{
+  "stage": "r4-v0.28.0-fixture-discovery",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::fixture::",
+    "--",
+    "--list"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r4-v0.28.0"
+  },
+  "started_utc": "2026-10-04T04:03:01.476734+00:00",
+  "source_manifest_before": "2f358965a0c044d1845a5b78338f0bcbf72bee3fb8573f2eeb9d9df636ef8b24",
+  "Cargo_lock_before": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "watchdog_seconds": 600,
+  "watchdog_expired": false,
+  "termination": null,
+  "actual_process_pid": 14148,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "continuation_authorized": true,
+  "exit_code": 0,
+  "ended_utc": "2026-10-04T04:03:01.627755+00:00",
+  "elapsed_seconds": 0.14138879199163057,
+  "log_sha256": "108151da0064aae18618a49daddb3b33b6449f36ebda7e429bef02d20dfc5704",
+  "source_manifest_after": "2f358965a0c044d1845a5b78338f0bcbf72bee3fb8573f2eeb9d9df636ef8b24",
+  "Cargo_lock_after": "7afedc5cf8176650ad46861b95a0b311f0ab07a8b3c2016d8ffeb86c4e5c6e98",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [],
+  "discovered_tests": [
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_empty_publication_preserves_root_source_and_original_files",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_empty_publication_refuses_unrelated_contents_and_borrowed_root",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_empty_publication_unwind_and_partial_error_restore_owned_contents",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_extended_fixture_fixed_file_metadata_and_markers",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_extended_fixture_generation_restores_same_root_and_source",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_extended_fixture_link_alias_membership_is_explicit",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_extended_fixture_nested_expected_replaces_old_subtree",
+    "app::tests::indexing_perf::harness::extensions::fixture::tc_229_extended_fixture_root_never_claims_an_existing_candidate"
+  ],
+  "first_errors": []
+}

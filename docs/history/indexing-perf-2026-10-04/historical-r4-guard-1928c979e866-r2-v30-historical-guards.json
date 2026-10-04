@@ -1,0 +1,40 @@
+{
+  "stage": "r2-v30-historical-guards",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r2/v0.30.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "historical_",
+    "--",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r2-v0.30.0"
+  },
+  "started_utc": "2026-10-04T03:46:15.675617+00:00",
+  "source_manifest_before": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+  "Cargo_lock_before": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "exit_code": 0,
+  "ended_utc": "2026-10-04T03:46:15.852879+00:00",
+  "elapsed_seconds": 0.16733587499766145,
+  "log_sha256": "582da2476261f705bfbb131d40e70f539b42443578a53af16efa79e6d5fc7ddb",
+  "source_manifest_after": "0bd62795a0079c81757bafead0a47b2ada6ff1b75fbe77791ba76363bc304684",
+  "Cargo_lock_after": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [
+    "test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 1557 filtered out; finished in 0.05s"
+  ],
+  "discovered_tests": [],
+  "first_errors": []
+}

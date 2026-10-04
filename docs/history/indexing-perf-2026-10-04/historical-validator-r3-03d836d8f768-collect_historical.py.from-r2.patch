@@ -1,0 +1,22 @@
+--- r2/collect_historical.py
++++ r3/collect_historical.py
+@@ -6,8 +6,8 @@
+ from pathlib import Path
+ from fbd9_predicates import validate_and_aggregate
+ B=Path(__file__).resolve().parent
+-EXPECTED_GUARD_CHECKPOINT='19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d'
+-EXPECTED_GUARD_CANONICAL='4f06d40e74ce344008de9f0e0c53d43ea20c4244fb89b1ef3c2dc3f6f8ca163f'
++EXPECTED_GUARD_CHECKPOINT='04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7'
++EXPECTED_GUARD_CANONICAL='6bd31e2619bf751ecc6b9b83d7858468114f39259a5202cb73a2f6c4e7cb763c'
+ EXPECTED_PREDICATE_MODULE='22d9ca437991b3db8daeeac25618defea962c3dc89619e6ac1f2675354cb8429'
+ EXPECTED_COLLECTOR='fbd9bdf4f5b02d08857033a0309bec3775c4f9f605bdc65492a389bd748aa0aa'
+ PHASES=['data_publish_end_ms','terminal_publish_ms','index_ready_ms','results_ready_ms','worker_drained_ms','full_wait_ms','max_frame_ms','max_ingest_gap_ms','max_no_work_progress_ms']
+@@ -44,7 +44,7 @@
+ def selected_cells(cases,sources):
+     return [(c,s) for c in cases for s in (['Walker'] if c in WALKER_ONLY else ['FileList'] if c in FILELIST_ONLY else ['FileList','Walker']) if s in sources]
+ def dedicated_release_targets(identity):
+-    """Exact four-tag paths derived from accepted R4 exports; aliases are refused."""
++    """Exact four-tag paths derived from accepted R5 exports; aliases are refused."""
+     targets={t['tag']:str(Path(t['export']).parent/('target-release-'+t['tag'])) for t in identity['tags']}
+     need(set(targets)=={'v0.27.0','v0.28.0','v0.29.0','v0.30.0'},'exact four-tag target mapping')
+     canonical=[]

@@ -249,7 +249,7 @@ fn unmatched_background_terminal_does_not_supply_create_filelist_snapshot() {
         old_request_id,
         BackgroundIndexState {
             source: Some(IndexSource::Walker),
-            entries: vec![file_entry(root.join("partial.txt"))],
+            entries: vec![file_entry(root.join("partial.txt"))].into(),
             replaced: true,
         },
     );

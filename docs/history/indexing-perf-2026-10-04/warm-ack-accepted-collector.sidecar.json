@@ -1,0 +1,13 @@
+{
+  "command": [
+    "python3",
+    "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_warm_removal_collector.py"
+  ],
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+  "started_utc": "2026-10-03T23:04:25.713508+00:00",
+  "ended_utc": "2026-10-03T23:04:26.969437+00:00",
+  "exit_code": 0,
+  "collector_sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+  "log_sha256": "6b86bd13d517ef8780b265ae8afdb37bb3a822e8f52ace18426a809534354578",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1"
+}

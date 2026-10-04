@@ -1,0 +1,86 @@
+{
+  "status": "frozen-await-independent-AFTER-no-performance-started",
+  "source_identity": "tabchain-owner-final-source-hashes.json",
+  "source_manifest_sha256": "5657157385b02f6528cb677c8abcc3aec9cb237831b4fe050182d597b59fc03b",
+  "source_files": 213,
+  "changed_paths": [
+    "src/app/tests/indexing_perf/extensions/driver.rs",
+    "src/app/tests/indexing_perf/extensions/mod.rs"
+  ],
+  "checks": [
+    {
+      "command": "cargo test --locked --offline --lib tc_229_measured_owner -- --nocapture",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "log": "tabchain-owner-focused-final-green.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1555 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "command": "cargo test --locked --offline --lib indexing_perf -- --test-threads=1",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "log": "tabchain-owner-indexing-final-normal.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 54 passed; 0 failed; 4 ignored; 0 measured; 1500 filtered out; finished in 38.12s"
+      ]
+    },
+    {
+      "command": "cargo test --locked --offline --lib worker::search_perf::tests",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "log": "tabchain-owner-search-observer.log",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 1549 filtered out; finished in 0.00s"
+      ]
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "log": "tabchain-owner-fmt.log",
+      "exit_code": 0,
+      "summaries": []
+    },
+    {
+      "command": "cargo clippy --locked --offline --all-targets -- -D warnings",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust",
+      "log": "tabchain-owner-clippy.log",
+      "exit_code": 0,
+      "summaries": []
+    }
+  ],
+  "first_red": [
+    {
+      "log": "tabchain-owner-first-red.log",
+      "exit_code": 101,
+      "summary": "0 passed; 1 failed; actual old selection Ok(0), expected Ok(5)"
+    },
+    {
+      "log": "tabchain-owner-guards-red.log",
+      "exit_code": 101,
+      "summary": "0 passed; 3 failed; includes first red test, do not sum as 4 unique"
+    }
+  ],
+  "causal_diagnostic": "tabchain-missing-primary-causal-evidence.json",
+  "old_source_reconstruction": [
+    "tabchain-pre-diagnostic-driver.rs.snapshot",
+    "tabchain-pre-repair-mod.rs.snapshot",
+    "tabchain-owner-repair-from-old213.patch"
+  ],
+  "contract": "tabchain-primary-selection-contract.txt",
+  "invariants": [
+    "canonical trace/fixture/oracle/raw schema/production unmodified",
+    "max own planned request must have exact measured allocation AND ledger tab identity",
+    "Some0 requires selected latest prior Warm eviction permission",
+    "None requires selected latest logical release AND request route absent",
+    "None selected body-not-returned integrated ExtendedTruth t2/t3 rejection",
+    "latest terminal success/root/source/freshness/membership and physical return/sender/debt checks unchanged"
+  ],
+  "limits": [
+    "real 100k TabChain repair confirmation not run yet",
+    "native GUI and Windows not run",
+    "individual panic diagnostic worker join outcomes not observed; existing AppDrop bounded shutdown retained"
+  ],
+  "performance_status": "STOP until independent AFTER and main instructions"
+}

@@ -1,0 +1,4482 @@
+{
+  "log": "warm-final-extra-pilot.log",
+  "log_sha256": "b59d3de281baa3def166ec80544a2d335533de8b0aa648ccd84e7c603217904b",
+  "metadata": {
+    "coverage_kind": "all-extended-nontruncated",
+    "default_scale_reason": "100k exercises concurrency; 500k only explicit optional observation",
+    "entries": 100000,
+    "environment_identity": {
+      "arch": "aarch64",
+      "crate_version": "0.30.0",
+      "frame_period_ms": 16,
+      "logical_cpus": 12,
+      "optimized": true,
+      "os": "macos",
+      "pinned_rust_toolchain": "[toolchain]\nchannel = \"1.97.1\"\ncomponents = [\"rustfmt\", \"clippy\"]\n"
+    },
+    "expected_rows": 88,
+    "native": false,
+    "pairs": 1,
+    "runner": "extended",
+    "runtime_settings": {
+      "ctrl_w_deletes_word_in_query": false,
+      "disable_self_update": false,
+      "emacs_keybindings_enabled": true,
+      "filelist_auto_check_enabled": true,
+      "force_update_check_failure": "",
+      "history_persist_disabled": false,
+      "restore_tabs_enabled": false,
+      "search_parallel_threshold": 25000,
+      "search_threads": 12,
+      "tab_pin_moves_to_next_row": false,
+      "update_allow_downgrade": false,
+      "update_allow_same_version": false,
+      "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+      "walker_max_entries": 500000,
+      "window_trace_enabled": false,
+      "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+      "window_trace_verbose": false
+    },
+    "schema_version": 1,
+    "selected_cases": [
+      "F1-files",
+      "F1-folders",
+      "F1-ignore-list",
+      "F1-ignore-case",
+      "F1-mid-ignore",
+      "S1-ignore",
+      "S2-files",
+      "O1-name-shown",
+      "O1-modified-shown",
+      "O1-name-all",
+      "O1-modified-all",
+      "T1-active-warm",
+      "T1-promotion",
+      "T1-A-B-C-A",
+      "T1-S1-selective",
+      "T1-S1-dense",
+      "T1-S2",
+      "R1-natural",
+      "T1-natural-reclaim",
+      "H1-early",
+      "H1-late",
+      "P1-preview",
+      "W1-follow-links",
+      "W1-deep",
+      "W1-wide",
+      "F1-filelist-parser-files",
+      "F1-filelist-parser-folders"
+    ],
+    "selected_source_cells": 44,
+    "selected_sources": [
+      "FileList",
+      "Walker"
+    ],
+    "supported_cells": [
+      {
+        "case": "F1-files",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-folders",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-ignore-list",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-ignore-list",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-ignore-case",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-ignore-case",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-mid-ignore",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-mid-ignore",
+        "source": "Walker"
+      },
+      {
+        "case": "S1-ignore",
+        "source": "FileList"
+      },
+      {
+        "case": "S1-ignore",
+        "source": "Walker"
+      },
+      {
+        "case": "S2-files",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-name-shown",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-name-shown",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-modified-shown",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-modified-shown",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-name-all",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-name-all",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-modified-all",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-modified-all",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-active-warm",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-active-warm",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-promotion",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-promotion",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-A-B-C-A",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-A-B-C-A",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S1-selective",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S1-selective",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S1-dense",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S1-dense",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S2",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S2",
+        "source": "Walker"
+      },
+      {
+        "case": "R1-natural",
+        "source": "FileList"
+      },
+      {
+        "case": "R1-natural",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-natural-reclaim",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-natural-reclaim",
+        "source": "Walker"
+      },
+      {
+        "case": "H1-early",
+        "source": "FileList"
+      },
+      {
+        "case": "H1-late",
+        "source": "FileList"
+      },
+      {
+        "case": "P1-preview",
+        "source": "FileList"
+      },
+      {
+        "case": "P1-preview",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-follow-links",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-deep",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-wide",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-filelist-parser-files",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-filelist-parser-folders",
+        "source": "FileList"
+      }
+    ],
+    "unsupported_cells": []
+  },
+  "raw_rows": 88,
+  "comparisons": [
+    {
+      "case": "F1-filelist-parser-files",
+      "source": "FileList",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "worker-only-parser",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 235.575333,
+          "control_max": 235.575333,
+          "condition_median": 235.048709,
+          "condition_max": 235.048709,
+          "paired_ratios": [
+            0.9977645197682901
+          ],
+          "paired_ratio_median": 0.9977645197682901,
+          "paired_ratio_max": 0.9977645197682901
+        },
+        "terminal_publish_ms": {
+          "control_median": 235.606666,
+          "control_max": 235.606666,
+          "condition_median": 235.079167,
+          "condition_max": 235.079167,
+          "paired_ratios": [
+            0.9977611032448463
+          ],
+          "paired_ratio_median": 0.9977611032448463,
+          "paired_ratio_max": 0.9977611032448463
+        },
+        "worker_drained_ms": {
+          "control_median": 239.57475,
+          "control_max": 239.57475,
+          "condition_median": 250.410042,
+          "condition_max": 250.410042,
+          "paired_ratios": [
+            1.0452271869218273
+          ],
+          "paired_ratio_median": 1.0452271869218273,
+          "paired_ratio_max": 1.0452271869218273
+        },
+        "full_wait_ms": {
+          "control_median": 3.038833,
+          "control_max": 3.038833,
+          "condition_median": 1.5154999999999998,
+          "condition_max": 1.5154999999999998,
+          "paired_ratios": [
+            0.4987111828784273
+          ],
+          "paired_ratio_median": 0.4987111828784273,
+          "paired_ratio_max": 0.4987111828784273
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.012875,
+          "control_max": 24.012875,
+          "condition_median": 24.005083,
+          "condition_max": 24.005083,
+          "paired_ratios": [
+            0.9996755074100873
+          ],
+          "paired_ratio_median": 0.9996755074100873,
+          "paired_ratio_max": 0.9996755074100873
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.012875,
+          "control_max": 24.012875,
+          "condition_median": 24.005083,
+          "condition_max": 24.005083,
+          "paired_ratios": [
+            0.9996755074100873
+          ],
+          "paired_ratio_median": 0.9996755074100873,
+          "paired_ratio_max": 0.9996755074100873
+        }
+      }
+    },
+    {
+      "case": "F1-filelist-parser-folders",
+      "source": "FileList",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "worker-only-parser",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 208.664916,
+          "control_max": 208.664916,
+          "condition_median": 207.607458,
+          "condition_max": 207.607458,
+          "paired_ratios": [
+            0.9949322673870101
+          ],
+          "paired_ratio_median": 0.9949322673870101,
+          "paired_ratio_max": 0.9949322673870101
+        },
+        "terminal_publish_ms": {
+          "control_median": 208.692208,
+          "control_max": 208.692208,
+          "condition_median": 207.634042,
+          "condition_max": 207.634042,
+          "paired_ratios": [
+            0.9949295375704684
+          ],
+          "paired_ratio_median": 0.9949295375704684,
+          "paired_ratio_max": 0.9949295375704684
+        },
+        "worker_drained_ms": {
+          "control_median": 212.973625,
+          "control_max": 212.973625,
+          "condition_median": 223.099458,
+          "condition_max": 223.099458,
+          "paired_ratios": [
+            1.0475450093878995
+          ],
+          "paired_ratio_median": 1.0475450093878995,
+          "paired_ratio_max": 1.0475450093878995
+        },
+        "full_wait_ms": {
+          "control_median": 0.0,
+          "control_max": 0.0,
+          "condition_median": 0.0,
+          "condition_max": 0.0,
+          "paired_ratios": [
+            null
+          ],
+          "paired_ratio_median": null,
+          "paired_ratio_max": null
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.019,
+          "control_max": 24.019,
+          "condition_median": 24.018292,
+          "condition_max": 24.018292,
+          "paired_ratios": [
+            0.9999705233356926
+          ],
+          "paired_ratio_median": 0.9999705233356926,
+          "paired_ratio_max": 0.9999705233356926
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.019,
+          "control_max": 24.019,
+          "condition_median": 24.018292,
+          "condition_max": 24.018292,
+          "paired_ratios": [
+            0.9999705233356926
+          ],
+          "paired_ratio_median": 0.9999705233356926,
+          "paired_ratio_max": 0.9999705233356926
+        }
+      }
+    },
+    {
+      "case": "F1-files",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 748.914292,
+          "control_max": 748.914292,
+          "condition_median": 768.250959,
+          "condition_max": 768.250959,
+          "paired_ratios": [
+            1.0258195993941586
+          ],
+          "paired_ratio_median": 1.0258195993941586,
+          "paired_ratio_max": 1.0258195993941586
+        },
+        "terminal_publish_ms": {
+          "control_median": 748.9148749999999,
+          "control_max": 748.9148749999999,
+          "condition_median": 768.252334,
+          "condition_max": 768.252334,
+          "paired_ratios": [
+            1.0258206368247127
+          ],
+          "paired_ratio_median": 1.0258206368247127,
+          "paired_ratio_max": 1.0258206368247127
+        },
+        "index_ready_ms": {
+          "control_median": 764.706083,
+          "control_max": 764.706083,
+          "condition_median": 786.923917,
+          "condition_max": 786.923917,
+          "paired_ratios": [
+            1.02905408299204
+          ],
+          "paired_ratio_median": 1.02905408299204,
+          "paired_ratio_max": 1.02905408299204
+        },
+        "results_ready_ms": {
+          "control_median": 764.706083,
+          "control_max": 764.706083,
+          "condition_median": 786.923917,
+          "condition_max": 786.923917,
+          "paired_ratios": [
+            1.02905408299204
+          ],
+          "paired_ratio_median": 1.02905408299204,
+          "paired_ratio_max": 1.02905408299204
+        },
+        "full_wait_ms": {
+          "control_median": 725.00525,
+          "control_max": 725.00525,
+          "condition_median": 749.521542,
+          "condition_max": 749.521542,
+          "paired_ratios": [
+            1.0338153303027804
+          ],
+          "paired_ratio_median": 1.0338153303027804,
+          "paired_ratio_max": 1.0338153303027804
+        },
+        "max_frame_ms": {
+          "control_median": 6.879125,
+          "control_max": 6.879125,
+          "condition_median": 8.97775,
+          "condition_max": 8.97775,
+          "paired_ratios": [
+            1.3050715025530137
+          ],
+          "paired_ratio_median": 1.3050715025530137,
+          "paired_ratio_max": 1.3050715025530137
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.4725,
+          "control_max": 24.4725,
+          "condition_median": 30.585500000000003,
+          "condition_max": 30.585500000000003,
+          "paired_ratios": [
+            1.249790581264685
+          ],
+          "paired_ratio_median": 1.249790581264685,
+          "paired_ratio_max": 1.249790581264685
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.4725,
+          "control_max": 24.4725,
+          "condition_median": 30.585500000000003,
+          "condition_max": 30.585500000000003,
+          "paired_ratios": [
+            1.249790581264685
+          ],
+          "paired_ratio_median": 1.249790581264685,
+          "paired_ratio_max": 1.249790581264685
+        }
+      }
+    },
+    {
+      "case": "F1-folders",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 208.115208,
+          "control_max": 208.115208,
+          "condition_median": 209.116584,
+          "condition_max": 209.116584,
+          "paired_ratios": [
+            1.0048116425974982
+          ],
+          "paired_ratio_median": 1.0048116425974982,
+          "paired_ratio_max": 1.0048116425974982
+        },
+        "terminal_publish_ms": {
+          "control_median": 208.115625,
+          "control_max": 208.115625,
+          "condition_median": 209.117,
+          "condition_max": 209.117,
+          "paired_ratios": [
+            1.0048116281514181
+          ],
+          "paired_ratio_median": 1.0048116281514181,
+          "paired_ratio_max": 1.0048116281514181
+        },
+        "index_ready_ms": {
+          "control_median": 221.14862499999998,
+          "control_max": 221.14862499999998,
+          "condition_median": 225.12554200000002,
+          "condition_max": 225.12554200000002,
+          "paired_ratios": [
+            1.0179830057727017
+          ],
+          "paired_ratio_median": 1.0179830057727017,
+          "paired_ratio_max": 1.0179830057727017
+        },
+        "results_ready_ms": {
+          "control_median": 221.14862499999998,
+          "control_max": 221.14862499999998,
+          "condition_median": 225.12554200000002,
+          "condition_max": 225.12554200000002,
+          "paired_ratios": [
+            1.0179830057727017
+          ],
+          "paired_ratio_median": 1.0179830057727017,
+          "paired_ratio_max": 1.0179830057727017
+        },
+        "full_wait_ms": {
+          "control_median": 49.692293,
+          "control_max": 49.692293,
+          "condition_median": 56.895751000000004,
+          "condition_max": 56.895751000000004,
+          "paired_ratios": [
+            1.1449612719622337
+          ],
+          "paired_ratio_median": 1.1449612719622337,
+          "paired_ratio_max": 1.1449612719622337
+        },
+        "max_frame_ms": {
+          "control_median": 2.013167,
+          "control_max": 2.013167,
+          "condition_median": 2.1645000000000003,
+          "condition_max": 2.1645000000000003,
+          "paired_ratios": [
+            1.0751716077205717
+          ],
+          "paired_ratio_median": 1.0751716077205717,
+          "paired_ratio_max": 1.0751716077205717
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 26.11225,
+          "control_max": 26.11225,
+          "condition_median": 25.275667000000002,
+          "condition_max": 25.275667000000002,
+          "paired_ratios": [
+            0.9679620484638437
+          ],
+          "paired_ratio_median": 0.9679620484638437,
+          "paired_ratio_max": 0.9679620484638437
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 25.8945,
+          "control_max": 25.8945,
+          "condition_median": 25.048417,
+          "condition_max": 25.048417,
+          "paired_ratios": [
+            0.967325764158412
+          ],
+          "paired_ratio_median": 0.967325764158412,
+          "paired_ratio_max": 0.967325764158412
+        }
+      }
+    },
+    {
+      "case": "F1-ignore-case",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 239.642917,
+          "control_max": 239.642917,
+          "condition_median": 276.846917,
+          "condition_max": 276.846917,
+          "paired_ratios": [
+            1.1552476512376955
+          ],
+          "paired_ratio_median": 1.1552476512376955,
+          "paired_ratio_max": 1.1552476512376955
+        },
+        "terminal_publish_ms": {
+          "control_median": 239.686917,
+          "control_max": 239.686917,
+          "condition_median": 276.897834,
+          "condition_max": 276.897834,
+          "paired_ratios": [
+            1.1552480104702585
+          ],
+          "paired_ratio_median": 1.1552480104702585,
+          "paired_ratio_max": 1.1552480104702585
+        },
+        "index_ready_ms": {
+          "control_median": 278.72125,
+          "control_max": 278.72125,
+          "condition_median": 392.014625,
+          "condition_max": 392.014625,
+          "paired_ratios": [
+            1.406475555774811
+          ],
+          "paired_ratio_median": 1.406475555774811,
+          "paired_ratio_max": 1.406475555774811
+        },
+        "results_ready_ms": {
+          "control_median": 278.72125,
+          "control_max": 278.72125,
+          "condition_median": 392.014625,
+          "condition_max": 392.014625,
+          "paired_ratios": [
+            1.406475555774811
+          ],
+          "paired_ratio_median": 1.406475555774811,
+          "paired_ratio_max": 1.406475555774811
+        },
+        "full_wait_ms": {
+          "control_median": 183.373543,
+          "control_max": 183.373543,
+          "condition_median": 216.926123,
+          "condition_max": 216.926123,
+          "paired_ratios": [
+            1.1829739418842988
+          ],
+          "paired_ratio_median": 1.1829739418842988,
+          "paired_ratio_max": 1.1829739418842988
+        },
+        "max_frame_ms": {
+          "control_median": 4.260667,
+          "control_max": 4.260667,
+          "condition_median": 4.175166,
+          "condition_max": 4.175166,
+          "paired_ratios": [
+            0.9799324847494536
+          ],
+          "paired_ratio_median": 0.9799324847494536,
+          "paired_ratio_max": 0.9799324847494536
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 26.286917,
+          "control_max": 26.286917,
+          "condition_median": 55.017833,
+          "condition_max": 55.017833,
+          "paired_ratios": [
+            2.092973968761723
+          ],
+          "paired_ratio_median": 2.092973968761723,
+          "paired_ratio_max": 2.092973968761723
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 26.040042,
+          "control_max": 26.040042,
+          "condition_median": 37.773458000000005,
+          "condition_max": 37.773458000000005,
+          "paired_ratios": [
+            1.4505912855286487
+          ],
+          "paired_ratio_median": 1.4505912855286487,
+          "paired_ratio_max": 1.4505912855286487
+        }
+      }
+    },
+    {
+      "case": "F1-ignore-case",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 963.551125,
+          "control_max": 963.551125,
+          "condition_median": 994.45125,
+          "condition_max": 994.45125,
+          "paired_ratios": [
+            1.0320690041226406
+          ],
+          "paired_ratio_median": 1.0320690041226406,
+          "paired_ratio_max": 1.0320690041226406
+        },
+        "terminal_publish_ms": {
+          "control_median": 963.551667,
+          "control_max": 963.551667,
+          "condition_median": 994.451708,
+          "condition_max": 994.451708,
+          "paired_ratios": [
+            1.0320688989062796
+          ],
+          "paired_ratio_median": 1.0320688989062796,
+          "paired_ratio_max": 1.0320688989062796
+        },
+        "index_ready_ms": {
+          "control_median": 987.2959999999999,
+          "control_max": 987.2959999999999,
+          "condition_median": 1018.692041,
+          "condition_max": 1018.692041,
+          "paired_ratios": [
+            1.0318000285628628
+          ],
+          "paired_ratio_median": 1.0318000285628628,
+          "paired_ratio_max": 1.0318000285628628
+        },
+        "results_ready_ms": {
+          "control_median": 987.2959999999999,
+          "control_max": 987.2959999999999,
+          "condition_median": 1018.692041,
+          "condition_max": 1018.692041,
+          "paired_ratios": [
+            1.0318000285628628
+          ],
+          "paired_ratio_median": 1.0318000285628628,
+          "paired_ratio_max": 1.0318000285628628
+        },
+        "full_wait_ms": {
+          "control_median": 945.523584,
+          "control_max": 945.523584,
+          "condition_median": 974.688208,
+          "condition_max": 974.688208,
+          "paired_ratios": [
+            1.0308449461161193
+          ],
+          "paired_ratio_median": 1.0308449461161193,
+          "paired_ratio_max": 1.0308449461161193
+        },
+        "max_frame_ms": {
+          "control_median": 8.410917,
+          "control_max": 8.410917,
+          "condition_median": 7.72925,
+          "condition_max": 7.72925,
+          "paired_ratios": [
+            0.9189544968759056
+          ],
+          "paired_ratio_median": 0.9189544968759056,
+          "paired_ratio_max": 0.9189544968759056
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 28.410208,
+          "control_max": 28.410208,
+          "condition_median": 61.619667,
+          "condition_max": 61.619667,
+          "paired_ratios": [
+            2.168926992720363
+          ],
+          "paired_ratio_median": 2.168926992720363,
+          "paired_ratio_max": 2.168926992720363
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 28.410208,
+          "control_max": 28.410208,
+          "condition_median": 35.451584000000004,
+          "condition_max": 35.451584000000004,
+          "paired_ratios": [
+            1.2478466894716154
+          ],
+          "paired_ratio_median": 1.2478466894716154,
+          "paired_ratio_max": 1.2478466894716154
+        }
+      }
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 242.72804100000002,
+          "control_max": 242.72804100000002,
+          "condition_median": 248.881958,
+          "condition_max": 248.881958,
+          "paired_ratios": [
+            1.0253531358579209
+          ],
+          "paired_ratio_median": 1.0253531358579209,
+          "paired_ratio_max": 1.0253531358579209
+        },
+        "terminal_publish_ms": {
+          "control_median": 242.7725,
+          "control_max": 242.7725,
+          "condition_median": 248.924375,
+          "condition_max": 248.924375,
+          "paired_ratios": [
+            1.0253400817637912
+          ],
+          "paired_ratio_median": 1.0253400817637912,
+          "paired_ratio_max": 1.0253400817637912
+        },
+        "index_ready_ms": {
+          "control_median": 262.91075,
+          "control_max": 262.91075,
+          "condition_median": 324.277208,
+          "condition_max": 324.277208,
+          "paired_ratios": [
+            1.2334117490441145
+          ],
+          "paired_ratio_median": 1.2334117490441145,
+          "paired_ratio_max": 1.2334117490441145
+        },
+        "results_ready_ms": {
+          "control_median": 262.91075,
+          "control_max": 262.91075,
+          "condition_median": 324.277208,
+          "condition_max": 324.277208,
+          "paired_ratios": [
+            1.2334117490441145
+          ],
+          "paired_ratio_median": 1.2334117490441145,
+          "paired_ratio_max": 1.2334117490441145
+        },
+        "full_wait_ms": {
+          "control_median": 186.892709,
+          "control_max": 186.892709,
+          "condition_median": 191.831584,
+          "condition_max": 191.831584,
+          "paired_ratios": [
+            1.0264262582870474
+          ],
+          "paired_ratio_median": 1.0264262582870474,
+          "paired_ratio_max": 1.0264262582870474
+        },
+        "max_frame_ms": {
+          "control_median": 0.76375,
+          "control_max": 0.76375,
+          "condition_median": 4.225582999999999,
+          "condition_max": 4.225582999999999,
+          "paired_ratios": [
+            5.532678232405891
+          ],
+          "paired_ratio_median": 5.532678232405891,
+          "paired_ratio_max": 5.532678232405891
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.006209000000002,
+          "control_max": 24.006209000000002,
+          "condition_median": 27.312541999999997,
+          "condition_max": 27.312541999999997,
+          "paired_ratios": [
+            1.1377282435556566
+          ],
+          "paired_ratio_median": 1.1377282435556566,
+          "paired_ratio_max": 1.1377282435556566
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.006209000000002,
+          "control_max": 24.006209000000002,
+          "condition_median": 27.082334,
+          "condition_max": 27.082334,
+          "paired_ratios": [
+            1.1281387244441634
+          ],
+          "paired_ratio_median": 1.1281387244441634,
+          "paired_ratio_max": 1.1281387244441634
+        }
+      }
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 955.46875,
+          "control_max": 955.46875,
+          "condition_median": 964.214458,
+          "condition_max": 964.214458,
+          "paired_ratios": [
+            1.0091533166312348
+          ],
+          "paired_ratio_median": 1.0091533166312348,
+          "paired_ratio_max": 1.0091533166312348
+        },
+        "terminal_publish_ms": {
+          "control_median": 955.472125,
+          "control_max": 955.472125,
+          "condition_median": 964.215,
+          "condition_max": 964.215,
+          "paired_ratios": [
+            1.0091503192727889
+          ],
+          "paired_ratio_median": 1.0091503192727889,
+          "paired_ratio_max": 1.0091503192727889
+        },
+        "index_ready_ms": {
+          "control_median": 972.127666,
+          "control_max": 972.127666,
+          "condition_median": 987.8229170000001,
+          "condition_max": 987.8229170000001,
+          "paired_ratios": [
+            1.0161452569954943
+          ],
+          "paired_ratio_median": 1.0161452569954943,
+          "paired_ratio_max": 1.0161452569954943
+        },
+        "results_ready_ms": {
+          "control_median": 972.127666,
+          "control_max": 972.127666,
+          "condition_median": 987.8229170000001,
+          "condition_max": 987.8229170000001,
+          "paired_ratios": [
+            1.0161452569954943
+          ],
+          "paired_ratio_median": 1.0161452569954943,
+          "paired_ratio_max": 1.0161452569954943
+        },
+        "full_wait_ms": {
+          "control_median": 937.182539,
+          "control_max": 937.182539,
+          "condition_median": 946.2634559999999,
+          "condition_max": 946.2634559999999,
+          "paired_ratios": [
+            1.0096895926056086
+          ],
+          "paired_ratio_median": 1.0096895926056086,
+          "paired_ratio_max": 1.0096895926056086
+        },
+        "max_frame_ms": {
+          "control_median": 10.530459,
+          "control_max": 10.530459,
+          "condition_median": 7.761042,
+          "condition_max": 7.761042,
+          "paired_ratios": [
+            0.7370088996120682
+          ],
+          "paired_ratio_median": 0.7370088996120682,
+          "paired_ratio_max": 0.7370088996120682
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 31.493209,
+          "control_max": 31.493209,
+          "condition_median": 24.067249999999998,
+          "condition_max": 24.067249999999998,
+          "paired_ratios": [
+            0.7642044353117524
+          ],
+          "paired_ratio_median": 0.7642044353117524,
+          "paired_ratio_max": 0.7642044353117524
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 31.493209,
+          "control_max": 31.493209,
+          "condition_median": 23.803083,
+          "condition_max": 23.803083,
+          "paired_ratios": [
+            0.7558163729837757
+          ],
+          "paired_ratio_median": 0.7558163729837757,
+          "paired_ratio_max": 0.7558163729837757
+        }
+      }
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 248.6255,
+          "control_max": 248.6255,
+          "condition_median": 296.0175,
+          "condition_max": 296.0175,
+          "paired_ratios": [
+            1.1906160068054161
+          ],
+          "paired_ratio_median": 1.1906160068054161,
+          "paired_ratio_max": 1.1906160068054161
+        },
+        "terminal_publish_ms": {
+          "control_median": 248.674916,
+          "control_max": 248.674916,
+          "condition_median": 296.064458,
+          "condition_max": 296.064458,
+          "paired_ratios": [
+            1.1905682437226601
+          ],
+          "paired_ratio_median": 1.1905682437226601,
+          "paired_ratio_max": 1.1905682437226601
+        },
+        "index_ready_ms": {
+          "control_median": 262.063958,
+          "control_max": 262.063958,
+          "condition_median": 331.848625,
+          "condition_max": 331.848625,
+          "paired_ratios": [
+            1.266288685909262
+          ],
+          "paired_ratio_median": 1.266288685909262,
+          "paired_ratio_max": 1.266288685909262
+        },
+        "results_ready_ms": {
+          "control_median": 262.063958,
+          "control_max": 262.063958,
+          "condition_median": 331.848625,
+          "condition_max": 331.848625,
+          "paired_ratios": [
+            1.266288685909262
+          ],
+          "paired_ratio_median": 1.266288685909262,
+          "paired_ratio_max": 1.266288685909262
+        },
+        "full_wait_ms": {
+          "control_median": 192.149416,
+          "control_max": 192.149416,
+          "condition_median": 184.722334,
+          "condition_max": 184.722334,
+          "paired_ratios": [
+            0.9613473610557317
+          ],
+          "paired_ratio_median": 0.9613473610557317,
+          "paired_ratio_max": 0.9613473610557317
+        },
+        "max_frame_ms": {
+          "control_median": 0.785875,
+          "control_max": 0.785875,
+          "condition_median": 4.152666999999999,
+          "condition_max": 4.152666999999999,
+          "paired_ratios": [
+            5.284131700334021
+          ],
+          "paired_ratio_median": 5.284131700334021,
+          "paired_ratio_max": 5.284131700334021
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.989292,
+          "control_max": 23.989292,
+          "condition_median": 83.880583,
+          "condition_max": 83.880583,
+          "paired_ratios": [
+            3.496584351051294
+          ],
+          "paired_ratio_median": 3.496584351051294,
+          "paired_ratio_max": 3.496584351051294
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.989292,
+          "control_max": 23.989292,
+          "condition_median": 26.187667,
+          "condition_max": 26.187667,
+          "paired_ratios": [
+            1.0916398449775009
+          ],
+          "paired_ratio_median": 1.0916398449775009,
+          "paired_ratio_max": 1.0916398449775009
+        }
+      }
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 957.070709,
+          "control_max": 957.070709,
+          "condition_median": 1097.843541,
+          "condition_max": 1097.843541,
+          "paired_ratios": [
+            1.1470871803684046
+          ],
+          "paired_ratio_median": 1.1470871803684046,
+          "paired_ratio_max": 1.1470871803684046
+        },
+        "terminal_publish_ms": {
+          "control_median": 957.071542,
+          "control_max": 957.071542,
+          "condition_median": 1097.8441249999998,
+          "condition_max": 1097.8441249999998,
+          "paired_ratios": [
+            1.147086792180474
+          ],
+          "paired_ratio_median": 1.147086792180474,
+          "paired_ratio_max": 1.147086792180474
+        },
+        "index_ready_ms": {
+          "control_median": 980.3175,
+          "control_max": 980.3175,
+          "condition_median": 1122.423875,
+          "condition_max": 1122.423875,
+          "paired_ratios": [
+            1.14495954116906
+          ],
+          "paired_ratio_median": 1.14495954116906,
+          "paired_ratio_max": 1.14495954116906
+        },
+        "results_ready_ms": {
+          "control_median": 980.3175,
+          "control_max": 980.3175,
+          "condition_median": 1122.423875,
+          "condition_max": 1122.423875,
+          "paired_ratios": [
+            1.14495954116906
+          ],
+          "paired_ratio_median": 1.14495954116906,
+          "paired_ratio_max": 1.14495954116906
+        },
+        "full_wait_ms": {
+          "control_median": 938.272376,
+          "control_max": 938.272376,
+          "condition_median": 953.596998,
+          "condition_max": 953.596998,
+          "paired_ratios": [
+            1.0163328073936602
+          ],
+          "paired_ratio_median": 1.0163328073936602,
+          "paired_ratio_max": 1.0163328073936602
+        },
+        "max_frame_ms": {
+          "control_median": 9.148041000000001,
+          "control_max": 9.148041000000001,
+          "condition_median": 9.186584,
+          "condition_max": 9.186584,
+          "paired_ratios": [
+            1.0042132517770743
+          ],
+          "paired_ratio_median": 1.0042132517770743,
+          "paired_ratio_max": 1.0042132517770743
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 27.079666,
+          "control_max": 27.079666,
+          "condition_median": 139.21766599999998,
+          "condition_max": 139.21766599999998,
+          "paired_ratios": [
+            5.141040735140529
+          ],
+          "paired_ratio_median": 5.141040735140529,
+          "paired_ratio_max": 5.141040735140529
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 27.079666,
+          "control_max": 27.079666,
+          "condition_median": 28.351042,
+          "condition_max": 28.351042,
+          "paired_ratios": [
+            1.0469494712379392
+          ],
+          "paired_ratio_median": 1.0469494712379392,
+          "paired_ratio_max": 1.0469494712379392
+        }
+      }
+    },
+    {
+      "case": "H1-early",
+      "source": "FileList",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 753.811833,
+          "control_max": 753.811833,
+          "condition_median": 755.208459,
+          "condition_max": 755.208459,
+          "paired_ratios": [
+            1.0018527514942843
+          ],
+          "paired_ratio_median": 1.0018527514942843,
+          "paired_ratio_max": 1.0018527514942843
+        },
+        "terminal_publish_ms": {
+          "control_median": 753.9790830000001,
+          "control_max": 753.9790830000001,
+          "condition_median": 755.334584,
+          "condition_max": 755.334584,
+          "paired_ratios": [
+            1.0017977965577063
+          ],
+          "paired_ratio_median": 1.0017977965577063,
+          "paired_ratio_max": 1.0017977965577063
+        },
+        "index_ready_ms": {
+          "control_median": 778.218041,
+          "control_max": 778.218041,
+          "condition_median": 778.225417,
+          "condition_max": 778.225417,
+          "paired_ratios": [
+            1.0000094780634878
+          ],
+          "paired_ratio_median": 1.0000094780634878,
+          "paired_ratio_max": 1.0000094780634878
+        },
+        "results_ready_ms": {
+          "control_median": 778.218041,
+          "control_max": 778.218041,
+          "condition_median": 778.225417,
+          "condition_max": 778.225417,
+          "paired_ratios": [
+            1.0000094780634878
+          ],
+          "paired_ratio_median": 1.0000094780634878,
+          "paired_ratio_max": 1.0000094780634878
+        },
+        "full_wait_ms": {
+          "control_median": 417.682373,
+          "control_max": 417.682373,
+          "condition_median": 415.312374,
+          "condition_max": 415.312374,
+          "paired_ratios": [
+            0.9943258342865238
+          ],
+          "paired_ratio_median": 0.9943258342865238,
+          "paired_ratio_max": 0.9943258342865238
+        },
+        "max_frame_ms": {
+          "control_median": 12.740042,
+          "control_max": 12.740042,
+          "condition_median": 0.817916,
+          "condition_max": 0.817916,
+          "paired_ratios": [
+            0.06420041629376104
+          ],
+          "paired_ratio_median": 0.06420041629376104,
+          "paired_ratio_max": 0.06420041629376104
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.005583,
+          "control_max": 24.005583,
+          "condition_median": 24.030541999999997,
+          "condition_max": 24.030541999999997,
+          "paired_ratios": [
+            1.0010397164692895
+          ],
+          "paired_ratio_median": 1.0010397164692895,
+          "paired_ratio_max": 1.0010397164692895
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 297.833917,
+          "control_max": 297.833917,
+          "condition_median": 293.085292,
+          "condition_max": 293.085292,
+          "paired_ratios": [
+            0.9840561308536261
+          ],
+          "paired_ratio_median": 0.9840561308536261,
+          "paired_ratio_max": 0.9840561308536261
+        }
+      }
+    },
+    {
+      "case": "H1-late",
+      "source": "FileList",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 827.2249579999999,
+          "control_max": 827.2249579999999,
+          "condition_median": 787.492458,
+          "condition_max": 787.492458,
+          "paired_ratios": [
+            0.9519689298349242
+          ],
+          "paired_ratio_median": 0.9519689298349242,
+          "paired_ratio_max": 0.9519689298349242
+        },
+        "terminal_publish_ms": {
+          "control_median": 827.445833,
+          "control_max": 827.445833,
+          "condition_median": 787.666208,
+          "condition_max": 787.666208,
+          "paired_ratios": [
+            0.9519247986834686
+          ],
+          "paired_ratio_median": 0.9519247986834686,
+          "paired_ratio_max": 0.9519247986834686
+        },
+        "index_ready_ms": {
+          "control_median": 851.144916,
+          "control_max": 851.144916,
+          "condition_median": 806.19075,
+          "condition_max": 806.19075,
+          "paired_ratios": [
+            0.94718388707382
+          ],
+          "paired_ratio_median": 0.94718388707382,
+          "paired_ratio_max": 0.94718388707382
+        },
+        "results_ready_ms": {
+          "control_median": 851.144916,
+          "control_max": 851.144916,
+          "condition_median": 806.19075,
+          "condition_max": 806.19075,
+          "paired_ratios": [
+            0.94718388707382
+          ],
+          "paired_ratio_median": 0.94718388707382,
+          "paired_ratio_max": 0.94718388707382
+        },
+        "full_wait_ms": {
+          "control_median": 452.212418,
+          "control_max": 452.212418,
+          "condition_median": 414.961791,
+          "condition_max": 414.961791,
+          "paired_ratios": [
+            0.9176258202621936
+          ],
+          "paired_ratio_median": 0.9176258202621936,
+          "paired_ratio_max": 0.9176258202621936
+        },
+        "max_frame_ms": {
+          "control_median": 1.360792,
+          "control_max": 1.360792,
+          "condition_median": 1.2462090000000001,
+          "condition_max": 1.2462090000000001,
+          "paired_ratios": [
+            0.9157968300813056
+          ],
+          "paired_ratio_median": 0.9157968300813056,
+          "paired_ratio_max": 0.9157968300813056
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.964792,
+          "control_max": 23.964792,
+          "condition_median": 23.921958,
+          "condition_max": 23.921958,
+          "paired_ratios": [
+            0.9982126279251663
+          ],
+          "paired_ratio_median": 0.9982126279251663,
+          "paired_ratio_max": 0.9982126279251663
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 332.284875,
+          "control_max": 332.284875,
+          "condition_median": 317.756709,
+          "condition_max": 317.756709,
+          "paired_ratios": [
+            0.9562779798508735
+          ],
+          "paired_ratio_median": 0.9562779798508735,
+          "paired_ratio_max": 0.9562779798508735
+        }
+      }
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 242.89054099999998,
+          "control_max": 242.89054099999998,
+          "condition_median": 253.893708,
+          "condition_max": 253.893708,
+          "paired_ratios": [
+            1.0453009283716816
+          ],
+          "paired_ratio_median": 1.0453009283716816,
+          "paired_ratio_max": 1.0453009283716816
+        },
+        "terminal_publish_ms": {
+          "control_median": 242.928208,
+          "control_max": 242.928208,
+          "condition_median": 253.937958,
+          "condition_max": 253.937958,
+          "paired_ratios": [
+            1.045321002820718
+          ],
+          "paired_ratio_median": 1.045321002820718,
+          "paired_ratio_max": 1.045321002820718
+        },
+        "index_ready_ms": {
+          "control_median": 263.498791,
+          "control_max": 263.498791,
+          "condition_median": 290.381208,
+          "condition_max": 290.381208,
+          "paired_ratios": [
+            1.102021025971235
+          ],
+          "paired_ratio_median": 1.102021025971235,
+          "paired_ratio_max": 1.102021025971235
+        },
+        "results_ready_ms": {
+          "control_median": 263.498791,
+          "control_max": 263.498791,
+          "condition_median": 497.07433299999997,
+          "condition_max": 497.07433299999997,
+          "paired_ratios": [
+            1.8864387616867662
+          ],
+          "paired_ratio_median": 1.8864387616867662,
+          "paired_ratio_max": 1.8864387616867662
+        },
+        "full_wait_ms": {
+          "control_median": 189.537458,
+          "control_max": 189.537458,
+          "condition_median": 204.634918,
+          "condition_max": 204.634918,
+          "paired_ratios": [
+            1.0796542285588742
+          ],
+          "paired_ratio_median": 1.0796542285588742,
+          "paired_ratio_max": 1.0796542285588742
+        },
+        "max_frame_ms": {
+          "control_median": 0.764583,
+          "control_max": 0.764583,
+          "condition_median": 0.780375,
+          "condition_max": 0.780375,
+          "paired_ratios": [
+            1.0206543959256222
+          ],
+          "paired_ratio_median": 1.0206543959256222,
+          "paired_ratio_max": 1.0206543959256222
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.999291,
+          "control_max": 23.999291,
+          "condition_median": 44.533708,
+          "condition_max": 44.533708,
+          "paired_ratios": [
+            1.855625984950972
+          ],
+          "paired_ratio_median": 1.855625984950972,
+          "paired_ratio_max": 1.855625984950972
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.999291,
+          "control_max": 23.999291,
+          "condition_median": 230.464542,
+          "condition_max": 230.464542,
+          "paired_ratios": [
+            9.602972937825538
+          ],
+          "paired_ratio_median": 9.602972937825538,
+          "paired_ratio_max": 9.602972937825538
+        }
+      }
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 976.8054999999999,
+          "control_max": 976.8054999999999,
+          "condition_median": 980.226709,
+          "condition_max": 980.226709,
+          "paired_ratios": [
+            1.0035024464952338
+          ],
+          "paired_ratio_median": 1.0035024464952338,
+          "paired_ratio_max": 1.0035024464952338
+        },
+        "terminal_publish_ms": {
+          "control_median": 976.806167,
+          "control_max": 976.806167,
+          "condition_median": 980.22725,
+          "condition_max": 980.22725,
+          "paired_ratios": [
+            1.003502315111817
+          ],
+          "paired_ratio_median": 1.003502315111817,
+          "paired_ratio_max": 1.003502315111817
+        },
+        "index_ready_ms": {
+          "control_median": 997.087625,
+          "control_max": 997.087625,
+          "condition_median": 1003.4321669999999,
+          "condition_max": 1003.4321669999999,
+          "paired_ratios": [
+            1.0063630736566407
+          ],
+          "paired_ratio_median": 1.0063630736566407,
+          "paired_ratio_max": 1.0063630736566407
+        },
+        "results_ready_ms": {
+          "control_median": 997.087625,
+          "control_max": 997.087625,
+          "condition_median": 1238.7005840000002,
+          "condition_max": 1238.7005840000002,
+          "paired_ratios": [
+            1.2423186818711145
+          ],
+          "paired_ratio_median": 1.2423186818711145,
+          "paired_ratio_max": 1.2423186818711145
+        },
+        "full_wait_ms": {
+          "control_median": 957.5472139999999,
+          "control_max": 957.5472139999999,
+          "condition_median": 960.850587,
+          "condition_max": 960.850587,
+          "paired_ratios": [
+            1.0034498278013892
+          ],
+          "paired_ratio_median": 1.0034498278013892,
+          "paired_ratio_max": 1.0034498278013892
+        },
+        "max_frame_ms": {
+          "control_median": 8.068917,
+          "control_max": 8.068917,
+          "condition_median": 8.475833999999999,
+          "condition_max": 8.475833999999999,
+          "paired_ratios": [
+            1.0504301878430524
+          ],
+          "paired_ratio_median": 1.0504301878430524,
+          "paired_ratio_max": 1.0504301878430524
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.858417,
+          "control_max": 24.858417,
+          "condition_median": 42.490708000000005,
+          "condition_max": 42.490708000000005,
+          "paired_ratios": [
+            1.7093086820452004
+          ],
+          "paired_ratio_median": 1.7093086820452004,
+          "paired_ratio_max": 1.7093086820452004
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.858417,
+          "control_max": 24.858417,
+          "condition_median": 235.268417,
+          "condition_max": 235.268417,
+          "paired_ratios": [
+            9.46433624474157
+          ],
+          "paired_ratio_median": 9.46433624474157,
+          "paired_ratio_max": 9.46433624474157
+        }
+      }
+    },
+    {
+      "case": "O1-modified-shown",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 250.6295,
+          "control_max": 250.6295,
+          "condition_median": 246.653792,
+          "condition_max": 246.653792,
+          "paired_ratios": [
+            0.9841371107551187
+          ],
+          "paired_ratio_median": 0.9841371107551187,
+          "paired_ratio_max": 0.9841371107551187
+        },
+        "terminal_publish_ms": {
+          "control_median": 250.68025,
+          "control_max": 250.68025,
+          "condition_median": 246.689875,
+          "condition_max": 246.689875,
+          "paired_ratios": [
+            0.9840818133857773
+          ],
+          "paired_ratio_median": 0.9840818133857773,
+          "paired_ratio_max": 0.9840818133857773
+        },
+        "index_ready_ms": {
+          "control_median": 271.004,
+          "control_max": 271.004,
+          "condition_median": 267.565917,
+          "condition_max": 267.565917,
+          "paired_ratios": [
+            0.9873135341175776
+          ],
+          "paired_ratio_median": 0.9873135341175776,
+          "paired_ratio_max": 0.9873135341175776
+        },
+        "results_ready_ms": {
+          "control_median": 271.004,
+          "control_max": 271.004,
+          "condition_median": 267.565917,
+          "condition_max": 267.565917,
+          "paired_ratios": [
+            0.9873135341175776
+          ],
+          "paired_ratio_median": 0.9873135341175776,
+          "paired_ratio_max": 0.9873135341175776
+        },
+        "full_wait_ms": {
+          "control_median": 197.11525,
+          "control_max": 197.11525,
+          "condition_median": 192.13704,
+          "condition_max": 192.13704,
+          "paired_ratios": [
+            0.9747446734841673
+          ],
+          "paired_ratio_median": 0.9747446734841673,
+          "paired_ratio_max": 0.9747446734841673
+        },
+        "max_frame_ms": {
+          "control_median": 1.080208,
+          "control_max": 1.080208,
+          "condition_median": 1.26325,
+          "condition_max": 1.26325,
+          "paired_ratios": [
+            1.169450698384015
+          ],
+          "paired_ratio_median": 1.169450698384015,
+          "paired_ratio_max": 1.169450698384015
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.085124999999998,
+          "control_max": 24.085124999999998,
+          "condition_median": 24.496541999999998,
+          "condition_max": 24.496541999999998,
+          "paired_ratios": [
+            1.0170817880330703
+          ],
+          "paired_ratio_median": 1.0170817880330703,
+          "paired_ratio_max": 1.0170817880330703
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.085124999999998,
+          "control_max": 24.085124999999998,
+          "condition_median": 24.496541999999998,
+          "condition_max": 24.496541999999998,
+          "paired_ratios": [
+            1.0170817880330703
+          ],
+          "paired_ratio_median": 1.0170817880330703,
+          "paired_ratio_max": 1.0170817880330703
+        }
+      }
+    },
+    {
+      "case": "O1-modified-shown",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 939.663125,
+          "control_max": 939.663125,
+          "condition_median": 979.825583,
+          "condition_max": 979.825583,
+          "paired_ratios": [
+            1.0427413366891458
+          ],
+          "paired_ratio_median": 1.0427413366891458,
+          "paired_ratio_max": 1.0427413366891458
+        },
+        "terminal_publish_ms": {
+          "control_median": 939.663833,
+          "control_max": 939.663833,
+          "condition_median": 979.826291,
+          "condition_max": 979.826291,
+          "paired_ratios": [
+            1.042741304485218
+          ],
+          "paired_ratio_median": 1.042741304485218,
+          "paired_ratio_max": 1.042741304485218
+        },
+        "index_ready_ms": {
+          "control_median": 962.875292,
+          "control_max": 962.875292,
+          "condition_median": 1003.9116660000001,
+          "condition_max": 1003.9116660000001,
+          "paired_ratios": [
+            1.0426185761966775
+          ],
+          "paired_ratio_median": 1.0426185761966775,
+          "paired_ratio_max": 1.0426185761966775
+        },
+        "results_ready_ms": {
+          "control_median": 962.875292,
+          "control_max": 962.875292,
+          "condition_median": 1003.9116660000001,
+          "condition_max": 1003.9116660000001,
+          "paired_ratios": [
+            1.0426185761966775
+          ],
+          "paired_ratio_median": 1.0426185761966775,
+          "paired_ratio_max": 1.0426185761966775
+        },
+        "full_wait_ms": {
+          "control_median": 922.350291,
+          "control_max": 922.350291,
+          "condition_median": 960.9902529999999,
+          "condition_max": 960.9902529999999,
+          "paired_ratios": [
+            1.0418929363139324
+          ],
+          "paired_ratio_median": 1.0418929363139324,
+          "paired_ratio_max": 1.0418929363139324
+        },
+        "max_frame_ms": {
+          "control_median": 7.746917,
+          "control_max": 7.746917,
+          "condition_median": 7.837791999999999,
+          "condition_max": 7.837791999999999,
+          "paired_ratios": [
+            1.0117304729094168
+          ],
+          "paired_ratio_median": 1.0117304729094168,
+          "paired_ratio_max": 1.0117304729094168
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 27.058208,
+          "control_max": 27.058208,
+          "condition_median": 25.941499999999998,
+          "condition_max": 25.941499999999998,
+          "paired_ratios": [
+            0.9587294177057105
+          ],
+          "paired_ratio_median": 0.9587294177057105,
+          "paired_ratio_max": 0.9587294177057105
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 27.058208,
+          "control_max": 27.058208,
+          "condition_median": 25.941499999999998,
+          "condition_max": 25.941499999999998,
+          "paired_ratios": [
+            0.9587294177057105
+          ],
+          "paired_ratio_median": 0.9587294177057105,
+          "paired_ratio_max": 0.9587294177057105
+        }
+      }
+    },
+    {
+      "case": "O1-name-all",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 240.71975,
+          "control_max": 240.71975,
+          "condition_median": 275.592625,
+          "condition_max": 275.592625,
+          "paired_ratios": [
+            1.144869189171225
+          ],
+          "paired_ratio_median": 1.144869189171225,
+          "paired_ratio_max": 1.144869189171225
+        },
+        "terminal_publish_ms": {
+          "control_median": 240.767833,
+          "control_max": 240.767833,
+          "condition_median": 275.64725,
+          "condition_max": 275.64725,
+          "paired_ratios": [
+            1.144867429196823
+          ],
+          "paired_ratio_median": 1.144867429196823,
+          "paired_ratio_max": 1.144867429196823
+        },
+        "index_ready_ms": {
+          "control_median": 261.010583,
+          "control_max": 261.010583,
+          "condition_median": 306.47258300000004,
+          "condition_max": 306.47258300000004,
+          "paired_ratios": [
+            1.1741768455419297
+          ],
+          "paired_ratio_median": 1.1741768455419297,
+          "paired_ratio_max": 1.1741768455419297
+        },
+        "results_ready_ms": {
+          "control_median": 261.010583,
+          "control_max": 261.010583,
+          "condition_median": 362.424375,
+          "condition_max": 362.424375,
+          "paired_ratios": [
+            1.3885428354451053
+          ],
+          "paired_ratio_median": 1.3885428354451053,
+          "paired_ratio_max": 1.3885428354451053
+        },
+        "full_wait_ms": {
+          "control_median": 185.439626,
+          "control_max": 185.439626,
+          "condition_median": 216.31121000000002,
+          "condition_max": 216.31121000000002,
+          "paired_ratios": [
+            1.1664778163433096
+          ],
+          "paired_ratio_median": 1.1664778163433096,
+          "paired_ratio_max": 1.1664778163433096
+        },
+        "max_frame_ms": {
+          "control_median": 0.785916,
+          "control_max": 0.785916,
+          "condition_median": 0.758417,
+          "condition_max": 0.758417,
+          "paired_ratios": [
+            0.9650102555489392
+          ],
+          "paired_ratio_median": 0.9650102555489392,
+          "paired_ratio_max": 0.9650102555489392
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.970083,
+          "control_max": 24.970083,
+          "condition_median": 44.955124999999995,
+          "condition_max": 44.955124999999995,
+          "paired_ratios": [
+            1.800359454151594
+          ],
+          "paired_ratio_median": 1.800359454151594,
+          "paired_ratio_max": 1.800359454151594
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.739957999999998,
+          "control_max": 24.739957999999998,
+          "condition_median": 72.313042,
+          "condition_max": 72.313042,
+          "paired_ratios": [
+            2.922925010624513
+          ],
+          "paired_ratio_median": 2.922925010624513,
+          "paired_ratio_max": 2.922925010624513
+        }
+      }
+    },
+    {
+      "case": "O1-name-all",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 965.5789169999999,
+          "control_max": 965.5789169999999,
+          "condition_median": 942.2994580000001,
+          "condition_max": 942.2994580000001,
+          "paired_ratios": [
+            0.9758906718134155
+          ],
+          "paired_ratio_median": 0.9758906718134155,
+          "paired_ratio_max": 0.9758906718134155
+        },
+        "terminal_publish_ms": {
+          "control_median": 965.579542,
+          "control_max": 965.579542,
+          "condition_median": 942.300167,
+          "condition_max": 942.300167,
+          "paired_ratios": [
+            0.9758907744132798
+          ],
+          "paired_ratio_median": 0.9758907744132798,
+          "paired_ratio_max": 0.9758907744132798
+        },
+        "index_ready_ms": {
+          "control_median": 988.7452920000001,
+          "control_max": 988.7452920000001,
+          "condition_median": 964.0690830000001,
+          "condition_max": 964.0690830000001,
+          "paired_ratios": [
+            0.9750429061967154
+          ],
+          "paired_ratio_median": 0.9750429061967154,
+          "paired_ratio_max": 0.9750429061967154
+        },
+        "results_ready_ms": {
+          "control_median": 988.7452920000001,
+          "control_max": 988.7452920000001,
+          "condition_median": 1026.270875,
+          "condition_max": 1026.270875,
+          "paired_ratios": [
+            1.0379527298927456
+          ],
+          "paired_ratio_median": 1.0379527298927456,
+          "paired_ratio_max": 1.0379527298927456
+        },
+        "full_wait_ms": {
+          "control_median": 946.611416,
+          "control_max": 946.611416,
+          "condition_median": 924.12733,
+          "condition_max": 924.12733,
+          "paired_ratios": [
+            0.9762478186719862
+          ],
+          "paired_ratio_median": 0.9762478186719862,
+          "paired_ratio_max": 0.9762478186719862
+        },
+        "max_frame_ms": {
+          "control_median": 8.771917,
+          "control_max": 8.771917,
+          "condition_median": 8.606917000000001,
+          "condition_max": 8.606917000000001,
+          "paired_ratios": [
+            0.9811899724997399
+          ],
+          "paired_ratio_median": 0.9811899724997399,
+          "paired_ratio_max": 0.9811899724997399
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 28.570917,
+          "control_max": 28.570917,
+          "condition_median": 41.488375,
+          "condition_max": 41.488375,
+          "paired_ratios": [
+            1.4521191251929364
+          ],
+          "paired_ratio_median": 1.4521191251929364,
+          "paired_ratio_max": 1.4521191251929364
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 28.570917,
+          "control_max": 28.570917,
+          "condition_median": 62.201792,
+          "condition_max": 62.201792,
+          "paired_ratios": [
+            2.1771017010059563
+          ],
+          "paired_ratio_median": 2.1771017010059563,
+          "paired_ratio_max": 2.1771017010059563
+        }
+      }
+    },
+    {
+      "case": "O1-name-shown",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 233.850084,
+          "control_max": 233.850084,
+          "condition_median": 245.598875,
+          "condition_max": 245.598875,
+          "paired_ratios": [
+            1.050240696086301
+          ],
+          "paired_ratio_median": 1.050240696086301,
+          "paired_ratio_max": 1.050240696086301
+        },
+        "terminal_publish_ms": {
+          "control_median": 233.896667,
+          "control_max": 233.896667,
+          "condition_median": 245.656208,
+          "condition_max": 245.656208,
+          "paired_ratios": [
+            1.050276650586047
+          ],
+          "paired_ratio_median": 1.050276650586047,
+          "paired_ratio_max": 1.050276650586047
+        },
+        "index_ready_ms": {
+          "control_median": 252.24333399999998,
+          "control_max": 252.24333399999998,
+          "condition_median": 266.261958,
+          "condition_max": 266.261958,
+          "paired_ratios": [
+            1.0555757957116123
+          ],
+          "paired_ratio_median": 1.0555757957116123,
+          "paired_ratio_max": 1.0555757957116123
+        },
+        "results_ready_ms": {
+          "control_median": 252.24333399999998,
+          "control_max": 252.24333399999998,
+          "condition_median": 266.261958,
+          "condition_max": 266.261958,
+          "paired_ratios": [
+            1.0555757957116123
+          ],
+          "paired_ratio_median": 1.0555757957116123,
+          "paired_ratio_max": 1.0555757957116123
+        },
+        "full_wait_ms": {
+          "control_median": 179.45600100000001,
+          "control_max": 179.45600100000001,
+          "condition_median": 195.82250000000002,
+          "condition_max": 195.82250000000002,
+          "paired_ratios": [
+            1.0912006224857311
+          ],
+          "paired_ratio_median": 1.0912006224857311,
+          "paired_ratio_max": 1.0912006224857311
+        },
+        "max_frame_ms": {
+          "control_median": 0.803125,
+          "control_max": 0.803125,
+          "condition_median": 0.7489159999999999,
+          "condition_max": 0.7489159999999999,
+          "paired_ratios": [
+            0.9325024124513618
+          ],
+          "paired_ratio_median": 0.9325024124513618,
+          "paired_ratio_max": 0.9325024124513618
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.914833,
+          "control_max": 23.914833,
+          "condition_median": 24.18225,
+          "condition_max": 24.18225,
+          "paired_ratios": [
+            1.0111820559232003
+          ],
+          "paired_ratio_median": 1.0111820559232003,
+          "paired_ratio_max": 1.0111820559232003
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.914833,
+          "control_max": 23.914833,
+          "condition_median": 24.18225,
+          "condition_max": 24.18225,
+          "paired_ratios": [
+            1.0111820559232003
+          ],
+          "paired_ratio_median": 1.0111820559232003,
+          "paired_ratio_max": 1.0111820559232003
+        }
+      }
+    },
+    {
+      "case": "O1-name-shown",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 927.365709,
+          "control_max": 927.365709,
+          "condition_median": 939.45325,
+          "condition_max": 939.45325,
+          "paired_ratios": [
+            1.013034276426971
+          ],
+          "paired_ratio_median": 1.013034276426971,
+          "paired_ratio_max": 1.013034276426971
+        },
+        "terminal_publish_ms": {
+          "control_median": 927.366542,
+          "control_max": 927.366542,
+          "condition_median": 939.453917,
+          "condition_max": 939.453917,
+          "paired_ratios": [
+            1.0130340857175328
+          ],
+          "paired_ratio_median": 1.0130340857175328,
+          "paired_ratio_max": 1.0130340857175328
+        },
+        "index_ready_ms": {
+          "control_median": 945.6309590000001,
+          "control_max": 945.6309590000001,
+          "condition_median": 963.100708,
+          "condition_max": 963.100708,
+          "paired_ratios": [
+            1.0184741720157662
+          ],
+          "paired_ratio_median": 1.0184741720157662,
+          "paired_ratio_max": 1.0184741720157662
+        },
+        "results_ready_ms": {
+          "control_median": 945.6309590000001,
+          "control_max": 945.6309590000001,
+          "condition_median": 963.100708,
+          "condition_max": 963.100708,
+          "paired_ratios": [
+            1.0184741720157662
+          ],
+          "paired_ratio_median": 1.0184741720157662,
+          "paired_ratio_max": 1.0184741720157662
+        },
+        "full_wait_ms": {
+          "control_median": 909.438453,
+          "control_max": 909.438453,
+          "condition_median": 920.991089,
+          "condition_max": 920.991089,
+          "paired_ratios": [
+            1.0127030432481614
+          ],
+          "paired_ratio_median": 1.0127030432481614,
+          "paired_ratio_max": 1.0127030432481614
+        },
+        "max_frame_ms": {
+          "control_median": 8.119667,
+          "control_max": 8.119667,
+          "condition_median": 9.349,
+          "condition_max": 9.349,
+          "paired_ratios": [
+            1.1514018986246604
+          ],
+          "paired_ratio_median": 1.1514018986246604,
+          "paired_ratio_max": 1.1514018986246604
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 31.278124999999996,
+          "control_max": 31.278124999999996,
+          "condition_median": 31.767249999999997,
+          "condition_max": 31.767249999999997,
+          "paired_ratios": [
+            1.01563792586672
+          ],
+          "paired_ratio_median": 1.01563792586672,
+          "paired_ratio_max": 1.01563792586672
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 31.278124999999996,
+          "control_max": 31.278124999999996,
+          "condition_median": 31.767249999999997,
+          "condition_max": 31.767249999999997,
+          "paired_ratios": [
+            1.01563792586672
+          ],
+          "paired_ratio_median": 1.01563792586672,
+          "paired_ratio_max": 1.01563792586672
+        }
+      }
+    },
+    {
+      "case": "P1-preview",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 239.71425,
+          "control_max": 239.71425,
+          "condition_median": 228.667125,
+          "condition_max": 228.667125,
+          "paired_ratios": [
+            0.9539154430744105
+          ],
+          "paired_ratio_median": 0.9539154430744105,
+          "paired_ratio_max": 0.9539154430744105
+        },
+        "terminal_publish_ms": {
+          "control_median": 239.768583,
+          "control_max": 239.768583,
+          "condition_median": 228.69525,
+          "condition_max": 228.69525,
+          "paired_ratios": [
+            0.9538165807152473
+          ],
+          "paired_ratio_median": 0.9538165807152473,
+          "paired_ratio_max": 0.9538165807152473
+        },
+        "index_ready_ms": {
+          "control_median": 1339.5604999999998,
+          "control_max": 1339.5604999999998,
+          "condition_median": 1298.656708,
+          "condition_max": 1298.656708,
+          "paired_ratios": [
+            0.9694647669888744
+          ],
+          "paired_ratio_median": 0.9694647669888744,
+          "paired_ratio_max": 0.9694647669888744
+        },
+        "results_ready_ms": {
+          "control_median": 1339.5604999999998,
+          "control_max": 1339.5604999999998,
+          "condition_median": 1298.656708,
+          "condition_max": 1298.656708,
+          "paired_ratios": [
+            0.9694647669888744
+          ],
+          "paired_ratio_median": 0.9694647669888744,
+          "paired_ratio_max": 0.9694647669888744
+        },
+        "full_wait_ms": {
+          "control_median": 183.341,
+          "control_max": 183.341,
+          "condition_median": 175.159334,
+          "condition_max": 175.159334,
+          "paired_ratios": [
+            0.9553745970623047
+          ],
+          "paired_ratio_median": 0.9553745970623047,
+          "paired_ratio_max": 0.9553745970623047
+        },
+        "max_frame_ms": {
+          "control_median": 0.8565419999999999,
+          "control_max": 0.8565419999999999,
+          "condition_median": 1.0098340000000001,
+          "condition_max": 1.0098340000000001,
+          "paired_ratios": [
+            1.1789661219181315
+          ],
+          "paired_ratio_median": 1.1789661219181315,
+          "paired_ratio_max": 1.1789661219181315
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1102.599958,
+          "control_max": 1102.599958,
+          "condition_median": 1073.738458,
+          "condition_max": 1073.738458,
+          "paired_ratios": [
+            0.9738241419377961
+          ],
+          "paired_ratio_median": 0.9738241419377961,
+          "paired_ratio_max": 0.9738241419377961
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1085.920333,
+          "control_max": 1085.920333,
+          "condition_median": 1051.2250000000001,
+          "condition_max": 1051.2250000000001,
+          "paired_ratios": [
+            0.9680498357516252
+          ],
+          "paired_ratio_median": 0.9680498357516252,
+          "paired_ratio_max": 0.9680498357516252
+        }
+      }
+    },
+    {
+      "case": "P1-preview",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 957.571084,
+          "control_max": 957.571084,
+          "condition_median": 988.6613749999999,
+          "condition_max": 988.6613749999999,
+          "paired_ratios": [
+            1.0324678674194383
+          ],
+          "paired_ratio_median": 1.0324678674194383,
+          "paired_ratio_max": 1.0324678674194383
+        },
+        "terminal_publish_ms": {
+          "control_median": 957.573042,
+          "control_max": 957.573042,
+          "condition_median": 988.663334,
+          "condition_max": 988.663334,
+          "paired_ratios": [
+            1.0324678020749878
+          ],
+          "paired_ratio_median": 1.0324678020749878,
+          "paired_ratio_max": 1.0324678020749878
+        },
+        "index_ready_ms": {
+          "control_median": 2030.816792,
+          "control_max": 2030.816792,
+          "condition_median": 2084.780709,
+          "condition_max": 2084.780709,
+          "paired_ratios": [
+            1.0265725186105317
+          ],
+          "paired_ratio_median": 1.0265725186105317,
+          "paired_ratio_max": 1.0265725186105317
+        },
+        "results_ready_ms": {
+          "control_median": 2030.816792,
+          "control_max": 2030.816792,
+          "condition_median": 2084.780709,
+          "condition_max": 2084.780709,
+          "paired_ratios": [
+            1.0265725186105317
+          ],
+          "paired_ratio_median": 1.0265725186105317,
+          "paired_ratio_max": 1.0265725186105317
+        },
+        "full_wait_ms": {
+          "control_median": 907.971537,
+          "control_max": 907.971537,
+          "condition_median": 937.469958,
+          "condition_max": 937.469958,
+          "paired_ratios": [
+            1.0324882662043182
+          ],
+          "paired_ratio_median": 1.0324882662043182,
+          "paired_ratio_max": 1.0324882662043182
+        },
+        "max_frame_ms": {
+          "control_median": 0.822583,
+          "control_max": 0.822583,
+          "condition_median": 0.99825,
+          "condition_max": 0.99825,
+          "paired_ratios": [
+            1.213555349429784
+          ],
+          "paired_ratio_median": 1.213555349429784,
+          "paired_ratio_max": 1.213555349429784
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1074.062458,
+          "control_max": 1074.062458,
+          "condition_median": 1096.088709,
+          "condition_max": 1096.088709,
+          "paired_ratios": [
+            1.0205074209939475
+          ],
+          "paired_ratio_median": 1.0205074209939475,
+          "paired_ratio_max": 1.0205074209939475
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1050.324875,
+          "control_max": 1050.324875,
+          "condition_median": 1096.088709,
+          "condition_max": 1096.088709,
+          "paired_ratios": [
+            1.04357112269668
+          ],
+          "paired_ratio_median": 1.04357112269668,
+          "paired_ratio_max": 1.04357112269668
+        }
+      }
+    },
+    {
+      "case": "R1-natural",
+      "source": "FileList",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 227.843333,
+          "control_max": 227.843333,
+          "condition_median": 265.027416,
+          "condition_max": 265.027416,
+          "paired_ratios": [
+            1.1632002240767783
+          ],
+          "paired_ratio_median": 1.1632002240767783,
+          "paired_ratio_max": 1.1632002240767783
+        },
+        "terminal_publish_ms": {
+          "control_median": 227.890167,
+          "control_max": 227.890167,
+          "condition_median": 265.080125,
+          "condition_max": 265.080125,
+          "paired_ratios": [
+            1.1631924645524527
+          ],
+          "paired_ratio_median": 1.1631924645524527,
+          "paired_ratio_max": 1.1631924645524527
+        },
+        "index_ready_ms": {
+          "control_median": 261.459292,
+          "control_max": 261.459292,
+          "condition_median": 298.086791,
+          "condition_max": 298.086791,
+          "paired_ratios": [
+            1.1400887255519685
+          ],
+          "paired_ratio_median": 1.1400887255519685,
+          "paired_ratio_max": 1.1400887255519685
+        },
+        "results_ready_ms": {
+          "control_median": 261.459292,
+          "control_max": 261.459292,
+          "condition_median": 298.086791,
+          "condition_max": 298.086791,
+          "paired_ratios": [
+            1.1400887255519685
+          ],
+          "paired_ratio_median": 1.1400887255519685,
+          "paired_ratio_max": 1.1400887255519685
+        },
+        "full_wait_ms": {
+          "control_median": 172.45596,
+          "control_max": 172.45596,
+          "condition_median": 206.123085,
+          "condition_max": 206.123085,
+          "paired_ratios": [
+            1.1952215800486106
+          ],
+          "paired_ratio_median": 1.1952215800486106,
+          "paired_ratio_max": 1.1952215800486106
+        },
+        "max_frame_ms": {
+          "control_median": 0.6443329999999999,
+          "control_max": 0.6443329999999999,
+          "condition_median": 0.646709,
+          "condition_max": 0.646709,
+          "paired_ratios": [
+            1.0036875342408351
+          ],
+          "paired_ratio_median": 1.0036875342408351,
+          "paired_ratio_max": 1.0036875342408351
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.930625,
+          "control_max": 23.930625,
+          "condition_median": 24.044916999999998,
+          "condition_max": 24.044916999999998,
+          "paired_ratios": [
+            1.00477597221134
+          ],
+          "paired_ratio_median": 1.00477597221134,
+          "paired_ratio_max": 1.00477597221134
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.930625,
+          "control_max": 23.930625,
+          "condition_median": 24.044916999999998,
+          "condition_max": 24.044916999999998,
+          "paired_ratios": [
+            1.00477597221134
+          ],
+          "paired_ratio_median": 1.00477597221134,
+          "paired_ratio_max": 1.00477597221134
+        }
+      }
+    },
+    {
+      "case": "R1-natural",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 1017.356916,
+          "control_max": 1017.356916,
+          "condition_median": 973.871625,
+          "condition_max": 973.871625,
+          "paired_ratios": [
+            0.9572566025589392
+          ],
+          "paired_ratio_median": 0.9572566025589392,
+          "paired_ratio_max": 0.9572566025589392
+        },
+        "terminal_publish_ms": {
+          "control_median": 1017.359666,
+          "control_max": 1017.359666,
+          "condition_median": 973.874292,
+          "condition_max": 973.874292,
+          "paired_ratios": [
+            0.9572566365138364
+          ],
+          "paired_ratio_median": 0.9572566365138364,
+          "paired_ratio_max": 0.9572566365138364
+        },
+        "index_ready_ms": {
+          "control_median": 1059.051708,
+          "control_max": 1059.051708,
+          "condition_median": 1012.165167,
+          "condition_max": 1012.165167,
+          "paired_ratios": [
+            0.9557278075793444
+          ],
+          "paired_ratio_median": 0.9557278075793444,
+          "paired_ratio_max": 0.9557278075793444
+        },
+        "results_ready_ms": {
+          "control_median": 1059.051708,
+          "control_max": 1059.051708,
+          "condition_median": 1012.165167,
+          "condition_max": 1012.165167,
+          "paired_ratios": [
+            0.9557278075793444
+          ],
+          "paired_ratio_median": 0.9557278075793444,
+          "paired_ratio_max": 0.9557278075793444
+        },
+        "full_wait_ms": {
+          "control_median": 972.409296,
+          "control_max": 972.409296,
+          "condition_median": 931.682916,
+          "condition_max": 931.682916,
+          "paired_ratios": [
+            0.9581180680115587
+          ],
+          "paired_ratio_median": 0.9581180680115587,
+          "paired_ratio_max": 0.9581180680115587
+        },
+        "max_frame_ms": {
+          "control_median": 28.905709,
+          "control_max": 28.905709,
+          "condition_median": 26.774625,
+          "condition_max": 26.774625,
+          "paired_ratios": [
+            0.9262746331529179
+          ],
+          "paired_ratio_median": 0.9262746331529179,
+          "paired_ratio_max": 0.9262746331529179
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 49.563292000000004,
+          "control_max": 49.563292000000004,
+          "condition_median": 41.985166,
+          "condition_max": 41.985166,
+          "paired_ratios": [
+            0.8471020447955716
+          ],
+          "paired_ratio_median": 0.8471020447955716,
+          "paired_ratio_max": 0.8471020447955716
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 49.563292000000004,
+          "control_max": 49.563292000000004,
+          "condition_median": 41.985166,
+          "condition_max": 41.985166,
+          "paired_ratios": [
+            0.8471020447955716
+          ],
+          "paired_ratio_median": 0.8471020447955716,
+          "paired_ratio_max": 0.8471020447955716
+        }
+      }
+    },
+    {
+      "case": "S1-ignore",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 214.55474999999998,
+          "control_max": 214.55474999999998,
+          "condition_median": 249.226583,
+          "condition_max": 249.226583,
+          "paired_ratios": [
+            1.1615989997890983
+          ],
+          "paired_ratio_median": 1.1615989997890983,
+          "paired_ratio_max": 1.1615989997890983
+        },
+        "terminal_publish_ms": {
+          "control_median": 214.602291,
+          "control_max": 214.602291,
+          "condition_median": 249.27474999999998,
+          "condition_max": 249.27474999999998,
+          "paired_ratios": [
+            1.1615661176701975
+          ],
+          "paired_ratio_median": 1.1615661176701975,
+          "paired_ratio_max": 1.1615661176701975
+        },
+        "index_ready_ms": {
+          "control_median": 233.738916,
+          "control_max": 233.738916,
+          "condition_median": 328.770667,
+          "condition_max": 328.770667,
+          "paired_ratios": [
+            1.406572224370203
+          ],
+          "paired_ratio_median": 1.406572224370203,
+          "paired_ratio_max": 1.406572224370203
+        },
+        "results_ready_ms": {
+          "control_median": 233.738916,
+          "control_max": 233.738916,
+          "condition_median": 328.770667,
+          "condition_max": 328.770667,
+          "paired_ratios": [
+            1.406572224370203
+          ],
+          "paired_ratio_median": 1.406572224370203,
+          "paired_ratio_max": 1.406572224370203
+        },
+        "full_wait_ms": {
+          "control_median": 162.478376,
+          "control_max": 162.478376,
+          "condition_median": 193.587833,
+          "condition_max": 193.587833,
+          "paired_ratios": [
+            1.1914682911404777
+          ],
+          "paired_ratio_median": 1.1914682911404777,
+          "paired_ratio_max": 1.1914682911404777
+        },
+        "max_frame_ms": {
+          "control_median": 4.064540999999999,
+          "control_max": 4.064540999999999,
+          "condition_median": 4.142542,
+          "condition_max": 4.142542,
+          "paired_ratios": [
+            1.0191906047939978
+          ],
+          "paired_ratio_median": 1.0191906047939978,
+          "paired_ratio_max": 1.0191906047939978
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 21.167790999999998,
+          "control_max": 21.167790999999998,
+          "condition_median": 38.434959,
+          "condition_max": 38.434959,
+          "paired_ratios": [
+            1.8157283865850717
+          ],
+          "paired_ratio_median": 1.8157283865850717,
+          "paired_ratio_max": 1.8157283865850717
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 20.935916,
+          "control_max": 20.935916,
+          "condition_median": 25.189084,
+          "condition_max": 25.189084,
+          "paired_ratios": [
+            1.2031517512775654
+          ],
+          "paired_ratio_median": 1.2031517512775654,
+          "paired_ratio_max": 1.2031517512775654
+        }
+      }
+    },
+    {
+      "case": "S1-ignore",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 947.742667,
+          "control_max": 947.742667,
+          "condition_median": 958.348375,
+          "condition_max": 958.348375,
+          "paired_ratios": [
+            1.011190493336732
+          ],
+          "paired_ratio_median": 1.011190493336732,
+          "paired_ratio_max": 1.011190493336732
+        },
+        "terminal_publish_ms": {
+          "control_median": 947.743125,
+          "control_max": 947.743125,
+          "condition_median": 958.349083,
+          "condition_max": 958.349083,
+          "paired_ratios": [
+            1.0111907517134455
+          ],
+          "paired_ratio_median": 1.0111907517134455,
+          "paired_ratio_max": 1.0111907517134455
+        },
+        "index_ready_ms": {
+          "control_median": 971.648375,
+          "control_max": 971.648375,
+          "condition_median": 977.381792,
+          "condition_max": 977.381792,
+          "paired_ratios": [
+            1.0059007117672585
+          ],
+          "paired_ratio_median": 1.0059007117672585,
+          "paired_ratio_max": 1.0059007117672585
+        },
+        "results_ready_ms": {
+          "control_median": 971.648375,
+          "control_max": 971.648375,
+          "condition_median": 1029.697542,
+          "condition_max": 1029.697542,
+          "paired_ratios": [
+            1.059742977494302
+          ],
+          "paired_ratio_median": 1.059742977494302,
+          "paired_ratio_max": 1.059742977494302
+        },
+        "full_wait_ms": {
+          "control_median": 930.269288,
+          "control_max": 930.269288,
+          "condition_median": 942.4019179999999,
+          "condition_max": 942.4019179999999,
+          "paired_ratios": [
+            1.0130420622893872
+          ],
+          "paired_ratio_median": 1.0130420622893872,
+          "paired_ratio_max": 1.0130420622893872
+        },
+        "max_frame_ms": {
+          "control_median": 7.411791,
+          "control_max": 7.411791,
+          "condition_median": 6.708958,
+          "condition_max": 6.708958,
+          "paired_ratios": [
+            0.905173661804549
+          ],
+          "paired_ratio_median": 0.905173661804549,
+          "paired_ratio_max": 0.905173661804549
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.159208000000003,
+          "control_max": 24.159208000000003,
+          "condition_median": 34.013875,
+          "condition_max": 34.013875,
+          "paired_ratios": [
+            1.4079052177538267
+          ],
+          "paired_ratio_median": 1.4079052177538267,
+          "paired_ratio_max": 1.4079052177538267
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.159208000000003,
+          "control_max": 24.159208000000003,
+          "condition_median": 52.31575,
+          "condition_max": 52.31575,
+          "paired_ratios": [
+            2.165457990179148
+          ],
+          "paired_ratio_median": 2.165457990179148,
+          "paired_ratio_max": 2.165457990179148
+        }
+      }
+    },
+    {
+      "case": "S2-files",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 739.41975,
+          "control_max": 739.41975,
+          "condition_median": 812.1503329999999,
+          "condition_max": 812.1503329999999,
+          "paired_ratios": [
+            1.0983616991566696
+          ],
+          "paired_ratio_median": 1.0983616991566696,
+          "paired_ratio_max": 1.0983616991566696
+        },
+        "terminal_publish_ms": {
+          "control_median": 739.4204589999999,
+          "control_max": 739.4204589999999,
+          "condition_median": 812.151042,
+          "condition_max": 812.151042,
+          "paired_ratios": [
+            1.0983616048416642
+          ],
+          "paired_ratio_median": 1.0983616048416642,
+          "paired_ratio_max": 1.0983616048416642
+        },
+        "index_ready_ms": {
+          "control_median": 757.7459170000001,
+          "control_max": 757.7459170000001,
+          "condition_median": 832.4075829999999,
+          "condition_max": 832.4075829999999,
+          "paired_ratios": [
+            1.0985312679685477
+          ],
+          "paired_ratio_median": 1.0985312679685477,
+          "paired_ratio_max": 1.0985312679685477
+        },
+        "results_ready_ms": {
+          "control_median": 757.7459170000001,
+          "control_max": 757.7459170000001,
+          "condition_median": 832.4075829999999,
+          "condition_max": 832.4075829999999,
+          "paired_ratios": [
+            1.0985312679685477
+          ],
+          "paired_ratio_median": 1.0985312679685477,
+          "paired_ratio_max": 1.0985312679685477
+        },
+        "full_wait_ms": {
+          "control_median": 720.750796,
+          "control_max": 720.750796,
+          "condition_median": 791.121172,
+          "condition_max": 791.121172,
+          "paired_ratios": [
+            1.097634822452558
+          ],
+          "paired_ratio_median": 1.097634822452558,
+          "paired_ratio_max": 1.097634822452558
+        },
+        "max_frame_ms": {
+          "control_median": 7.10925,
+          "control_max": 7.10925,
+          "condition_median": 7.588084,
+          "condition_max": 7.588084,
+          "paired_ratios": [
+            1.0673536589654324
+          ],
+          "paired_ratio_median": 1.0673536589654324,
+          "paired_ratio_max": 1.0673536589654324
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 26.502875,
+          "control_max": 26.502875,
+          "condition_median": 39.077417000000004,
+          "condition_max": 39.077417000000004,
+          "paired_ratios": [
+            1.4744595444833817
+          ],
+          "paired_ratio_median": 1.4744595444833817,
+          "paired_ratio_max": 1.4744595444833817
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 26.502875,
+          "control_max": 26.502875,
+          "condition_median": 30.692084,
+          "condition_max": 30.692084,
+          "paired_ratios": [
+            1.1580662097979937
+          ],
+          "paired_ratio_median": 1.1580662097979937,
+          "paired_ratio_max": 1.1580662097979937
+        }
+      }
+    },
+    {
+      "case": "T1-A-B-C-A",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 230.773667,
+          "control_max": 230.773667,
+          "condition_median": 445.274042,
+          "condition_max": 445.274042,
+          "paired_ratios": [
+            1.929483756914085
+          ],
+          "paired_ratio_median": 1.929483756914085,
+          "paired_ratio_max": 1.929483756914085
+        },
+        "terminal_publish_ms": {
+          "control_median": 230.819583,
+          "control_max": 230.819583,
+          "condition_median": 445.3205,
+          "condition_max": 445.3205,
+          "paired_ratios": [
+            1.9293012066484845
+          ],
+          "paired_ratio_median": 1.9293012066484845,
+          "paired_ratio_max": 1.9293012066484845
+        },
+        "index_ready_ms": {
+          "control_median": 262.800042,
+          "control_max": 262.800042,
+          "condition_median": 1438.96325,
+          "condition_max": 1438.96325,
+          "paired_ratios": [
+            5.475506164492926
+          ],
+          "paired_ratio_median": 5.475506164492926,
+          "paired_ratio_max": 5.475506164492926
+        },
+        "results_ready_ms": {
+          "control_median": 262.800042,
+          "control_max": 262.800042,
+          "condition_median": 1438.96325,
+          "condition_max": 1438.96325,
+          "paired_ratios": [
+            5.475506164492926
+          ],
+          "paired_ratio_median": 5.475506164492926,
+          "paired_ratio_max": 5.475506164492926
+        },
+        "full_wait_ms": {
+          "control_median": 177.173331,
+          "control_max": 177.173331,
+          "condition_median": 172.574498,
+          "condition_max": 172.574498,
+          "paired_ratios": [
+            0.9740433112927138
+          ],
+          "paired_ratio_median": 0.9740433112927138,
+          "paired_ratio_max": 0.9740433112927138
+        },
+        "max_frame_ms": {
+          "control_median": 0.465042,
+          "control_max": 0.465042,
+          "condition_median": 1.0539589999999999,
+          "condition_max": 1.0539589999999999,
+          "paired_ratios": [
+            2.2663737898942458
+          ],
+          "paired_ratio_median": 2.2663737898942458,
+          "paired_ratio_max": 2.2663737898942458
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.945791,
+          "control_max": 23.945791,
+          "condition_median": 35.752,
+          "condition_max": 35.752,
+          "paired_ratios": [
+            1.4930390063122159
+          ],
+          "paired_ratio_median": 1.4930390063122159,
+          "paired_ratio_max": 1.4930390063122159
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.945791,
+          "control_max": 23.945791,
+          "condition_median": 950.509375,
+          "condition_max": 950.509375,
+          "paired_ratios": [
+            39.694214945749756
+          ],
+          "paired_ratio_median": 39.694214945749756,
+          "paired_ratio_max": 39.694214945749756
+        }
+      }
+    },
+    {
+      "case": "T1-A-B-C-A",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 993.868208,
+          "control_max": 993.868208,
+          "condition_median": 1329.3087500000001,
+          "condition_max": 1329.3087500000001,
+          "paired_ratios": [
+            1.3375100836307263
+          ],
+          "paired_ratio_median": 1.3375100836307263,
+          "paired_ratio_max": 1.3375100836307263
+        },
+        "terminal_publish_ms": {
+          "control_median": 993.8703330000001,
+          "control_max": 993.8703330000001,
+          "condition_median": 1329.310167,
+          "condition_max": 1329.310167,
+          "paired_ratios": [
+            1.337508649631863
+          ],
+          "paired_ratio_median": 1.337508649631863,
+          "paired_ratio_max": 1.337508649631863
+        },
+        "index_ready_ms": {
+          "control_median": 1034.552541,
+          "control_max": 1034.552541,
+          "condition_median": 2262.001542,
+          "condition_max": 2262.001542,
+          "paired_ratios": [
+            2.186454000503006
+          ],
+          "paired_ratio_median": 2.186454000503006,
+          "paired_ratio_max": 2.186454000503006
+        },
+        "results_ready_ms": {
+          "control_median": 1034.552541,
+          "control_max": 1034.552541,
+          "condition_median": 2262.001542,
+          "condition_max": 2262.001542,
+          "paired_ratios": [
+            2.186454000503006
+          ],
+          "paired_ratio_median": 2.186454000503006,
+          "paired_ratio_max": 2.186454000503006
+        },
+        "full_wait_ms": {
+          "control_median": 947.649213,
+          "control_max": 947.649213,
+          "condition_median": 877.3742119999999,
+          "condition_max": 877.3742119999999,
+          "paired_ratios": [
+            0.9258428118380128
+          ],
+          "paired_ratio_median": 0.9258428118380128,
+          "paired_ratio_max": 0.9258428118380128
+        },
+        "max_frame_ms": {
+          "control_median": 28.067875,
+          "control_max": 28.067875,
+          "condition_median": 27.206958,
+          "condition_max": 27.206958,
+          "paired_ratios": [
+            0.9693273181528704
+          ],
+          "paired_ratio_median": 0.9693273181528704,
+          "paired_ratio_max": 0.9693273181528704
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 43.623166,
+          "control_max": 43.623166,
+          "condition_median": 40.895165999999996,
+          "condition_max": 40.895165999999996,
+          "paired_ratios": [
+            0.9374644197076388
+          ],
+          "paired_ratio_median": 0.9374644197076388,
+          "paired_ratio_max": 0.9374644197076388
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 43.623166,
+          "control_max": 43.623166,
+          "condition_median": 888.68475,
+          "condition_max": 888.68475,
+          "paired_ratios": [
+            20.371853569729442
+          ],
+          "paired_ratio_median": 20.371853569729442,
+          "paired_ratio_max": 20.371853569729442
+        }
+      }
+    },
+    {
+      "case": "T1-S1-dense",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 257.73883400000005,
+          "control_max": 257.73883400000005,
+          "condition_median": 239.309,
+          "condition_max": 239.309,
+          "paired_ratios": [
+            0.9284941515642922
+          ],
+          "paired_ratio_median": 0.9284941515642922,
+          "paired_ratio_max": 0.9284941515642922
+        },
+        "terminal_publish_ms": {
+          "control_median": 257.789875,
+          "control_max": 257.789875,
+          "condition_median": 239.359375,
+          "condition_max": 239.359375,
+          "paired_ratios": [
+            0.9285057258358188
+          ],
+          "paired_ratio_median": 0.9285057258358188,
+          "paired_ratio_max": 0.9285057258358188
+        },
+        "index_ready_ms": {
+          "control_median": 1348.904,
+          "control_max": 1348.904,
+          "condition_median": 1286.703583,
+          "condition_max": 1286.703583,
+          "paired_ratios": [
+            0.9538881810714476
+          ],
+          "paired_ratio_median": 0.9538881810714476,
+          "paired_ratio_max": 0.9538881810714476
+        },
+        "results_ready_ms": {
+          "control_median": 1348.904,
+          "control_max": 1348.904,
+          "condition_median": 1286.703583,
+          "condition_max": 1286.703583,
+          "paired_ratios": [
+            0.9538881810714476
+          ],
+          "paired_ratio_median": 0.9538881810714476,
+          "paired_ratio_max": 0.9538881810714476
+        },
+        "full_wait_ms": {
+          "control_median": 200.904041,
+          "control_max": 200.904041,
+          "condition_median": 187.171375,
+          "condition_max": 187.171375,
+          "paired_ratios": [
+            0.9316456456941054
+          ],
+          "paired_ratio_median": 0.9316456456941054,
+          "paired_ratio_max": 0.9316456456941054
+        },
+        "max_frame_ms": {
+          "control_median": 0.813083,
+          "control_max": 0.813083,
+          "condition_median": 0.958333,
+          "condition_max": 0.958333,
+          "paired_ratios": [
+            1.1786410489458026
+          ],
+          "paired_ratio_median": 1.1786410489458026,
+          "paired_ratio_max": 1.1786410489458026
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1093.9522909999998,
+          "control_max": 1093.9522909999998,
+          "condition_median": 1051.151958,
+          "condition_max": 1051.151958,
+          "paired_ratios": [
+            0.9608755031164335
+          ],
+          "paired_ratio_median": 0.9608755031164335,
+          "paired_ratio_max": 0.9608755031164335
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1073.239541,
+          "control_max": 1073.239541,
+          "condition_median": 1029.358125,
+          "condition_max": 1029.358125,
+          "paired_ratios": [
+            0.9591131203020036
+          ],
+          "paired_ratio_median": 0.9591131203020036,
+          "paired_ratio_max": 0.9591131203020036
+        }
+      }
+    },
+    {
+      "case": "T1-S1-dense",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 979.720958,
+          "control_max": 979.720958,
+          "condition_median": 974.031875,
+          "condition_max": 974.031875,
+          "paired_ratios": [
+            0.9941931598446014
+          ],
+          "paired_ratio_median": 0.9941931598446014,
+          "paired_ratio_max": 0.9941931598446014
+        },
+        "terminal_publish_ms": {
+          "control_median": 979.722667,
+          "control_max": 979.722667,
+          "condition_median": 974.033583,
+          "condition_max": 974.033583,
+          "paired_ratios": [
+            0.9941931689531891
+          ],
+          "paired_ratio_median": 0.9941931689531891,
+          "paired_ratio_max": 0.9941931689531891
+        },
+        "index_ready_ms": {
+          "control_median": 2036.6563750000003,
+          "control_max": 2036.6563750000003,
+          "condition_median": 2028.137375,
+          "condition_max": 2028.137375,
+          "paired_ratios": [
+            0.9958171638060445
+          ],
+          "paired_ratio_median": 0.9958171638060445,
+          "paired_ratio_max": 0.9958171638060445
+        },
+        "results_ready_ms": {
+          "control_median": 2036.6563750000003,
+          "control_max": 2036.6563750000003,
+          "condition_median": 2028.137375,
+          "condition_max": 2028.137375,
+          "paired_ratios": [
+            0.9958171638060445
+          ],
+          "paired_ratio_median": 0.9958171638060445,
+          "paired_ratio_max": 0.9958171638060445
+        },
+        "full_wait_ms": {
+          "control_median": 928.22808,
+          "control_max": 928.22808,
+          "condition_median": 933.192956,
+          "condition_max": 933.192956,
+          "paired_ratios": [
+            1.0053487672986579
+          ],
+          "paired_ratio_median": 1.0053487672986579,
+          "paired_ratio_max": 1.0053487672986579
+        },
+        "max_frame_ms": {
+          "control_median": 0.882917,
+          "control_max": 0.882917,
+          "condition_median": 0.9165840000000001,
+          "condition_max": 0.9165840000000001,
+          "paired_ratios": [
+            1.0381315570999314
+          ],
+          "paired_ratio_median": 1.0381315570999314,
+          "paired_ratio_max": 1.0381315570999314
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1057.115792,
+          "control_max": 1057.115792,
+          "condition_median": 1055.073209,
+          "condition_max": 1055.073209,
+          "paired_ratios": [
+            0.998067777422816
+          ],
+          "paired_ratio_median": 0.998067777422816,
+          "paired_ratio_max": 0.998067777422816
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1035.832083,
+          "control_max": 1035.832083,
+          "condition_median": 1031.4054589999998,
+          "condition_max": 1031.4054589999998,
+          "paired_ratios": [
+            0.9957265042542612
+          ],
+          "paired_ratio_median": 0.9957265042542612,
+          "paired_ratio_max": 0.9957265042542612
+        }
+      }
+    },
+    {
+      "case": "T1-S1-selective",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 239.521541,
+          "control_max": 239.521541,
+          "condition_median": 236.242959,
+          "condition_max": 236.242959,
+          "paired_ratios": [
+            0.9863119534622566
+          ],
+          "paired_ratio_median": 0.9863119534622566,
+          "paired_ratio_max": 0.9863119534622566
+        },
+        "terminal_publish_ms": {
+          "control_median": 239.56995799999999,
+          "control_max": 239.56995799999999,
+          "condition_median": 236.288709,
+          "condition_max": 236.288709,
+          "paired_ratios": [
+            0.9863035873638214
+          ],
+          "paired_ratio_median": 0.9863035873638214,
+          "paired_ratio_max": 0.9863035873638214
+        },
+        "index_ready_ms": {
+          "control_median": 1231.518208,
+          "control_max": 1231.518208,
+          "condition_median": 1226.3215839999998,
+          "condition_max": 1226.3215839999998,
+          "paired_ratios": [
+            0.995780310866504
+          ],
+          "paired_ratio_median": 0.995780310866504,
+          "paired_ratio_max": 0.995780310866504
+        },
+        "results_ready_ms": {
+          "control_median": 1231.518208,
+          "control_max": 1231.518208,
+          "condition_median": 1226.3215839999998,
+          "condition_max": 1226.3215839999998,
+          "paired_ratios": [
+            0.995780310866504
+          ],
+          "paired_ratio_median": 0.995780310866504,
+          "paired_ratio_max": 0.995780310866504
+        },
+        "full_wait_ms": {
+          "control_median": 183.619582,
+          "control_max": 183.619582,
+          "condition_median": 178.038332,
+          "condition_max": 178.038332,
+          "paired_ratios": [
+            0.969604276737761
+          ],
+          "paired_ratio_median": 0.969604276737761,
+          "paired_ratio_max": 0.969604276737761
+        },
+        "max_frame_ms": {
+          "control_median": 0.975458,
+          "control_max": 0.975458,
+          "condition_median": 1.02775,
+          "condition_max": 1.02775,
+          "paired_ratios": [
+            1.0536076386681947
+          ],
+          "paired_ratio_median": 1.0536076386681947,
+          "paired_ratio_max": 1.0536076386681947
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 995.7702499999999,
+          "control_max": 995.7702499999999,
+          "condition_median": 993.8455,
+          "condition_max": 993.8455,
+          "paired_ratios": [
+            0.9980670742071277
+          ],
+          "paired_ratio_median": 0.9980670742071277,
+          "paired_ratio_max": 0.9980670742071277
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 977.617917,
+          "control_max": 977.617917,
+          "condition_median": 972.455375,
+          "condition_max": 972.455375,
+          "paired_ratios": [
+            0.9947192641314899
+          ],
+          "paired_ratio_median": 0.9947192641314899,
+          "paired_ratio_max": 0.9947192641314899
+        }
+      }
+    },
+    {
+      "case": "T1-S1-selective",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 981.598541,
+          "control_max": 981.598541,
+          "condition_median": 998.089792,
+          "condition_max": 998.089792,
+          "paired_ratios": [
+            1.0168004029256192
+          ],
+          "paired_ratio_median": 1.0168004029256192,
+          "paired_ratio_max": 1.0168004029256192
+        },
+        "terminal_publish_ms": {
+          "control_median": 981.6007079999999,
+          "control_max": 981.6007079999999,
+          "condition_median": 998.0917919999999,
+          "condition_max": 998.0917919999999,
+          "paired_ratios": [
+            1.0168001957064603
+          ],
+          "paired_ratio_median": 1.0168001957064603,
+          "paired_ratio_max": 1.0168001957064603
+        },
+        "index_ready_ms": {
+          "control_median": 1991.7442909999997,
+          "control_max": 1991.7442909999997,
+          "condition_median": 2048.401875,
+          "condition_max": 2048.401875,
+          "paired_ratios": [
+            1.0284462138317736
+          ],
+          "paired_ratio_median": 1.0284462138317736,
+          "paired_ratio_max": 1.0284462138317736
+        },
+        "results_ready_ms": {
+          "control_median": 1991.7442909999997,
+          "control_max": 1991.7442909999997,
+          "condition_median": 2048.401875,
+          "condition_max": 2048.401875,
+          "paired_ratios": [
+            1.0284462138317736
+          ],
+          "paired_ratio_median": 1.0284462138317736,
+          "paired_ratio_max": 1.0284462138317736
+        },
+        "full_wait_ms": {
+          "control_median": 929.168121,
+          "control_max": 929.168121,
+          "condition_median": 939.696548,
+          "condition_max": 939.696548,
+          "paired_ratios": [
+            1.0113310247758704
+          ],
+          "paired_ratio_median": 1.0113310247758704,
+          "paired_ratio_max": 1.0113310247758704
+        },
+        "max_frame_ms": {
+          "control_median": 0.9919589999999999,
+          "control_max": 0.9919589999999999,
+          "condition_median": 1.239667,
+          "condition_max": 1.239667,
+          "paired_ratios": [
+            1.2497159660832757
+          ],
+          "paired_ratio_median": 1.2497159660832757,
+          "paired_ratio_max": 1.2497159660832757
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1010.1014580000001,
+          "control_max": 1010.1014580000001,
+          "condition_median": 1050.4834999999998,
+          "condition_max": 1050.4834999999998,
+          "paired_ratios": [
+            1.0399782038528647
+          ],
+          "paired_ratio_median": 1.0399782038528647,
+          "paired_ratio_max": 1.0399782038528647
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1010.1014580000001,
+          "control_max": 1010.1014580000001,
+          "condition_median": 1026.6042909999999,
+          "condition_max": 1026.6042909999999,
+          "paired_ratios": [
+            1.0163377974254937
+          ],
+          "paired_ratio_median": 1.0163377974254937,
+          "paired_ratio_max": 1.0163377974254937
+        }
+      }
+    },
+    {
+      "case": "T1-S2",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 245.919417,
+          "control_max": 245.919417,
+          "condition_median": 220.03020800000002,
+          "condition_max": 220.03020800000002,
+          "paired_ratios": [
+            0.8947248276861359
+          ],
+          "paired_ratio_median": 0.8947248276861359,
+          "paired_ratio_max": 0.8947248276861359
+        },
+        "terminal_publish_ms": {
+          "control_median": 245.96379199999998,
+          "control_max": 245.96379199999998,
+          "condition_median": 220.076166,
+          "condition_max": 220.076166,
+          "paired_ratios": [
+            0.8947502565743498
+          ],
+          "paired_ratio_median": 0.8947502565743498,
+          "paired_ratio_max": 0.8947502565743498
+        },
+        "index_ready_ms": {
+          "control_median": 1337.983667,
+          "control_max": 1337.983667,
+          "condition_median": 1298.150416,
+          "condition_max": 1298.150416,
+          "paired_ratios": [
+            0.970228895925678
+          ],
+          "paired_ratio_median": 0.970228895925678,
+          "paired_ratio_max": 0.970228895925678
+        },
+        "results_ready_ms": {
+          "control_median": 1337.983667,
+          "control_max": 1337.983667,
+          "condition_median": 1298.150416,
+          "condition_max": 1298.150416,
+          "paired_ratios": [
+            0.970228895925678
+          ],
+          "paired_ratio_median": 0.970228895925678,
+          "paired_ratio_max": 0.970228895925678
+        },
+        "full_wait_ms": {
+          "control_median": 190.66066800000002,
+          "control_max": 190.66066800000002,
+          "condition_median": 162.063041,
+          "condition_max": 162.063041,
+          "paired_ratios": [
+            0.850007726816524
+          ],
+          "paired_ratio_median": 0.850007726816524,
+          "paired_ratio_max": 0.850007726816524
+        },
+        "max_frame_ms": {
+          "control_median": 0.842083,
+          "control_max": 0.842083,
+          "condition_median": 0.808083,
+          "condition_max": 0.808083,
+          "paired_ratios": [
+            0.9596239325577169
+          ],
+          "paired_ratio_median": 0.9596239325577169,
+          "paired_ratio_max": 0.9596239325577169
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1095.3122500000002,
+          "control_max": 1095.3122500000002,
+          "condition_median": 1081.624708,
+          "condition_max": 1081.624708,
+          "paired_ratios": [
+            0.9875035251363252
+          ],
+          "paired_ratio_median": 0.9875035251363252,
+          "paired_ratio_max": 0.9875035251363252
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1078.619875,
+          "control_max": 1078.619875,
+          "condition_median": 1064.8648329999999,
+          "condition_max": 1064.8648329999999,
+          "paired_ratios": [
+            0.9872475537315681
+          ],
+          "paired_ratio_median": 0.9872475537315681,
+          "paired_ratio_max": 0.9872475537315681
+        }
+      }
+    },
+    {
+      "case": "T1-S2",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 1006.528125,
+          "control_max": 1006.528125,
+          "condition_median": 1003.437084,
+          "condition_max": 1003.437084,
+          "paired_ratios": [
+            0.9969290068273055
+          ],
+          "paired_ratio_median": 0.9969290068273055,
+          "paired_ratio_max": 0.9969290068273055
+        },
+        "terminal_publish_ms": {
+          "control_median": 1006.5300420000001,
+          "control_max": 1006.5300420000001,
+          "condition_median": 1003.4390840000001,
+          "condition_max": 1003.4390840000001,
+          "paired_ratios": [
+            0.9969290951377286
+          ],
+          "paired_ratio_median": 0.9969290951377286,
+          "paired_ratio_max": 0.9969290951377286
+        },
+        "index_ready_ms": {
+          "control_median": 2087.765834,
+          "control_max": 2087.765834,
+          "condition_median": 2069.517417,
+          "condition_max": 2069.517417,
+          "paired_ratios": [
+            0.9912593564360438
+          ],
+          "paired_ratio_median": 0.9912593564360438,
+          "paired_ratio_max": 0.9912593564360438
+        },
+        "results_ready_ms": {
+          "control_median": 2087.765834,
+          "control_max": 2087.765834,
+          "condition_median": 2069.517417,
+          "condition_max": 2069.517417,
+          "paired_ratios": [
+            0.9912593564360438
+          ],
+          "paired_ratio_median": 0.9912593564360438,
+          "paired_ratio_max": 0.9912593564360438
+        },
+        "full_wait_ms": {
+          "control_median": 954.720498,
+          "control_max": 954.720498,
+          "condition_median": 953.4830410000001,
+          "condition_max": 953.4830410000001,
+          "paired_ratios": [
+            0.998703854161933
+          ],
+          "paired_ratio_median": 0.998703854161933,
+          "paired_ratio_max": 0.998703854161933
+        },
+        "max_frame_ms": {
+          "control_median": 0.8082090000000001,
+          "control_max": 0.8082090000000001,
+          "condition_median": 3.179084,
+          "condition_max": 3.179084,
+          "paired_ratios": [
+            3.933492450591369
+          ],
+          "paired_ratio_median": 3.933492450591369,
+          "paired_ratio_max": 3.933492450591369
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 1082.151917,
+          "control_max": 1082.151917,
+          "condition_median": 1067.129792,
+          "condition_max": 1067.129792,
+          "paired_ratios": [
+            0.9861182845365694
+          ],
+          "paired_ratio_median": 0.9861182845365694,
+          "paired_ratio_max": 0.9861182845365694
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 1058.5455,
+          "control_max": 1058.5455,
+          "condition_median": 1043.3623750000002,
+          "condition_max": 1043.3623750000002,
+          "paired_ratios": [
+            0.9856566156107605
+          ],
+          "paired_ratio_median": 0.9856566156107605,
+          "paired_ratio_max": 0.9856566156107605
+        }
+      }
+    },
+    {
+      "case": "T1-active-warm",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 222.47445800000003,
+          "control_max": 222.47445800000003,
+          "condition_median": 232.434792,
+          "condition_max": 232.434792,
+          "paired_ratios": [
+            1.0447706855408991
+          ],
+          "paired_ratio_median": 1.0447706855408991,
+          "paired_ratio_max": 1.0447706855408991
+        },
+        "terminal_publish_ms": {
+          "control_median": 222.513292,
+          "control_max": 222.513292,
+          "condition_median": 232.485333,
+          "condition_max": 232.485333,
+          "paired_ratios": [
+            1.0448154845509183
+          ],
+          "paired_ratio_median": 1.0448154845509183,
+          "paired_ratio_max": 1.0448154845509183
+        },
+        "index_ready_ms": {
+          "control_median": 238.7385,
+          "control_max": 238.7385,
+          "condition_median": 1309.275583,
+          "condition_max": 1309.275583,
+          "paired_ratios": [
+            5.48414094500887
+          ],
+          "paired_ratio_median": 5.48414094500887,
+          "paired_ratio_max": 5.48414094500887
+        },
+        "results_ready_ms": {
+          "control_median": 238.7385,
+          "control_max": 238.7385,
+          "condition_median": 1309.275583,
+          "condition_max": 1309.275583,
+          "paired_ratios": [
+            5.48414094500887
+          ],
+          "paired_ratio_median": 5.48414094500887,
+          "paired_ratio_max": 5.48414094500887
+        },
+        "full_wait_ms": {
+          "control_median": 174.38120800000002,
+          "control_max": 174.38120800000002,
+          "condition_median": 146.939416,
+          "condition_max": 146.939416,
+          "paired_ratios": [
+            0.842633318608505
+          ],
+          "paired_ratio_median": 0.842633318608505,
+          "paired_ratio_max": 0.842633318608505
+        },
+        "max_frame_ms": {
+          "control_median": 0.900667,
+          "control_max": 0.900667,
+          "condition_median": 1.0354999999999999,
+          "condition_max": 1.0354999999999999,
+          "paired_ratios": [
+            1.1497034975190608
+          ],
+          "paired_ratio_median": 1.1497034975190608,
+          "paired_ratio_max": 1.1497034975190608
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 21.520792,
+          "control_max": 21.520792,
+          "condition_median": 23.902041999999998,
+          "condition_max": 23.902041999999998,
+          "paired_ratios": [
+            1.1106488088356599
+          ],
+          "paired_ratio_median": 1.1106488088356599,
+          "paired_ratio_max": 1.1106488088356599
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 21.370542,
+          "control_max": 21.370542,
+          "condition_median": 1057.355416,
+          "condition_max": 1057.355416,
+          "paired_ratios": [
+            49.47723908920982
+          ],
+          "paired_ratio_median": 49.47723908920982,
+          "paired_ratio_max": 49.47723908920982
+        }
+      }
+    },
+    {
+      "case": "T1-active-warm",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 1023.6427500000001,
+          "control_max": 1023.6427500000001,
+          "condition_median": 954.682083,
+          "condition_max": 954.682083,
+          "paired_ratios": [
+            0.9326320955235603
+          ],
+          "paired_ratio_median": 0.9326320955235603,
+          "paired_ratio_max": 0.9326320955235603
+        },
+        "terminal_publish_ms": {
+          "control_median": 1023.6446669999999,
+          "control_max": 1023.6446669999999,
+          "condition_median": 954.683458,
+          "condition_max": 954.683458,
+          "paired_ratios": [
+            0.9326316922041856
+          ],
+          "paired_ratio_median": 0.9326316922041856,
+          "paired_ratio_max": 0.9326316922041856
+        },
+        "index_ready_ms": {
+          "control_median": 1049.160417,
+          "control_max": 1049.160417,
+          "condition_median": 2051.70325,
+          "condition_max": 2051.70325,
+          "paired_ratios": [
+            1.955566772016333
+          ],
+          "paired_ratio_median": 1.955566772016333,
+          "paired_ratio_max": 1.955566772016333
+        },
+        "results_ready_ms": {
+          "control_median": 1049.160417,
+          "control_max": 1049.160417,
+          "condition_median": 2051.70325,
+          "condition_max": 2051.70325,
+          "paired_ratios": [
+            1.955566772016333
+          ],
+          "paired_ratio_median": 1.955566772016333,
+          "paired_ratio_max": 1.955566772016333
+        },
+        "full_wait_ms": {
+          "control_median": 976.554708,
+          "control_max": 976.554708,
+          "condition_median": 906.658871,
+          "condition_max": 906.658871,
+          "paired_ratios": [
+            0.928426091823214
+          ],
+          "paired_ratio_median": 0.928426091823214,
+          "paired_ratio_max": 0.928426091823214
+        },
+        "max_frame_ms": {
+          "control_median": 27.803125,
+          "control_max": 27.803125,
+          "condition_median": 24.850792,
+          "condition_max": 24.850792,
+          "paired_ratios": [
+            0.8938129077217039
+          ],
+          "paired_ratio_median": 0.8938129077217039,
+          "paired_ratio_max": 0.8938129077217039
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 43.254708,
+          "control_max": 43.254708,
+          "condition_median": 42.818209,
+          "condition_max": 42.818209,
+          "paired_ratios": [
+            0.9899086360726329
+          ],
+          "paired_ratio_median": 0.9899086360726329,
+          "paired_ratio_max": 0.9899086360726329
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 43.254708,
+          "control_max": 43.254708,
+          "condition_median": 1075.066333,
+          "condition_max": 1075.066333,
+          "paired_ratios": [
+            24.854319511300364
+          ],
+          "paired_ratio_median": 24.854319511300364,
+          "paired_ratio_max": 24.854319511300364
+        }
+      }
+    },
+    {
+      "case": "T1-natural-reclaim",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 230.686125,
+          "control_max": 230.686125,
+          "condition_median": 215.692166,
+          "condition_max": 215.692166,
+          "paired_ratios": [
+            0.9350027705394071
+          ],
+          "paired_ratio_median": 0.9350027705394071,
+          "paired_ratio_max": 0.9350027705394071
+        },
+        "terminal_publish_ms": {
+          "control_median": 230.735667,
+          "control_max": 230.735667,
+          "condition_median": 215.7195,
+          "condition_max": 215.7195,
+          "paired_ratios": [
+            0.9349204776390293
+          ],
+          "paired_ratio_median": 0.9349204776390293,
+          "paired_ratio_max": 0.9349204776390293
+        },
+        "index_ready_ms": {
+          "control_median": 261.173167,
+          "control_max": 261.173167,
+          "condition_median": 1348.7210830000001,
+          "condition_max": 1348.7210830000001,
+          "paired_ratios": [
+            5.164087484530906
+          ],
+          "paired_ratio_median": 5.164087484530906,
+          "paired_ratio_max": 5.164087484530906
+        },
+        "results_ready_ms": {
+          "control_median": 261.173167,
+          "control_max": 261.173167,
+          "condition_median": 1348.7210830000001,
+          "condition_max": 1348.7210830000001,
+          "paired_ratios": [
+            5.164087484530906
+          ],
+          "paired_ratio_median": 5.164087484530906,
+          "paired_ratio_max": 5.164087484530906
+        },
+        "full_wait_ms": {
+          "control_median": 174.31704100000002,
+          "control_max": 174.31704100000002,
+          "condition_median": 135.52208299999998,
+          "condition_max": 135.52208299999998,
+          "paired_ratios": [
+            0.7774459813140125
+          ],
+          "paired_ratio_median": 0.7774459813140125,
+          "paired_ratio_max": 0.7774459813140125
+        },
+        "max_frame_ms": {
+          "control_median": 0.666333,
+          "control_max": 0.666333,
+          "condition_median": 1.0875,
+          "condition_max": 1.0875,
+          "paired_ratios": [
+            1.6320668494581538
+          ],
+          "paired_ratio_median": 1.6320668494581538,
+          "paired_ratio_max": 1.6320668494581538
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 23.98675,
+          "control_max": 23.98675,
+          "condition_median": 23.912125,
+          "condition_max": 23.912125,
+          "paired_ratios": [
+            0.9968889074176368
+          ],
+          "paired_ratio_median": 0.9968889074176368,
+          "paired_ratio_max": 0.9968889074176368
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 23.98675,
+          "control_max": 23.98675,
+          "condition_median": 1092.3688339999999,
+          "condition_max": 1092.3688339999999,
+          "paired_ratios": [
+            45.54051024002834
+          ],
+          "paired_ratio_median": 45.54051024002834,
+          "paired_ratio_max": 45.54051024002834
+        }
+      }
+    },
+    {
+      "case": "T1-natural-reclaim",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 1014.98425,
+          "control_max": 1014.98425,
+          "condition_median": 917.868333,
+          "condition_max": 917.868333,
+          "paired_ratios": [
+            0.9043178088724038
+          ],
+          "paired_ratio_median": 0.9043178088724038,
+          "paired_ratio_max": 0.9043178088724038
+        },
+        "terminal_publish_ms": {
+          "control_median": 1014.9866249999999,
+          "control_max": 1014.9866249999999,
+          "condition_median": 917.8702920000001,
+          "condition_max": 917.8702920000001,
+          "paired_ratios": [
+            0.9043176229046369
+          ],
+          "paired_ratio_median": 0.9043176229046369,
+          "paired_ratio_max": 0.9043176229046369
+        },
+        "index_ready_ms": {
+          "control_median": 1058.8999999999999,
+          "control_max": 1058.8999999999999,
+          "condition_median": 2031.6665,
+          "condition_max": 2031.6665,
+          "paired_ratios": [
+            1.9186575691755599
+          ],
+          "paired_ratio_median": 1.9186575691755599,
+          "paired_ratio_max": 1.9186575691755599
+        },
+        "results_ready_ms": {
+          "control_median": 1058.8999999999999,
+          "control_max": 1058.8999999999999,
+          "condition_median": 2031.6665,
+          "condition_max": 2031.6665,
+          "paired_ratios": [
+            1.9186575691755599
+          ],
+          "paired_ratio_median": 1.9186575691755599,
+          "paired_ratio_max": 1.9186575691755599
+        },
+        "full_wait_ms": {
+          "control_median": 953.751501,
+          "control_max": 953.751501,
+          "condition_median": 873.162624,
+          "condition_max": 873.162624,
+          "paired_ratios": [
+            0.915503276361292
+          ],
+          "paired_ratio_median": 0.915503276361292,
+          "paired_ratio_max": 0.915503276361292
+        },
+        "max_frame_ms": {
+          "control_median": 29.028624999999998,
+          "control_max": 29.028624999999998,
+          "condition_median": 24.972333,
+          "condition_max": 24.972333,
+          "paired_ratios": [
+            0.8602657893716977
+          ],
+          "paired_ratio_median": 0.8602657893716977,
+          "paired_ratio_max": 0.8602657893716977
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 49.76625,
+          "control_max": 49.76625,
+          "condition_median": 40.301375,
+          "condition_max": 40.301375,
+          "paired_ratios": [
+            0.8098133775399995
+          ],
+          "paired_ratio_median": 0.8098133775399995,
+          "paired_ratio_max": 0.8098133775399995
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 49.76625,
+          "control_max": 49.76625,
+          "condition_median": 1067.418666,
+          "condition_max": 1067.418666,
+          "paired_ratios": [
+            21.448645738829025
+          ],
+          "paired_ratio_median": 21.448645738829025,
+          "paired_ratio_max": 21.448645738829025
+        }
+      }
+    },
+    {
+      "case": "T1-promotion",
+      "source": "FileList",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 245.16625,
+          "control_max": 245.16625,
+          "condition_median": 243.52825,
+          "condition_max": 243.52825,
+          "paired_ratios": [
+            0.9933188193725687
+          ],
+          "paired_ratio_median": 0.9933188193725687,
+          "paired_ratio_max": 0.9933188193725687
+        },
+        "terminal_publish_ms": {
+          "control_median": 245.217333,
+          "control_max": 245.217333,
+          "condition_median": 243.547292,
+          "condition_max": 243.547292,
+          "paired_ratios": [
+            0.9931895474941814
+          ],
+          "paired_ratio_median": 0.9931895474941814,
+          "paired_ratio_max": 0.9931895474941814
+        },
+        "index_ready_ms": {
+          "control_median": 265.40916599999997,
+          "control_max": 265.40916599999997,
+          "condition_median": 1325.682959,
+          "condition_max": 1325.682959,
+          "paired_ratios": [
+            4.994865019092822
+          ],
+          "paired_ratio_median": 4.994865019092822,
+          "paired_ratio_max": 4.994865019092822
+        },
+        "results_ready_ms": {
+          "control_median": 265.40916599999997,
+          "control_max": 265.40916599999997,
+          "condition_median": 1325.682959,
+          "condition_max": 1325.682959,
+          "paired_ratios": [
+            4.994865019092822
+          ],
+          "paired_ratio_median": 4.994865019092822,
+          "paired_ratio_max": 4.994865019092822
+        },
+        "full_wait_ms": {
+          "control_median": 187.646374,
+          "control_max": 187.646374,
+          "condition_median": 167.401126,
+          "condition_max": 167.401126,
+          "paired_ratios": [
+            0.8921095698870258
+          ],
+          "paired_ratio_median": 0.8921095698870258,
+          "paired_ratio_max": 0.8921095698870258
+        },
+        "max_frame_ms": {
+          "control_median": 0.774583,
+          "control_max": 0.774583,
+          "condition_median": 1.038709,
+          "condition_max": 1.038709,
+          "paired_ratios": [
+            1.3409912172097762
+          ],
+          "paired_ratio_median": 1.3409912172097762,
+          "paired_ratio_max": 1.3409912172097762
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 24.008625,
+          "control_max": 24.008625,
+          "condition_median": 37.738084,
+          "condition_max": 37.738084,
+          "paired_ratios": [
+            1.5718552811749946
+          ],
+          "paired_ratio_median": 1.5718552811749946,
+          "paired_ratio_max": 1.5718552811749946
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 24.008625,
+          "control_max": 24.008625,
+          "condition_median": 1069.988625,
+          "condition_max": 1069.988625,
+          "paired_ratios": [
+            44.56684316573731
+          ],
+          "paired_ratio_median": 44.56684316573731,
+          "paired_ratio_max": 44.56684316573731
+        }
+      }
+    },
+    {
+      "case": "T1-promotion",
+      "source": "Walker",
+      "comparison_kind": "AB-operation-cost",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 989.742667,
+          "control_max": 989.742667,
+          "condition_median": 963.773292,
+          "condition_max": 963.773292,
+          "paired_ratios": [
+            0.973761487843385
+          ],
+          "paired_ratio_median": 0.973761487843385,
+          "paired_ratio_max": 0.973761487843385
+        },
+        "terminal_publish_ms": {
+          "control_median": 989.744875,
+          "control_max": 989.744875,
+          "condition_median": 963.77425,
+          "condition_max": 963.77425,
+          "paired_ratios": [
+            0.9737602834265751
+          ],
+          "paired_ratio_median": 0.9737602834265751,
+          "paired_ratio_max": 0.9737602834265751
+        },
+        "index_ready_ms": {
+          "control_median": 1014.196125,
+          "control_max": 1014.196125,
+          "condition_median": 2025.5694580000002,
+          "condition_max": 2025.5694580000002,
+          "paired_ratios": [
+            1.9972167197937185
+          ],
+          "paired_ratio_median": 1.9972167197937185,
+          "paired_ratio_max": 1.9972167197937185
+        },
+        "results_ready_ms": {
+          "control_median": 1014.196125,
+          "control_max": 1014.196125,
+          "condition_median": 2025.5694580000002,
+          "condition_max": 2025.5694580000002,
+          "paired_ratios": [
+            1.9972167197937185
+          ],
+          "paired_ratio_median": 1.9972167197937185,
+          "paired_ratio_max": 1.9972167197937185
+        },
+        "full_wait_ms": {
+          "control_median": 944.24679,
+          "control_max": 944.24679,
+          "condition_median": 921.072919,
+          "condition_max": 921.072919,
+          "paired_ratios": [
+            0.9754578239021601
+          ],
+          "paired_ratio_median": 0.9754578239021601,
+          "paired_ratio_max": 0.9754578239021601
+        },
+        "max_frame_ms": {
+          "control_median": 29.203333,
+          "control_max": 29.203333,
+          "condition_median": 25.27,
+          "condition_max": 25.27,
+          "paired_ratios": [
+            0.8653121888518683
+          ],
+          "paired_ratio_median": 0.8653121888518683,
+          "paired_ratio_max": 0.8653121888518683
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 45.589833000000006,
+          "control_max": 45.589833000000006,
+          "condition_median": 53.483958,
+          "condition_max": 53.483958,
+          "paired_ratios": [
+            1.1731553831311468
+          ],
+          "paired_ratio_median": 1.1731553831311468,
+          "paired_ratio_max": 1.1731553831311468
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 45.589833000000006,
+          "control_max": 45.589833000000006,
+          "condition_median": 1036.43325,
+          "condition_max": 1036.43325,
+          "paired_ratios": [
+            22.73386809730143
+          ],
+          "paired_ratio_median": 22.73386809730143,
+          "paired_ratio_max": 22.73386809730143
+        }
+      }
+    },
+    {
+      "case": "W1-deep",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 966.598042,
+          "control_max": 966.598042,
+          "condition_median": 978.691875,
+          "condition_max": 978.691875,
+          "paired_ratios": [
+            1.0125117499462097
+          ],
+          "paired_ratio_median": 1.0125117499462097,
+          "paired_ratio_max": 1.0125117499462097
+        },
+        "terminal_publish_ms": {
+          "control_median": 966.600375,
+          "control_max": 966.600375,
+          "condition_median": 978.6949999999999,
+          "condition_max": 978.6949999999999,
+          "paired_ratios": [
+            1.0125125391142125
+          ],
+          "paired_ratio_median": 1.0125125391142125,
+          "paired_ratio_max": 1.0125125391142125
+        },
+        "index_ready_ms": {
+          "control_median": 991.764833,
+          "control_max": 991.764833,
+          "condition_median": 1004.180208,
+          "condition_max": 1004.180208,
+          "paired_ratios": [
+            1.0125184666635583
+          ],
+          "paired_ratio_median": 1.0125184666635583,
+          "paired_ratio_max": 1.0125184666635583
+        },
+        "results_ready_ms": {
+          "control_median": 991.764833,
+          "control_max": 991.764833,
+          "condition_median": 1004.180208,
+          "condition_max": 1004.180208,
+          "paired_ratios": [
+            1.0125184666635583
+          ],
+          "paired_ratio_median": 1.0125184666635583,
+          "paired_ratio_max": 1.0125184666635583
+        },
+        "full_wait_ms": {
+          "control_median": 922.018291,
+          "control_max": 922.018291,
+          "condition_median": 932.244663,
+          "condition_max": 932.244663,
+          "paired_ratios": [
+            1.0110912897280038
+          ],
+          "paired_ratio_median": 1.0110912897280038,
+          "paired_ratio_max": 1.0110912897280038
+        },
+        "max_frame_ms": {
+          "control_median": 39.02970800000001,
+          "control_max": 39.02970800000001,
+          "condition_median": 38.384833,
+          "condition_max": 38.384833,
+          "paired_ratios": [
+            0.9834773296279847
+          ],
+          "paired_ratio_median": 0.9834773296279847,
+          "paired_ratio_max": 0.9834773296279847
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 52.792832999999995,
+          "control_max": 52.792832999999995,
+          "condition_median": 57.123541,
+          "condition_max": 57.123541,
+          "paired_ratios": [
+            1.0820321197765614
+          ],
+          "paired_ratio_median": 1.0820321197765614,
+          "paired_ratio_max": 1.0820321197765614
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 52.792832999999995,
+          "control_max": 52.792832999999995,
+          "condition_median": 57.123541,
+          "condition_max": 57.123541,
+          "paired_ratios": [
+            1.0820321197765614
+          ],
+          "paired_ratio_median": 1.0820321197765614,
+          "paired_ratio_max": 1.0820321197765614
+        }
+      }
+    },
+    {
+      "case": "W1-follow-links",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 2089.2098340000002,
+          "control_max": 2089.2098340000002,
+          "condition_median": 2059.115917,
+          "condition_max": 2059.115917,
+          "paired_ratios": [
+            0.9855955507626621
+          ],
+          "paired_ratio_median": 0.9855955507626621,
+          "paired_ratio_max": 0.9855955507626621
+        },
+        "terminal_publish_ms": {
+          "control_median": 2089.212459,
+          "control_max": 2089.212459,
+          "condition_median": 2059.11875,
+          "condition_max": 2059.11875,
+          "paired_ratios": [
+            0.9855956684202409
+          ],
+          "paired_ratio_median": 0.9855956684202409,
+          "paired_ratio_max": 0.9855956684202409
+        },
+        "index_ready_ms": {
+          "control_median": 2134.506209,
+          "control_max": 2134.506209,
+          "condition_median": 2103.697417,
+          "condition_max": 2103.697417,
+          "paired_ratios": [
+            0.9855663141807238
+          ],
+          "paired_ratio_median": 0.9855663141807238,
+          "paired_ratio_max": 0.9855663141807238
+        },
+        "results_ready_ms": {
+          "control_median": 2134.506209,
+          "control_max": 2134.506209,
+          "condition_median": 2103.697417,
+          "condition_max": 2103.697417,
+          "paired_ratios": [
+            0.9855663141807238
+          ],
+          "paired_ratio_median": 0.9855663141807238,
+          "paired_ratio_max": 0.9855663141807238
+        },
+        "full_wait_ms": {
+          "control_median": 2019.030462,
+          "control_max": 2019.030462,
+          "condition_median": 1988.0833710000002,
+          "condition_max": 1988.0833710000002,
+          "paired_ratios": [
+            0.9846723010957723
+          ],
+          "paired_ratio_median": 0.9846723010957723,
+          "paired_ratio_max": 0.9846723010957723
+        },
+        "max_frame_ms": {
+          "control_median": 52.914708,
+          "control_max": 52.914708,
+          "condition_median": 53.014167,
+          "condition_max": 53.014167,
+          "paired_ratios": [
+            1.0018796097296805
+          ],
+          "paired_ratio_median": 1.0018796097296805,
+          "paired_ratio_max": 1.0018796097296805
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 73.51266600000001,
+          "control_max": 73.51266600000001,
+          "condition_median": 72.180834,
+          "condition_max": 72.180834,
+          "paired_ratios": [
+            0.981882958781552
+          ],
+          "paired_ratio_median": 0.981882958781552,
+          "paired_ratio_max": 0.981882958781552
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 73.51266600000001,
+          "control_max": 73.51266600000001,
+          "condition_median": 72.180834,
+          "condition_max": 72.180834,
+          "paired_ratios": [
+            0.981882958781552
+          ],
+          "paired_ratio_median": 0.981882958781552,
+          "paired_ratio_max": 0.981882958781552
+        }
+      }
+    },
+    {
+      "case": "W1-wide",
+      "source": "Walker",
+      "comparison_kind": "AA-variability",
+      "measurement_kind": "headless-GUI-actual-workers",
+      "pairs": 1,
+      "phases": {
+        "data_publish_end_ms": {
+          "control_median": 976.323666,
+          "control_max": 976.323666,
+          "condition_median": 968.193917,
+          "condition_max": 968.193917,
+          "paired_ratios": [
+            0.9916731005473753
+          ],
+          "paired_ratio_median": 0.9916731005473753,
+          "paired_ratio_max": 0.9916731005473753
+        },
+        "terminal_publish_ms": {
+          "control_median": 976.325708,
+          "control_max": 976.325708,
+          "condition_median": 968.1965,
+          "condition_max": 968.1965,
+          "paired_ratios": [
+            0.9916736720815714
+          ],
+          "paired_ratio_median": 0.9916736720815714,
+          "paired_ratio_max": 0.9916736720815714
+        },
+        "index_ready_ms": {
+          "control_median": 1001.123958,
+          "control_max": 1001.123958,
+          "condition_median": 993.365292,
+          "condition_max": 993.365292,
+          "paired_ratios": [
+            0.9922500446243441
+          ],
+          "paired_ratio_median": 0.9922500446243441,
+          "paired_ratio_max": 0.9922500446243441
+        },
+        "results_ready_ms": {
+          "control_median": 1001.123958,
+          "control_max": 1001.123958,
+          "condition_median": 993.365292,
+          "condition_max": 993.365292,
+          "paired_ratios": [
+            0.9922500446243441
+          ],
+          "paired_ratio_median": 0.9922500446243441,
+          "paired_ratio_max": 0.9922500446243441
+        },
+        "full_wait_ms": {
+          "control_median": 953.585499,
+          "control_max": 953.585499,
+          "condition_median": 943.376706,
+          "condition_max": 943.376706,
+          "paired_ratios": [
+            0.9892943076308253
+          ],
+          "paired_ratio_median": 0.9892943076308253,
+          "paired_ratio_max": 0.9892943076308253
+        },
+        "max_frame_ms": {
+          "control_median": 29.534375,
+          "control_max": 29.534375,
+          "condition_median": 32.54875,
+          "condition_max": 32.54875,
+          "paired_ratios": [
+            1.1020632737276477
+          ],
+          "paired_ratio_median": 1.1020632737276477,
+          "paired_ratio_max": 1.1020632737276477
+        },
+        "max_ingest_gap_ms": {
+          "control_median": 50.163833,
+          "control_max": 50.163833,
+          "condition_median": 47.575834,
+          "condition_max": 47.575834,
+          "paired_ratios": [
+            0.9484090659499644
+          ],
+          "paired_ratio_median": 0.9484090659499644,
+          "paired_ratio_max": 0.9484090659499644
+        },
+        "max_no_work_progress_ms": {
+          "control_median": 50.163833,
+          "control_max": 50.163833,
+          "condition_median": 47.575834,
+          "condition_max": 47.575834,
+          "paired_ratios": [
+            0.9484090659499644
+          ],
+          "paired_ratio_median": 0.9484090659499644,
+          "paired_ratio_max": 0.9484090659499644
+        }
+      }
+    }
+  ]
+}

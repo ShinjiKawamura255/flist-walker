@@ -1,0 +1,47 @@
+{
+  "stage": "r1-v30-green-discovery",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r1/v0.30.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::historical_startup_root_unknown_join_is_retained",
+    "--",
+    "--list",
+    "--exact"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-v0.30.0"
+  },
+  "started_utc": "2026-10-04T03:41:18.326262+00:00",
+  "source_manifest_before": "cdc37a1d0ea7c285f83e2aeb60497346c2f10adbacec5d42f77e40c25a79dc27",
+  "Cargo_lock_before": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "exit_code": 101,
+  "ended_utc": "2026-10-04T03:41:36.050592+00:00",
+  "elapsed_seconds": 17.686718958997517,
+  "log_sha256": "f5f7d2b1073bed5f389b7278aacda8691b5010c9d4f32e1bd44a8ee6c110c637",
+  "source_manifest_after": "cdc37a1d0ea7c285f83e2aeb60497346c2f10adbacec5d42f77e40c25a79dc27",
+  "Cargo_lock_after": "a34a1875a4d5d337df4915eb0b7b37256a5c3bd117c542796f6ee2e0e0a7b85f",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [],
+  "discovered_tests": [],
+  "first_errors": [
+    "error[E0433]: cannot find module or crate `fs` in this scope",
+    "error[E0433]: cannot find module or crate `fs` in this scope",
+    "error[E0433]: cannot find module or crate `fs` in this scope",
+    "error[E0433]: cannot find module or crate `fs` in this scope",
+    "error[E0433]: cannot find module or crate `fs` in this scope",
+    "error[E0603]: struct `CellGuard` is private",
+    "error[E0603]: struct `CellGuard` is private",
+    "error[E0282]: type annotations needed"
+  ]
+}

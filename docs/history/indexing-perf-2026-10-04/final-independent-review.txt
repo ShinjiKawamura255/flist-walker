@@ -1,0 +1,34 @@
+独立 FINAL REVIEW: PASS（固定されたローカル実装・調査範囲）
+Findings: blocking 0 / major 0 / minor 0。実装・証跡作成への prior involvement はありません。
+
+対象: /private/tmp/flistwalker-indexing-perf-20261003、codex/indexing-contention-perf。
+base=HEAD=8a452b3858c80f70a5f3064834c8add4d9b1d347。
+HEAD..HEAD の空差分ではなく、base + frozen tracked modifications + untracked durable additions をレビューしました。
+Dirty snapshot SHA256: 1105c9cc3662d1c5f2957fe0d8ca6b9197efc024a27029a81040190cff79e8de。
+1017 durable files / 6 temporary controls の SHA256 と HEAD/branch はレビュー前後とも一致。
+全213 Rust source map: e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d。
+Selected VM: VM-001/002/003/004/008/009。各 intent checklist/detail と applicable conditional branches を確認。
+
+主なソース・契約の確認:
+- rust/src/app/pipeline.rs:1184,1332,1339,1390,1428,1590: Active/Warm handoff の pending→background→後続 mailbox 順、件数/時間 budget、ReplaceAll transaction、空deque allocation の off-UI retirement、Full時 exact-owner復元、terminal barrier。state.rs:35 の VecDeque は既存 finalizer input へそのまま移管されます。
+- rust/src/app/tests/tab_background_responses.rs:4,262,337,420,483,522,624,708,780,904: 独立7-entry order oracle、複数往復/terminal routes、Full/queue bounds、fallback budget、別Warm/stale、ReplaceAll/refresh owner guards。100kの実 final membership/order oracle は extensions/oracle.rs:171 と driver.rs:1610 に接続されています。
+- rust/src/app/index_worker.rs:85,164,215、index_mailbox.rs:113,144、worker/tasks.rs:158、worker/search_perf.rs:49: cfg(test) default-off observation、実worker phase、Arc request identity、Full branchの成功latest mutex lookup/stale/shutdownfalse witness、payloadを保持しない scalar handles。
+- extensions/driver.rs:612,1564,1728 と extensions/mod.rs:186,1237,1275: bookkeeping releaseとbody return/sender/debtの分離、required latest success、最初のWarm invalidation/実switch ack、typed latest-B exception、post-t3独立seed oracle。generic Failed は成功として扱いません。
+- indexing_perf/child_process.rs:39,64,96,113,218: exclusively-created root、直接所有exact leaf child、親process設定を変更しない既知設定、1test/marker/trailer確認、bounded wait/reap、物理終了不明時root保持、zero/panic/identity/timeout negatives。
+- NFR-006→SP-007/SP-010/SP-013→DES-006/009/013→TC-228–232 と TC-207 の順序契約を確認。decoder/frontier/persistence/dependency/workflow/release変更はなく、該当conditional実行要求はN/A。
+
+証跡の独立確認:
+- 33 retained manifests / 913 asset references の stored SHA256 + gzip plaintext SHA256 全一致。14 changed Markdown / 175 local links、diff --check（raw frozen.patch data除外）PASS。raw patch/CRを変更していません。
+- current source-bound logs: default-parallel locked/offline cargo 1548 lib PASS/19 ignored、8 main/3 architecture/47 CLI/2 path PASS。focused63/search9/order10/TC20782/pipeline152、fmt/clippy warnings0、basic84/observer14、full616 + trunc14 の受理証跡を確認。重複countsは加算していません。
+- VM003 existing guards: FileList2.13>=1.20、Walker6.12>=1.25。TC156/185とTC154の既存閾値・fixture/phase証跡を確認。新contention timingsにはこれらの閾値を移植していません。
+- current full616の実Walker TabChain pair6/B6 Failed witness1件を確認: permission372.569125 <= Warm removal372.583333 <= stale Full abort372.600042 <= Failed offer372.802875 <= publication372.803 <= body372.803875ms。partial26624、seed3 full100k oracle、sender0/0を明記し、completed100k throughputとは扱いません。
+- historical R5のcfg observer forwarding、original argument/native root semantics、原Cargo+lock/native deadlines維持、current handoff repair未backport、実139guardsを確認。R3 status-aware admission、145controls、optimized Python拒否9、exact canonical per-tag targetsを確認。
+- historical ordinaryは全4版FAILED/101: v27 33PASS/11FAIL/462rows、v28 37/7/518、v29 39/5/546、v30 43/1/602。全FAILpartial admitted0、capは別14PASS/tag。PromotionFileListは全4版FAILのまま。
+- retained four-tag arithmeticを独立read-only再計算: 304 halves / 2128 rows / 2400 metric summariesが完全一致。common33のdeclared work/normalized seed/finite actionsをactual overshoot/partial work/CPU work同一とは扱っていません。
+- docs/history/indexing-perf-expanded-2026-10-04.md:183,185,193,195: 非検索v29 FilesWalker/IgnoreList大幅遅延と実v30回復を支持。prefix filter/backpressureはsource-based inference、restart数/causal shareは未測定。stable Active-search/Warm-index単独の大幅回帰は本host/fixtureで未再現。
+
+残リスク・NOT RUN:
+Native input/product-process liveness、Windows/Linux timing、individual current worker-thread joins、product SIGINT/SIGKILL cleanup、weekly CI activationはNOT RUN。歴史native App/owned writer観測は別証跡でありcurrent個別joinの代用ではありません。single macOS host/7pairsはportable timing gateではなく、16ms cadenceはframe ceilingではありません。旧interrupted11 rootsは保持されたままです。レビューでbuild/perf/外部actionを再実行していません。
+
+Closure判定:
+固定されたローカル差分に未解決findingはなく、計画の具体的な選択的ローカルcommit/closureへ進むことを妨げる所見はありません。closure自体は未完了です。mainはraw review/dispositionをdurably保持し、task-owned staged blobとraw CRをbyte-exact確認、6controls除外、commit SHA/恒久変更cleanを証明、persistent checkout/copyとoriginal/他owner refs/HEAD/status不変を確認してから、自分のAGENTS sectionをbase bytesへ戻し、selector/reference checksを再実行し、4plans/manifestを撤去する必要があります。push/PR/release/CI activation/native external applicationへの許可は含みません。

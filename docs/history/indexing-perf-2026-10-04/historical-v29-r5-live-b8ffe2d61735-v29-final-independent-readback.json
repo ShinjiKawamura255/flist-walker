@@ -1,0 +1,423 @@
+{
+  "packet_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-final-execution-packet.json",
+  "packet_sha256": "8a85ff32bbd48b60cc4ac8b269a493b48c70968adbcf40a28b964beb295c679f",
+  "reference_count": 17,
+  "all_final_refs_match": true,
+  "reference_readback": [
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-full-validated.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/run_v29.py",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-discovery.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/original-cargo-readback.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/wrapper-preparation.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-full-collector-sidecar.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-release-build.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-full.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-full.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-full.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-release-build.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-full-collector-sidecar.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-discovery.json",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-full.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-ordinary-discovery.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-discovery.log",
+      "matches": true
+    },
+    {
+      "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-v29-live-r1/v29-cap-full-validated.json",
+      "matches": true
+    }
+  ],
+  "actual_wrapper_exit": 0,
+  "wrapper_exit_evidence": "unified exec session 57021 final write_stdin chunk 6399ac returned exit_code=0",
+  "actual_phase_PIDs": [
+    {
+      "stage": "v29-release-build",
+      "actual_pid": 32508,
+      "exit_code": 0,
+      "elapsed_seconds": 113.5832044169947,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v29-ordinary-discovery",
+      "actual_pid": 33908,
+      "exit_code": 0,
+      "elapsed_seconds": 0.7278184579918161,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v29-ordinary-full",
+      "actual_pid": 33911,
+      "exit_code": 101,
+      "elapsed_seconds": 10471.071976167004,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v29-cap-discovery",
+      "actual_pid": 38253,
+      "exit_code": 0,
+      "elapsed_seconds": 0.4474544159893412,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    },
+    {
+      "stage": "v29-cap-full",
+      "actual_pid": 38255,
+      "exit_code": 0,
+      "elapsed_seconds": 166.08360308400006,
+      "actual_wait_returned": true,
+      "owned_process_group_absent": true,
+      "watchdog_expired": false,
+      "source_and_lock_readback_unchanged": true
+    }
+  ],
+  "ordinary_actual_whole_exit": 101,
+  "ordinary_libtest_trailer": [
+    "test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 1508 filtered out; finished in 10470.83s"
+  ],
+  "cap_actual_whole_exit": 0,
+  "cap_libtest_trailer": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1508 filtered out; finished in 165.90s"
+  ],
+  "collector_validation_execution": "frozen R3 collect_historical.collect called in wrapper process; both returned ACCEPTED. No independent collector process exit recorded; wrapper actual exit0 differs from ordinary libtest exit101. Main deterministic replay remains separate.",
+  "ordinary_counts": {
+    "PASS": 39,
+    "FAIL": 5,
+    "NOT_RUN": 0
+  },
+  "ordinary_accepted_rows": 546,
+  "ordinary_excluded_partial_rows": 0,
+  "cap_counts": {
+    "PASS": 1,
+    "FAIL": 0,
+    "NOT_RUN": 0
+  },
+  "cap_accepted_rows": 14,
+  "cap_excluded_partial_rows": 0,
+  "accepted_rows_total": 560,
+  "failed_cells": [
+    {
+      "case": "O1-name-all",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_log_line": 493,
+      "panic": "actual operation must overlap GUI indexing O1-name-all FileList; workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 97950, tv_nsec: 216314250 }), completed_at: Some(Instant { tv_sec: 97950, tv_nsec: 216314375 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 97950, tv_nsec: 425472875 }), evaluation_completed_at: Some(Instant { tv_sec: 97950, tv_nsec: 444293958 }), completed_at: Some(Instant { tv_sec: 97950, tv_nsec: 444294041 }), canceled_at: None, candidates: 100000, evaluated_candidates: 0, skipped_canceled: false })];aux=[(\"search-sort\", false), (\"search-sort\", false)];cutoff=268.291084ms",
+      "run_start_identities": [
+        {
+          "line": 487,
+          "identity": {
+            "condition": false,
+            "entries": 100000,
+            "profile": "O1-name-all",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        },
+        {
+          "line": 488,
+          "identity": {
+            "condition": true,
+            "entries": 100000,
+            "profile": "O1-name-all",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        }
+      ],
+      "last_run_start": {
+        "line": 488,
+        "identity": {
+          "condition": true,
+          "entries": 100000,
+          "profile": "O1-name-all",
+          "role": "untimed-warmup",
+          "source": "FileList"
+        }
+      },
+      "raw_sample_line_count": 0,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "positive_cleanup": true,
+      "root_restored": true
+    },
+    {
+      "case": "O1-name-all",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_log_line": 500,
+      "panic": "actual operation must overlap GUI indexing O1-name-all Walker; workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 97952, tv_nsec: 605259333 }), completed_at: Some(Instant { tv_sec: 97952, tv_nsec: 605259416 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 97953, tv_nsec: 444974625 }), evaluation_completed_at: Some(Instant { tv_sec: 97953, tv_nsec: 475492125 }), completed_at: Some(Instant { tv_sec: 97953, tv_nsec: 475492166 }), canceled_at: None, candidates: 100000, evaluated_candidates: 0, skipped_canceled: false })];aux=[(\"search-sort\", false), (\"search-sort\", false)];cutoff=955.467666ms",
+      "run_start_identities": [
+        {
+          "line": 495,
+          "identity": {
+            "condition": false,
+            "entries": 100000,
+            "profile": "O1-name-all",
+            "role": "untimed-warmup",
+            "source": "Walker"
+          }
+        },
+        {
+          "line": 496,
+          "identity": {
+            "condition": true,
+            "entries": 100000,
+            "profile": "O1-name-all",
+            "role": "untimed-warmup",
+            "source": "Walker"
+          }
+        }
+      ],
+      "last_run_start": {
+        "line": 496,
+        "identity": {
+          "condition": true,
+          "entries": 100000,
+          "profile": "O1-name-all",
+          "role": "untimed-warmup",
+          "source": "Walker"
+        }
+      },
+      "raw_sample_line_count": 0,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "positive_cleanup": true,
+      "root_restored": true
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_log_line": 507,
+      "panic": "actual operation must overlap GUI indexing O1-modified-all FileList; workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 97954, tv_nsec: 813491416 }), completed_at: Some(Instant { tv_sec: 97954, tv_nsec: 813491541 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 97955, tv_nsec: 20803750 }), evaluation_completed_at: Some(Instant { tv_sec: 97955, tv_nsec: 226253583 }), completed_at: Some(Instant { tv_sec: 97955, tv_nsec: 226253625 }), canceled_at: None, candidates: 100000, evaluated_candidates: 0, skipped_canceled: false })];aux=[(\"search-sort\", false), (\"search-sort\", false)];cutoff=263.832167ms",
+      "run_start_identities": [
+        {
+          "line": 502,
+          "identity": {
+            "condition": false,
+            "entries": 100000,
+            "profile": "O1-modified-all",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        },
+        {
+          "line": 503,
+          "identity": {
+            "condition": true,
+            "entries": 100000,
+            "profile": "O1-modified-all",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        }
+      ],
+      "last_run_start": {
+        "line": 503,
+        "identity": {
+          "condition": true,
+          "entries": 100000,
+          "profile": "O1-modified-all",
+          "role": "untimed-warmup",
+          "source": "FileList"
+        }
+      },
+      "raw_sample_line_count": 0,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "positive_cleanup": true,
+      "root_restored": true
+    },
+    {
+      "case": "O1-modified-all",
+      "source": "Walker",
+      "status": "FAIL",
+      "status_log_line": 514,
+      "panic": "actual operation must overlap GUI indexing O1-modified-all Walker; workers=[(1, SearchPerfObservation { started_at: None, evaluation_completed_at: Some(Instant { tv_sec: 97957, tv_nsec: 405195958 }), completed_at: Some(Instant { tv_sec: 97957, tv_nsec: 405196000 }), canceled_at: None, candidates: 0, evaluated_candidates: 0, skipped_canceled: false }), (2, SearchPerfObservation { started_at: Some(Instant { tv_sec: 97958, tv_nsec: 244755000 }), evaluation_completed_at: Some(Instant { tv_sec: 97958, tv_nsec: 471583250 }), completed_at: Some(Instant { tv_sec: 97958, tv_nsec: 471583375 }), canceled_at: None, candidates: 100000, evaluated_candidates: 0, skipped_canceled: false })];aux=[(\"search-sort\", false), (\"search-sort\", false)];cutoff=962.644541ms",
+      "run_start_identities": [
+        {
+          "line": 509,
+          "identity": {
+            "condition": false,
+            "entries": 100000,
+            "profile": "O1-modified-all",
+            "role": "untimed-warmup",
+            "source": "Walker"
+          }
+        },
+        {
+          "line": 510,
+          "identity": {
+            "condition": true,
+            "entries": 100000,
+            "profile": "O1-modified-all",
+            "role": "untimed-warmup",
+            "source": "Walker"
+          }
+        }
+      ],
+      "last_run_start": {
+        "line": 510,
+        "identity": {
+          "condition": true,
+          "entries": 100000,
+          "profile": "O1-modified-all",
+          "role": "untimed-warmup",
+          "source": "Walker"
+        }
+      },
+      "raw_sample_line_count": 0,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "positive_cleanup": true,
+      "root_restored": true
+    },
+    {
+      "case": "T1-promotion",
+      "source": "FileList",
+      "status": "FAIL",
+      "status_log_line": 586,
+      "panic": "latest active request membership",
+      "run_start_identities": [
+        {
+          "line": 580,
+          "identity": {
+            "condition": false,
+            "entries": 100000,
+            "profile": "T1-promotion",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        },
+        {
+          "line": 581,
+          "identity": {
+            "condition": true,
+            "entries": 100000,
+            "profile": "T1-promotion",
+            "role": "untimed-warmup",
+            "source": "FileList"
+          }
+        }
+      ],
+      "last_run_start": {
+        "line": 581,
+        "identity": {
+          "condition": true,
+          "entries": 100000,
+          "profile": "T1-promotion",
+          "role": "untimed-warmup",
+          "source": "FileList"
+        }
+      },
+      "raw_sample_line_count": 0,
+      "actual_partial_rows": 0,
+      "accepted_rows": 0,
+      "positive_cleanup": true,
+      "root_restored": true
+    }
+  ],
+  "ambient_inventory_before_count": 15,
+  "ambient_inventory_before_equals_final": true,
+  "new_root_candidates": [],
+  "config_restore_actual": [
+    {
+      "config_restoration_authorized": true,
+      "config_equal_before": true,
+      "actual_config_before": {
+        "ctrl_w_deletes_word_in_query": false,
+        "disable_self_update": false,
+        "emacs_keybindings_enabled": true,
+        "force_update_check_failure": "",
+        "history_persist_disabled": false,
+        "restore_tabs_enabled": false,
+        "search_parallel_threshold": 25000,
+        "search_threads": 12,
+        "tab_pin_moves_to_next_row": false,
+        "update_allow_downgrade": false,
+        "update_allow_same_version": false,
+        "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+        "walker_max_entries": 500000,
+        "window_trace_enabled": false,
+        "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+        "window_trace_verbose": false
+      },
+      "actual_config_after": {
+        "ctrl_w_deletes_word_in_query": false,
+        "disable_self_update": false,
+        "emacs_keybindings_enabled": true,
+        "force_update_check_failure": "",
+        "history_persist_disabled": false,
+        "restore_tabs_enabled": false,
+        "search_parallel_threshold": 25000,
+        "search_threads": 12,
+        "tab_pin_moves_to_next_row": false,
+        "update_allow_downgrade": false,
+        "update_allow_same_version": false,
+        "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+        "walker_max_entries": 500000,
+        "window_trace_enabled": false,
+        "window_trace_path": "/Users/shinji/.flistwalker/.flistwalker_window_trace.log",
+        "window_trace_verbose": false
+      }
+    }
+  ],
+  "verdict": "no speed/unsupported/NON_ELIGIBLE inference; all five statuses remain generic FAIL",
+  "next_tag": "v0.30.0 preparation/build/perf NOT_RUN; awaiting main authorization"
+}

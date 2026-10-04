@@ -1,0 +1,168 @@
+{
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "source_count": 213,
+  "independent_checks": [
+    {
+      "stage": "cargo-host",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 0.03s",
+        "test result: ok. 1548 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 29.77s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.87s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "log_sha256": "fdd93c633c8b6eb340f97562020f5f0ea912852b453de8a7085dcd7f065c15f8",
+      "matching_pass_counts": {
+        "tc_150": 3,
+        "tc_151": 35,
+        "tc_152": 10,
+        "tc_153": 10,
+        "tc_154": 7,
+        "tc_207": 82,
+        "tc_209": 7,
+        "tc_210": 9,
+        "tc_211": 3,
+        "tab_contract": 7,
+        "tab_lifecycle": 60,
+        "tab_background_responses": 52,
+        "indexing_perf": 63
+      }
+    },
+    {
+      "stage": "basic",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 93.40s"
+      ],
+      "log_sha256": "3f189ee2f370dc779ba30f919ae2984b72bd577260477a66d2b9e8d2463f9a8e",
+      "metadata": {
+        "arch": "aarch64",
+        "cargo_profile": "release",
+        "cases": [
+          "S1-selective",
+          "S1-dense",
+          "S2"
+        ],
+        "cpu_parallelism": 12,
+        "fixture": "flat-real-files-ascii-japanese-v2",
+        "fixture_signature": "68ffba3edf24a1d5",
+        "frame_period_ms": 16,
+        "full_profile": true,
+        "host": "macos",
+        "native": false,
+        "observer": "cfg-test-opt-in-batch-phase-v2",
+        "package_version": "0.30.0",
+        "pairs": 7,
+        "sample_entries": 100000,
+        "schema_version": 1,
+        "sources": [
+          "FileList",
+          "Walker"
+        ],
+        "trace": "empty-startup-held10-edit25-clear50-v4"
+      },
+      "paired_t2_observations": [
+        {
+          "source": "FileList",
+          "case": "S1-selective",
+          "median": 1.0806168789132067,
+          "ratios": [
+            1.160818595141429,
+            1.1288221918537162,
+            1.0806168789132067,
+            1.135097796454695,
+            0.9994892132082259,
+            0.9326771473312473,
+            1.009373188403995
+          ]
+        },
+        {
+          "source": "FileList",
+          "case": "S1-dense",
+          "median": 1.1255579610885038,
+          "ratios": [
+            1.2432808154284078,
+            1.0138253349363686,
+            1.131136140937962,
+            0.9833590224307238,
+            1.1255579610885038,
+            1.0328129707736355,
+            1.1519633782831695
+          ]
+        },
+        {
+          "source": "FileList",
+          "case": "S2",
+          "median": 1.031616834709701,
+          "ratios": [
+            0.9886483422917975,
+            1.1804143055606835,
+            1.0497407476990848,
+            1.2198426439822856,
+            1.0212288941632768,
+            1.0231212210185774,
+            1.031616834709701
+          ]
+        },
+        {
+          "source": "Walker",
+          "case": "S1-selective",
+          "median": 1.0115508516691807,
+          "ratios": [
+            1.0040934430461397,
+            1.0044771948767803,
+            1.0328005076162436,
+            1.0297513597516117,
+            1.0115508516691807,
+            1.0005102309644827,
+            1.0168209011665366
+          ]
+        },
+        {
+          "source": "Walker",
+          "case": "S1-dense",
+          "median": 1.0187210363695405,
+          "ratios": [
+            0.9902466756333282,
+            1.0187210363695405,
+            1.064381361537607,
+            1.0051105246227734,
+            0.9787461656672535,
+            1.0625075059210534,
+            1.0271564505856172
+          ]
+        },
+        {
+          "source": "Walker",
+          "case": "S2",
+          "median": 1.0028431429677147,
+          "ratios": [
+            1.0028431429677147,
+            1.0293869259535233,
+            1.0365073874737043,
+            0.9963501315872735,
+            0.9926740150343117,
+            1.0024055298436083,
+            1.0229896779006336
+          ]
+        }
+      ],
+      "rows": 84
+    },
+    {
+      "stage": "observer",
+      "exit_code": 0,
+      "summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1566 filtered out; finished in 14.67s"
+      ],
+      "log_sha256": "633f7e922fb0573f65151b4a0e178a35673b2f6fc60c73c333654aa1cfe2143d",
+      "median_on_off_t3_ratio": 1.0414372189723264,
+      "metadata_limitation": "No separate observer META; identity, environment, commands and settings in matching sidecar.",
+      "rows": 14
+    }
+  ]
+}

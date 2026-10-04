@@ -1,0 +1,97 @@
+{
+  "purpose": "synthetic collector guards, not performance evidence",
+  "collector_sha256": "789a3ffb4d87c9c578c367e91f3ab6b0af7306d00c94d85ff30389a35d74f3f3",
+  "results": [
+    {
+      "name": "synthetic-valid-declared-victim",
+      "exit_code": 0,
+      "accepted": true
+    },
+    {
+      "name": "duplicate-summary",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "zero-test",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "failed-run",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-meta-cell",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "missing-meta-cell",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-cause",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-warm",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "wrong-seed",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "corrupt-full-seed",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "no-full-oracle",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "missing-body-return",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "required-A-canceled",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "finished-victim-seed-fallback",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "overflow",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "partial-rows",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "retired-tabchain-stall-diagnostic.log",
+      "exit_code": 1,
+      "accepted": false
+    },
+    {
+      "name": "retired-final-current-extended-pilot.log",
+      "exit_code": 1,
+      "accepted": false
+    }
+  ],
+  "passed": 18
+}

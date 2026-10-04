@@ -1,0 +1,136 @@
+{
+  "stage": "PLAN ONLY; release builds/measurements NOT_RUN",
+  "guard_checkpoint": {
+    "path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/guard-execution-packet.json",
+    "sha256": "19ba26595911a3f18de7175bb7b392d0f461fd3faa23c336f58cc91914c5988d",
+    "bytes": 75693
+  },
+  "canonical_target_mapping": {
+    "v0.27.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.27.0",
+    "v0.28.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.28.0",
+    "v0.29.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.29.0",
+    "v0.30.0": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.30.0"
+  },
+  "exact_tag_command_plan": [
+    {
+      "tag": "v0.27.0",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.27.0/rust",
+      "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.27.0",
+      "ordinary_selected44": "same frozen Profile::ALL minusTruncated; sourcesFileList,Walker;100k7pairs616",
+      "ordinary_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+      "cap_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+      "command_template": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "<exact-test>",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7"
+      },
+      "first_live_failures": "retain actual whole exit101/trailer; source and lock hashes before/after; actual wait/groupabsence; positive per-cell cleanup/root restore required before continuation; stop between tags for main acceptance"
+    },
+    {
+      "tag": "v0.28.0",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.28.0/rust",
+      "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.28.0",
+      "ordinary_selected44": "same frozen Profile::ALL minusTruncated; sourcesFileList,Walker;100k7pairs616",
+      "ordinary_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+      "cap_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+      "command_template": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "<exact-test>",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7"
+      },
+      "first_live_failures": "retain actual whole exit101/trailer; source and lock hashes before/after; actual wait/groupabsence; positive per-cell cleanup/root restore required before continuation; stop between tags for main acceptance"
+    },
+    {
+      "tag": "v0.29.0",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0/rust",
+      "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.29.0",
+      "ordinary_selected44": "same frozen Profile::ALL minusTruncated; sourcesFileList,Walker;100k7pairs616",
+      "ordinary_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+      "cap_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+      "command_template": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "<exact-test>",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7"
+      },
+      "first_live_failures": "retain actual whole exit101/trailer; source and lock hashes before/after; actual wait/groupabsence; positive per-cell cleanup/root restore required before continuation; stop between tags for main acceptance"
+    },
+    {
+      "tag": "v0.30.0",
+      "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.30.0/rust",
+      "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/target-release-v0.30.0",
+      "ordinary_selected44": "same frozen Profile::ALL minusTruncated; sourcesFileList,Walker;100k7pairs616",
+      "ordinary_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+      "cap_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_truncated_serial",
+      "command_template": [
+        "cargo",
+        "+1.97.1",
+        "test",
+        "--release",
+        "--locked",
+        "--offline",
+        "--lib",
+        "<exact-test>",
+        "--",
+        "--ignored",
+        "--exact",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "env": {
+        "FLISTWALKER_SEARCH_THREADS": "12",
+        "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+        "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+        "FW_INDEX_PERF_EXTRA_PAIRS": "7"
+      },
+      "first_live_failures": "retain actual whole exit101/trailer; source and lock hashes before/after; actual wait/groupabsence; positive per-cell cleanup/root restore required before continuation; stop between tags for main acceptance"
+    }
+  ]
+}

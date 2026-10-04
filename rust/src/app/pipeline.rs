@@ -567,7 +567,7 @@ impl FlistWalkerApp {
             .copied()
             .find(|(_, tab_id, _)| Some(*tab_id) != self.shell.indexing.warm_tab_id)
             .or_else(|| victims.first().copied());
-        let Some((_, tab_id, replacement_request_id)) = victim else {
+        let Some((_victim_request_id, tab_id, replacement_request_id)) = victim else {
             return false;
         };
 
@@ -577,8 +577,45 @@ impl FlistWalkerApp {
         if latest.get(&tab_id).copied() == Some(replacement_request_id) {
             return false;
         }
+        #[cfg(test)]
+        let perf_event = if self.shell.indexing.perf_observe_history {
+            let queued_active_ids = self
+                .shell
+                .indexing
+                .pending_queue
+                .iter()
+                .filter(|r| r.tab_id == active_tab_id)
+                .map(|r| r.request_id)
+                .take(129)
+                .collect::<Vec<_>>();
+            if self.shell.indexing.perf_preemptions.len() >= 128 || queued_active_ids.len() > 128 {
+                self.shell.indexing.perf_preemption_overflow = true;
+                drop(latest);
+                panic!("index preemption observation capacity exceeded");
+            }
+            // Collect scalar identities first; timestamp the mutation while locked.
+            Some(super::index_coordinator::IndexPerfPreemption {
+                victim_id: _victim_request_id,
+                victim_tab: tab_id,
+                prior_latest: latest.get(&tab_id).copied(),
+                replacement_id: replacement_request_id,
+                active_tab: active_tab_id,
+                warm_tab: self.shell.indexing.warm_tab_id,
+                pending_active_id: self.shell.indexing.pending_request_id,
+                latest_active_id: latest.get(&active_tab_id).copied(),
+                queued_active_ids,
+                inflight_count: self.shell.indexing.inflight_requests.len(),
+                at: std::time::Instant::now(),
+            })
+        } else {
+            None
+        };
         latest.insert(tab_id, replacement_request_id);
         drop(latest);
+        #[cfg(test)]
+        if let Some(event) = perf_event {
+            self.shell.indexing.perf_preemptions.push(event);
+        }
         if replacement_request_id == 0 {
             self.settle_tab_canceled_generation(tab_id);
         }
@@ -599,8 +636,26 @@ impl FlistWalkerApp {
             };
             let req_id = req.request_id;
             let req_tab_id = req.tab_id;
+            #[cfg(test)]
+            let perf_root = if self.shell.indexing.perf_observe_history {
+                Some(req.root.clone())
+            } else {
+                None
+            };
             match self.shell.indexing.tx.try_send(req) {
                 Ok(()) => {
+                    #[cfg(test)]
+                    if let Some(allocation) = self
+                        .shell
+                        .indexing
+                        .perf_allocations
+                        .iter()
+                        .find(|a| a.id == req_id)
+                    {
+                        let mut o = allocation.observation.lock().expect("index observation");
+                        o.admitted_at = Some(std::time::Instant::now());
+                        o.admitted_root = perf_root;
+                    }
                     super::worker::channel::trace_worker_load(
                         &self.shell.indexing.tx,
                         "index",
@@ -1129,7 +1184,8 @@ impl FlistWalkerApp {
             let active_mailbox_blocked = self
                 .shell
                 .indexing
-                .active_mailbox_blocked(MAX_PENDING_INDEX_ENTRIES);
+                .active_mailbox_blocked(MAX_PENDING_INDEX_ENTRIES)
+                || self.active_index_handoff_pending();
             let Some(arbitrated) =
                 mailbox_arbitrator.try_next(&mut self.shell.indexing, active_mailbox_blocked)
             else {
@@ -1137,6 +1193,15 @@ impl FlistWalkerApp {
             };
             let request_id = IndexCoordinator::response_request_id(&arbitrated.response);
             let route = self.shell.indexing.route_response(request_id);
+            // Injected/deferred test responses bypass mailbox admission. Keep
+            // every response category behind the same handoff, before applying
+            // even terminal bookkeeping. This reuses the fixed deferred slot.
+            #[cfg(test)]
+            if matches!(route, IndexResponseRoute::Active) && self.active_index_handoff_pending() {
+                debug_assert!(self.shell.indexing.deferred_response.is_none());
+                self.shell.indexing.deferred_response = Some(arbitrated.response);
+                break;
+            }
             let effect = IndexResponseApplicationOwner::new(self).apply(RoutedIndexResponse {
                 route,
                 response: arbitrated.response,
@@ -1220,8 +1285,7 @@ impl FlistWalkerApp {
         self.shell.indexing.build.pending_entries.extend(entries);
     }
 
-    fn ingest_index_entry(&mut self, entry: IndexEntry) {
-        let entry: Entry = entry.into();
+    fn ingest_ordered_index_entry(&mut self, entry: Entry) {
         if let Some(kind) = entry.kind {
             self.shell
                 .indexing
@@ -1252,35 +1316,7 @@ impl FlistWalkerApp {
         request_id: u64,
         max_entries: usize,
     ) -> bool {
-        if self.active_entry_filter_pending() {
-            return false;
-        }
-        if self.shell.indexing.pending_entries_request_id != Some(request_id) {
-            return false;
-        }
-        let incremental_current = self.incremental_entry_filter_current()
-            || (self.shell.indexing.build.index.entries.is_empty()
-                && self
-                    .shell
-                    .indexing
-                    .build
-                    .incremental_filtered_entries
-                    .is_empty());
-        let mut processed = 0usize;
-        while processed < max_entries {
-            let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
-                break;
-            };
-            self.ingest_index_entry(entry);
-            processed = processed.saturating_add(1);
-        }
-        if self.shell.indexing.build.pending_entries.is_empty() {
-            self.shell.indexing.pending_entries_request_id = None;
-        }
-        if incremental_current && self.should_track_incremental_filtered_entries() {
-            self.mark_incremental_entry_filter_current();
-        }
-        processed > 0
+        self.drain_ordered_index_entries(request_id, max_entries, None)
     }
 
     pub(super) fn drain_queued_index_entries_with_budget(
@@ -1290,11 +1326,60 @@ impl FlistWalkerApp {
         budget: Duration,
         max_entries: usize,
     ) -> bool {
-        if self.active_entry_filter_pending() {
+        self.drain_ordered_index_entries(request_id, max_entries, Some((frame_start, budget)))
+    }
+
+    fn active_index_handoff_pending(&self) -> bool {
+        self.shell
+            .indexing
+            .pending_request_id
+            .is_some_and(|id| self.shell.indexing.background_states.contains_key(&id))
+    }
+
+    fn drain_ordered_index_entries(
+        &mut self,
+        request_id: u64,
+        max_entries: usize,
+        deadline: Option<(Instant, Duration)>,
+    ) -> bool {
+        let handoff = self.shell.indexing.pending_request_id == Some(request_id)
+            && self
+                .shell
+                .indexing
+                .background_states
+                .contains_key(&request_id);
+        if self.active_entry_filter_pending()
+            || (self.shell.indexing.pending_entries_request_id != Some(request_id) && !handoff)
+        {
             return false;
         }
-        if self.shell.indexing.pending_entries_request_id != Some(request_id) {
-            return false;
+        if handoff {
+            if self.shell.indexing.background_states[&request_id].replaced {
+                // ReplaceAll already retires the old build before admitting its
+                // replacement. Keep that invariant even for a restored owner:
+                // a rejected retirement must not mix old/new generations.
+                let resources = self.take_active_index_build_resources();
+                if let Err(resources) = self.shell.tabs.try_retire_index_build_resources(resources)
+                {
+                    self.restore_active_index_build_resources(*resources);
+                    return false;
+                }
+                self.shell.indexing.pending_entries_request_id = None;
+                self.shell
+                    .indexing
+                    .background_states
+                    .get_mut(&request_id)
+                    .unwrap()
+                    .replaced = false;
+            }
+            if let Some(source) = self.shell.indexing.background_states[&request_id]
+                .source
+                .as_ref()
+            {
+                // Started may have arrived while Active, leaving this state
+                // without source metadata. None must not erase the build source.
+                self.shell.indexing.build.index.source = source.clone();
+            }
         }
         let incremental_current = self.incremental_entry_filter_current()
             || (self.shell.indexing.build.index.entries.is_empty()
@@ -1305,11 +1390,36 @@ impl FlistWalkerApp {
                     .incremental_filtered_entries
                     .is_empty());
         let mut processed = 0usize;
-        while processed < max_entries && frame_start.elapsed() < budget {
-            let Some(entry) = self.shell.indexing.build.pending_entries.pop_front() else {
+        while processed < max_entries
+            && deadline.is_none_or(|(start, budget)| start.elapsed() < budget)
+        {
+            let next = if self.shell.indexing.pending_entries_request_id == Some(request_id) {
+                self.shell
+                    .indexing
+                    .build
+                    .pending_entries
+                    .pop_front()
+                    .map(Entry::from)
+            } else {
+                None
+            }
+            .or_else(|| {
+                handoff
+                    .then(|| {
+                        self.shell
+                            .indexing
+                            .background_states
+                            .get_mut(&request_id)
+                            .unwrap()
+                            .entries
+                            .pop_front()
+                    })
+                    .flatten()
+            });
+            let Some(entry) = next else {
                 break;
             };
-            self.ingest_index_entry(entry);
+            self.ingest_ordered_index_entry(entry);
             processed = processed.saturating_add(1);
         }
         if self.shell.indexing.build.pending_entries.is_empty() {
@@ -1318,7 +1428,30 @@ impl FlistWalkerApp {
         if incremental_current && self.should_track_incremental_filtered_entries() {
             self.mark_incremental_entry_filter_current();
         }
-        processed > 0
+        let mut owner_retired = false;
+        if handoff
+            && self.shell.indexing.background_states[&request_id]
+                .entries
+                .is_empty()
+        {
+            // The empty deque still owns its allocation. Full restores that
+            // exact owner and keeps subsequent data/control in the mailbox.
+            let states = self
+                .shell
+                .indexing
+                .take_background_states_for_requests(&[request_id]);
+            let mut resources = super::tab_resources::RetiredIndexBuildResources::empty();
+            resources.set_background_states(states);
+            match self.shell.tabs.try_retire_index_build_resources(resources) {
+                Ok(()) => owner_retired = true,
+                Err(mut resources) => {
+                    self.shell
+                        .indexing
+                        .restore_background_states(resources.take_background_states());
+                }
+            }
+        }
+        processed > 0 || owner_retired
     }
 
     fn should_track_incremental_filtered_entries(&self) -> bool {
@@ -1389,7 +1522,7 @@ impl FlistWalkerApp {
             discarded_pending_entries,
         ) = if use_state_only {
             (
-                state_entries.into(),
+                state_entries,
                 Default::default(),
                 Default::default(),
                 existing_entries.into(),
@@ -1399,7 +1532,7 @@ impl FlistWalkerApp {
             (
                 existing_entries.into(),
                 pending_entries,
-                state_entries.into(),
+                state_entries,
                 Default::default(),
                 Default::default(),
             )
@@ -1457,6 +1590,9 @@ impl FlistWalkerApp {
         let Some(pending_finish) = self.shell.indexing.pending_finish.clone() else {
             return false;
         };
+        if self.active_index_handoff_pending() {
+            return false;
+        }
         if self.shell.indexing.pending_entries_request_id == Some(pending_finish.request_id)
             && !self.shell.indexing.build.pending_entries.is_empty()
         {

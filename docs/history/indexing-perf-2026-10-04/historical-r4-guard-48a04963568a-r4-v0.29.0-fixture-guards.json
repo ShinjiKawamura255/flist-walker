@@ -1,0 +1,47 @@
+{
+  "stage": "r4-v0.29.0-fixture-guards",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r4/v0.29.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::fixture::",
+    "--",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-r1-guards-execution/target-r4-v0.29.0"
+  },
+  "started_utc": "2026-10-04T04:03:28.035606+00:00",
+  "source_manifest_before": "a1355e91507aae4b5fa585b1f4b406f82358d7dc9bfb09389cfca22d3e0b593d",
+  "Cargo_lock_before": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+  "owned_guard_roots_before": [],
+  "scope": "compile/discovery/normal guards only; no perf",
+  "status": "completed",
+  "watchdog_seconds": 600,
+  "watchdog_expired": false,
+  "termination": null,
+  "actual_process_pid": 15311,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "continuation_authorized": true,
+  "exit_code": 0,
+  "ended_utc": "2026-10-04T04:03:29.043618+00:00",
+  "elapsed_seconds": 0.9979152919986518,
+  "log_sha256": "217f970497f6d37592bdcf7248210f412ddbbec0362655396211454791af0f04",
+  "source_manifest_after": "a1355e91507aae4b5fa585b1f4b406f82358d7dc9bfb09389cfca22d3e0b593d",
+  "Cargo_lock_after": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+  "owned_guard_roots_after": [],
+  "test_result_summaries": [
+    "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1497 filtered out; finished in 0.87s"
+  ],
+  "discovered_tests": [],
+  "first_errors": []
+}

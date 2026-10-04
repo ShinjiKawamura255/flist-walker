@@ -1,0 +1,20 @@
+#[test]
+fn historical_startup_root_unknown_join_is_retained() {
+    let cleanup=crate::app::historical_perf::CellGuard::begin();
+    let root=test_root("historical-startup-retained");fs::create_dir(&root).unwrap();
+    let owned=OwnedEmptyRoot(root.clone());
+    let result=std::panic::catch_unwind(|| {let _owned=owned;panic!("owned constructor/startup failure");});
+    assert!(result.is_err());assert!(root.is_dir());assert!(!cleanup.safe());
+    drop(cleanup);fs::remove_dir(&root).unwrap();
+}
+#[test]
+fn historical_startup_root_proven_join_is_removed() {
+    let _cleanup=crate::app::historical_perf::CellGuard::begin();
+    let token=Arc::new(AtomicBool::new(false));let mut runtime=crate::app::worker::runtime::WorkerRuntime::new(Arc::clone(&token));
+    runtime.push("startup-proof",thread::spawn(||{}));
+    let summary=runtime.join_all_with_timeout(Duration::from_secs(1));
+    crate::app::historical_perf::runtime_joined(&token,summary.joined,summary.total,&summary.pending,NATIVE_PANICS);
+    assert!(!crate::app::historical_perf::cleanup_unproven());
+    let root=test_root("historical-startup-proven");fs::create_dir(&root).unwrap();
+    drop(OwnedEmptyRoot(root.clone()));assert!(!root.exists());
+}

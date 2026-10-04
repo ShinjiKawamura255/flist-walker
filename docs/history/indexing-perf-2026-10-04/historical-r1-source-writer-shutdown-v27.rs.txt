@@ -1,0 +1,20 @@
+#[cfg(test)]
+fn shutdown_owned_historical_writer(path:&Path,timeout:Duration) {
+    let Some(observer)=crate::app::historical_perf::owned_writer(path) else {return;};
+    let sender=ui_state_persistence_registry().lock().ok().and_then(|mut registry| {
+        registry.history_snapshots.remove(path);
+        registry.senders.remove(path)
+    });
+    let Some(sender)=sender else {observer.stopping(false,None,false);observer.join(timeout);return;};
+    // Only this owned entry and this clone are released; the original rx loop exits on disconnect.
+    let (tx,rx)=mpsc::channel();
+    let sent=sender.send(UiStatePersistenceCommand::Flush(tx)).is_ok();
+    let (ack,timed_out)=if sent {match rx.recv_timeout(timeout) {
+        Ok(result)=>(Some(result),false),
+        Err(mpsc::RecvTimeoutError::Timeout)=>(None,true),
+        Err(mpsc::RecvTimeoutError::Disconnected)=>(None,false),
+    }}else{(None,false)};
+    observer.stopping(sent,ack,timed_out);
+    drop(sender);
+    observer.join(timeout);
+}

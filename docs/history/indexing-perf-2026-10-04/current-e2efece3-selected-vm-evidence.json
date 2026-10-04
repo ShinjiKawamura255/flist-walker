@@ -1,0 +1,56 @@
+{
+  "status": "PASS",
+  "source_manifest_sha256": "e2efece38146877a8f47269aa01374acec9d2d468207ec51ebaaa1b183fed07d",
+  "assets": [
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-filelist.log.gz",
+      "sha256": "a7ef82d1418497e1df2ca88716eb1ecbbc421f7bb48f07a89823f6428e9fb272",
+      "uncompressed_sha256": "864e5bb8d124b7cd3a69083b22870fef1677b33afa77d7641aec1b0e8c4265a3"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-filelist.sidecar.json",
+      "sha256": "f56cacdb827e4120aa959356decc4c64fa33590491d01df16112fa9c61ac8332",
+      "uncompressed_sha256": "f56cacdb827e4120aa959356decc4c64fa33590491d01df16112fa9c61ac8332"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-walker.log.gz",
+      "sha256": "bddb06f9653ad33285a7ea0fc383b6b1d5f286a5dea6295c87e3e0cc45dbc305",
+      "uncompressed_sha256": "18b4cf0d567c6fbc7cee84938e786108ac3194cac79b5bb554499251580838ca"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-walker.sidecar.json",
+      "sha256": "05162454cfe1d0b994ec44335eacd8db93feabf9a5313564d5137532ecfd63d4",
+      "uncompressed_sha256": "05162454cfe1d0b994ec44335eacd8db93feabf9a5313564d5137532ecfd63d4"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-search.log.gz",
+      "sha256": "23c5745eb71caed8b9c4a6b20dae7fbe898eed2e2cab4934d5299457c7882331",
+      "uncompressed_sha256": "ccad8d2affe262bc299ad9c1cd10a52b6251bd6d9d547b64475753d94f4e7270"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-search.sidecar.json",
+      "sha256": "92e84f152d1d6d92e0caf489fab3541c286bcf586c3d266d794f64decb2c06dd",
+      "uncompressed_sha256": "92e84f152d1d6d92e0caf489fab3541c286bcf586c3d266d794f64decb2c06dd"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-tab-transition.log.gz",
+      "sha256": "496f4c2e73309af383dec9b7006ba94e9bd80dffdfdd88df797fd844511c54bc",
+      "uncompressed_sha256": "3c99b82cdcfb7634eae75a93e2569d6bc827f94b09c848896166dc390234b491"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-tab-transition.sidecar.json",
+      "sha256": "5bdd2155f20a2615dd17ec717b1c1b7fee854f9ab3f80223769bc9656b87a411",
+      "uncompressed_sha256": "5bdd2155f20a2615dd17ec717b1c1b7fee854f9ab3f80223769bc9656b87a411"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/stale-full-selected-vm-packet.json",
+      "sha256": "85d6bbce73d4a04491e875fe3de7d057e3c38eddf9e2f20e327d89af2740a183",
+      "uncompressed_sha256": "85d6bbce73d4a04491e875fe3de7d057e3c38eddf9e2f20e327d89af2740a183"
+    },
+    {
+      "path": "docs/history/indexing-perf-2026-10-04/integration-e2efece3-selected-vm-check.json",
+      "sha256": "73558783e302024e2abb472595af79e2f30802b9540d9c5f1bbbaeb7a56b411c",
+      "uncompressed_sha256": "73558783e302024e2abb472595af79e2f30802b9540d9c5f1bbbaeb7a56b411c"
+    }
+  ]
+}

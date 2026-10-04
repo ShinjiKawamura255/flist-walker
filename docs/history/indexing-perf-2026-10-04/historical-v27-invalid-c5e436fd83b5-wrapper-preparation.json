@@ -1,0 +1,11 @@
+{
+  "stage": "source prepared; compile/perf command not yet invoked",
+  "script_sha256": "25f3309b9b3a99d861aa68d79197df072d1e415ca4bd3362711fbe7e5f2116fb",
+  "watchdogs": {
+    "build": 1200,
+    "discovery": 120,
+    "ordinary": 10800,
+    "cap": 3600
+  },
+  "scope": "v27 ONLY, serial; frozen Rust/R2 scripts unchanged; native deadlines unchanged"
+}

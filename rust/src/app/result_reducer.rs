@@ -341,6 +341,15 @@ fn request_sort_metadata(
 ) -> bool {
     let request_id = app.shell.worker_bus.sort.begin_request();
     app.bind_sort_request_to_current_tab(request_id);
+    #[cfg(test)]
+    app.shell.indexing.perf_aux_dispatch(
+        "sort",
+        request_id,
+        app.current_tab_id().unwrap_or_default(),
+        app.shell.indexing.kind_resolution_epoch,
+        None,
+        missing_paths.len(),
+    );
     app.refresh_status_line();
     if app
         .shell
@@ -577,6 +586,23 @@ pub(super) fn apply_active_preview_response(
     if Some(response.request_id) != app.shell.worker_bus.preview.pending_request_id {
         return false;
     }
+    #[cfg(test)]
+    app.shell.indexing.perf_aux_delivered(
+        "preview",
+        response.request_id,
+        app.current_tab_id().unwrap_or_default(),
+        app.shell.indexing.kind_resolution_epoch,
+        Some(&response.path),
+        !response.canceled
+            && response.page_error.is_none()
+            && (response.document.is_some() || !response.preview.is_empty())
+            && app
+                .shell
+                .runtime
+                .current_row
+                .and_then(|row| app.shell.runtime.results.get(row))
+                .is_some_and(|(path, _)| path == &response.path),
+    );
     app.take_preview_request_tab(response.request_id);
     app.shell.worker_bus.preview.clear_request();
     if response.canceled {
@@ -666,6 +692,15 @@ pub(super) fn apply_active_sort_response(
     if Some(response.request_id) != app.shell.worker_bus.sort.pending_request_id {
         return false;
     }
+    #[cfg(test)]
+    app.shell.indexing.perf_aux_delivered(
+        "sort",
+        response.request_id,
+        app.current_tab_id().unwrap_or_default(),
+        app.shell.indexing.kind_resolution_epoch,
+        None,
+        response.mode == app.shell.runtime.result_sort_mode && !response.entries.is_empty(),
+    );
     app.take_sort_request_tab(response.request_id);
     let pending_total_match_count = app.shell.worker_bus.sort.pending_total_match_count.take();
     app.shell.worker_bus.sort.clear_request();

@@ -1,0 +1,140 @@
+{
+  "scope": "Frozen focused correctness checkpoint at8e28946b; independent AFTER pending at archive creation; no renewed performance accepted by this record",
+  "rust_source_map_sha256": "8e28946bdf28e1d731995ff8fd5b075483d9eecc72ddeee08d216636ba89d5d4",
+  "source_manifest_file_sha256": "99dff99a4452f1558eed16f8114c86f841a659528bb2e4de683a2cb2e20ed8a1",
+  "assets": [
+    {
+      "file": "victim-contract-final-packet.json",
+      "sha256": "d02a10d35d0e307c722d4e918982b4eb8e430aaad56e3f78a77d6b5288f7c9d5",
+      "bytes": 38927
+    },
+    {
+      "file": "victim-contract-final-source-hashes.json",
+      "sha256": "99dff99a4452f1558eed16f8114c86f841a659528bb2e4de683a2cb2e20ed8a1",
+      "bytes": 25302
+    },
+    {
+      "file": "victim-contract-collector-guards.json",
+      "sha256": "094a13d9babdbb1d366dbaafc6997849d345ab5c87ff57e823f67a3a9523fe48",
+      "bytes": 1907
+    },
+    {
+      "file": "summarize_extensions.py",
+      "sha256": "789a3ffb4d87c9c578c367e91f3ab6b0af7306d00c94d85ff30389a35d74f3f3",
+      "bytes": 8163
+    },
+    {
+      "file": "victim-contract-final-reversible.patch.gz",
+      "sha256": "630da5174f630eb498c01d74e22047bd3edbd0ca2d70ce170553ceba3bb36fb8",
+      "bytes": 11552,
+      "uncompressed_sha256": "a2131f60a2d0106cf1893d96d105769f4d75f692542ef11df8ee0805da7e2a9e",
+      "uncompressed_bytes": 53881
+    },
+    {
+      "file": "victim-contract-indexing-normal.log.gz",
+      "sha256": "5e52f2a2728b97dbc127dd386dff8b024209aaf0c3e8f3e2560eab55b9bd5f2d",
+      "bytes": 2017,
+      "uncompressed_sha256": "4c564f8d620588456648ee15546130cf2c4d06c6ee60d4c66bbc2099adcb3951",
+      "uncompressed_bytes": 8279
+    },
+    {
+      "file": "victim-contract-search-observer.log.gz",
+      "sha256": "f7200ee3e858a0e1a1ebcdc1b33dd3c0e1a7664a01d0c5437d4f2af6c67dc698",
+      "bytes": 498,
+      "uncompressed_sha256": "f2795ab2a99d2221d65b2472e7ca3c260f1dda84bace76730fe95ee5398fb6aa",
+      "uncompressed_bytes": 1223
+    },
+    {
+      "file": "victim-contract-fmt.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0
+    },
+    {
+      "file": "victim-contract-clippy.log.gz",
+      "sha256": "e6fe836baf1c9757100f360cb2e1f3b7d6ee7e88906e61e033b8afdf74ac299d",
+      "bytes": 152,
+      "uncompressed_sha256": "79508cd529d0e8e668425acf43bec4206d9542b8a36a215bfa013fdd8df670c8",
+      "uncompressed_bytes": 161
+    },
+    {
+      "file": "victim-contract-ordering-focused.log.gz",
+      "sha256": "e8121209ca5b6d1b1c6c7aef6f417e513410bcb9825f7b63a4556726f2feb40a",
+      "bytes": 533,
+      "uncompressed_sha256": "3057d91268fa944cf4e667f2f5d43313343e2c11c10569d82142bbdb9627c7b0",
+      "uncompressed_bytes": 1533
+    },
+    {
+      "file": "victim-contract-tc207.log.gz",
+      "sha256": "274625eb05ddabb06df1bc8641eb4a9cc6cf626e825b6223976fd64e7688fe4e",
+      "bytes": 2446,
+      "uncompressed_sha256": "81951dcdeba3637e9088818797d5a5cff4dc1b14aa1b82f65ac3146d93114ed8",
+      "uncompressed_bytes": 10623
+    },
+    {
+      "file": "victim-contract-index-pipeline.log.gz",
+      "sha256": "5d2536b913d92cb19d4a9428ec9b33d9ead2dc357b158b81479da9243eef3f07",
+      "bytes": 3600,
+      "uncompressed_sha256": "81623b99b1a98655e8db5abe51201dc7aaecb04bf3521fa39669b736b538f206",
+      "uncompressed_bytes": 19343
+    },
+    {
+      "file": "victim-contract-first-red.log.gz",
+      "sha256": "d9057de3b91a1c45d1f65e7bf5e653f15726ed36c1d11aab1970f95f59ab68d1",
+      "bytes": 1530,
+      "uncompressed_sha256": "b0d25fe08e1b426d8e0069cbc795d25dcf73942f1fb8c17ca51a052faa9dded1",
+      "uncompressed_bytes": 5418
+    },
+    {
+      "file": "victim-contract-hook-red.log.gz",
+      "sha256": "43d01f3e9912f70cf6bcc6f7cda0971069eb2383a8d963bd2ebaa51f815a84a1",
+      "bytes": 1481,
+      "uncompressed_sha256": "4db7985a5ce43b3b1c31268be7990054df41604245b747c28253fc0c2954c813",
+      "uncompressed_bytes": 5391
+    },
+    {
+      "file": "victim-contract-guards-red.log.gz",
+      "sha256": "9951af9b8724c700dcd42e0d8ed76393e775d9f33a65338e3bd9ce8f9033bdbb",
+      "bytes": 2826,
+      "uncompressed_sha256": "eb96b562f1cad61216e04ac36a8cd02edb4306f90f3a9b0647237591d75c6f6e",
+      "uncompressed_bytes": 12387
+    },
+    {
+      "file": "victim-contract-focused-role-green.log.gz",
+      "sha256": "3e6cefc06aac5376cb9f691370fee9e5ecea5a19efea72d5a74cc3424692617b",
+      "bytes": 496,
+      "uncompressed_sha256": "7ad8a7e6a64af6fd6da9f82bb7a789ce30ff384dae8cf4166eaae57568cf6ba2",
+      "uncompressed_bytes": 866
+    },
+    {
+      "file": "victim-contract-before-driver.rs.snapshot.gz",
+      "sha256": "2971a107d7adc14b5db65ec69c53c2d396d91c7944575d2ac27dae9fbbeb3afb",
+      "bytes": 15261,
+      "uncompressed_sha256": "9cd99d59aa83e6341c3939ef263b93a5b9f02424875b42efe46bf4c99272678a",
+      "uncompressed_bytes": 74510
+    },
+    {
+      "file": "victim-contract-before-index_coordinator.rs.snapshot.gz",
+      "sha256": "b340ba1a950934098ee91fdae6fa0757730ac2555fdc163e6b9ea61ebb2f0a40",
+      "bytes": 7711,
+      "uncompressed_sha256": "c3904045ff36944c3dfeacb167f5236f0bba045081c48d9d59b3eed48187b940",
+      "uncompressed_bytes": 43063
+    },
+    {
+      "file": "victim-contract-before-mod.rs.snapshot.gz",
+      "sha256": "610f1ad639db84eee02e4a4f0a3b3320b165b7cd62801efdeb0f2c36883bfd9f",
+      "bytes": 6211,
+      "uncompressed_sha256": "be48f7d8837f2a908d293343c184d0eac5f33f058bc1cf9e80d459728eaf1689",
+      "uncompressed_bytes": 30190
+    },
+    {
+      "file": "victim-contract-before-pipeline.rs.snapshot.gz",
+      "sha256": "ffe1cfa6b823a15a79c24ddd7a4bee39a1c6edfad8624c206172be78c2fcf49e",
+      "bytes": 12766,
+      "uncompressed_sha256": "238d67d8c5929b6b077a8de74473150d8e32d634fc3d28c6cf726d9208c1e58b",
+      "uncompressed_bytes": 82678
+    }
+  ],
+  "decompression": "python3 -m gzip -d <owned copy of .gz>; verify compressed and uncompressed SHA256"
+}

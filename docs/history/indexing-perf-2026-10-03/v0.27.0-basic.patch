@@ -1,0 +1,1918 @@
+--- a/rust/src/app/index_coordinator.rs
++++ b/rust/src/app/index_coordinator.rs
+@@ -105,6 +105,10 @@
+     pub(super) pending_request_id: Option<u64>,
+     resource_state: TabResourceState,
+     pub(super) latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
++    #[cfg(test)]
++    pub(super) perf_observe_requests: bool,
++    #[cfg(test)]
++    pub(super) perf_settled_requests: HashMap<u64, Instant>,
+     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
+     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
+     pub(super) pending_queue: VecDeque<IndexRequest>,
+@@ -194,6 +198,10 @@
+             resource_state: TabResourceState::default(),
+             latest_request_ids,
+             response_mailboxes,
++            #[cfg(test)]
++            perf_observe_requests: false,
++            #[cfg(test)]
++            perf_settled_requests: HashMap::new(),
+             latest_kind_epochs,
+             pending_queue: VecDeque::new(),
+             inflight_requests: HashSet::new(),
+@@ -356,7 +364,12 @@
+             }
+         }
+         if let Ok(mut mailboxes) = self.response_mailboxes.lock() {
+-            mailboxes.insert(request_id, Arc::new(IndexResponseMailbox::new()));
++            let mailbox = Arc::new(IndexResponseMailbox::new());
++            #[cfg(test)]
++            if self.perf_observe_requests {
++                mailbox.enable_perf_observation();
++            }
++            mailboxes.insert(request_id, mailbox);
+         }
+         request_id
+     }
+@@ -542,6 +555,13 @@
+     }
+ 
+     pub(super) fn settle_active_terminal_state(&mut self) {
++        #[cfg(test)]
++        if self.perf_observe_requests {
++            if let Some(request_id) = self.pending_request_id {
++                self.perf_settled_requests
++                    .insert(request_id, Instant::now());
++            }
++        }
+         self.in_progress = false;
+         self.pending_request_id = None;
+         self.search_resume_pending = false;
+--- a/rust/src/app/index_mailbox.rs
++++ b/rust/src/app/index_mailbox.rs
+@@ -8,6 +8,19 @@
+ struct SequencedResponse {
+     sequence: u64,
+     response: IndexResponse,
++}
++
++#[cfg(test)]
++#[derive(Clone, Debug, Default)]
++pub(super) struct IndexPerfObservation {
++    pub(super) batches: usize,
++    pub(super) entries_emitted: usize,
++    pub(super) replacements: usize,
++    pub(super) full_wait: std::time::Duration,
++    pub(super) full_retries: usize,
++    pub(super) blocked_batches: usize,
++    pub(super) data_publish_end: Option<std::time::Instant>,
++    pub(super) terminal_published: Option<std::time::Instant>,
+ }
+ 
+ #[derive(Default)]
+@@ -18,6 +31,8 @@
+     truncated: Option<SequencedResponse>,
+     terminal: Option<SequencedResponse>,
+     closed: bool,
++    #[cfg(test)]
++    perf: IndexPerfObservation,
+ }
+ 
+ pub(super) enum IndexMailboxPublishError {
+@@ -39,6 +54,8 @@
+ pub(super) struct IndexResponseMailbox {
+     data_capacity: usize,
+     state: Mutex<MailboxState>,
++    #[cfg(test)]
++    perf_enabled: std::sync::atomic::AtomicBool,
+ }
+ 
+ impl IndexResponseMailbox {
+@@ -50,6 +67,45 @@
+         Self {
+             data_capacity: data_capacity.max(1),
+             state: Mutex::new(MailboxState::default()),
++            #[cfg(test)]
++            perf_enabled: std::sync::atomic::AtomicBool::new(false),
++        }
++    }
++
++    #[cfg(test)]
++    pub(super) fn enable_perf_observation(&self) {
++        self.perf_enabled
++            .store(true, std::sync::atomic::Ordering::Relaxed);
++    }
++    #[cfg(test)]
++    pub(super) fn perf_enabled(&self) -> bool {
++        self.perf_enabled.load(std::sync::atomic::Ordering::Relaxed)
++    }
++    #[cfg(test)]
++    pub(super) fn perf_observation(&self) -> IndexPerfObservation {
++        self.state
++            .lock()
++            .expect("mailbox observation lock")
++            .perf
++            .clone()
++    }
++    #[cfg(test)]
++    pub(super) fn record_data_publish_end(&self) {
++        if self.perf_enabled() {
++            self.state
++                .lock()
++                .expect("mailbox observation lock")
++                .perf
++                .data_publish_end = Some(std::time::Instant::now());
++        }
++    }
++    #[cfg(test)]
++    pub(super) fn record_full_wait(&self, elapsed: std::time::Duration, retries: usize) {
++        if self.perf_enabled() {
++            let mut state = self.state.lock().expect("mailbox observation lock");
++            state.perf.full_wait += elapsed;
++            state.perf.full_retries += retries;
++            state.perf.blocked_batches += 1;
+         }
+     }
+ 
+@@ -71,6 +127,24 @@
+             return Err(IndexMailboxPublishError::Full(response));
+         }
+ 
++        #[cfg(test)]
++        if self.perf_enabled() {
++            match &response {
++                IndexResponse::Batch { entries, .. }
++                | IndexResponse::ReplaceAll { entries, .. } => {
++                    state.perf.batches += 1;
++                    state.perf.entries_emitted += entries.len();
++                    state.perf.replacements +=
++                        usize::from(matches!(&response, IndexResponse::ReplaceAll { .. }));
++                }
++                IndexResponse::Finished { .. }
++                | IndexResponse::Failed { .. }
++                | IndexResponse::Canceled { .. } => {
++                    state.perf.terminal_published = Some(std::time::Instant::now())
++                }
++                _ => {}
++            }
++        }
+         let sequenced = SequencedResponse {
+             sequence: state.next_sequence,
+             response,
+--- a/rust/src/app/index_worker.rs
++++ b/rust/src/app/index_worker.rs
+@@ -63,17 +63,53 @@
+ 
+ impl IndexResponseSink for MailboxResponseSink {
+     fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
++        #[cfg(test)]
++        if matches!(&response, IndexResponse::Finished { .. }) {
++            // All data sends have succeeded. Includes producer Full waits and
++            // nested FileList processing; this is not pure filesystem duration.
++            self.mailbox.record_data_publish_end();
++        }
++        #[cfg(test)]
++        let mut full_wait_started: Option<Instant> = None;
++        #[cfg(test)]
++        let mut full_retries = 0;
++        #[cfg(test)]
++        let observe = self.mailbox.perf_enabled();
+         loop {
+             match self.mailbox.try_publish(response) {
+-                Ok(()) => return Ok(()),
++                Ok(()) => {
++                    #[cfg(test)]
++                    if let Some(started) = full_wait_started {
++                        self.mailbox
++                            .record_full_wait(started.elapsed(), full_retries);
++                    }
++                    return Ok(());
++                }
+                 Err(error @ IndexMailboxPublishError::Full(_)) => {
++                    #[cfg(test)]
++                    if observe {
++                        full_wait_started.get_or_insert_with(Instant::now);
++                        full_retries += 1;
++                    }
+                     response = error.into_response();
+                     if !self.request_is_current() {
++                        #[cfg(test)]
++                        if let Some(started) = full_wait_started {
++                            self.mailbox
++                                .record_full_wait(started.elapsed(), full_retries);
++                        }
+                         return Err(());
+                     }
+                     thread::sleep(Duration::from_millis(1));
+                 }
+-                Err(_) => return Err(()),
++                Err(_) => {
++                    #[cfg(test)]
++                    if let Some(started) = full_wait_started {
++                        self.mailbox
++                            .record_full_wait(started.elapsed(), full_retries);
++                    }
++                    return Err(());
++                }
+             }
+         }
+     }
+--- a/rust/src/app/pipeline_owner.rs
++++ b/rust/src/app/pipeline_owner.rs
+@@ -51,6 +51,8 @@
+         self.app.refresh_status_line();
+ 
+         let req = self.build_active_search_request(request_id, cancel);
++        #[cfg(test)]
++        self.app.shell.search.observe_perf_dispatch(request_id, req.entries.len(), &req.cancel, &req.query);
+         if self.app.shell.search.tx.send(req).is_err() {
+             self.app.shell.search.clear_active_request_state();
+             self.app.set_notice("Search worker is unavailable");
+--- a/rust/src/app/search_coordinator.rs
++++ b/rust/src/app/search_coordinator.rs
+@@ -10,9 +10,26 @@
+     Stale,
+ }
+ 
++#[cfg(test)]
++#[derive(Clone, Debug)]
++pub(super) struct SearchPerfEvent {
++    pub(super) request_id: u64,
++    pub(super) at: std::time::Instant,
++    pub(super) event: &'static str,
++    pub(super) candidates: usize,
++    pub(super) query: String,
++}
++
+ pub(super) struct SearchCoordinator {
+     pub(super) tx: Sender<SearchRequest>,
+     pub(super) rx: Receiver<SearchResponse>,
++    #[cfg(test)]
++    pub(super) perf_enabled: bool,
++    #[cfg(test)]
++    pub(super) perf_events: Vec<SearchPerfEvent>,
++    #[cfg(test)]
++    pub(super) perf_workers:
++        HashMap<u64, Arc<std::sync::Mutex<super::worker::search_perf::SearchPerfObservation>>>,
+     next_request_id: u64,
+     pending_request_id: Option<u64>,
+     in_progress: bool,
+@@ -26,6 +43,12 @@
+         Self {
+             tx,
+             rx,
++            #[cfg(test)]
++            perf_enabled: false,
++            #[cfg(test)]
++            perf_events: Vec::new(),
++            #[cfg(test)]
++            perf_workers: HashMap::new(),
+             next_request_id: 1,
+             pending_request_id: None,
+             in_progress: false,
+@@ -35,6 +58,27 @@
+         }
+     }
+ 
++    #[cfg(test)]
++    pub(super) fn observe_perf_dispatch(
++        &mut self,
++        request_id: u64,
++        candidates: usize,
++        cancel: &Arc<AtomicBool>,
++        query: &str,
++    ) {
++        if self.perf_enabled {
++            self.perf_workers
++                .insert(request_id, super::worker::search_perf::register(cancel));
++            self.perf_events.push(SearchPerfEvent {
++                request_id,
++                at: std::time::Instant::now(),
++                event: "dispatch",
++                candidates,
++                query: query.into(),
++            });
++        }
++    }
++
+     pub(super) fn allocate_request_id(&mut self) -> u64 {
+         let request_id = self.next_request_id;
+         self.next_request_id = self.next_request_id.saturating_add(1);
+@@ -87,6 +131,20 @@
+ 
+     pub(super) fn route_response(&mut self, request_id: u64) -> SearchResponseRoute {
+         let is_active = Some(request_id) == self.pending_request_id;
++        #[cfg(test)]
++        if self.perf_enabled {
++            self.perf_events.push(SearchPerfEvent {
++                request_id,
++                at: std::time::Instant::now(),
++                event: if is_active {
++                    "response_active"
++                } else {
++                    "response_stale"
++                },
++                candidates: 0,
++                query: String::new(),
++            });
++        }
+         let tab_id = self.take_request_tab(request_id);
+         self.finish_request(request_id, tab_id);
+         if is_active {
+@@ -144,6 +202,16 @@
+ 
+     fn cancel_request(&mut self, request_id: u64) {
+         if let Some(cancel) = self.request_cancellations.remove(&request_id) {
++            #[cfg(test)]
++            if self.perf_enabled {
++                self.perf_events.push(SearchPerfEvent {
++                    request_id,
++                    at: std::time::Instant::now(),
++                    event: "cancel_requested",
++                    candidates: 0,
++                    query: String::new(),
++                });
++            }
+             cancel.store(true, Ordering::Release);
+         }
+     }
+--- a/rust/src/app/session.rs
++++ b/rust/src/app/session.rs
+@@ -1,3 +1,15 @@
++#[cfg(test)]
++thread_local! {
++    static PERF_SETTINGS_BASE: std::cell::RefCell<Option<PathBuf>> = const { std::cell::RefCell::new(None) };
++}
++#[cfg(test)]
++pub(super) fn set_perf_settings_base(base: Option<PathBuf>) {
++    PERF_SETTINGS_BASE.with(|slot| *slot.borrow_mut() = base);
++}
++#[cfg(test)]
++fn perf_settings_base() -> Option<PathBuf> {
++    PERF_SETTINGS_BASE.with(|slot| slot.borrow().clone())
++}
+ use super::FlistWalkerApp;
+ use crate::fs_atomic::acquire_sidecar_lock;
+ use crate::fs_atomic::write_text_atomic;
+@@ -648,6 +660,8 @@
+     }
+ 
+     pub(super) fn ui_state_file_path() -> Option<PathBuf> {
++        #[cfg(test)]
++        if let Some(base) = perf_settings_base() { return Some(Self::ui_state_file_path_in(&base)); }
+         settings_base_dir().map(|base| Self::ui_state_file_path_in(&base))
+     }
+ 
+@@ -805,6 +819,8 @@
+     }
+ 
+     fn saved_roots_file_path() -> Option<PathBuf> {
++        #[cfg(test)]
++        if let Some(base) = perf_settings_base() { return Some(Self::saved_roots_file_path_in(&base)); }
+         #[cfg(test)]
+         if let Some(path) = SAVED_ROOTS_FILE_PATH_OVERRIDE
+             .get_or_init(|| Mutex::new(None))
+--- a/rust/src/app/tests/mod.rs
++++ b/rust/src/app/tests/mod.rs
+@@ -92,3 +92,5 @@
+ mod tab_result_cache;
+ mod update_commands;
+ mod window_ime;
++
++mod indexing_perf;
+--- a/rust/src/app/tests/support.rs
++++ b/rust/src/app/tests/support.rs
+@@ -1,3 +1,4 @@
++use std::fs;
+ use super::{egui, FlistWalkerApp, PathBuf};
+ use std::time::{SystemTime, UNIX_EPOCH};
+ 
+@@ -115,3 +116,27 @@
+         latest.clear();
+     }
+ }
++
++// Historical harness-only settings isolation; both owned files exist before
++// construction to prevent legacy settings migration from consulting host files.
++pub(crate) struct TestSettingsScope { base: PathBuf }
++impl TestSettingsScope {
++    pub(crate) fn new(name: &str) -> Self {
++        let base = test_root(name);
++        fs::create_dir_all(&base).expect("owned settings dir");
++        fs::write(base.join(".flistwalker_ui_state.json"), "{}").expect("owned ui state");
++        fs::write(base.join(".flistwalker_roots.txt"), "").expect("owned roots");
++        Self { base }
++    }
++    pub(crate) fn app(&self, root: PathBuf, limit: usize, query: String) -> FlistWalkerApp {
++        crate::app::session::set_perf_settings_base(Some(self.base.clone()));
++        FlistWalkerApp::build_new(root, limit, query)
++    }
++}
++impl Drop for TestSettingsScope {
++    fn drop(&mut self) {
++        crate::app::session::set_perf_settings_base(None);
++        let _ = fs::remove_dir_all(&self.base);
++    }
++}
++pub(crate) fn test_settings_scope(name: &str) -> TestSettingsScope { TestSettingsScope::new(name) }
+--- a/rust/src/app/worker.rs
++++ b/rust/src/app/worker.rs
+@@ -4,3 +4,6 @@
+ pub(in crate::app) mod protocol;
+ pub(in crate::app) mod runtime;
+ pub(in crate::app) mod tasks;
++
++#[cfg(test)]
++pub(in crate::app) mod search_perf;
+--- a/rust/src/app/worker/tasks.rs
++++ b/rust/src/app/worker/tasks.rs
+@@ -153,12 +153,28 @@
+     let handle = thread::spawn(move || {
+         let mut prefix_cache = SearchPrefixCache::default();
+         while let Ok(req) = rx_req.recv() {
++            #[cfg(test)]
++            let perf_observation = super::search_perf::take(&req.cancel);
+             if shutdown.load(Ordering::Relaxed) {
++                #[cfg(test)]
++                if let Some(observation) = &perf_observation {
++                    observation
++                        .lock()
++                        .expect("search perf observation")
++                        .begin(req.entries.len(), true);
++                }
+                 break;
+             }
+             trace_worker_started("search", req.request_id);
+             let cancellation_requested =
+                 || shutdown.load(Ordering::Relaxed) || req.cancel.load(Ordering::Acquire);
++            #[cfg(test)]
++            if let Some(observation) = &perf_observation {
++                observation
++                    .lock()
++                    .expect("search perf observation")
++                    .begin(req.entries.len(), cancellation_requested());
++            }
+             let SearchRunOutcome::Completed(result_set, error) = rank_search_results_cancellable(
+                 &req.entries,
+                 &req.query,
+@@ -172,6 +188,13 @@
+                 req.sort_scope,
+                 &cancellation_requested,
+             ) else {
++                #[cfg(test)]
++                if let Some(observation) = &perf_observation {
++                    observation
++                        .lock()
++                        .expect("search perf observation")
++                        .finish(true);
++                }
+                 info!(
+                     flow = "search",
+                     event = "canceled",
+@@ -180,7 +203,21 @@
+                 );
+                 continue;
+             };
++            #[cfg(test)]
++            if let Some(observation) = &perf_observation {
++                observation
++                    .lock()
++                    .expect("search perf observation")
++                    .evaluated(result_set.evaluated_candidate_count);
++            }
+             if cancellation_requested() {
++                #[cfg(test)]
++                if let Some(observation) = &perf_observation {
++                    observation
++                        .lock()
++                        .expect("search perf observation")
++                        .finish(true);
++                }
+                 info!(
+                     flow = "search",
+                     event = "canceled",
+@@ -188,6 +225,13 @@
+                     "worker request canceled before response publication"
+                 );
+                 continue;
++            }
++            #[cfg(test)]
++            if let Some(observation) = &perf_observation {
++                observation
++                    .lock()
++                    .expect("search perf observation")
++                    .finish(false);
+             }
+             info!(
+                 flow = "search",
+--- /dev/null
++++ b/rust/src/app/tests/indexing_perf/mod.rs
+@@ -0,0 +1,363 @@
++//! Actual-worker indexing measurements. These are headless GUI observations.
++use super::*;
++
++#[derive(Default)]
++struct CompletionTruth {
++    terminal_published: bool,
++    own_request_settled: bool,
++    snapshot_valid: bool,
++    pending_debt: bool,
++    latest_results_valid: bool,
++}
++impl CompletionTruth {
++    fn snapshot_settled(&self) -> bool {
++        self.terminal_published
++            && self.own_request_settled
++            && self.snapshot_valid
++            && !self.pending_debt
++    }
++    fn results_settled(&self) -> bool {
++        self.snapshot_settled() && self.latest_results_valid
++    }
++}
++#[test]
++fn tc_228_terminal_truth_rejects_false_completion_and_debt() {
++    let mut state = CompletionTruth {
++        terminal_published: true,
++        own_request_settled: true,
++        snapshot_valid: true,
++        latest_results_valid: true,
++        ..Default::default()
++    };
++    assert!(state.results_settled());
++    state.pending_debt = true;
++    assert!(!state.snapshot_settled());
++    state.pending_debt = false;
++    state.terminal_published = false;
++    assert!(!state.results_settled());
++    state.terminal_published = true;
++    state.own_request_settled = false;
++    assert!(!state.snapshot_settled());
++}
++
++mod harness;
++use harness::{run_sample, Case, Fixture, Source};
++
++#[test]
++fn tc_228_real_worker_headless_refresh_preserves_snapshot_and_query() {
++    let fixture = Fixture::new(16_384);
++    for source in [Source::FileList, Source::Walker] {
++        for case in [Case::B0, Case::S1Selective, Case::S1Dense, Case::S2] {
++            let sample = run_sample(&fixture, case, source);
++            assert!(sample.t1 <= sample.terminal);
++            assert!(sample.terminal <= sample.t2);
++            assert!(sample.t2 <= sample.t3);
++        }
++    }
++}
++fn setting(name: &str, default: usize) -> usize {
++    let value = std::env::var(name)
++        .map(|v| {
++            v.parse::<usize>()
++                .expect("positive integer performance setting")
++        })
++        .unwrap_or(default);
++    assert!(value > 0 && value <= 1_000_000, "{name} out of bounds");
++    value
++}
++fn ms(value: Duration) -> f64 {
++    value.as_secs_f64() * 1000.0
++}
++#[test]
++#[ignore = "actual-worker release paired indexing contention observations; run explicitly"]
++fn perf_indexing_contention_paired() {
++    assert!(!cfg!(debug_assertions), "use cargo test --release");
++    let count = setting("FW_INDEX_PERF_ENTRIES", 100_000);
++    let pairs = setting("FW_INDEX_PERF_PAIRS", 7);
++    let cases = std::env::var("FW_INDEX_PERF_CASES")
++        .unwrap_or_else(|_| "S1-selective,S1-dense,S2".into())
++        .split(',')
++        .map(Case::parse)
++        .collect::<Vec<_>>();
++    let fixture = Fixture::new(count);
++    let sources = std::env::var("FW_INDEX_PERF_SOURCES")
++        .unwrap_or_else(|_| "FileList,Walker".into())
++        .split(',')
++        .map(Source::parse)
++        .collect::<Vec<_>>();
++    let full_profile = count == 100_000
++        && pairs >= 7
++        && [Case::S1Selective, Case::S1Dense, Case::S2]
++            .iter()
++            .all(|case| cases.contains(case))
++        && [Source::FileList, Source::Walker]
++            .iter()
++            .all(|source| sources.contains(source));
++    eprintln!(
++        "INDEX_PERF_META {}",
++        serde_json::json!({"schema_version":1,"sample_entries":count,"pairs":pairs,"sources":sources.iter().map(|s|s.name()).collect::<Vec<_>>(),"cases":cases.iter().map(|s|s.name()).collect::<Vec<_>>(),"frame_period_ms":16,"host":std::env::consts::OS,"arch":std::env::consts::ARCH,"cpu_parallelism":std::thread::available_parallelism().map_or(1,|v|v.get()),"package_version":env!("CARGO_PKG_VERSION"),"cargo_profile":"release","full_profile":full_profile,"fixture":"flat-real-files-ascii-japanese-v2","fixture_signature":fixture.manifest_signature(),"trace":"empty-startup-held10-edit25-clear50-v4","observer":"cfg-test-opt-in-batch-phase-v2","native":false})
++    );
++    for source in sources {
++        for case in &cases {
++            let case = *case;
++            for warmup in [Case::B0, case] {
++                let _ = run_sample(&fixture, warmup, source);
++            }
++            for pair in 0..pairs {
++                let order = if pair % 2 == 0 {
++                    [Case::B0, case]
++                } else {
++                    [case, Case::B0]
++                };
++                for (position, condition) in order.into_iter().enumerate() {
++                    let s = run_sample(&fixture, condition, source);
++                    let mut record = serde_json::json!({
++                        "schema_version":1,"source":source.name(),"comparison":case.name(),"case":condition.name(),
++                        "pair":pair,"order":if pair%2==0 {"AB"} else {"BA"},"position":position,"sample_entries":count,
++                        "request_id":s.request,"coordinator_terminal_settled_ms":ms(s.own_request_settled),"last_confirmed_snapshot_unsettled_ms":ms(s.last_confirmed_unsettled),
++                        "data_publish_end_ms":ms(s.t1),"terminal_publish_ms":ms(s.terminal),"index_ready_ms":ms(s.t2),"results_ready_ms":ms(s.t3),
++                        "max_no_work_progress_ms":ms(s.max_progress_gap),"max_ingest_gap_ms":ms(s.max_ingest_gap),"max_frame_ms":ms(s.frame_max),"frames":s.frames,
++                        "correct":true,"snapshot_signature":format!("{:016x}",s.snapshot_signature),"results_signature":format!("{:016x}",s.results_signature)
++                    });
++                    record.as_object_mut().unwrap().extend(serde_json::json!({
++                        "batches":s.observation.batches,"entries_emitted":s.observation.entries_emitted,"replace_all":s.observation.replacements,
++                        "full_count":s.observation.full_retries,"blocked_batches":s.observation.blocked_batches,"full_wait_ms":ms(s.observation.full_wait),
++                        "overlap_dispatches":s.overlap_dispatches,"producer_overlap_dispatches":s.producer_overlap_dispatches,
++                        "overlap_responses":s.overlap_responses,"cancel_requested":s.cancel_requested,"edit_checkpoints":s.edit_checkpoints,
++                        "search_events":s.search_events,"contention_eligible":s.contention_eligible,"worker_observations":s.worker_observations,
++                        "overlap_executions":s.overlap_executions,"completed_searches":s.completed_searches,"canceled_searches":s.canceled_searches,
++                        "input_trace":s.input_trace,"phase_backtracks":s.phase_backtracks,"overlap_completed_or_superseded":s.overlap_completed_or_superseded,"query_edits":s.query_edits
++                    }).as_object().unwrap().clone());
++                    eprintln!("INDEX_PERF_SAMPLE {record}");
++                }
++            }
++        }
++    }
++}
++
++struct ProgressDeadline {
++    last_progress: Duration,
++    max_gap: Duration,
++}
++impl ProgressDeadline {
++    fn new(max_gap: Duration) -> Self {
++        Self {
++            last_progress: Duration::ZERO,
++            max_gap,
++        }
++    }
++    fn observe(&mut self, now: Duration, progressed: bool) -> bool {
++        if progressed {
++            self.last_progress = now;
++        }
++        now.saturating_sub(self.last_progress) > self.max_gap
++    }
++}
++#[test]
++fn tc_228_frozen_progress_is_detected_without_wall_clock_sleep() {
++    let mut guard = ProgressDeadline::new(Duration::from_millis(10));
++    assert!(!guard.observe(Duration::from_millis(9), false));
++    assert!(
++        guard.observe(Duration::from_millis(11), false),
++        "deliberately frozen update cycle"
++    );
++    let mut guard = ProgressDeadline::new(Duration::from_millis(10));
++    assert!(!guard.observe(Duration::from_millis(9), true));
++    assert!(!guard.observe(Duration::from_millis(18), false));
++    assert!(guard.observe(Duration::from_millis(20), false));
++}
++
++#[test]
++#[ignore = "release observer on/off overhead observation; run explicitly"]
++fn perf_indexing_observer_overhead() {
++    assert!(!cfg!(debug_assertions), "use cargo test --release");
++    let count = setting("FW_INDEX_PERF_ENTRIES", 100_000);
++    let pairs = setting("FW_INDEX_PERF_PAIRS", 7);
++    let fixture = Fixture::new(count);
++    let _ = run_sample(&fixture, Case::B0, Source::FileList);
++    let _ = harness::run_unobserved_b0(&fixture);
++    for pair in 0..pairs {
++        for enabled in if pair % 2 == 0 {
++            [false, true]
++        } else {
++            [true, false]
++        } {
++            let elapsed = if enabled {
++                run_sample(&fixture, Case::B0, Source::FileList).t3
++            } else {
++                harness::run_unobserved_b0(&fixture)
++            };
++            eprintln!(
++                "INDEX_PERF_OBSERVER {}",
++                serde_json::json!({"schema_version":1,"pair":pair,"observer_enabled":enabled,"sample_entries":count,"results_ready_ms":ms(elapsed),"correct":true,"full_profile":count == 100_000 && pairs >= 7})
++            );
++        }
++    }
++}
++
++fn genuine_search_overlap(
++    stats: &crate::app::worker::search_perf::SearchPerfObservation,
++    start: Instant,
++    index_ready: Duration,
++) -> bool {
++    !stats.skipped_canceled
++        && stats.evaluated_candidates > 0
++        && stats
++            .started_at
++            .is_some_and(|began| began >= start && began.duration_since(start) < index_ready)
++        && stats
++            .evaluation_completed_at
++            .is_some_and(|ended| ended >= start)
++}
++fn contention_eligible(
++    case: Case,
++    workers: &[(u64, crate::app::worker::search_perf::SearchPerfObservation)],
++    start: Instant,
++    cutoff: Duration,
++) -> bool {
++    let executions = workers
++        .iter()
++        .filter(|(_, stats)| genuine_search_overlap(stats, start, cutoff))
++        .map(|(id, _)| *id)
++        .collect::<HashSet<_>>();
++    executions.len()
++        >= match case {
++            Case::B0 => 0,
++            Case::S2 => 2,
++            Case::S1Selective | Case::S1Dense => 1,
++        }
++}
++fn worker_progress(
++    stats: &crate::app::worker::search_perf::SearchPerfObservation,
++) -> (usize, usize) {
++    (
++        stats.evaluated_candidates,
++        usize::from(stats.completed_at.is_some() && stats.evaluated_candidates > 0),
++    )
++}
++#[test]
++fn tc_228_s2_requires_two_distinct_genuine_search_executions() {
++    use crate::app::worker::search_perf::SearchPerfObservation;
++    let start = Instant::now();
++    let executed = SearchPerfObservation {
++        started_at: Some(start + Duration::from_millis(1)),
++        evaluation_completed_at: Some(start + Duration::from_millis(2)),
++        candidates: 100,
++        evaluated_candidates: 100,
++        ..Default::default()
++    };
++    let pre_canceled = SearchPerfObservation {
++        candidates: 100,
++        canceled_at: Some(start + Duration::from_millis(2)),
++        skipped_canceled: true,
++        ..Default::default()
++    };
++    let cutoff = Duration::from_millis(10);
++    assert!(contention_eligible(
++        Case::S1Dense,
++        &[(1, executed.clone())],
++        start,
++        cutoff
++    ));
++    assert!(
++        !contention_eligible(
++            Case::S2,
++            &[(1, executed.clone()), (2, pre_canceled)],
++            start,
++            cutoff
++        ),
++        "two dispatched requests with only one evaluated request cannot cover S2"
++    );
++    assert!(
++        !contention_eligible(
++            Case::S2,
++            &[(1, executed.clone()), (1, executed.clone())],
++            start,
++            cutoff
++        ),
++        "one request counted twice cannot cover S2"
++    );
++    assert!(contention_eligible(
++        Case::S2,
++        &[(1, executed.clone()), (2, executed)],
++        start,
++        cutoff
++    ));
++}
++#[test]
++fn tc_228_cancel_only_spin_does_not_advance_work_progress() {
++    use crate::app::worker::search_perf::SearchPerfObservation;
++    let start = Instant::now();
++    let canceled = SearchPerfObservation {
++        started_at: Some(start),
++        canceled_at: Some(start + Duration::from_millis(1)),
++        candidates: 100,
++        ..Default::default()
++    };
++    assert_eq!(
++        worker_progress(&canceled),
++        (0, 0),
++        "cancellation without evaluated candidates is diagnostic only"
++    );
++    let completed = SearchPerfObservation {
++        completed_at: Some(start),
++        evaluated_candidates: 100,
++        ..Default::default()
++    };
++    assert_eq!(worker_progress(&completed), (100, 1));
++    let evaluated_cancel = SearchPerfObservation {
++        evaluated_candidates: 100,
++        evaluation_completed_at: Some(start),
++        ..canceled
++    };
++    assert_eq!(
++        worker_progress(&evaluated_cancel).0,
++        100,
++        "actual evaluation remains constructive work"
++    );
++}
++#[test]
++fn tc_228_search_overlap_requires_actual_evaluation_and_request_interval() {
++    use crate::app::worker::search_perf::SearchPerfObservation;
++    let start = Instant::now();
++    let mut stats = SearchPerfObservation {
++        started_at: Some(start + Duration::from_millis(1)),
++        evaluation_completed_at: Some(start + Duration::from_millis(15)),
++        candidates: 100,
++        evaluated_candidates: 100,
++        ..Default::default()
++    };
++    assert!(
++        genuine_search_overlap(&stats, start, Duration::from_millis(10)),
++        "evaluation can finish after indexing but began during it"
++    );
++    stats.skipped_canceled = true;
++    assert!(!genuine_search_overlap(
++        &stats,
++        start,
++        Duration::from_millis(10)
++    ));
++    stats.skipped_canceled = false;
++    stats.started_at = None;
++    assert!(
++        !genuine_search_overlap(&stats, start, Duration::from_millis(10)),
++        "queued is not executed"
++    );
++    stats.started_at = Some(start + Duration::from_millis(11));
++    assert!(
++        !genuine_search_overlap(&stats, start, Duration::from_millis(10)),
++        "late execution"
++    );
++    stats.started_at = Some(start + Duration::from_millis(1));
++    stats.evaluated_candidates = 0;
++    assert!(
++        !genuine_search_overlap(&stats, start, Duration::from_millis(10)),
++        "cached or empty is not evaluated work"
++    );
++    stats.evaluated_candidates = 100;
++    stats.evaluation_completed_at = None;
++    assert!(
++        !genuine_search_overlap(&stats, start, Duration::from_millis(10)),
++        "interrupted evaluation lacks an actual count"
++    );
++}
+--- /dev/null
++++ b/rust/src/app/tests/indexing_perf/harness.rs
+@@ -0,0 +1,809 @@
++use super::*;
++use super::super::support::test_settings_scope;
++use crate::app::index_mailbox::{IndexPerfObservation, IndexResponseMailbox};
++use std::collections::BTreeSet;
++use std::io::Write;
++
++pub(super) const FRAME_PERIOD: Duration = Duration::from_millis(16);
++pub(super) struct Fixture {
++    pub(super) root: PathBuf,
++    pub(super) paths: Vec<PathBuf>,
++    filelist: Vec<u8>,
++}
++impl Fixture {
++    pub(super) fn new(count: usize) -> Self {
++        let lexical = test_root("indexing-perf");
++        fs::create_dir_all(&lexical).unwrap();
++        let root = fs::canonicalize(lexical).unwrap();
++        let mut list =
++            std::io::BufWriter::new(fs::File::create(root.join("FileList.txt")).unwrap());
++        let paths = (0..count)
++            .map(|i| {
++                let name = format!(
++                    "item_{i:08}_{}_{}.txt",
++                    if i % 100 == 0 { "needle" } else { "bulk" },
++                    if i % 10 == 0 { "日本語" } else { "ascii" }
++                );
++                let path = root.join(&name);
++                fs::write(&path, []).unwrap();
++                writeln!(list, "{name}").unwrap();
++                path
++            })
++            .collect();
++        list.flush().unwrap();
++        let filelist = fs::read(root.join("FileList.txt")).unwrap();
++        Self {
++            root,
++            paths,
++            filelist,
++        }
++    }
++    pub(super) fn manifest_signature(&self) -> String {
++        format!("{:016x}", signature(&self.root, self.paths.iter()))
++    }
++    pub(super) fn prepare_source(&self, source: Source) {
++        if source == Source::FileList {
++            fs::write(self.root.join("FileList.txt"), &self.filelist).unwrap();
++        } else if self.root.join("FileList.txt").exists() {
++            fs::remove_file(self.root.join("FileList.txt")).unwrap();
++        }
++    }
++    fn oracle(&self, case: Case, limit: usize, source: Source) -> Oracle {
++        let query = case.final_query();
++        let count = if query == "needle" {
++            self.paths
++                .iter()
++                .enumerate()
++                .filter(|(i, _)| i % 100 == 0)
++                .count()
++        } else {
++            self.paths.len()
++        };
++        if query.is_empty() {
++            let ranked = self
++                .paths
++                .iter()
++                .cloned()
++                .map(|p| (p, 0.0))
++                .collect::<Vec<_>>();
++            return Oracle::new(ranked, count, limit, source, true);
++        }
++        let entries = Arc::new(self.paths.iter().cloned().map(Entry::unknown).collect());
++        let (result, error) = crate::search::rank_search_results_uncached(
++            &entries,
++            query,
++            &self.root,
++            self.paths.len(),
++            false,
++            true,
++            true,
++            ResultSortMode::Score,
++            ResultSortScope::ShownResults,
++        );
++        assert!(error.is_none());
++        assert_eq!(
++            result.total_match_count, count,
++            "independent pattern membership count"
++        );
++        Oracle::new(result.results, count, limit, source, false)
++    }
++}
++impl Drop for Fixture {
++    fn drop(&mut self) {
++        let _ = fs::remove_dir_all(&self.root);
++    }
++}
++
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub(super) enum Source {
++    FileList,
++    Walker,
++}
++impl Source {
++    pub(super) fn name(self) -> &'static str {
++        match self {
++            Self::FileList => "FileList",
++            Self::Walker => "Walker",
++        }
++    }
++    pub(super) fn parse(name: &str) -> Self {
++        match name {
++            "FileList" => Self::FileList,
++            "Walker" => Self::Walker,
++            _ => panic!("unknown source {name}"),
++        }
++    }
++}
++struct Oracle {
++    ranked: Vec<(PathBuf, f64)>,
++    count: usize,
++    scores: HashMap<PathBuf, f64>,
++    required_above_cutoff: HashSet<PathBuf>,
++    limit: usize,
++    cutoff: f64,
++    source: Source,
++    empty: bool,
++}
++impl Oracle {
++    fn new(
++        mut ranked: Vec<(PathBuf, f64)>,
++        count: usize,
++        limit: usize,
++        source: Source,
++        empty: bool,
++    ) -> Self {
++        let scores: HashMap<PathBuf, f64> = ranked.iter().cloned().collect();
++        ranked.truncate(limit);
++        let cutoff = ranked.last().map_or(0.0, |(_, score)| *score);
++        // Construct outside t0; validation checks at most limit required paths
++        // instead of rescanning the full fixture on every measured frame.
++        let required_above_cutoff = scores
++            .iter()
++            .filter(|(_, score)| **score > cutoff)
++            .map(|(path, _)| path.clone())
++            .collect();
++        Self {
++            ranked,
++            count,
++            scores,
++            required_above_cutoff,
++            limit,
++            cutoff,
++            source,
++            empty,
++        }
++    }
++    fn valid(&self, results: &[(PathBuf, f64)], count: usize) -> bool {
++        if count != self.count || results.len() != self.count.min(self.limit) {
++            return false;
++        }
++        if self.source == Source::FileList {
++            return results == self.ranked;
++        }
++        // Walker traversal order is not a contract for tied scores. Check each
++        // independently generated candidate's score and the top-score boundary.
++        let paths = results.iter().map(|(path, _)| path).collect::<HashSet<_>>();
++        paths.len() == results.len()
++            && self
++                .required_above_cutoff
++                .iter()
++                .all(|path| paths.contains(path))
++            && results
++                .iter()
++                .all(|(path, score)| self.scores.get(path) == Some(score) && *score >= self.cutoff)
++            && (self.empty || results.windows(2).all(|pair| pair[0].1 >= pair[1].1))
++    }
++}
++
++#[test]
++fn tc_228_walker_oracle_requires_all_candidates_above_cutoff() {
++    let ranked = vec![
++        (PathBuf::from("A"), 100.0),
++        (PathBuf::from("B"), 90.0),
++        (PathBuf::from("C"), 90.0),
++    ];
++    let oracle = Oracle::new(ranked.clone(), 3, 2, Source::Walker, false);
++    assert!(
++        !oracle.valid(&ranked[1..], 3),
++        "B,C meet cutoff but omit mandatory higher-score A"
++    );
++    assert!(oracle.valid(&ranked[..2], 3));
++    assert!(
++        oracle.valid(&[ranked[0].clone(), ranked[2].clone()], 3),
++        "only cutoff ties can substitute"
++    );
++}
++
++#[derive(Clone, Copy, Debug, Eq, PartialEq)]
++pub(super) enum Case {
++    B0,
++    S1Selective,
++    S1Dense,
++    S2,
++}
++impl Case {
++    pub(super) fn name(self) -> &'static str {
++        match self {
++            Self::B0 => "B0",
++            Self::S1Selective => "S1-selective",
++            Self::S1Dense => "S1-dense",
++            Self::S2 => "S2",
++        }
++    }
++    fn initial_query(self) -> &'static str {
++        match self {
++            Self::B0 => "",
++            Self::S1Selective => "needle",
++            Self::S1Dense => "item",
++            Self::S2 => "",
++        }
++    }
++    fn final_query(self) -> &'static str {
++        if self == Self::S2 {
++            ""
++        } else {
++            self.initial_query()
++        }
++    }
++    pub(super) fn parse(name: &str) -> Self {
++        match name {
++            "B0" => Self::B0,
++            "S1-selective" => Self::S1Selective,
++            "S1-dense" => Self::S1Dense,
++            "S2" => Self::S2,
++            _ => panic!("unknown case {name}"),
++        }
++    }
++}
++
++pub(super) struct Driver {
++    pub(super) app: FlistWalkerApp,
++    _settings: super::super::support::TestSettingsScope,
++    ctx: egui::Context,
++    startup_root: PathBuf,
++    pending_query: Option<String>,
++    input_events: Vec<(String, Instant, usize)>,
++    progress_high_water: HashMap<(u64, u8, usize, usize), usize>,
++    progress_last_marks: HashMap<(u64, u8, usize, usize), usize>,
++    phase_backtracks: usize,
++    previous_reclaim: usize,
++    completed_reclaim: usize,
++    last_frame_end: Instant,
++}
++impl Driver {
++    pub(super) fn new() -> Self {
++        let settings = test_settings_scope("indexing-perf");
++        let startup_root = test_root("indexing-perf-empty");
++        fs::create_dir_all(&startup_root).unwrap();
++        let mut app = settings.app(startup_root.clone(), 1000, String::new());
++        app.shell.ui.show_preview = false;
++        app.shell.ui.ignore_list_enabled = false;
++        app.shell.runtime.ignore_list_terms = Arc::new(Vec::new());
++        Self {
++            app,
++            _settings: settings,
++            ctx: egui::Context::default(),
++            startup_root,
++            pending_query: None,
++            input_events: Vec::new(),
++            progress_high_water: HashMap::new(),
++            progress_last_marks: HashMap::new(),
++            phase_backtracks: 0,
++            previous_reclaim: 0,
++            completed_reclaim: 0,
++            last_frame_end: Instant::now(),
++        }
++    }
++    pub(super) fn frame(&mut self) -> Duration {
++        let begin = Instant::now();
++        if let Some(query) = self.pending_query.take() {
++            if self.app.shell.runtime.query_state.query != query {
++                self.input_events
++                    .push((query.clone(), Instant::now(), self.ingested()));
++            }
++            if query.is_empty() {
++                self.app.clear_query_and_selection();
++            } else {
++                self.app.shell.runtime.query_state.query = query;
++                self.app.finish_programmatic_query_replacement();
++                self.app.update_results();
++            }
++        }
++        let _ = self.ctx.run_ui(
++            egui::RawInput {
++                focused: true,
++                screen_rect: Some(egui::Rect::from_min_size(
++                    egui::Pos2::ZERO,
++                    egui::vec2(1600.0, 900.0),
++                )),
++                ..Default::default()
++            },
++            |ui| {
++                assert!(self.app.run_update_cycle(ui));
++            },
++        );
++        self.last_frame_end = Instant::now();
++        begin.elapsed()
++    }
++    pub(super) fn paced_frame(&mut self) -> Duration {
++        let start = Instant::now();
++        let elapsed = self.frame();
++        if let Some(rest) = FRAME_PERIOD.checked_sub(start.elapsed()) {
++            thread::sleep(rest);
++        }
++        elapsed
++    }
++    pub(super) fn settle_startup(&mut self) {
++        let start = Instant::now();
++        while self.app.shell.indexing.pending_request_id.is_some()
++            || self.index_debt()
++            || self.app.shell.search.in_progress()
++        {
++            assert!(
++                start.elapsed() < Duration::from_secs(30),
++                "startup settlement timeout"
++            );
++            self.paced_frame();
++        }
++        assert!(
++            self.app.shell.runtime.all_entries.is_empty(),
++            "clean initial snapshot"
++        );
++    }
++    pub(super) fn index_debt(&self) -> bool {
++        let i = &self.app.shell.indexing;
++        i.in_progress
++            || !i.build.pending_entries.is_empty()
++            || i.pending_entries_request_id.is_some()
++            || i.refresh_after_pending_finish.is_some()
++            || i.root_after_pending_finish.is_some()
++            || i.pending_finish.is_some()
++            || i.build_reclaim_pending
++            || i.pending_stale_build_reclaim.is_some()
++            || i.pending_replace_all.is_some()
++            || i.background_finalizations.keys().next().is_some()
++            || i.kind_resolution_in_progress
++            || !i.build.pending_kind_paths.is_empty()
++            || !i.build.in_flight_kind_paths.is_empty()
++            || self.app.shell.tabs.reclaimer_pending() != 0
++    }
++    fn query(&mut self, query: &str) {
++        self.pending_query = Some(query.into());
++    }
++    pub(super) fn progress(&mut self, batches: usize) -> Vec<usize> {
++        let i = &self.app.shell.indexing;
++        let request = i.pending_request_id.unwrap_or(0);
++        let mut marks = vec![((request, 0, 0, 0), self.ingested())];
++        for id in i.background_finalizations.keys() {
++            let f = i.background_finalizations.get(id).unwrap();
++            marks.extend([
++                ((*id, 2, 0, 0), f.completed_entries.len()),
++                ((*id, 3, 0, self.input_events.len()), f.filter_cursor),
++                ((*id, 4, 0, 0), f.kind_cursor),
++            ]);
++        }
++        for (key, value) in marks {
++            let high_water = self.progress_high_water.entry(key).or_default();
++            if self
++                .progress_last_marks
++                .insert(key, value)
++                .is_some_and(|previous| value < previous)
++            {
++                self.phase_backtracks += 1;
++            }
++            *high_water = (*high_water).max(value);
++        }
++        let reclaim = self.app.shell.tabs.reclaimer_pending();
++        self.completed_reclaim += self.previous_reclaim.saturating_sub(reclaim);
++        self.previous_reclaim = reclaim;
++        let mut evaluated = 0;
++        let mut ended = 0;
++        for stats in self.app.shell.search.perf_workers.values() {
++            let stats = stats.lock().unwrap();
++            let progress = worker_progress(&stats);
++            evaluated += progress.0;
++            ended += progress.1;
++        }
++        vec![
++            batches,
++            self.progress_high_water.values().sum(),
++            evaluated,
++            ended,
++            self.completed_reclaim,
++            usize::from(i.pending_request_id.is_none()),
++        ]
++    }
++    pub(super) fn ingested(&self) -> usize {
++        let i = &self.app.shell.indexing;
++        if let Some(id) = i.pending_request_id {
++            if let Some(f) = i.background_finalizations.get(&id) {
++                return f.completed_entries.len();
++            }
++        }
++        if i.pending_request_id.is_none() {
++            self.app.shell.runtime.all_entries.len()
++        } else {
++            i.build.index.entries.len()
++        }
++    }
++    pub(super) fn mailbox(&self, request: u64) -> Arc<IndexResponseMailbox> {
++        self.app
++            .shell
++            .indexing
++            .response_mailboxes
++            .lock()
++            .unwrap()
++            .get(&request)
++            .expect("actual request mailbox")
++            .clone()
++    }
++}
++impl Drop for Driver {
++    fn drop(&mut self) {
++        let _ = fs::remove_dir_all(&self.startup_root);
++    }
++}
++
++#[derive(Debug)]
++pub(super) struct Sample {
++    pub(super) request: u64,
++    pub(super) own_request_settled: Duration,
++    pub(super) last_confirmed_unsettled: Duration,
++    pub(super) producer_overlap_dispatches: usize,
++    pub(super) overlap_responses: usize,
++    pub(super) cancel_requested: usize,
++    pub(super) edit_checkpoints: Vec<(usize, f64)>,
++    pub(super) search_events: Vec<serde_json::Value>,
++    pub(super) contention_eligible: bool,
++    pub(super) worker_observations: Vec<serde_json::Value>,
++    pub(super) overlap_executions: usize,
++    pub(super) completed_searches: usize,
++    pub(super) canceled_searches: usize,
++    pub(super) input_trace: Vec<serde_json::Value>,
++    pub(super) phase_backtracks: usize,
++    pub(super) t1: Duration,
++    pub(super) terminal: Duration,
++    pub(super) t2: Duration,
++    pub(super) t3: Duration,
++    pub(super) max_progress_gap: Duration,
++    pub(super) max_ingest_gap: Duration,
++    pub(super) frame_max: Duration,
++    pub(super) frames: usize,
++    pub(super) observation: IndexPerfObservation,
++    pub(super) overlap_dispatches: usize,
++    pub(super) overlap_completed_or_superseded: usize,
++    pub(super) query_edits: usize,
++    pub(super) snapshot_signature: u64,
++    pub(super) results_signature: u64,
++}
++fn signature<'a>(root: &Path, paths: impl Iterator<Item = &'a PathBuf>) -> u64 {
++    let mut hash = 0xcbf29ce484222325u64;
++    for path in paths {
++        let path = path.strip_prefix(root).unwrap().to_string_lossy();
++        for byte in (path.len() as u64)
++            .to_le_bytes()
++            .iter()
++            .copied()
++            .chain(path.as_bytes().iter().copied())
++        {
++            hash = (hash ^ u64::from(byte)).wrapping_mul(0x100000001b3);
++        }
++    }
++    hash
++}
++
++pub(super) fn run_sample(fixture: &Fixture, case: Case, source: Source) -> Sample {
++    run_sample_config(fixture, case, source, true)
++}
++fn run_sample_config(fixture: &Fixture, case: Case, source: Source, observe: bool) -> Sample {
++    fixture.prepare_source(source);
++    let mut driver = Driver::new();
++    driver.settle_startup();
++    let expected = fixture.oracle(case, driver.app.shell.runtime.limit, source);
++    // Configure target outside timing; constructor startup was on an empty root.
++    driver.app.shell.runtime.root = fixture.root.clone();
++    driver.app.shell.runtime.use_filelist = source == Source::FileList;
++    driver.app.shell.search.perf_enabled = observe;
++    driver.app.shell.indexing.perf_observe_requests = observe;
++    let start = Instant::now();
++    driver.app.request_index_refresh();
++    let request = driver
++        .app
++        .shell
++        .indexing
++        .pending_request_id
++        .expect("refresh identity");
++    let mailbox = driver.mailbox(request);
++    driver.query("");
++    let mut query_edits = 0;
++    let mut dispatched = BTreeSet::new();
++    let mut completed = BTreeSet::new();
++    let mut prior_search = driver.app.shell.search.pending_request_id();
++    let mut frames = 0;
++    let mut frame_max = Duration::ZERO;
++    let mut t2 = None;
++    let mut last_confirmed_unsettled = Duration::ZERO;
++    let mut t3 = None;
++    let mut held_query_set = !matches!(case, Case::S1Selective | Case::S1Dense);
++    let mut dense_started = case != Case::S2;
++    let mut changed_query = case != Case::S2;
++    let mut cleared = case != Case::S2;
++    let mut last_progress = Duration::ZERO;
++    let mut last_ingest = Duration::ZERO;
++    let mut max_gap = Duration::ZERO;
++    let mut max_ingest_gap = Duration::ZERO;
++    let mut previous_progress = Vec::new();
++    let mut prior_ingested = 0;
++    let mut edit_checkpoints = Vec::new();
++    let mut deadline = ProgressDeadline::new(Duration::from_secs(30));
++    loop {
++        if driver.app.shell.indexing.pending_request_id == Some(request)
++            || driver
++                .app
++                .shell
++                .indexing
++                .request_tabs
++                .contains_key(&request)
++            || driver.index_debt()
++            || driver.app.shell.runtime.all_entries.len() != fixture.paths.len()
++        {
++            last_confirmed_unsettled = start.elapsed();
++        }
++        if driver.app.shell.indexing.pending_request_id == Some(request) {
++            if let Some(id) = driver.app.shell.search.pending_request_id() {
++                dispatched.insert(id);
++            }
++            if let Some(id) = prior_search {
++                if driver.app.shell.search.pending_request_id() != Some(id) {
++                    completed.insert(id);
++                }
++            }
++        }
++        if !held_query_set && driver.ingested() >= fixture.paths.len() / 10 {
++            driver.query(case.final_query());
++            query_edits += 1;
++            held_query_set = true;
++            edit_checkpoints.push((driver.ingested(), ms(start.elapsed())));
++        } else if case == Case::S2
++            && !dense_started
++            && driver.ingested() >= fixture.paths.len() / 10
++        {
++            driver.query("item");
++            query_edits += 1;
++            dense_started = true;
++            edit_checkpoints.push((driver.ingested(), ms(start.elapsed())));
++        } else if case == Case::S2 && !changed_query && driver.ingested() >= fixture.paths.len() / 4
++        {
++            driver.query("needle");
++            query_edits += 1;
++            changed_query = true;
++            edit_checkpoints.push((driver.ingested(), ms(start.elapsed())));
++        } else if case == Case::S2
++            && changed_query
++            && !cleared
++            && driver.ingested() >= fixture.paths.len() / 2
++        {
++            driver.query("");
++            query_edits += 1;
++            cleared = true;
++            edit_checkpoints.push((driver.ingested(), ms(start.elapsed())));
++        }
++        prior_search = driver.app.shell.search.pending_request_id();
++        frame_max = frame_max.max(driver.paced_frame());
++        frames += 1;
++        let elapsed = driver.last_frame_end.duration_since(start);
++        let observation = mailbox.perf_observation();
++        let progress = driver.progress(observation.batches);
++        let ingested = driver.ingested();
++        assert!(
++            !deadline.observe(elapsed, progress != previous_progress),
++            "no visible work progress for 30 seconds: {case:?}"
++        );
++        if progress != previous_progress {
++            max_gap = max_gap.max(elapsed - last_progress);
++            last_progress = elapsed;
++        }
++        if ingested > prior_ingested {
++            max_ingest_gap = max_ingest_gap.max(elapsed - last_ingest);
++            last_ingest = elapsed;
++        }
++        previous_progress = progress;
++        prior_ingested = ingested;
++        let truth = CompletionTruth {
++            terminal_published: !observe
++                || (observation.terminal_published.is_some()
++                    && observation.data_publish_end.is_some()),
++            own_request_settled: driver.app.shell.indexing.pending_request_id != Some(request)
++                && !driver
++                    .app
++                    .shell
++                    .indexing
++                    .request_tabs
++                    .contains_key(&request),
++            snapshot_valid: driver.app.shell.runtime.all_entries.len() == fixture.paths.len(),
++            pending_debt: driver.index_debt(),
++            latest_results_valid: !driver.app.shell.search.in_progress()
++                && !driver.app.shell.indexing.search_resume_pending
++                && !driver.app.shell.indexing.search_rerun_pending
++                && driver.app.shell.runtime.query_state.query == case.final_query()
++                && !driver.app.shell.worker_bus.sort.in_progress
++                && driver
++                    .app
++                    .shell
++                    .worker_bus
++                    .sort
++                    .pending_request_id
++                    .is_none()
++                && expected.valid(
++                    &driver.app.shell.runtime.results,
++                    driver.app.shell.runtime.total_match_count,
++                ),
++        };
++        if t2.is_none() && truth.snapshot_settled() {
++            t2 = Some(elapsed);
++        }
++        if t3.is_none() && truth.results_settled() {
++            t3 = Some(elapsed);
++        }
++        if t2.is_some() && t3.is_some() {
++            break;
++        }
++        assert!(elapsed < Duration::from_secs(120), "measurement timeout: case={case:?},request={request},frames={frames},index={},debt={},query={:?},search={},dispatch={:?},clear={cleared},entries={},results={},matches={}", driver.app.shell.indexing.in_progress, driver.index_debt(), driver.app.shell.runtime.query_state.query, driver.app.shell.search.in_progress(), dispatched, driver.app.shell.runtime.all_entries.len(), driver.app.shell.runtime.results.len(), driver.app.shell.runtime.total_match_count);
++    }
++    let observation = mailbox.perf_observation();
++    let t2 = t2.unwrap();
++    let t3 = t3.unwrap();
++    max_gap = max_gap.max(t3 - last_progress);
++    max_ingest_gap = max_ingest_gap.max(t2 - last_ingest);
++    assert!(!driver.app.status_line_text().contains("Search failed:"));
++    let events = &driver.app.shell.search.perf_events;
++    let dispatch_events = events
++        .iter()
++        .filter(|e| e.event == "dispatch" && e.candidates > 0)
++        .collect::<Vec<_>>();
++    let overlap_responses = events
++        .iter()
++        .filter(|e| {
++            e.event.starts_with("response")
++                && e.at.duration_since(start) <= last_confirmed_unsettled
++                && dispatch_events.iter().any(|d| d.request_id == e.request_id)
++        })
++        .count();
++    let overlap_dispatches = dispatch_events
++        .iter()
++        .filter(|e| e.at.duration_since(start) <= last_confirmed_unsettled)
++        .count();
++    let producer_overlap_dispatches = dispatch_events
++        .iter()
++        .filter(|e| observation.data_publish_end.is_some_and(|end| e.at <= end))
++        .count();
++    let cancel_requested = events
++        .iter()
++        .filter(|e| e.event == "cancel_requested")
++        .count();
++    // Read phase observations after the measured UI settles. RX polling can
++    // happen after t2 even when search CPU work overlapped the indexing request.
++    let phase_wait = Instant::now();
++    while driver.app.shell.search.perf_workers.values().any(|stats| {
++        let stats = stats.lock().unwrap();
++        stats.completed_at.is_none() && stats.canceled_at.is_none()
++    }) {
++        assert!(
++            phase_wait.elapsed() < Duration::from_secs(5),
++            "test observer phase settlement timeout"
++        );
++        thread::sleep(Duration::from_millis(1));
++    }
++    let workers = driver
++        .app
++        .shell
++        .search
++        .perf_workers
++        .iter()
++        .map(|(id, stats)| (*id, stats.lock().unwrap().clone()))
++        .collect::<Vec<_>>();
++    let own_request_settled = driver
++        .app
++        .shell
++        .indexing
++        .perf_settled_requests
++        .get(&request)
++        .map_or(t2, |at| at.duration_since(start));
++    let overlap_executions = workers
++        .iter()
++        .filter(|(_, stats)| genuine_search_overlap(stats, start, last_confirmed_unsettled))
++        .count();
++    let completed_searches = workers
++        .iter()
++        .filter(|(_, stats)| stats.completed_at.is_some())
++        .count();
++    let canceled_searches = workers
++        .iter()
++        .filter(|(_, stats)| stats.canceled_at.is_some())
++        .count();
++    let contention_eligible = contention_eligible(case, &workers, start, last_confirmed_unsettled);
++    if case != Case::B0 && fixture.paths.len() >= 100_000 {
++        assert!(contention_eligible, "substantive actual search execution overlapping indexing: {case:?}/{source:?};t2={t2:?};workers={workers:?}");
++    }
++    let worker_observations = workers.iter().map(|(id,stats)| serde_json::json!({"request_id":id,"candidates":stats.candidates,"evaluated_candidates":stats.evaluated_candidates,"started_ms":stats.started_at.map(|at|ms(at.duration_since(start))),"evaluation_completed_ms":stats.evaluation_completed_at.map(|at|ms(at.duration_since(start))),"completed_ms":stats.completed_at.map(|at|ms(at.duration_since(start))),"canceled_ms":stats.canceled_at.map(|at|ms(at.duration_since(start))),"skipped_canceled":stats.skipped_canceled})).collect();
++    if case == Case::S2 {
++        if fixture.paths.len() >= 100_000 {
++            assert!(
++                contention_eligible,
++                "full S2 requires two distinct genuinely evaluated searches while indexing"
++            );
++        }
++        assert!(
++            cleared && query_edits == 3,
++            "edit+clear requires actual earlier search activity"
++        );
++    }
++    let actual: HashSet<_> = driver
++        .app
++        .shell
++        .runtime
++        .all_entries
++        .iter()
++        .map(|e| e.path.clone())
++        .collect();
++    assert_eq!(
++        actual,
++        fixture.paths.iter().cloned().collect(),
++        "independent fixture membership"
++    );
++    assert_eq!(
++        actual.len(),
++        driver.app.shell.runtime.all_entries.len(),
++        "no duplicates"
++    );
++    if source == Source::FileList {
++        assert_eq!(
++            driver
++                .app
++                .shell
++                .runtime
++                .all_entries
++                .iter()
++                .map(|e| &e.path)
++                .collect::<Vec<_>>(),
++            fixture.paths.iter().collect::<Vec<_>>(),
++            "FileList line order"
++        );
++    }
++    let input_trace = driver.input_events.iter().map(|(query, at, ingested)| {
++        let dispatch = events.iter().find(|e|e.event == "dispatch" && e.candidates > 0 && e.query == *query && e.at >= *at);
++        serde_json::json!({"query":query,"at_ms":ms(at.duration_since(start)),"ingested":ingested,"first_nonempty_dispatch_delay_ms":dispatch.map(|e|ms(e.at.duration_since(*at))),"latest_results_delay_ms":if query == case.final_query(){ Some(ms(t3.saturating_sub(at.duration_since(start)))) }else{None}})
++    }).collect();
++    assert!(
++        match (source, &driver.app.shell.indexing.build.index.source) {
++            (Source::FileList, IndexSource::FileList(path)) =>
++                path == &fixture.root.join("FileList.txt"),
++            (Source::Walker, IndexSource::Walker) => true,
++            _ => false,
++        },
++        "actual final source differs from configured source"
++    );
++    Sample {
++        request,
++        own_request_settled,
++        last_confirmed_unsettled,
++        input_trace, phase_backtracks: driver.phase_backtracks,
++        producer_overlap_dispatches,
++        overlap_responses,
++        cancel_requested,
++        edit_checkpoints,
++        search_events: events.iter().map(|e| serde_json::json!({"request_id":e.request_id,"at_ms":ms(e.at.duration_since(start)),"event":e.event,"candidates":e.candidates,"query":e.query})).collect(),
++        contention_eligible, worker_observations, overlap_executions, completed_searches, canceled_searches,
++        t1: observation.data_publish_end.map_or(Duration::ZERO, |end| end.duration_since(start)),
++        terminal: observation.terminal_published.map_or(Duration::ZERO, |end| end.duration_since(start)),
++        t2,
++        t3,
++        max_progress_gap: max_gap,
++        max_ingest_gap,
++        frame_max,
++        frames,
++        observation,
++        overlap_dispatches,
++        overlap_completed_or_superseded: completed.len(),
++        query_edits,
++        snapshot_signature: {
++            let mut paths = actual.into_iter().collect::<Vec<_>>();
++            paths.sort();
++            signature(&fixture.root, paths.iter())
++        },
++        results_signature: signature(
++            &fixture.root,
++            driver.app.shell.runtime.results.iter().map(|(p, _)| p),
++        ),
++    }
++}
++
++pub(super) fn run_unobserved_b0(fixture: &Fixture) -> Duration {
++    // Identical driver/oracle/cadence and settlement predicate. Because the
++    // initial snapshot is empty, own-request settlement plus the exact oracle
++    // independently establishes success without test-only terminal timestamps.
++    let sample = run_sample_config(fixture, Case::B0, Source::FileList, false);
++    assert_eq!(sample.observation.batches, 0);
++    assert!(sample.observation.terminal_published.is_none());
++    sample.t3
++}
+--- /dev/null
++++ b/rust/src/app/worker/search_perf.rs
+@@ -0,0 +1,228 @@
++//! Request-local observations of the real search worker for indexing perf tests.
++
++use std::collections::HashMap;
++use std::sync::atomic::AtomicBool;
++use std::sync::{Arc, Mutex, OnceLock, Weak};
++use std::time::Instant;
++
++#[derive(Clone, Debug, Default)]
++pub(in crate::app) struct SearchPerfObservation {
++    pub(in crate::app) started_at: Option<Instant>,
++    pub(in crate::app) evaluation_completed_at: Option<Instant>,
++    pub(in crate::app) completed_at: Option<Instant>,
++    pub(in crate::app) canceled_at: Option<Instant>,
++    pub(in crate::app) candidates: usize,
++    pub(in crate::app) evaluated_candidates: usize,
++    pub(in crate::app) skipped_canceled: bool,
++}
++
++impl SearchPerfObservation {
++    pub(super) fn begin(&mut self, candidates: usize, canceled: bool) {
++        self.candidates = candidates;
++        if canceled {
++            self.skipped_canceled = true;
++            self.canceled_at = Some(Instant::now());
++        } else if candidates > 0 {
++            self.started_at = Some(Instant::now());
++        }
++    }
++
++    pub(super) fn evaluated(&mut self, evaluated_candidates: usize) {
++        self.evaluated_candidates = evaluated_candidates;
++        self.evaluation_completed_at = Some(Instant::now());
++    }
++
++    pub(super) fn finish(&mut self, canceled: bool) {
++        if canceled {
++            self.canceled_at.get_or_insert_with(Instant::now);
++        } else {
++            self.completed_at = Some(Instant::now());
++        }
++    }
++}
++
++struct Registration {
++    // Retaining a weak cancellation identity also prevents its allocation address
++    // from being reused while an unclaimed observation is registered.
++    cancel: Weak<AtomicBool>,
++    observation: Weak<Mutex<SearchPerfObservation>>,
++}
++
++fn registry() -> &'static Mutex<HashMap<usize, Registration>> {
++    static REGISTRY: OnceLock<Mutex<HashMap<usize, Registration>>> = OnceLock::new();
++    REGISTRY.get_or_init(|| Mutex::new(HashMap::new()))
++}
++
++pub(in crate::app) fn register(cancel: &Arc<AtomicBool>) -> Arc<Mutex<SearchPerfObservation>> {
++    let observation = Arc::new(Mutex::new(SearchPerfObservation::default()));
++    let mut registrations = registry().lock().expect("search perf registry");
++    registrations.retain(|_, registered| {
++        registered.cancel.strong_count() > 0 && registered.observation.strong_count() > 0
++    });
++    registrations.insert(
++        Arc::as_ptr(cancel) as usize,
++        Registration {
++            cancel: Arc::downgrade(cancel),
++            observation: Arc::downgrade(&observation),
++        },
++    );
++    observation
++}
++
++pub(super) fn take(cancel: &Arc<AtomicBool>) -> Option<Arc<Mutex<SearchPerfObservation>>> {
++    let registered = registry()
++        .lock()
++        .expect("search perf registry")
++        .remove(&(Arc::as_ptr(cancel) as usize))?;
++    let identity = registered.cancel.upgrade()?;
++    if !Arc::ptr_eq(cancel, &identity) {
++        return None;
++    }
++    registered.observation.upgrade()
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use std::sync::atomic::AtomicBool;
++    use std::sync::Arc;
++
++    #[test]
++    fn observations_are_isolated_by_cancellation_identity_and_taken_once() {
++        let first = Arc::new(AtomicBool::new(false));
++        let second = Arc::new(AtomicBool::new(false));
++        let first_observation = register(&first);
++        let second_observation = register(&second);
++        assert!(Arc::ptr_eq(
++            &take(&first).expect("first registered"),
++            &first_observation
++        ));
++        assert!(take(&first).is_none());
++        assert!(Arc::ptr_eq(
++            &take(&second).expect("second registered"),
++            &second_observation
++        ));
++        assert!(take(&second).is_none());
++    }
++
++    #[test]
++    fn default_observation_does_not_claim_execution() {
++        let observation = SearchPerfObservation::default();
++        assert!(observation.started_at.is_none());
++        assert!(observation.completed_at.is_none());
++        assert!(observation.canceled_at.is_none());
++        assert_eq!(observation.candidates, 0);
++        assert_eq!(observation.evaluated_candidates, 0);
++        assert!(observation.evaluation_completed_at.is_none());
++        assert!(!observation.skipped_canceled);
++    }
++
++    #[test]
++    fn substantive_execution_records_candidates_and_completion() {
++        let mut observation = SearchPerfObservation::default();
++        observation.begin(23, false);
++        observation.evaluated(17);
++        observation.finish(false);
++        assert_eq!(observation.candidates, 23);
++        assert_eq!(observation.evaluated_candidates, 17);
++        assert!(observation.evaluation_completed_at >= observation.started_at);
++        assert!(observation.completed_at >= observation.evaluation_completed_at);
++        assert!(observation.started_at.is_some());
++        assert!(observation.completed_at >= observation.started_at);
++        assert!(observation.canceled_at.is_none());
++        assert!(!observation.skipped_canceled);
++    }
++
++    #[test]
++    fn canceled_before_execution_is_distinct_from_cancellation_during_execution() {
++        let mut skipped = SearchPerfObservation::default();
++        skipped.begin(23, true);
++        let canceled_at = skipped.canceled_at;
++        skipped.finish(true);
++        assert!(skipped.started_at.is_none());
++        assert!(skipped.completed_at.is_none());
++        assert!(skipped.canceled_at.is_some());
++        assert_eq!(skipped.canceled_at, canceled_at);
++        assert!(skipped.skipped_canceled);
++
++        let mut running = SearchPerfObservation::default();
++        running.begin(23, false);
++        running.finish(true);
++        assert!(running.started_at.is_some());
++        assert!(running.completed_at.is_none());
++        assert!(running.canceled_at >= running.started_at);
++        assert!(!running.skipped_canceled);
++    }
++
++    #[test]
++    fn cancellation_after_evaluation_retains_completed_evaluation_evidence() {
++        let mut observation = SearchPerfObservation::default();
++        observation.begin(23, false);
++        observation.evaluated(17);
++        observation.finish(true);
++        assert_eq!(observation.evaluated_candidates, 17);
++        assert!(observation.evaluation_completed_at >= observation.started_at);
++        assert!(observation.canceled_at >= observation.evaluation_completed_at);
++        assert!(observation.completed_at.is_none());
++        assert!(!observation.skipped_canceled);
++    }
++
++    #[test]
++    fn empty_candidates_do_not_claim_substantive_execution() {
++        let mut observation = SearchPerfObservation::default();
++        observation.begin(0, false);
++        observation.finish(false);
++        assert!(observation.started_at.is_none());
++        assert!(observation.completed_at.is_some());
++        assert_eq!(observation.candidates, 0);
++    }
++
++    #[test]
++    fn unregistered_or_dropped_observation_cannot_be_taken() {
++        let missing = Arc::new(AtomicBool::new(false));
++        assert!(take(&missing).is_none());
++        let registered = Arc::new(AtomicBool::new(false));
++        drop(register(&registered));
++        assert!(take(&registered).is_none());
++    }
++
++    #[test]
++    fn registration_prunes_dead_cancellation_identity_with_live_observation() {
++        let original = Arc::new(AtomicBool::new(false));
++        let original_key = Arc::as_ptr(&original) as usize;
++        let weak_identity = Arc::downgrade(&original);
++        let observation = register(&original);
++        drop(original);
++        let next = Arc::new(AtomicBool::new(false));
++        let next_observation = register(&next);
++        assert!(!registry()
++            .lock()
++            .expect("registry")
++            .contains_key(&original_key));
++        assert!(weak_identity.upgrade().is_none());
++        assert!(observation
++            .lock()
++            .expect("observation")
++            .started_at
++            .is_none());
++        assert!(Arc::ptr_eq(
++            &take(&next).expect("next registered"),
++            &next_observation
++        ));
++    }
++
++    #[test]
++    fn mismatched_identity_is_rejected_even_with_matching_registry_key() {
++        let original = Arc::new(AtomicBool::new(false));
++        let unrelated = Arc::new(AtomicBool::new(false));
++        let observation = Arc::new(Mutex::new(SearchPerfObservation::default()));
++        registry().lock().expect("registry").insert(
++            Arc::as_ptr(&unrelated) as usize,
++            Registration {
++                cancel: Arc::downgrade(&original),
++                observation: Arc::downgrade(&observation),
++            },
++        );
++        assert!(take(&unrelated).is_none());
++    }
++}

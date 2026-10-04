@@ -1,0 +1,7 @@
+Immutable native v27 app/coordinator.rs SHA256 6254b917db0e77d94b96818163e74d48c9ac62f546c29b15d832b1f199cca479 lines221–223: cursor movement handler sets exactly runtime.current_row. The adapter performs that same field assignment and invokes the same existing request_preview_for_current afterward; no added frames or inputs.
+    pub(super) fn set_current_row(&mut self, row: Option<usize>) {
+        self.shell.runtime.current_row = row;
+    }
+
+
+Fixed44/45 selected case sorts from cases.rs are Score, NameAsc, ModifiedDesc only; PathAsc/PathDesc do not exist in native v27 enum and are not requested. Removing those unreachable oracle arms does not declare any requested cell unsupported.

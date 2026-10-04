@@ -1,0 +1,15 @@
+{
+  "scope": "actual Python controlled green; no performance",
+  "exit_code": 0,
+  "command": [
+    "/Users/shinji/.local/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "rust/target/indexing-perf-study/historical-validator-r2",
+    "-p",
+    "test_historical.py"
+  ],
+  "log_sha256": "7a12dc1ea72c450b307a019a3f8ea27c1482c8e0bea2a0445dd0013cbf82c908"
+}

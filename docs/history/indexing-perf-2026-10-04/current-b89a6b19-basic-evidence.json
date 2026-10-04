@@ -1,0 +1,67 @@
+{
+  "scope": "Main-verified final-source defaultparallel/basic/observer; not full extension or final closure evidence",
+  "rust_source_manifest_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "assets": [
+    {
+      "file": "selector-accepted-cargo-host.sidecar.json",
+      "sha256": "e851eb823d1f6fd32473f366b5def494839929513bd491a43a9d770129dbb672",
+      "bytes": 45693
+    },
+    {
+      "file": "selector-accepted-cargo-host.log.gz",
+      "sha256": "a387102d6c632c6b0a8de319456fb4eef76cb183ff63de717b5f39ed47ba1199",
+      "bytes": 33631,
+      "uncompressed_sha256": "1786d390bc1af35704e5ade4ba492f74632800aa3ff4cd4af3220a3c0d5df0b4",
+      "uncompressed_bytes": 166470
+    },
+    {
+      "file": "selector-accepted-basic.sidecar.json",
+      "sha256": "33fb4d904eb12148e71ef3c1264ba9831604015407253fe3b1be9f11b36f1b7a",
+      "bytes": 46037
+    },
+    {
+      "file": "selector-accepted-basic.log.gz",
+      "sha256": "96f72f7d095726eb32a5fd65a1adc0f78e3f7f6dc01925a5e745a0c3d7ae4018",
+      "bytes": 13710,
+      "uncompressed_sha256": "6f03fc2a18c0dd2adff78e1dffa20beba9ccd90f709ee2de853031415550efb1",
+      "uncompressed_bytes": 134212
+    },
+    {
+      "file": "selector-accepted-observer.sidecar.json",
+      "sha256": "64079625d76f1167bab452ccb40fbbd042abe443c01290c1bc9b736344c88392",
+      "bytes": 45259
+    },
+    {
+      "file": "selector-accepted-observer.log.gz",
+      "sha256": "4bc25429a84bbd4fad01db150178d1dce532d6b227306d8dbd2eb059714fdcb1",
+      "bytes": 539,
+      "uncompressed_sha256": "d5bccb8ea78394c5e3d606e7a478e703cbe948138140e80ddc6297451140bf83",
+      "uncompressed_bytes": 2668
+    },
+    {
+      "file": "integration-b89a6b19-normal-coverage.json",
+      "sha256": "30404ca3e68bccaec4718d62cff02ae7eb9fa0241f8429307aee7d03ecdb1c80",
+      "bytes": 43556
+    },
+    {
+      "file": "current-b89a6b19-basic.jsonl",
+      "sha256": "e32c582be1cb13fcdb2288d9485d59146c0253c46479617e4dd9f3f4e52ad89f",
+      "bytes": 131791,
+      "rows": 84
+    },
+    {
+      "file": "current-b89a6b19-observer.jsonl",
+      "sha256": "1078cb7cfeb0bf5a3c4383fcb31d62fb6531c3e1e30ab0112b2634c544c2aa9b",
+      "bytes": 2053,
+      "rows": 14
+    },
+    {
+      "file": "selector-accepted-current-packet.json",
+      "sha256": "2cfc619972b7e02eb65296e53fbdd47963d2960e1672b65d2906b4499c520972",
+      "bytes": 18568
+    }
+  ],
+  "basic": "84 exact keys; all correct and eligible; 100k,7pairs,2sources,3comparisons",
+  "observer": "14 exact on/off keys; all correct/fullprofile; median on/off results_ready=0.9706538878601788 (observation, no calibrated threshold)",
+  "decompression": "gzip -dc <file.log.gz>; SHA-256 applies to both compressed and original bytes"
+}

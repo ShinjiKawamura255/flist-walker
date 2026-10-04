@@ -1,0 +1,336 @@
+{
+  "schema_version": 1,
+  "scope": "Frozen Warm-removal/ack component3cf checkpoint; focused AFTER pending. No performance claim.",
+  "source_manifest_sha256": "3cf46b60a3461a9efd43f2d1694c9b85032c46fdccb1d89623bf375c9c8e66b1",
+  "packet_sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef",
+  "assets": [
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-warm-ack-regate-check.json",
+      "path": "integration-warm-ack-regate-check.json",
+      "sha256": "332452a9cdeb4b7ea50cb970484a816c5d06572c61408d7ff8aaee8c33b59761",
+      "bytes": 2942,
+      "uncompressed_sha256": "332452a9cdeb4b7ea50cb970484a816c5d06572c61408d7ff8aaee8c33b59761",
+      "uncompressed_bytes": 2942,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/summarize_extensions.py",
+      "path": "summarize_extensions-warm-removal.py",
+      "sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+      "bytes": 11497,
+      "uncompressed_sha256": "37fb80bbd9dfc522ce3fc3c8a7101a5ccb37d7e63636d12d0997801c8afd137f",
+      "uncompressed_bytes": 11497,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/tabchain-warm-removal-before-review.txt",
+      "path": "tabchain-warm-removal-before-review.txt",
+      "sha256": "ae8b9f25a317bffb70d677730673b36b0e883b4a0f88d6c74b2a0eaa9bc544b4",
+      "bytes": 9659,
+      "uncompressed_sha256": "ae8b9f25a317bffb70d677730673b36b0e883b4a0f88d6c74b2a0eaa9bc544b4",
+      "uncompressed_bytes": 9659,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_victim_final_collector_regression.py",
+      "path": "test_victim_final_collector_regression.py",
+      "sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1",
+      "bytes": 7036,
+      "uncompressed_sha256": "dd97034f9d201c3a673ef827b50fa415cd7d412596d3e19c7243b41b2e262df1",
+      "uncompressed_bytes": 7036,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/test_warm_removal_collector.py",
+      "path": "test_warm_removal_collector.py",
+      "sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298",
+      "bytes": 7780,
+      "uncompressed_sha256": "961ca17eadd263c283e4101b6c0eea743ffad0859229e5bd9b640dcd2d8a5298",
+      "uncompressed_bytes": 7780,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-clippy.log",
+      "path": "warm-ack-accepted-clippy.log.gz",
+      "sha256": "e61bf3b4ba39dc73643cc3550527aceaf97f3ba76d37b94769c040f730834c3b",
+      "bytes": 152,
+      "uncompressed_sha256": "a3268a9288ed913febc60a91a5b588d13c6bc5701c61015091943f8ce735aeac",
+      "uncompressed_bytes": 161,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-clippy.sidecar.json",
+      "path": "warm-ack-accepted-clippy.sidecar.json",
+      "sha256": "90d21cef18d659d4c79e2233d892ff8047e5b635c1188af572810c542add81df",
+      "bytes": 44794,
+      "uncompressed_sha256": "90d21cef18d659d4c79e2233d892ff8047e5b635c1188af572810c542add81df",
+      "uncompressed_bytes": 44794,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector-guards.json",
+      "path": "warm-ack-accepted-collector-guards.json",
+      "sha256": "35a3ef856992ba73444a54a4bd3b02dee559b3202c19f1c7b5c005b4103c3da9",
+      "bytes": 4201,
+      "uncompressed_sha256": "35a3ef856992ba73444a54a4bd3b02dee559b3202c19f1c7b5c005b4103c3da9",
+      "uncompressed_bytes": 4201,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector.log",
+      "path": "warm-ack-accepted-collector.log.gz",
+      "sha256": "82037da55d7f8a936a9e0015fa4bafe4cc7ccdbf64db9feb5981281258c8b620",
+      "bytes": 45,
+      "uncompressed_sha256": "6b86bd13d517ef8780b265ae8afdb37bb3a822e8f52ace18426a809534354578",
+      "uncompressed_bytes": 25,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-collector.sidecar.json",
+      "path": "warm-ack-accepted-collector.sidecar.json",
+      "sha256": "8eb8ce78be8d8cdad43bed495752b0b38cd64b437e90768946199270bb1095fd",
+      "bytes": 612,
+      "uncompressed_sha256": "8eb8ce78be8d8cdad43bed495752b0b38cd64b437e90768946199270bb1095fd",
+      "uncompressed_bytes": 612,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-composed.log",
+      "path": "warm-ack-accepted-composed.log.gz",
+      "sha256": "01a47fd55fac2a5105c1406e9a2343f07a028e69fc9c9c92b26d4446f41ba993",
+      "bytes": 480,
+      "uncompressed_sha256": "1d98e601ccb2e6c4756f0e8a85834165801401d0ee6ed9afa06e094bf83e7ea3",
+      "uncompressed_bytes": 857,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-composed.sidecar.json",
+      "path": "warm-ack-accepted-composed.sidecar.json",
+      "sha256": "de0df1b514b33d640e76c8b5e9d8f655713d07f93c7ec252568f6d24fdb6c307",
+      "bytes": 44944,
+      "uncompressed_sha256": "de0df1b514b33d640e76c8b5e9d8f655713d07f93c7ec252568f6d24fdb6c307",
+      "uncompressed_bytes": 44944,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-fmt.log",
+      "path": "warm-ack-accepted-fmt.log.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "bytes": 20,
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-fmt.sidecar.json",
+      "path": "warm-ack-accepted-fmt.sidecar.json",
+      "sha256": "082d0a3a57b5f327b241a5d0f26447705301855669090ac4573398e897c36c60",
+      "bytes": 44739,
+      "uncompressed_sha256": "082d0a3a57b5f327b241a5d0f26447705301855669090ac4573398e897c36c60",
+      "uncompressed_bytes": 44739,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-indexing-normal.log",
+      "path": "warm-ack-accepted-indexing-normal.log.gz",
+      "sha256": "cba931b5f1ad9274dd5c59c27a0c059203f2ab7811448d580c31e25fd1a26e61",
+      "bytes": 2036,
+      "uncompressed_sha256": "1a6f778d2a6c97cd2dc1b7dfeb9930018d3587ac5c633c291b89c148f04510c5",
+      "uncompressed_bytes": 8580,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-indexing-normal.sidecar.json",
+      "path": "warm-ack-accepted-indexing-normal.sidecar.json",
+      "sha256": "e7ab91e32e96fcbddef79e4e5cc8efd36b0ef73dd40b41db2a7002cae487429f",
+      "bytes": 44909,
+      "uncompressed_sha256": "e7ab91e32e96fcbddef79e4e5cc8efd36b0ef73dd40b41db2a7002cae487429f",
+      "uncompressed_bytes": 44909,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-ordering.log",
+      "path": "warm-ack-accepted-ordering.log.gz",
+      "sha256": "a5ace6da3128830055a06a9e3f28fecb35f805e941a1bdc3e31763d8bcbf9405",
+      "bytes": 533,
+      "uncompressed_sha256": "b8879b3bb1fc050f8e0b53d0057d4f7820037f74eadb0f36b53e43623db605ad",
+      "uncompressed_bytes": 1533,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-ordering.sidecar.json",
+      "path": "warm-ack-accepted-ordering.sidecar.json",
+      "sha256": "b9e349d51472d54a9580bc1bdc7c577f4bb7376d22a2e5567420545eeda3c66b",
+      "bytes": 44939,
+      "uncompressed_sha256": "b9e349d51472d54a9580bc1bdc7c577f4bb7376d22a2e5567420545eeda3c66b",
+      "uncompressed_bytes": 44939,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-pipeline.log",
+      "path": "warm-ack-accepted-pipeline.log.gz",
+      "sha256": "58cf2235bc6a88c1559f0a87428ae131939b0ea487a7f394f35534d50917dd66",
+      "bytes": 3599,
+      "uncompressed_sha256": "eb8dc7896801379c422b6f2b820d6d3273732ec28eab1f0c6ef2ca2a6bd55df5",
+      "uncompressed_bytes": 19343,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-pipeline.sidecar.json",
+      "path": "warm-ack-accepted-pipeline.sidecar.json",
+      "sha256": "9476f8b38e5713d23f24a273e05a52ed9d99fc409a8236ca75e41040fa94d180",
+      "bytes": 44945,
+      "uncompressed_sha256": "9476f8b38e5713d23f24a273e05a52ed9d99fc409a8236ca75e41040fa94d180",
+      "uncompressed_bytes": 44945,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-search-observer.log",
+      "path": "warm-ack-accepted-search-observer.log.gz",
+      "sha256": "cdf33bbc4e656b3826f658adbaa3d9e4df0d751cfa4172807411fc93fabc03c5",
+      "bytes": 497,
+      "uncompressed_sha256": "2c5b44c2e47c1e7f42028ab1b55fe4408d2b29d89fec4a383f02178f31a4c285",
+      "uncompressed_bytes": 1223,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-search-observer.sidecar.json",
+      "path": "warm-ack-accepted-search-observer.sidecar.json",
+      "sha256": "46ad080de9362d205d11b9d82c3db3f8a9525ff48dc950b466ce4a4aa1a5b501",
+      "bytes": 44887,
+      "uncompressed_sha256": "46ad080de9362d205d11b9d82c3db3f8a9525ff48dc950b466ce4a4aa1a5b501",
+      "uncompressed_bytes": 44887,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-tc207.log",
+      "path": "warm-ack-accepted-tc207.log.gz",
+      "sha256": "7ab9b5259e5ed3c5785f313050a0f8c5eb0fe9af31f11aa232ad8413b387b41b",
+      "bytes": 2446,
+      "uncompressed_sha256": "e7b3eda05ff81beee1b871546396ee03d82fb77f7d7172a2ec40c3f83f2f4011",
+      "uncompressed_bytes": 10623,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-accepted-tc207.sidecar.json",
+      "path": "warm-ack-accepted-tc207.sidecar.json",
+      "sha256": "fc7bccb6951793b39e92ed190ca1f657f1112bef75cb64e7bde43cf54dcf8fca",
+      "bytes": 44922,
+      "uncompressed_sha256": "fc7bccb6951793b39e92ed190ca1f657f1112bef75cb64e7bde43cf54dcf8fca",
+      "uncompressed_bytes": 44922,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-packet.json",
+      "path": "warm-ack-final-packet.json",
+      "sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef",
+      "bytes": 16210,
+      "uncompressed_sha256": "15125ec257a1f44f79b48331a373bd24cb0bed196c141aef8318532f7996f0ef",
+      "uncompressed_bytes": 16210,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final-source-hashes.json",
+      "path": "warm-ack-final-source-hashes.json",
+      "sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "bytes": 22284,
+      "uncompressed_sha256": "f0afcfdec34d78763190d5a9c2540b4d42a1c0de6e1bd43db909b1d568cfc5cb",
+      "uncompressed_bytes": 22284,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-final.patch",
+      "path": "warm-ack-final.patch.gz",
+      "sha256": "db3399355996cef7176f19b9cf99a3f49a2eec3ea5e02ee130f05efb1441c323",
+      "bytes": 1731,
+      "uncompressed_sha256": "3612bb0fed3b0fbef5c63c2323e34b715dc1e2252b2df4dc89318880854383d9",
+      "uncompressed_bytes": 6118,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-ack-no-victim-first-red.log",
+      "path": "warm-ack-no-victim-first-red.log.gz",
+      "sha256": "755c1692f75f8b40b2c6f67a77719cc095c21d00791bda9a3bb0d5c49b610973",
+      "bytes": 800,
+      "uncompressed_sha256": "e5c88372a32ba2f8632721b4df0fba03498ccc11178a8f256fedb54ce3116d59",
+      "uncompressed_bytes": 2632,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-collector-original-red.log",
+      "path": "warm-removal-collector-original-red.log.gz",
+      "sha256": "d19549f8eea576ef863f0a981074ed5a36146beb7875022240569224899726d6",
+      "bytes": 410,
+      "uncompressed_sha256": "4768a409248c33a69a5ab7a75f9fa277cb0f776aa59fe3d10ac9af7261a1cfa4",
+      "uncompressed_bytes": 1115,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-final-indexing-normal-v2.log",
+      "path": "warm-removal-final-indexing-normal-v2.log.gz",
+      "sha256": "84164d14b53d4e7df711719251da8fe96866e61f2d613270532393767b537f74",
+      "bytes": 4829,
+      "uncompressed_sha256": "aeba81e098d436a38fa74b838b688f51a395c38c1f78c33e8b9de3838a1a754f",
+      "uncompressed_bytes": 28480,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-final.patch",
+      "path": "warm-removal-final.patch.gz",
+      "sha256": "e24d2c72cf3d8c1052b36d0617c14b9951e02b695aaf9ab04223202d09230cfd",
+      "bytes": 12581,
+      "uncompressed_sha256": "e6fbc036e33c89c0d8a25883ddff77642323a54ff9573c0862765fbec88031a8",
+      "uncompressed_bytes": 61251,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-first-red.log",
+      "path": "warm-removal-first-red.log.gz",
+      "sha256": "06d08e69a37522fc8884c50ab90cf1e19d4725eb082e726223cb2a6ef6c89512",
+      "bytes": 1251,
+      "uncompressed_sha256": "4173f445ba20af6018be22756a85ab8b1ce559437fc282fb56b0839397e7651c",
+      "uncompressed_bytes": 3966,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-old-selector-regression-red.log",
+      "path": "warm-removal-old-selector-regression-red.log.gz",
+      "sha256": "7f3825d7f541bb369a75df12694d726eb29bc675eb65a49a5020fa6fdd7fc62a",
+      "bytes": 818,
+      "uncompressed_sha256": "0377f0601590a984a8a512eb2fe11993d5836c7654d7f29d6790e190f2592cdc",
+      "uncompressed_bytes": 2947,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-repeated-finished-observation-red.log",
+      "path": "warm-removal-repeated-finished-observation-red.log.gz",
+      "sha256": "d4ddb05d598a21d0692e81353f6e9540ec9ca9afa6cc687c7bc0a83a114725f0",
+      "bytes": 930,
+      "uncompressed_sha256": "fc1629a9e42eb3764f3d7c65de2b386a73b0197553b6f2271160ec0aad5c670a",
+      "uncompressed_bytes": 3081,
+      "encoding": "gzip-mtime0"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/integration-warm-collector-durable-replay.json",
+      "path": "integration-warm-collector-durable-replay.json",
+      "sha256": "30d8b3386d012da708d16b2d67509d63875984daa2e229891ac45d75bf9eba11",
+      "bytes": 4845,
+      "uncompressed_sha256": "30d8b3386d012da708d16b2d67509d63875984daa2e229891ac45d75bf9eba11",
+      "uncompressed_bytes": 4845,
+      "encoding": "unchanged"
+    },
+    {
+      "original_path": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/warm-removal-after-review.txt",
+      "path": "warm-removal-after-review.txt",
+      "sha256": "b0a276013ff359e816a091e5407646a8ebaa8b1bf8d78822c6609611ea12ef62",
+      "bytes": 11122,
+      "uncompressed_sha256": "b0a276013ff359e816a091e5407646a8ebaa8b1bf8d78822c6609611ea12ef62",
+      "uncompressed_bytes": 11122,
+      "encoding": "unchanged"
+    }
+  ],
+  "source_overlay": "current-3cf46b60-source-overlay.json",
+  "patch_replay": "warm-removal-final.patch is c219\u2192863 and warm-ack-final.patch is863\u21923cf; use their verified relative headers from rust/, reverse only task-owned replay copy. Full213 overlay is preferred for exact frozen replay.",
+  "collector_replay": "In an owned temporary replay directory, copy summarize_extensions-warm-removal.py to summarize_extensions.py, copy both test_*collector*.py controls, decompress both actual retired target logs to their original basenames; run python3 test_warm_removal_collector.py. Synthetic controls are not performance data.",
+  "focused_after": "warm-removal-after-review.txt; PASS component/source only, no performance certification"
+}

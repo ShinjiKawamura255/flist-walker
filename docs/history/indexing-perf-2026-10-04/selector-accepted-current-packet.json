@@ -1,0 +1,530 @@
+{
+  "status": "fresh finalsource fullhost/basic84/observer14 PASS; extendedtarget/pilot/full notyetmeasured",
+  "created_utc": "2026-10-03T22:02:11.120151+00:00",
+  "source_identity": "victim-selector-final-source-hashes.json",
+  "source_manifest_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+  "source_files": 213,
+  "all_source_unchanged": true,
+  "stages": [
+    {
+      "stage": "cargo-host",
+      "sidecar": "selector-accepted-cargo-host.sidecar.json",
+      "sidecar_sha256": "e851eb823d1f6fd32473f366b5def494839929513bd491a43a9d770129dbb672",
+      "log": "selector-accepted-cargo-host.log",
+      "log_sha256": "1786d390bc1af35704e5ade4ba492f74632800aa3ff4cd4af3220a3c0d5df0b4",
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1564 filtered out; finished in 0.02s",
+        "test result: ok. 1546 passed; 0 failed; 19 ignored; 0 measured; 0 filtered out; finished in 30.22s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 47 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.15s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "raw_rows": 0,
+      "source_unchanged": true
+    },
+    {
+      "stage": "basic",
+      "sidecar": "selector-accepted-basic.sidecar.json",
+      "sidecar_sha256": "33fb4d904eb12148e71ef3c1264ba9831604015407253fe3b1be9f11b36f1b7a",
+      "log": "selector-accepted-basic.log",
+      "log_sha256": "6f03fc2a18c0dd2adff78e1dffa20beba9ccd90f709ee2de853031415550efb1",
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1564 filtered out; finished in 93.31s"
+      ],
+      "raw_rows": 84,
+      "source_unchanged": true
+    },
+    {
+      "stage": "observer",
+      "sidecar": "selector-accepted-observer.sidecar.json",
+      "sidecar_sha256": "64079625d76f1167bab452ccb40fbbd042abe443c01290c1bc9b736344c88392",
+      "log": "selector-accepted-observer.log",
+      "log_sha256": "d5bccb8ea78394c5e3d606e7a478e703cbe948138140e80ddc6297451140bf83",
+      "test_summaries": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1564 filtered out; finished in 14.43s"
+      ],
+      "raw_rows": 14,
+      "source_unchanged": true
+    }
+  ],
+  "basic_metrics": {
+    "source_manifest_sha256": "b89a6b19dc2b0d26e7748269c6e7588ddc82d054692e389f89c58befca414c7a",
+    "raw_rows": 84,
+    "unique_complete_expected_keys": true,
+    "all_correct_eligible": true,
+    "all_phase_order_valid": true,
+    "actual_overlap_execution_count_valid": true,
+    "metadata": [
+      {
+        "arch": "aarch64",
+        "cargo_profile": "release",
+        "cases": [
+          "S1-selective",
+          "S1-dense",
+          "S2"
+        ],
+        "cpu_parallelism": 12,
+        "fixture": "flat-real-files-ascii-japanese-v2",
+        "fixture_signature": "68ffba3edf24a1d5",
+        "frame_period_ms": 16,
+        "full_profile": true,
+        "host": "macos",
+        "native": false,
+        "observer": "cfg-test-opt-in-batch-phase-v2",
+        "package_version": "0.30.0",
+        "pairs": 7,
+        "sample_entries": 100000,
+        "schema_version": 1,
+        "sources": [
+          "FileList",
+          "Walker"
+        ],
+        "trace": "empty-startup-held10-edit25-clear50-v4"
+      }
+    ],
+    "metrics": [
+      {
+        "source": "FileList",
+        "case": "S1-selective",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 234.8315,
+            "condition_median": 255.32187499999998,
+            "paired_ratios": [
+              1.1657316675377811,
+              1.1584750575777254,
+              1.1055001184353015,
+              1.1402152482018244,
+              1.023172819660054,
+              1.0368715963420367,
+              1.080770213372155
+            ],
+            "paired_ratio_median": 1.1055001184353015,
+            "paired_ratio_max": 1.1657316675377811
+          },
+          "terminal_publish_ms": {
+            "control_median": 234.8735,
+            "condition_median": 255.377625,
+            "paired_ratios": [
+              1.1656795989395858,
+              1.1583285517419273,
+              1.105485124873665,
+              1.1402620961491585,
+              1.0231725801335612,
+              1.0368395954926048,
+              1.0807713549337261
+            ],
+            "paired_ratio_median": 1.105485124873665,
+            "paired_ratio_max": 1.1656795989395858
+          },
+          "index_ready_ms": {
+            "control_median": 256.2795,
+            "condition_median": 279.350333,
+            "paired_ratios": [
+              1.1615474964292487,
+              1.1270835863045268,
+              1.0933545486910126,
+              1.0529008155863795,
+              1.0220199220188944,
+              1.0389001135756892,
+              1.0543230145212554
+            ],
+            "paired_ratio_median": 1.0543230145212554,
+            "paired_ratio_max": 1.1615474964292487
+          },
+          "results_ready_ms": {
+            "control_median": 256.2795,
+            "condition_median": 296.758041,
+            "paired_ratios": [
+              1.2339292954012637,
+              1.2214651408636337,
+              1.1872959525305327,
+              1.1124386354335623,
+              1.1180706375281593,
+              1.1271033423221342,
+              1.1216550992178465
+            ],
+            "paired_ratio_median": 1.1271033423221342,
+            "paired_ratio_max": 1.2339292954012637
+          }
+        },
+        "max_frame_ms": 1.149584
+      },
+      {
+        "source": "FileList",
+        "case": "S1-dense",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 230.3675,
+            "condition_median": 254.90479100000002,
+            "paired_ratios": [
+              0.9828233178791375,
+              1.1724933618210647,
+              1.0724911389624976,
+              1.0926414663526756,
+              1.0597254348215366,
+              1.092626851260982,
+              1.2429003402437109
+            ],
+            "paired_ratio_median": 1.092626851260982,
+            "paired_ratio_max": 1.2429003402437109
+          },
+          "terminal_publish_ms": {
+            "control_median": 230.417417,
+            "condition_median": 254.947333,
+            "paired_ratios": [
+              0.9827876811543981,
+              1.172290337484102,
+              1.0724590381200663,
+              1.0925628074374256,
+              1.0596849084114435,
+              1.092638059455878,
+              1.242903783527042
+            ],
+            "paired_ratio_median": 1.0925628074374256,
+            "paired_ratio_max": 1.242903783527042
+          },
+          "index_ready_ms": {
+            "control_median": 249.728958,
+            "condition_median": 274.925125,
+            "paired_ratios": [
+              0.9596385090574122,
+              1.139260596826654,
+              1.0666547702618,
+              1.087988726561699,
+              1.065400634013942,
+              1.089780634280091,
+              1.2224170356408808
+            ],
+            "paired_ratio_median": 1.087988726561699,
+            "paired_ratio_max": 1.2224170356408808
+          },
+          "results_ready_ms": {
+            "control_median": 249.728958,
+            "condition_median": 298.829791,
+            "paired_ratios": [
+              1.1207173148046943,
+              1.2959957104054922,
+              1.1513122889660472,
+              1.1846551972558985,
+              1.1580369338511851,
+              1.2553652882887216,
+              1.3220622061246405
+            ],
+            "paired_ratio_median": 1.1846551972558985,
+            "paired_ratio_max": 1.3220622061246405
+          }
+        },
+        "max_frame_ms": 1.386875
+      },
+      {
+        "source": "FileList",
+        "case": "S2",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 245.008209,
+            "condition_median": 246.236125,
+            "paired_ratios": [
+              1.063212132802559,
+              1.0626169468468707,
+              1.0931072819021992,
+              0.9698864729651722,
+              0.9625333056388761,
+              1.0502611898190222,
+              1.0442185567245854
+            ],
+            "paired_ratio_median": 1.0502611898190222,
+            "paired_ratio_max": 1.0931072819021992
+          },
+          "terminal_publish_ms": {
+            "control_median": 245.069625,
+            "condition_median": 246.26475,
+            "paired_ratios": [
+              1.0632089667655573,
+              1.0625341022984796,
+              1.0930398613864352,
+              0.9698566443240543,
+              0.9625716846189728,
+              1.0502618852409003,
+              1.04416400889346
+            ],
+            "paired_ratio_median": 1.0502618852409003,
+            "paired_ratio_max": 1.0930398613864352
+          },
+          "index_ready_ms": {
+            "control_median": 263.8745,
+            "condition_median": 259.862833,
+            "paired_ratios": [
+              1.0373882148969789,
+              1.0589331872305958,
+              1.0860905949086446,
+              0.9464011652804071,
+              0.9773756084805465,
+              1.0482085327930448,
+              1.0496276270749354
+            ],
+            "paired_ratio_median": 1.0482085327930448,
+            "paired_ratio_max": 1.0860905949086446
+          },
+          "results_ready_ms": {
+            "control_median": 263.8745,
+            "condition_median": 259.862833,
+            "paired_ratios": [
+              1.0373882148969789,
+              1.0589331872305958,
+              1.0860905949086446,
+              0.9464011652804071,
+              0.9773756084805465,
+              1.0482085327930448,
+              1.0496276270749354
+            ],
+            "paired_ratio_median": 1.0482085327930448,
+            "paired_ratio_max": 1.0860905949086446
+          }
+        },
+        "max_frame_ms": 1.721917
+      },
+      {
+        "source": "Walker",
+        "case": "S1-selective",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 965.836458,
+            "condition_median": 977.058125,
+            "paired_ratios": [
+              0.963848660076933,
+              1.0172971562286908,
+              1.0187897900184202,
+              1.0224983426840464,
+              1.0030713041473265,
+              1.0374852116009066,
+              1.0011466497725705
+            ],
+            "paired_ratio_median": 1.0172971562286908,
+            "paired_ratio_max": 1.0374852116009066
+          },
+          "terminal_publish_ms": {
+            "control_median": 965.838667,
+            "condition_median": 977.060125,
+            "paired_ratios": [
+              0.9638484936980309,
+              1.0172964251392513,
+              1.0187909638739865,
+              1.022498434370419,
+              1.0030709185163542,
+              1.0374852977386544,
+              1.001146129408045
+            ],
+            "paired_ratio_median": 1.0172964251392513,
+            "paired_ratio_max": 1.0374852977386544
+          },
+          "index_ready_ms": {
+            "control_median": 990.1564579999999,
+            "condition_median": 1000.3255419999999,
+            "paired_ratios": [
+              0.9650045273503045,
+              1.01523834718234,
+              1.0241234050207135,
+              1.022336687232614,
+              1.0051787295036119,
+              1.041302788292731,
+              0.9952787350299744
+            ],
+            "paired_ratio_median": 1.01523834718234,
+            "paired_ratio_max": 1.041302788292731
+          },
+          "results_ready_ms": {
+            "control_median": 990.1564579999999,
+            "condition_median": 1045.594125,
+            "paired_ratios": [
+              1.0086746984172081,
+              1.0595190202979448,
+              1.0711802137313635,
+              1.068577664198051,
+              1.04247256304496,
+              1.0628815788893926,
+              1.0418910654623028
+            ],
+            "paired_ratio_median": 1.0595190202979448,
+            "paired_ratio_max": 1.0711802137313635
+          }
+        },
+        "max_frame_ms": 29.861083
+      },
+      {
+        "source": "Walker",
+        "case": "S1-dense",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 969.444208,
+            "condition_median": 992.560291,
+            "paired_ratios": [
+              1.0398189344534867,
+              1.0176782241952145,
+              1.056449569297958,
+              1.018755495679588,
+              1.0170420230835604,
+              1.0580217729402819,
+              0.9848328856412149
+            ],
+            "paired_ratio_median": 1.018755495679588,
+            "paired_ratio_max": 1.0580217729402819
+          },
+          "terminal_publish_ms": {
+            "control_median": 969.44625,
+            "condition_median": 992.562,
+            "paired_ratios": [
+              1.0398192018413308,
+              1.0176777939715256,
+              1.0564489779603565,
+              1.0187557208492428,
+              1.0170413247620533,
+              1.0580219029514224,
+              0.9848328689449692
+            ],
+            "paired_ratio_median": 1.0187557208492428,
+            "paired_ratio_max": 1.0580219029514224
+          },
+          "index_ready_ms": {
+            "control_median": 993.744042,
+            "condition_median": 1015.987666,
+            "paired_ratios": [
+              1.034404410108815,
+              1.0195095432610302,
+              1.0550179811795037,
+              1.011396973776541,
+              1.036887941070736,
+              1.054905549567048,
+              0.9782252776485392
+            ],
+            "paired_ratio_median": 1.034404410108815,
+            "paired_ratio_max": 1.0550179811795037
+          },
+          "results_ready_ms": {
+            "control_median": 993.744042,
+            "condition_median": 1058.676708,
+            "paired_ratios": [
+              1.081045410161706,
+              1.0602855557191535,
+              1.1008747340997895,
+              1.055007685563856,
+              1.076291236017289,
+              1.099229815321964,
+              1.017650781281589
+            ],
+            "paired_ratio_median": 1.076291236017289,
+            "paired_ratio_max": 1.1008747340997895
+          }
+        },
+        "max_frame_ms": 27.606292
+      },
+      {
+        "source": "Walker",
+        "case": "S2",
+        "phases": {
+          "data_publish_end_ms": {
+            "control_median": 979.7681249999999,
+            "condition_median": 983.96275,
+            "paired_ratios": [
+              0.9943718210767659,
+              1.0740610668100314,
+              0.9916261122483057,
+              1.0011006002057885,
+              0.9991442472650691,
+              1.0271742966769382,
+              0.9850983699395481
+            ],
+            "paired_ratio_median": 0.9991442472650691,
+            "paired_ratio_max": 1.0740610668100314
+          },
+          "terminal_publish_ms": {
+            "control_median": 979.769583,
+            "condition_median": 983.9650829999999,
+            "paired_ratios": [
+              0.9943713702007323,
+              1.0740609788812379,
+              0.9916269873764191,
+              1.001101832531578,
+              0.9991444603203595,
+              1.027173995125637,
+              0.9850980243071533
+            ],
+            "paired_ratio_median": 0.9991444603203595,
+            "paired_ratio_max": 1.0740609788812379
+          },
+          "index_ready_ms": {
+            "control_median": 1003.0274589999999,
+            "condition_median": 1007.2829160000001,
+            "paired_ratios": [
+              0.9979846464324914,
+              1.0718861961088797,
+              0.9913401374410608,
+              1.0084878710532914,
+              0.9983111773076748,
+              1.0264145310901205,
+              0.9866445985299768
+            ],
+            "paired_ratio_median": 0.9983111773076748,
+            "paired_ratio_max": 1.0718861961088797
+          },
+          "results_ready_ms": {
+            "control_median": 1003.0274589999999,
+            "condition_median": 1007.2829160000001,
+            "paired_ratios": [
+              0.9979846464324914,
+              1.0718861961088797,
+              0.9913401374410608,
+              1.0084878710532914,
+              0.9983111773076748,
+              1.0264145310901205,
+              0.9866445985299768
+            ],
+            "paired_ratio_median": 0.9983111773076748,
+            "paired_ratio_max": 1.0718861961088797
+          }
+        },
+        "max_frame_ms": 28.111875
+      }
+    ],
+    "ratio_gate": false
+  },
+  "observer_metrics": {
+    "raw_rows": 14,
+    "expected_unique_keys_complete": true,
+    "all_correct_fullprofile": true,
+    "paired_ratios": [
+      0.9249141308103224,
+      1.0092588773668738,
+      0.9706538878601788,
+      0.933851957442618,
+      0.93821470329565,
+      1.0715658047257055,
+      1.0030389146288674
+    ],
+    "paired_ratio_median": 0.9706538878601788,
+    "ratio_gate": false,
+    "metadata_count": 0,
+    "metadata_limitation": "entrypoint emits no META; explicit100k7pair on/off settings, source/environment and exactphase clocks retained in sidecar"
+  },
+  "runtime_settings": {
+    "walker_max_entries": 500000,
+    "search_parallel_threshold": 25000,
+    "search_threads": 12,
+    "evidence": "fresh singleentrypoint processes initialize RuntimeConfig::default (runtime_config.rs301,317/319/671), no runtime setter inbasic/observer path; bootstrap430reads thatconfig; basicMETA observes cpu_parallelism12. This is source/path-derived configuration, not a new runtime METAfield"
+  },
+  "after_review": {
+    "path": "victim-selector-after-review.txt",
+    "sha256": "3f7c49a404eaa954f3b988780517d93ba1ccc4c9b6eb0a9eddc64d3f78c80c1e"
+  },
+  "not_run": [
+    "targeted100k TabChain onfinalsource",
+    "44cellpilot/616full/truncated14",
+    "historicalexpanded",
+    "nativeGUI/Windows/Linux/CI",
+    "SIGINT/SIGKILLcleanup/individualAppworkerjoinedoutcomes"
+  ],
+  "git_commit_push": false
+}

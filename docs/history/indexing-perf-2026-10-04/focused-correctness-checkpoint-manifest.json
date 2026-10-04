@@ -1,0 +1,145 @@
+{
+  "scope": "Point-in-time focused correctness and causal diagnostics. Not final-current performance evidence. Failed diagnostics have no accepted timing rows.",
+  "ordering_source": "promotion-order-repair-final-packet.json",
+  "selector_source": "tabchain-owner-final-source-hashes.json",
+  "stall_source": "tabchain-stall-diagnostic-final-packet.json",
+  "victim_review": "BEFORE only; implementation and measurements not verified by this record",
+  "assets": [
+    {
+      "file": "tabchain-victim-before-review.txt",
+      "sha256": "81b2f2b1614ca8e9320f7c80eb459a9d60ef7fef7f9a20071c46d33da0c8855e",
+      "bytes": 6889
+    },
+    {
+      "file": "promotion-order-repair-final-packet.json",
+      "sha256": "3d93f8cfd82c5ed465a55d37d62f4885bcb060f87f4af90870c66820b1419ae5",
+      "bytes": 12146
+    },
+    {
+      "file": "tabchain-stall-actual-state.json",
+      "sha256": "fafbc8576c7210246774229ff66705091b9d0d0264e00b98521975264d428063",
+      "bytes": 12644
+    },
+    {
+      "file": "tabchain-stall-diagnostic-final-packet.json",
+      "sha256": "bbf44d76ec2394212af28317656677fc1e07631913c58f7f443cc4a0070677ae",
+      "bytes": 4090
+    },
+    {
+      "file": "normal-child-isolation-final-packet.json",
+      "sha256": "cbb5e3ed56778e2f1fdfa5c0523df5905b55a29f810633d7b24d58993746eefb",
+      "bytes": 4385
+    },
+    {
+      "file": "normal-test-process-isolation-after-review.txt",
+      "sha256": "eb669028106ff87ff230c5ae5bf13dc5a6d664d5b265368433d07cec0b55a353",
+      "bytes": 1085
+    },
+    {
+      "file": "promotion-order-focused-final-2.log.gz",
+      "sha256": "1bf7657aeb9acc461f5abd8575c66389fd3d336ab8c4e030567d5a18b82e9607",
+      "uncompressed_sha256": "c01b174afb89c54fc5a9bf72be659c892c0813e5279f784a4323679acbf26a5c",
+      "uncompressed_bytes": 1622,
+      "bytes": 588
+    },
+    {
+      "file": "promotion-order-tc207-regressions-final.log.gz",
+      "sha256": "8af7ce602a0e0bed513ccc1f17567c5090bbd645098da37da89cc511624d2856",
+      "uncompressed_sha256": "39817c20cd19f82ac0f9b1a21b0869f76c81322ca0287340c6487e7f274dec1e",
+      "uncompressed_bytes": 10622,
+      "bytes": 2445
+    },
+    {
+      "file": "promotion-order-index-pipeline-regressions.log.gz",
+      "sha256": "b69f5f4db6cecfcb1203284bdbe9dd077c25061713dddf407de36a9f533fcefa",
+      "uncompressed_sha256": "fb3d6d862935b988327b0c779cdf2bf0ab0168c84ffce331fe91ad184db3d168",
+      "uncompressed_bytes": 19431,
+      "bytes": 3657
+    },
+    {
+      "file": "tabchain-stall-diagnostic.log.gz",
+      "sha256": "27b9d40b56b30052211d0052a6acb4280a9d22a75705bbee7c2bffcfbcea1a13",
+      "uncompressed_sha256": "8ae264c048d567fc56b927ce1e3a2eca1bb51805d35a4e8e15a554162f674386",
+      "uncompressed_bytes": 13515,
+      "bytes": 2891
+    },
+    {
+      "file": "tabchain-owner-first-red.log.gz",
+      "sha256": "d64c85787078712ef638779c817b2dd18f7bba71e07951d93770c376e23607cb",
+      "uncompressed_sha256": "26c024201282a092280add9005009525b0e0aaef5ddd6c68ed9e8b872f7f420f",
+      "uncompressed_bytes": 1848,
+      "bytes": 821
+    },
+    {
+      "file": "tabchain-owner-guards-red.log.gz",
+      "sha256": "e1cf78d4b462ab73e188d5fa929dbeb42f8afe486062bd2e7e89e25f368c0411",
+      "uncompressed_sha256": "99b9e38cdefdcde551a8c1a7ef4c7b75165055d30bcb9baa273cadbeecb77340",
+      "uncompressed_bytes": 2079,
+      "bytes": 726
+    },
+    {
+      "file": "promotion-order-first-red.log.gz",
+      "sha256": "1135a2065da5ac1a68bd6b0b6c784dda8e5ace604adc3fd23e005c716f0b9d67",
+      "uncompressed_sha256": "83c6e4d1aa560b232a0a3b28b1a8c634d8158731aa2e05b6fbe3a8c1c192341f",
+      "uncompressed_bytes": 2596,
+      "bytes": 648
+    },
+    {
+      "file": "promotion-order-first-red-test-file.rs.gz",
+      "sha256": "9020b9dc99ee0d4a3dc2f6dcad3289a1193ef5cb658924ecc43ef6f9f8464738",
+      "uncompressed_sha256": "8c35a61abf301c5dd353db83b1189c8aa3384fd1228fa573f5f20961a88be6c0",
+      "uncompressed_bytes": 141104,
+      "bytes": 15848
+    },
+    {
+      "file": "pipeline-promotion-order-before.patch.gz",
+      "sha256": "6958d0566b4907baa0f2361bf2fa6c3d2304575c2522e98c12769637f49f5caf",
+      "uncompressed_sha256": "f4a60d3552057d9f95f76de1d9e794d2f30f1af421dd4df98756526d17986d8a",
+      "uncompressed_bytes": 1286,
+      "bytes": 487
+    },
+    {
+      "file": "tabs-promotion-order-before.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "bytes": 20
+    },
+    {
+      "file": "state-promotion-order-before.patch.gz",
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "uncompressed_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uncompressed_bytes": 0,
+      "bytes": 20
+    },
+    {
+      "file": "promotion-order-after-review.txt.gz",
+      "sha256": "2576b42675650134f2812be9984606eb6f10eaa8df36fc0d620e974b1ca6cf04",
+      "uncompressed_sha256": "bd51154d3ccec19a5e833e94e83553ea2e109eb891be8fd850aff4d2573b7fdd",
+      "uncompressed_bytes": 2379,
+      "bytes": 1333
+    },
+    {
+      "file": "normal-child-isolation-inherited-red.log.gz",
+      "sha256": "4b383d338a11a77c8086dbddb2ea1234f4dbf9d79782146cf199112d9b171e25",
+      "uncompressed_sha256": "fc9d3599a5ff9b7bbbf5662ce539a32a157bebccda8f0d08d2cc4adad72bbcfa",
+      "uncompressed_bytes": 2383,
+      "bytes": 972
+    },
+    {
+      "file": "normal-child-isolation-inherited-uncontrolled.log.gz",
+      "sha256": "bade39e515b91128e4ec7dbbd369a920a5a7867ba1afd07a485ed9334d2e1220",
+      "uncompressed_sha256": "e7c5847e39921107e4cd676d1e1827923fe899e8be7c3d17500a892a18db9016",
+      "uncompressed_bytes": 468,
+      "bytes": 328
+    },
+    {
+      "file": "sdd-tabchain-victim-reference-checkpoint.txt.gz",
+      "sha256": "546a9046dc5020c8b456f87ef298316cc3ab83930ebc3d5146ec224448054408",
+      "uncompressed_sha256": "b70603aafe3b689562deaf58a51123d6eccfc0185a5d9f8164efc7431c754a9c",
+      "uncompressed_bytes": 4475,
+      "bytes": 2217
+    }
+  ],
+  "decompression": "python3 -m gzip -d <copy-of-log.gz>; compressed and uncompressed SHA256 are both recorded"
+}

@@ -1,0 +1,25 @@
+{
+  "scope": "Main synthetic145controls and77frozen refs/source readback only; no historical benchmark",
+  "packet_sha256": "1f669c51a01d32d7727ed9f88fef38d338411ea4d2b228142af6f673cdf939f1",
+  "references": 77,
+  "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "-v",
+    "test_historical"
+  ],
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/historical-validator-r2",
+  "env": {
+    "FW_HIST_VALIDATOR_CONTROL_STAGE": "main-r2-control-check"
+  },
+  "actual_exit": 0,
+  "passed": 145,
+  "failed": 0,
+  "errors": 0,
+  "skipped": 0,
+  "log": "rust/target/indexing-perf-study/integration-historical-validator-r2-controls.log",
+  "log_sha256": "f85085669df78dfbb56f5eee8290ee6160dbdc4f96a74d8e04488aa439fded0f",
+  "R4_and_current213_unchanged": true,
+  "historical_performance": "NOT_RUN"
+}

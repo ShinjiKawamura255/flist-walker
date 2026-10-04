@@ -1,0 +1,266 @@
+{
+  "schema_version": 1,
+  "guard_checkpoint_sha256": "04ede4ed7145f0407d9bf709b5e4042095c1f45f8c3621344375a13ee21b2bf7",
+  "evidence_kind": "live-historical",
+  "log_sha256": "9bb3b4e9997b61c3df905bec8e6de8c0f0bd344b1b0fcfac24a38a8afd0f83c0",
+  "exit_code": 101,
+  "process_completed": true,
+  "actual_wait_returned": true,
+  "owned_process_group_absent": true,
+  "watchdog_expired": false,
+  "runner_test": "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+  "cwd": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/v0.29.0/rust",
+  "command": [
+    "cargo",
+    "+1.97.1",
+    "test",
+    "--release",
+    "--locked",
+    "--offline",
+    "--lib",
+    "app::tests::indexing_perf::harness::extensions::runner::perf_indexing_extended_paired",
+    "--",
+    "--ignored",
+    "--exact",
+    "--nocapture",
+    "--test-threads=1"
+  ],
+  "env": {
+    "FLISTWALKER_SEARCH_THREADS": "12",
+    "FLISTWALKER_SEARCH_PARALLEL_THRESHOLD": "25000",
+    "FLISTWALKER_WALKER_MAX_ENTRIES": "500000",
+    "FW_INDEX_PERF_EXTRA_PAIRS": "7",
+    "FW_INDEX_PERF_EXTRA_ENTRIES": "100000",
+    "FW_INDEX_PERF_EXTRA_CASES": "F1-files,F1-folders,F1-ignore-list,F1-ignore-case,F1-mid-ignore,S1-ignore,S2-files,O1-name-shown,O1-modified-shown,O1-name-all,O1-modified-all,T1-active-warm,T1-promotion,T1-A-B-C-A,T1-S1-selective,T1-S1-dense,T1-S2,R1-natural,T1-natural-reclaim,H1-early,H1-late,P1-preview,W1-follow-links,W1-deep,W1-wide,F1-filelist-parser-files,F1-filelist-parser-folders",
+    "FW_INDEX_PERF_EXTRA_SOURCES": "FileList,Walker",
+    "CARGO_TARGET_DIR": "/private/tmp/flistwalker-indexing-perf-20261003/rust/target/indexing-perf-study/newtag-repair-r5/target-release-v0.29.0"
+  },
+  "selection": {
+    "runner": "extended",
+    "cells": [
+      {
+        "case": "F1-files",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-folders",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-ignore-list",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-ignore-list",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-ignore-case",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-ignore-case",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-mid-ignore",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-mid-ignore",
+        "source": "Walker"
+      },
+      {
+        "case": "S1-ignore",
+        "source": "FileList"
+      },
+      {
+        "case": "S1-ignore",
+        "source": "Walker"
+      },
+      {
+        "case": "S2-files",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-name-shown",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-name-shown",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-modified-shown",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-modified-shown",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-name-all",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-name-all",
+        "source": "Walker"
+      },
+      {
+        "case": "O1-modified-all",
+        "source": "FileList"
+      },
+      {
+        "case": "O1-modified-all",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-active-warm",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-active-warm",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-promotion",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-promotion",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-A-B-C-A",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-A-B-C-A",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S1-selective",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S1-selective",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S1-dense",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S1-dense",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-S2",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-S2",
+        "source": "Walker"
+      },
+      {
+        "case": "R1-natural",
+        "source": "FileList"
+      },
+      {
+        "case": "R1-natural",
+        "source": "Walker"
+      },
+      {
+        "case": "T1-natural-reclaim",
+        "source": "FileList"
+      },
+      {
+        "case": "T1-natural-reclaim",
+        "source": "Walker"
+      },
+      {
+        "case": "H1-early",
+        "source": "FileList"
+      },
+      {
+        "case": "H1-late",
+        "source": "FileList"
+      },
+      {
+        "case": "P1-preview",
+        "source": "FileList"
+      },
+      {
+        "case": "P1-preview",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-follow-links",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-deep",
+        "source": "Walker"
+      },
+      {
+        "case": "W1-wide",
+        "source": "Walker"
+      },
+      {
+        "case": "F1-filelist-parser-files",
+        "source": "FileList"
+      },
+      {
+        "case": "F1-filelist-parser-folders",
+        "source": "FileList"
+      }
+    ],
+    "selected_cases": [
+      "F1-files",
+      "F1-folders",
+      "F1-ignore-list",
+      "F1-ignore-case",
+      "F1-mid-ignore",
+      "S1-ignore",
+      "S2-files",
+      "O1-name-shown",
+      "O1-modified-shown",
+      "O1-name-all",
+      "O1-modified-all",
+      "T1-active-warm",
+      "T1-promotion",
+      "T1-A-B-C-A",
+      "T1-S1-selective",
+      "T1-S1-dense",
+      "T1-S2",
+      "R1-natural",
+      "T1-natural-reclaim",
+      "H1-early",
+      "H1-late",
+      "P1-preview",
+      "W1-follow-links",
+      "W1-deep",
+      "W1-wide",
+      "F1-filelist-parser-files",
+      "F1-filelist-parser-folders"
+    ],
+    "selected_sources": [
+      "FileList",
+      "Walker"
+    ],
+    "pairs": 7,
+    "entries": 100000,
+    "expected_rows": 616,
+    "coverage_kind": "all-extended-nontruncated",
+    "cap": 500000
+  },
+  "source_identity": {
+    "tag": "v0.29.0",
+    "original_commit": "ec4d9b8b12e0b92a5a441f45016f55621faac93e",
+    "original_archive_sha256": "f42a44f13bb03e17296ec155f640fea18d516f34a7bf5eef0019fa44d4728320",
+    "Cargo_lock_sha256": "7daa430e4abfd033487adc67e9872eeefafa728e352c9771285a8c682f15404e",
+    "source_manifest_sha256": "319b4c70e2606dd65ae2d6112b16b8e8db6f0060ec63d5e49c3c65b7e0baffbe",
+    "adapter_sha256": "77560d30d65c4841bd171b95d9f2c717d953e89cee5c50e3378090d76a91c43e"
+  },
+  "validator_sha256": "6cc7d3a8fa88a0d8c98dd8fffb67a28628be5be2197284681b31d9c11f035e3e"
+}
