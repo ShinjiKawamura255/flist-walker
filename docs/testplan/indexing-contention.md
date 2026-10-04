@@ -103,6 +103,36 @@ Keep basic frozen evidence and new extension evidence separately identified. His
 
 Owned fixture publication/generation guards restore the declared content and metadata on normal return and Rust panic unwind. The App owner stops workers before restoration, and the separate parser worker guard closes admission and joins within a bounded deadline. These tests do not certify forced process-signal cleanup; SIGINT/SIGKILL interruption is NOT RUN. Temporary fixture roots are exclusively created and never take ownership of an existing directory.
 
+## Maintained collector
+
+`scripts/indexing_perf.py` collects source-bound POSIX observations and validates retained raw logs and execution receipts. Its first selection contains17 of the44 nontruncated extension cells:
+
+| Group | Profiles | Cells / raw rows |
+| --- | --- | --- |
+| `f1` | Files, Folders, Ignore List, Ignore Case, mid-index Ignore refresh | 8 /112 |
+| `matched` | Ignore + selective search, Files + S2 edits | 3 /42 |
+| `stable` | Stable Active100k selective/dense/S2 search while Warm indexes100k | 6 /84 |
+
+All selections fix100,000 entries,7 pairs, default runtime settings, locked release/default features, both requested sources and each profile's actual supported sources. Whole runner success, untimed warmup starts, exact AB/BA row sequence, work/identity/overlap witnesses and physical index-request return are mandatory. Latest requests must finish; the authorized old MidIgnore request may lack a published terminal after its mailbox closes. Partial search evaluation cannot replace the required full stable-candidate evaluations. The maintained validator preserves73 frozen victim predicates using explicit exceptions; full membership/kind/order and omitted GUI debt assertions remain source-bound Rust checks. The remaining27 extension cells, parser-only throughput, truncation, basic profiles and observer-overhead checks retain separate runner/schema coverage.
+
+From the repository root, on the intended clean numbered Ubuntu24.04 Actions image with complete run/attempt/job/workflow/image locators:
+
+```sh
+python3 scripts/indexing_perf.py collect --group f1 --revision "$GITHUB_SHA" --output rust/target/indexing-f1-run
+python3 scripts/indexing_perf.py validate --group f1 rust/target/indexing-f1-run
+python3 scripts/indexing_perf.py summarize-runs --group f1 --output rust/target/indexing-f1-summary.json rust/target/indexing-f1-run
+```
+
+Use `matched` and `stable` in separate serial sessions. Reserve a new output directory for every execution; the collector never overwrites one. Build time and executable discovery are outside Rust timing endpoints. Administrative defaults are30 minutes for the build and45 minutes for measurement; these are resource bounds, not product timing ceilings. Preserve `receipt.json`, `measurement.log`, `build.log`, `discovery.log` and any failure logs/remnants together. Receipts retain exact HEAD/tree/build-source hashes before/after, applicable Cargo config hashes, compiler identity/features, executable digest, allowlisted runner/hardware facts, actual process outcomes and owned fixture inventories. They are execution evidence, not cryptographic attestations.
+
+Compiler/toolchain temporary files use a separate owned `compiler-temp/` directory. Retain its before/after inventory, including compiler caches such as macOS `xcrun_db`; those files are outside runtime fixture cleanup. Discovery and measurement use `fixtures/`, which must be empty before/after. Separating the directories does not relax the runtime remainder guard or certify forced-signal cleanup.
+
+`--local-observation` explicitly permits a local POSIX diagnostic and must never supply the intended Ubuntu calibration. The fixed `--allow-local-controls` exception is limited to this task's known temporary plan/AGENTS controls and is forbidden for intended CI. Modified or untracked source is rejected. Runtime and compiler/profile/target overrides are removed from child environments; inherited override values are never logged. The wrapper owns a fresh process session for build/discovery/measurement, applies bounded TERM/KILL/reap checks and invalidates any timeout, surviving descendant, unproven group absence, source/config drift, nonzero status or fixture remainder. Failed runs retain their files and produce no accepted summary. SIGKILL of the wrapper and escaped descendant sessions are not cleanup-certified; missing/incomplete receipts reject such evidence.
+
+`validate` and `summarize-runs` are portable offline operations. They revalidate raw data and receipts instead of trusting an existing summary. Healthy repeats must share exact measured source, toolchain, image, hardware, runtime defaults and build/config conditions; a different source belongs to a separately reviewed baseline/candidate comparison. A duplicate run cannot increase the session count. Outputs retain all7 values/paired ratios, medians, maxima, within-run ranges and across-session spreads, with `timing_gate=null`. AA variability and AB operation cost, and producer publication/GUI index readiness/result readiness/stall axes, remain distinct. A small repeat count is exploratory evidence and provides no statistical guarantee.
+
+Collector regression tests replay immutable historical witnesses and deliberately synthetic17-cell envelopes; neither is current performance evidence. Run `python3 -m unittest scripts.tests.test_indexing_perf` under ordinary Python, `-O`, `-OO` and `PYTHONOPTIMIZE=1/2`. Process lifecycle tests apply on POSIX; receipt/contract tests are portable and do not require POSIX. This scripts-only collector introduces no workflow, schedule, required-check or repository-setting change.
+
 ## Initial retained calibration evidence
 
 The [2026-10-04 actual four-tag comparison](../history/indexing-perf-expanded-2026-10-04.md) supplies per-condition median/maximum, raw records, source adapters, preserved failures and declared-work checks. v29 slows dramatically in empty-query Files/Folders and Ignore List profiles; actual v30 returns near v27/v28 in those accepted conditions. Keep these non-search profiles in the monitoring set. Timing remains observational until repeated healthy-version measurements on the intended runner establish variability and per-profile margins. Current correctness/overlap/finite-settlement assertions remain active; this record does not activate a weekly workflow.
