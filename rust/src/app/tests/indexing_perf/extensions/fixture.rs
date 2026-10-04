@@ -678,8 +678,11 @@ fn set_modified(path: &Path, modified: SystemTime) {
     #[cfg(windows)]
     let file = {
         use std::os::windows::fs::OpenOptionsExt;
+        // SetFileTime requires FILE_WRITE_ATTRIBUTES even for a directory
+        // opened with FILE_FLAG_BACKUP_SEMANTICS; read access is insufficient.
+        const FILE_WRITE_ATTRIBUTES: u32 = 0x0100;
         fs::OpenOptions::new()
-            .read(true)
+            .access_mode(FILE_WRITE_ATTRIBUTES)
             .custom_flags(0x02000000)
             .open(path)
             .unwrap()
@@ -688,6 +691,23 @@ fn set_modified(path: &Path, modified: SystemTime) {
     let file = fs::File::open(path).unwrap();
     file.set_times(fs::FileTimes::new().set_modified(modified))
         .unwrap();
+}
+#[test]
+fn tc_229_modified_time_roundtrip_preserves_file_and_directory_contents() {
+    let fixture = ExtendedFixture::new(8, Shape::FlatMixed);
+    let modified = UNIX_EPOCH + Duration::from_secs(1_700_000_100);
+    for record in &fixture.records {
+        let before = (!record.is_dir).then(|| fs::read(&record.path).unwrap());
+        set_modified(&record.path, modified);
+        assert_eq!(
+            fs::metadata(&record.path).unwrap().modified().unwrap(),
+            modified
+        );
+        assert_eq!(fs::metadata(&record.path).unwrap().is_dir(), record.is_dir);
+        if let Some(bytes) = before {
+            assert_eq!(fs::read(&record.path).unwrap(), bytes);
+        }
+    }
 }
 fn create_directory_link(target: &Path, alias: &Path) {
     #[cfg(unix)]
