@@ -1,0 +1,292 @@
+{
+  "conclusion": "success",
+  "event": "workflow_dispatch",
+  "headSha": "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e",
+  "jobs": [
+    {
+      "completedAt": "2026-10-04T22:14:24Z",
+      "conclusion": "success",
+      "databaseId": 111542823777,
+      "name": "Indexing Contention (matched)",
+      "startedAt": "2026-10-04T22:05:48Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T22:05:50Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T22:05:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:52Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-04T22:05:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:52Z",
+          "conclusion": "success",
+          "name": "Record runner image",
+          "number": 3,
+          "startedAt": "2026-10-04T22:05:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:06:01Z",
+          "conclusion": "success",
+          "name": "Install Rust",
+          "number": 4,
+          "startedAt": "2026-10-04T22:05:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:06:03Z",
+          "conclusion": "success",
+          "name": "Cache Cargo downloads",
+          "number": 5,
+          "startedAt": "2026-10-04T22:06:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:20Z",
+          "conclusion": "success",
+          "name": "Collect fixed indexing observations",
+          "number": 6,
+          "startedAt": "2026-10-04T22:06:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:21Z",
+          "conclusion": "success",
+          "name": "Retain indexing evidence",
+          "number": 7,
+          "startedAt": "2026-10-04T22:14:20Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:21Z",
+          "conclusion": "success",
+          "name": "Post Cache Cargo downloads",
+          "number": 13,
+          "startedAt": "2026-10-04T22:14:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:21Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 14,
+          "startedAt": "2026-10-04T22:14:21Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:21Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-10-04T22:14:21Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865/job/111542823777"
+    },
+    {
+      "completedAt": "2026-10-04T22:18:29Z",
+      "conclusion": "success",
+      "databaseId": 111542823980,
+      "name": "Indexing Contention (stable)",
+      "startedAt": "2026-10-04T22:05:46Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T22:05:48Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T22:05:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:50Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-04T22:05:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:50Z",
+          "conclusion": "success",
+          "name": "Record runner image",
+          "number": 3,
+          "startedAt": "2026-10-04T22:05:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:58Z",
+          "conclusion": "success",
+          "name": "Install Rust",
+          "number": 4,
+          "startedAt": "2026-10-04T22:05:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:59Z",
+          "conclusion": "success",
+          "name": "Cache Cargo downloads",
+          "number": 5,
+          "startedAt": "2026-10-04T22:05:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:18:26Z",
+          "conclusion": "success",
+          "name": "Collect fixed indexing observations",
+          "number": 6,
+          "startedAt": "2026-10-04T22:05:59Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:18:27Z",
+          "conclusion": "success",
+          "name": "Retain indexing evidence",
+          "number": 7,
+          "startedAt": "2026-10-04T22:18:26Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:18:27Z",
+          "conclusion": "success",
+          "name": "Post Cache Cargo downloads",
+          "number": 13,
+          "startedAt": "2026-10-04T22:18:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:18:28Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 14,
+          "startedAt": "2026-10-04T22:18:27Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:18:28Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-10-04T22:18:28Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865/job/111542823980"
+    },
+    {
+      "completedAt": "2026-10-04T22:14:04Z",
+      "conclusion": "success",
+      "databaseId": 111542824171,
+      "name": "Indexing Contention (f1)",
+      "startedAt": "2026-10-04T22:05:46Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-10-04T22:05:48Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-10-04T22:05:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:50Z",
+          "conclusion": "success",
+          "name": "Checkout",
+          "number": 2,
+          "startedAt": "2026-10-04T22:05:48Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:50Z",
+          "conclusion": "success",
+          "name": "Record runner image",
+          "number": 3,
+          "startedAt": "2026-10-04T22:05:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:56Z",
+          "conclusion": "success",
+          "name": "Install Rust",
+          "number": 4,
+          "startedAt": "2026-10-04T22:05:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:05:57Z",
+          "conclusion": "success",
+          "name": "Cache Cargo downloads",
+          "number": 5,
+          "startedAt": "2026-10-04T22:05:56Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:00Z",
+          "conclusion": "success",
+          "name": "Collect fixed indexing observations",
+          "number": 6,
+          "startedAt": "2026-10-04T22:05:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:01Z",
+          "conclusion": "success",
+          "name": "Retain indexing evidence",
+          "number": 7,
+          "startedAt": "2026-10-04T22:14:00Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:02Z",
+          "conclusion": "success",
+          "name": "Post Cache Cargo downloads",
+          "number": 13,
+          "startedAt": "2026-10-04T22:14:01Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:02Z",
+          "conclusion": "success",
+          "name": "Post Checkout",
+          "number": 14,
+          "startedAt": "2026-10-04T22:14:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-10-04T22:14:02Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 15,
+          "startedAt": "2026-10-04T22:14:02Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865/job/111542824171"
+    },
+    {
+      "completedAt": "2026-10-04T22:05:43Z",
+      "conclusion": "skipped",
+      "databaseId": 111542824465,
+      "name": "Heavy Perf Regression Checks",
+      "startedAt": "2026-10-04T22:05:44Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865/job/111542824465"
+    }
+  ],
+  "status": "completed",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37238688865"
+}
