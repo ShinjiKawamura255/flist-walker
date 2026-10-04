@@ -296,7 +296,7 @@ def control_log(group="f1"):
     meta.update(selected_cases=list(contract.GROUPS[group]), selected_sources=["FileList", "Walker"],
                 supported_cells=[{"case":c,"source":s} for c,s in cells], selected_source_cells=len(cells),
                 unsupported_cells=[], coverage_kind="selected-subset", expected_rows=14*len(cells),
-                tabchain_input_policy=contract.FULL_POLICY)
+                tabchain_input_policy=contract.FULL_POLICY, stable_edit_input_policy=contract.STABLE_EDIT_INPUT_POLICY)
     output = ["running 1 test", "INDEX_PERF_META " + json.dumps(meta)]
     for case, source in cells:
         for condition in [False, True]:
@@ -304,6 +304,26 @@ def control_log(group="f1"):
         selected = [r for r in rows if r["comparison"]==case and r["source"]==source]
         for row in selected:
             row["tabchain_input_policy"] = contract.FULL_POLICY
+            if case == "T1-S2":
+                # Synthetic admission controls: project timings into the preceding
+                # input interval. These are never retained measurement evidence.
+                row["stable_edit_input_policy"] = contract.STABLE_EDIT_INPUT_POLICY
+                row["stable_edit_input_admissions"] = []
+                if row["case"] != "B0":
+                    for stage in (1,2):
+                        before, after = row["input_trace"][stage-1:stage+1]
+                        b=next(b for b in row["search_dispatch_bindings"] if b["query"]==before["query"] and
+                               any(w["request_id"]==b["request_id"] and w["evaluated_candidates"]==100000 for w in row["worker_observations"]))
+                        w=next(w for w in row["worker_observations"] if w["request_id"]==b["request_id"])
+                        interval=after["at_ms"]-before["at_ms"]
+                        b["dispatched_ms"]=before["at_ms"]+interval/4
+                        w.update(started_ms=before["at_ms"]+interval/3, evaluation_completed_ms=before["at_ms"]+interval/2,
+                                 completed_ms=before["at_ms"]+interval*3/4,canceled_ms=None,skipped_canceled=False)
+                        row["stable_edit_input_admissions"].append(dict(previous_stage=stage-1,next_stage=stage,
+                            previous_query=before["query"],previous_input_ms=before["at_ms"],input_admitted_ms=after["at_ms"],
+                            request_id=b["request_id"],tab_id=b["tab_id"],root=before["requested_root"],epoch=b["epoch"],
+                            candidate_count=b["candidate_count"],evaluated_candidates=w["evaluated_candidates"],
+                            dispatched_ms=b["dispatched_ms"],started_ms=w["started_ms"],evaluation_completed_ms=w["evaluation_completed_ms"]))
             output.append("INDEX_PERF_RUN_START " + json.dumps(dict(profile=case, source=source, condition=row["case"]!="B0", role="sample", entries=100000, pair=row["pair"], position=row["position"])))
             output.append("INDEX_PERF_SAMPLE " + json.dumps(row))
     output.append("test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1600 filtered out; finished in 1.00s")
@@ -319,6 +339,26 @@ def mutate_record(text, marker, change):
 
 
 class IndexingContractTests(unittest.TestCase):
+    def test_stable_edit_requires_previous_full_evaluation_before_next_input(self):
+        valid=control_log("stable")
+        contract.validate_log(valid,"stable")
+        lines=valid.splitlines()
+        idx=next(i for i,l in enumerate(lines) if l.startswith("INDEX_PERF_SAMPLE ") and
+                 json.loads(l.partition(" ")[2])["case"]=="T1-S2")
+        original=json.loads(lines[idx].partition(" ")[2])
+        changes=[lambda r:r.pop("stable_edit_input_policy",None),
+                 lambda r:r.update(stable_edit_input_admissions=[]),
+                 lambda r:r["stable_edit_input_admissions"][0].update(evaluated_candidates=99999),
+                 lambda r:r["stable_edit_input_admissions"][0].update(request_id=999999),
+                 lambda r:r["stable_edit_input_admissions"][0].update(previous_query="needle"),
+                 lambda r:r["stable_edit_input_admissions"][0].update(evaluation_completed_ms=r["input_trace"][1]["at_ms"]+1)]
+        # Missing admission policy is the focused RED against the old validator.
+        row=copy.deepcopy(original);row.pop("stable_edit_input_policy",None)
+        with self.assertRaises(contract.ValidationError):contract.validate_sample(row,"T1-S2",row["source"],True)
+        for change in changes[1:]:
+            row=copy.deepcopy(original);change(row)
+            with self.assertRaises(contract.ValidationError):contract.validate_sample(row,"T1-S2",row["source"],True)
+
     def test_all_73_frozen_victim_predicates_preserved_without_asserts(self):
         frozen=ast.parse((ROOT/"docs/history/indexing-perf-2026-10-04/summarize_extensions-stale-full.py").read_text(encoding="utf-8"))
         original=next(n for n in frozen.body if isinstance(n,ast.FunctionDef) and n.name=="validate_victim_contract")
