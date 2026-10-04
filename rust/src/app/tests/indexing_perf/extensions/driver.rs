@@ -1361,6 +1361,8 @@ pub(super) fn run(
     let mut pending_transition: Option<(usize, usize)> = None;
     let mut gui_sort_completions = Vec::new();
     let mut driver_overhead = Duration::ZERO;
+    let mut stable_previous_input = None;
+    let mut stable_input_admissions = Vec::new();
     let mut stage = 0;
     let mut done_inputs = !condition
         || !matches!(
@@ -1517,13 +1519,56 @@ pub(super) fn run(
                         done_inputs = true;
                     }
                     Profile::EditFiles | Profile::StableEdit => {
-                        driver.query(match stage {
-                            0 => "item",
-                            1 => "needle",
-                            _ => "",
-                        });
-                        if stage == 2 {
-                            done_inputs = true;
+                        // Observe only our latest preceding A dispatch. Clone the scalar
+                        // observation under its short lock, then drive the normal frame
+                        // even when input admission is still pending.
+                        let preceding = if full && profile == Profile::StableEdit && stage > 0 {
+                            let expected = StableQueryIdentity {
+                                tab: tabs[0],
+                                root: &fixture.root,
+                                query: if stage == 1 { "item" } else { "needle" },
+                                candidates: fixture.expected.len(),
+                                candidate_ptr: stable_ptr.unwrap(),
+                                epoch: driver.app.shell.indexing.kind_resolution_epoch,
+                                input_at: stable_previous_input
+                                    .expect("preceding admitted stable input"),
+                            };
+                            driver.app.shell.indexing.perf_search_bindings.iter().rev()
+                                .find(|b| b.tab_id == expected.tab && b.at >= expected.input_at)
+                                .and_then(|b| driver.app.shell.search.perf_workers.get(&b.request_id)
+                                    .map(|w| (b, w.lock().expect("own search observation").clone())))
+                                .filter(|(b, w)| stable_query_evaluated(b, w, &expected)
+                                    && w.evaluation_completed_at.unwrap() <= input_at)
+                                .map(|(b, w)| serde_json::json!({
+                                    "previous_stage":stage-1,"next_stage":stage,"previous_query":expected.query,
+                                    "previous_input_ms":ms(expected.input_at.duration_since(start)),
+                                    "input_admitted_ms":ms(input_at.duration_since(start)),
+                                    "request_id":b.request_id,"tab_id":b.tab_id,"root":b.root,"epoch":b.epoch,
+                                    "candidate_count":b.candidates,"evaluated_candidates":w.evaluated_candidates,
+                                    "dispatched_ms":ms(b.at.duration_since(start)),
+                                    "started_ms":ms(w.started_at.unwrap().duration_since(start)),
+                                    "evaluation_completed_ms":ms(w.evaluation_completed_at.unwrap().duration_since(start))
+                                }))
+                        } else {
+                            None
+                        };
+                        if stable_edit_input_allowed(full, profile, stage, preceding.is_some()) {
+                            if let Some(proof) = preceding {
+                                stable_input_admissions.push(proof);
+                            }
+                            driver.query(match stage {
+                                0 => "item",
+                                1 => "needle",
+                                _ => "",
+                            });
+                            if full && profile == Profile::StableEdit {
+                                stable_previous_input = Some(input_at);
+                            }
+                            if stage == 2 {
+                                done_inputs = true;
+                            }
+                        } else {
+                            input_admitted = false;
                         }
                     }
                     Profile::NameShown
@@ -2378,7 +2423,7 @@ pub(super) fn run(
     let preemption_rows=driver.app.shell.indexing.perf_preemptions.iter().map(|e|serde_json::json!({"mutation_ms":ms(e.at.duration_since(start)),"warm_removal_mutation_ms":driver.app.shell.indexing.perf_warm_removals.iter().find(|m|m.removed_request_id==e.victim_id).map(|m|ms(m.at.duration_since(start))),"victim_request_id":e.victim_id,"victim_tab":e.victim_tab,"prior_latest_request_id":e.prior_latest,"replacement_request_id":e.replacement_id,"actual_active_tab":e.active_tab,"actual_warm_tab":e.warm_tab,"pending_active_request_id":e.pending_active_id,"latest_active_request_id":e.latest_active_id,"queued_active_request_ids":e.queued_active_ids,"actual_inflight_count":e.inflight_count})).collect::<Vec<_>>();
     let warm_removal_rows=driver.app.shell.indexing.perf_warm_removals.iter().map(|m|serde_json::json!({"mutation_ms":ms(m.at.duration_since(start)),"removed_request_id":m.removed_request_id,"previous_warm_tab":m.previous_warm_tab,"replacement_warm_tab":m.replacement_warm_tab,"route_tab":m.route_tab})).collect::<Vec<_>>();
     let mut row = serde_json::json!({"schema_version":1,"profile_family":"extension","source":source.name(),"comparison":profile.name(),"case":if condition{profile.name()}else{"B0"},"sample_entries":fixture.records.len(),"fixture_shape":format!("{:?}",fixture.shape),"fixture_signature":fixture.signature(),"request_id":primary,"index_ready_ms":ms(t2),"results_ready_ms":ms(t3),"data_publish_end_ms":ms(observation.data_publish_end.unwrap().duration_since(start)),"terminal_publish_ms":ms(observation.terminal_published.unwrap().duration_since(start)),"bookkeeping_released_ms":ms(driver.app.shell.indexing.perf_released_requests[&primary].duration_since(start)),"last_confirmed_snapshot_unsettled_ms":ms(cutoff),"max_no_work_progress_ms":ms(max_gap),"max_ingest_gap_ms":ms(max_ingest_gap),"max_frame_ms":ms(frame_max),"frames":frames,"correct":true,"contention_eligible":eligible,"snapshot_signature":actual_signature(&roots[target].root,snapshot),"results_signature":format!("{:016x}",signature(&roots[0].root,driver.app.shell.runtime.results.iter().map(|(p,_)|p))),"full_wait_ms":ms(observation.full_wait),"full_count":observation.full_retries,"blocked_batches":observation.blocked_batches,"batches":observation.batches,"entries_emitted":observation.entries_emitted});
-    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":tabchain_input_policy(full),"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
+    row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":tabchain_input_policy(full),"stable_edit_input_policy":if full{STABLE_EDIT_INPUT_POLICY}else{"sub100k diagnostic: checkpoint-only; not full-pressure evidence"},"stable_edit_input_admissions":stable_input_admissions,"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
     row.as_object_mut().unwrap().extend(serde_json::json!({"declared_retained_victims":victim_rows,"declared_eviction_edges":declared_edges,"actual_preemption_events":preemption_rows,"actual_warm_removal_events":warm_removal_rows,"warm_removal_observer_limit":128,"warm_removal_observer_overflow":driver.app.shell.indexing.perf_warm_removal_overflow,"active_at_removal":"NOT_DIRECTLY_OBSERVED; fixed switch source ordering and actual switch acknowledgement binding only","preemption_observer_limit":128,"preemption_observer_overflow":driver.app.shell.indexing.perf_preemption_overflow,"retained_seed_validation_policy":"full independent oracle after tentative t3; no extra frame/input before output"}).as_object().unwrap().clone());
     drop(driver);
     drop(roots);

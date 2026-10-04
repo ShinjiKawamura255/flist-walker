@@ -166,6 +166,7 @@ GROUPS = {
     "stable": ("T1-S1-selective", "T1-S1-dense", "T1-S2"),
 }
 FULL_POLICY = "observed-completion (data-end/Finished-offer/publication) waits for own committed snapshot before eviction; t0-included production frames; final unobserved publication/removal race remains strict failure"
+STABLE_EDIT_INPUT_POLICY = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing"
 PHASES = ("data_publish_end_ms", "terminal_publish_ms", "index_ready_ms", "results_ready_ms", "full_wait_ms", "max_frame_ms", "max_ingest_gap_ms", "max_no_work_progress_ms", "driver_overhead_ms")
 
 
@@ -216,7 +217,7 @@ def validate_numeric_fields(value, label="sample"):
     integer_fields.update({"frames", "batches", "blocked_batches", "full_count", "intended_extra_index_requests",
                            "preemption_observer_limit", "warm_removal_observer_limit", "aux_observer_limit_per_flow",
                            "search_sort_worker_completed_while_index_unsettled", "stale_full_data_abort_limit",
-                           "latest_request_id", "seed_request_id", "actual_seed_request_id", "victim_request_id",
+                           "previous_stage", "next_stage", "latest_request_id", "seed_request_id", "actual_seed_request_id", "victim_request_id",
                            "removed_request_id", "replacement_request_id", "response_request_id"})
     if isinstance(value, dict):
         for key, item in value.items():
@@ -350,6 +351,32 @@ def validate_sample(row, case, source, condition):
         if stable:
             require(integer(row["full_candidate_evaluations"], "full evaluations") == len(full) and len(full) >= needed, "full evaluation count")
 
+    if case == "T1-S2":
+        require(row.get("stable_edit_input_policy") == STABLE_EDIT_INPUT_POLICY, "stable edit input policy drift")
+        admissions = row.get("stable_edit_input_admissions")
+        require(isinstance(admissions, list) and len(admissions) == (2 if condition else 0), "stable edit admission count")
+        if condition:
+            observations = {w["request_id"]: w for w in workers}
+            for stage, admission in enumerate(admissions, 1):
+                previous, following = inputs[stage-1], inputs[stage]
+                require(integer(admission["previous_stage"], "previous stage") == stage-1 and integer(admission["next_stage"], "next stage") == stage, "stable edit admission sequence")
+                request = integer(admission["request_id"], "admission request", 1)
+                require(request in bindings and request in observations, "stable edit admission ownership")
+                binding, worker = bindings[request], observations[request]
+                require(admission["previous_query"] == previous["query"] == binding["query"], "stable edit preceding query")
+                require(admission["tab_id"] == previous["requested_tab"] == following["requested_tab"] == binding["tab_id"] and admission["root"] == previous["requested_root"] == following["requested_root"], "stable edit input owner/root")
+                require(binding["root_is_stable_A"] is True and binding["candidate_is_initial_A"] is True and binding["sort_mode"] == "Score" and binding["sort_scope"] == "ShownResults", "stable edit binding identity")
+                require(admission["epoch"] == binding["epoch"] and admission["candidate_count"] == binding["candidate_count"] == worker["candidates"] == 100000 and admission["evaluated_candidates"] == worker["evaluated_candidates"] == 100000, "stable edit full candidate evaluation")
+                require(admission["previous_input_ms"] == previous["at_ms"] and admission["input_admitted_ms"] == following["at_ms"], "stable edit input timestamp binding")
+                for field in ("dispatched_ms",):
+                    require(admission[field] == binding[field], "stable edit dispatch timestamp binding")
+                for field in ("started_ms", "evaluation_completed_ms"):
+                    require(admission[field] == worker[field], "stable edit worker timestamp binding")
+                require(number(previous["at_ms"], "previous input") <= number(admission["dispatched_ms"], "dispatch") <= number(admission["started_ms"], "start") <= number(admission["evaluation_completed_ms"], "full evaluation") <= number(following["at_ms"], "next input"), "stable edit full evaluation must precede next input")
+                require(worker["skipped_canceled"] is False and (worker["canceled_ms"] is None or worker["canceled_ms"] >= following["at_ms"]), "stable edit canceled before admission")
+                latest = max((b for b in bindings.values() if b["tab_id"] == binding["tab_id"] and previous["at_ms"] <= b["dispatched_ms"] <= following["at_ms"]), key=lambda b:b["dispatched_ms"])
+                require(latest["request_id"] == request, "stable edit superseded preceding request")
+
 
 def validate_log(text, group):
     """Validate raw witnesses; actual process/source admission additionally needs receipt."""
@@ -374,6 +401,8 @@ def validate_log(text, group):
         require(meta["selected_cases"] == list(GROUPS[group]) and meta["selected_sources"] == ["FileList", "Walker"], "requested selection")
         require(meta["supported_cells"] == [{"case":c,"source":s} for c,s in cells] and not meta["unsupported_cells"] and meta["selected_source_cells"] == len(cells) and meta["expected_rows"] == len(cells)*14, "metadata cell count")
         require(meta["tabchain_input_policy"] == FULL_POLICY and meta["coverage_kind"] == "selected-subset", "metadata trace identity")
+        if group == "stable":
+            require(meta["stable_edit_input_policy"] == STABLE_EDIT_INPUT_POLICY, "stable edit metadata policy drift")
         environment = meta["environment_identity"]
         require(environment["optimized"] is True and environment["frame_period_ms"] == 16 and environment["os"] in ("linux", "macos"), "optimized POSIX frame profile")
         require('channel = "1.97.1"' in environment["pinned_rust_toolchain"], "toolchain pin")

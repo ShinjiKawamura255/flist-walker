@@ -52,6 +52,166 @@ fn tc_229_real_worker_extended_profiles_smoke() {
     }
 }
 
+const STABLE_EDIT_INPUT_POLICY: &str = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing";
+
+#[derive(Clone, Copy)]
+struct StableQueryIdentity<'a> {
+    tab: u64,
+    root: &'a std::path::Path,
+    query: &'a str,
+    candidates: usize,
+    candidate_ptr: usize,
+    epoch: u64,
+    input_at: Instant,
+}
+fn stable_query_evaluated(
+    binding: &crate::app::index_coordinator::SearchDispatchBinding,
+    stats: &crate::app::worker::search_perf::SearchPerfObservation,
+    expected: &StableQueryIdentity<'_>,
+) -> bool {
+    binding.tab_id == expected.tab
+        && binding.root == expected.root
+        && binding.query == expected.query
+        && binding.candidates == expected.candidates
+        && binding.candidate_ptr == expected.candidate_ptr
+        && binding.epoch == expected.epoch
+        && binding.sort_mode == ResultSortMode::Score
+        && binding.sort_scope == ResultSortScope::ShownResults
+        && binding.at >= expected.input_at
+        && stats.candidates == expected.candidates
+        && stats.evaluated_candidates == expected.candidates
+        && stats.canceled_at.is_none()
+        && !stats.skipped_canceled
+        && stats.started_at.is_some_and(|started| {
+            started >= binding.at
+                && stats
+                    .evaluation_completed_at
+                    .is_some_and(|end| end >= started)
+        })
+}
+fn stable_edit_input_allowed(
+    full: bool,
+    profile: cases::Profile,
+    stage: usize,
+    evaluated: bool,
+) -> bool {
+    !(full && profile == cases::Profile::StableEdit && stage > 0) || evaluated
+}
+
+#[test]
+fn tc_229_stable_edit_next_input_requires_owned_full_evaluation() {
+    use crate::app::index_coordinator::SearchDispatchBinding;
+    use crate::app::worker::search_perf::SearchPerfObservation;
+    let start = Instant::now();
+    let root = PathBuf::from("stable-A");
+    let binding = SearchDispatchBinding {
+        request_id: 7,
+        tab_id: 1,
+        root: root.clone(),
+        query: "item".into(),
+        candidates: 100000,
+        candidate_ptr: 11,
+        epoch: 9,
+        sort_mode: ResultSortMode::Score,
+        sort_scope: ResultSortScope::ShownResults,
+        at: start + Duration::from_millis(1),
+    };
+    let expected = StableQueryIdentity {
+        tab: 1,
+        root: &root,
+        query: "item",
+        candidates: 100000,
+        candidate_ptr: 11,
+        epoch: 9,
+        input_at: start,
+    };
+    let mut stats = SearchPerfObservation {
+        candidates: 100000,
+        started_at: Some(start + Duration::from_millis(2)),
+        ..Default::default()
+    };
+    assert!(stable_edit_input_allowed(
+        true,
+        cases::Profile::StableEdit,
+        0,
+        false
+    ));
+    assert!(!stable_edit_input_allowed(
+        true,
+        cases::Profile::StableEdit,
+        1,
+        stable_query_evaluated(&binding, &stats, &expected)
+    ));
+    stats.evaluated_candidates = 100000;
+    stats.evaluation_completed_at = Some(start + Duration::from_millis(3));
+    assert!(stable_query_evaluated(&binding, &stats, &expected));
+    assert!(stable_edit_input_allowed(
+        true,
+        cases::Profile::StableEdit,
+        1,
+        true
+    ));
+    assert!(stable_edit_input_allowed(
+        false,
+        cases::Profile::StableEdit,
+        1,
+        false
+    ));
+    assert!(stable_edit_input_allowed(
+        true,
+        cases::Profile::EditFiles,
+        1,
+        false
+    ));
+    // Evaluation completion is sufficient; sorting/delivery is a separate phase.
+    assert!(stats.completed_at.is_none());
+    stats.evaluated_candidates = 99999;
+    assert!(!stable_query_evaluated(&binding, &stats, &expected));
+    stats.evaluated_candidates = 100000;
+    stats.canceled_at = Some(start + Duration::from_millis(3));
+    assert!(!stable_query_evaluated(&binding, &stats, &expected));
+    stats.canceled_at = None;
+    stats.skipped_canceled = true;
+    assert!(!stable_query_evaluated(&binding, &stats, &expected));
+    stats.skipped_canceled = false;
+    for wrong in [
+        StableQueryIdentity { tab: 2, ..expected },
+        StableQueryIdentity {
+            query: "needle",
+            ..expected
+        },
+        StableQueryIdentity {
+            epoch: 10,
+            ..expected
+        },
+        StableQueryIdentity {
+            candidate_ptr: 12,
+            ..expected
+        },
+        StableQueryIdentity {
+            candidates: 99999,
+            ..expected
+        },
+        StableQueryIdentity {
+            input_at: start + Duration::from_millis(2),
+            ..expected
+        },
+    ] {
+        assert!(!stable_query_evaluated(&binding, &stats, &wrong));
+    }
+    let other = PathBuf::from("other-root");
+    assert!(!stable_query_evaluated(
+        &binding,
+        &stats,
+        &StableQueryIdentity {
+            root: &other,
+            ..expected
+        }
+    ));
+    stats.evaluation_completed_at = None;
+    assert!(!stable_query_evaluated(&binding, &stats, &expected));
+}
+
 #[derive(Default)]
 struct ExtendedTruth {
     successful_terminal: bool,
