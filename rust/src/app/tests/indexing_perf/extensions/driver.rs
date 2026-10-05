@@ -1067,6 +1067,96 @@ fn actual_signature(root: &std::path::Path, entries: &[Entry]) -> String {
     format!("{:016x}", signature(root, p.iter()))
 }
 
+fn fixture_logical_count(fixture: &ExtendedFixture, filter: Filter, scans: &mut usize) -> usize {
+    *scans += 1;
+    fixture
+        .expected
+        .iter()
+        .filter(|record| {
+            if record.is_dir {
+                filter.dirs
+            } else {
+                filter.files
+            }
+        })
+        .count()
+}
+
+const FRAME_DIAGNOSTIC_LIMIT: usize = 256;
+
+#[derive(serde::Serialize)]
+struct FrameState {
+    // Active-filter owner identity is not exposed. These are separate actual
+    // shell identities, not a claim that the pending request owns the filter.
+    active_filter_cursor: Option<usize>,
+    // Producer state is read after ended_ms; never backdate asynchronous state.
+    observed_ms: f64,
+    active_tab: Option<u64>,
+    pending_request_id: Option<u64>,
+    primary_request_id: u64,
+    ingested: usize,
+    index_debt: bool,
+    result_debt: bool,
+    producer_data_end_ms: Option<f64>,
+    producer_terminal_ms: Option<f64>,
+}
+
+#[derive(serde::Serialize)]
+struct FrameObservation {
+    frame: usize,
+    started_ms: f64,
+    ended_ms: f64,
+    #[serde(flatten)]
+    state: FrameState,
+}
+
+struct FrameDiagnostics {
+    records: Vec<FrameObservation>,
+    total: usize,
+    previous_start: Option<Duration>,
+    max_start_gap: Duration,
+}
+impl FrameDiagnostics {
+    // Construct before t0; push never grows the allocation or touches payloads.
+    fn new() -> Self {
+        Self {
+            records: Vec::with_capacity(FRAME_DIAGNOSTIC_LIMIT),
+            total: 0,
+            previous_start: None,
+            max_start_gap: Duration::ZERO,
+        }
+    }
+    fn push(&mut self, start: Duration, end: Duration, state: FrameState) {
+        assert!(end >= start);
+        if let Some(previous) = self.previous_start {
+            self.max_start_gap = self
+                .max_start_gap
+                .max(start.checked_sub(previous).expect("monotonic frame starts"));
+        }
+        self.previous_start = Some(start);
+        self.total += 1;
+        if self.records.len() < FRAME_DIAGNOSTIC_LIMIT {
+            self.records.push(FrameObservation {
+                frame: self.total,
+                started_ms: ms(start),
+                ended_ms: ms(end),
+                state,
+            });
+        }
+    }
+    // Serialization belongs after tentative t3, with all other raw reporting.
+    fn report(&self) -> serde_json::Value {
+        serde_json::json!({
+            "policy":"bounded-scalars; state observed after frame; active-filter owner NOT_OBSERVED",
+            "limit":FRAME_DIAGNOSTIC_LIMIT,
+            "total_frames":self.total,
+            "truncated_frames":self.total-self.records.len(),
+            "max_frame_start_gap_ms":ms(self.max_start_gap),
+            "records":self.records,
+        })
+    }
+}
+
 pub(super) fn run(
     fixture: &ExtendedFixture,
     companions: &[&ExtendedFixture],
@@ -1327,6 +1417,11 @@ pub(super) fn run(
     driver.app.shell.indexing.perf_observe_aux = true;
     driver.app.shell.search.perf_enabled = true;
     let initial = serde_json::json!({"active_tab":tabs[target],"active_snapshot_entries":driver.app.shell.runtime.all_entries.len(),"stable_A_entries":if profile.stable(){fixture.expected.len()}else{0},"source":source.name(),"depth":"unlimited","seeded_old_snapshot":seed,"B_committed_empty_setup":initial_b});
+    // Fixed roots/filter membership is setup work, not per-frame observer work.
+    let mut fixture_scan_passes = 0;
+    let logical = fixture_logical_count(roots[target], filter, &mut fixture_scan_passes);
+    let fixture_scans_before_t0 = fixture_scan_passes;
+    let mut frame_diagnostics = FrameDiagnostics::new();
     let start = Instant::now();
     driver.app.request_index_refresh();
     let mut primary = driver.app.shell.indexing.pending_request_id.unwrap();
@@ -1407,11 +1502,6 @@ pub(super) fn run(
             driver.app.shell.runtime.all_entries.len(),
             owned_count(&driver, primary_tab, Some(primary)),
         );
-        let logical = roots[target]
-            .expected
-            .iter()
-            .filter(|r| if r.is_dir { filter.dirs } else { filter.files })
-            .count();
         let frame_begin = Instant::now();
         let mut completed_transition_this_frame = false;
         if let Some((n, input_stage)) = pending_transition {
@@ -1935,6 +2025,29 @@ pub(super) fn run(
             .all(|r| i.perf_released_requests.contains_key(&r.id));
         let debt =
             all_index_debt(&driver) || ledger.iter().any(|r| !request_complete(&driver, r, &plans));
+        let pending_results = result_debt(&driver);
+        frame_diagnostics.push(
+            frame_begin.duration_since(start),
+            now,
+            FrameState {
+                active_filter_cursor: i.build.active_filter.as_ref().map(|filter| filter.cursor),
+                observed_ms: ms(start.elapsed()),
+                active_tab: driver.app.current_tab_id(),
+                pending_request_id: i.pending_request_id,
+                primary_request_id: primary,
+                ingested: current_ingested,
+                index_debt: debt
+                    || !deferred_allocations.is_empty()
+                    || pending_transition.is_some(),
+                result_debt: pending_results,
+                producer_data_end_ms: primary_observation
+                    .data_publish_end
+                    .map(|at| ms(at.duration_since(start))),
+                producer_terminal_ms: primary_observation
+                    .terminal_published
+                    .map(|at| ms(at.duration_since(start))),
+            },
+        );
         let snapshot_valid = if profile.stable() {
             driver
                 .app
@@ -1977,7 +2090,7 @@ pub(super) fn run(
                         &driver.app.shell.runtime.base_results,
                     )
                 })
-                && !result_debt(&driver),
+                && !pending_results,
         };
         if truth.index_ready() && done_inputs && t2.is_none() {
             let candidate_t2_load = driver.app.shell.indexing.tx.load();
@@ -2423,6 +2536,9 @@ pub(super) fn run(
     let preemption_rows=driver.app.shell.indexing.perf_preemptions.iter().map(|e|serde_json::json!({"mutation_ms":ms(e.at.duration_since(start)),"warm_removal_mutation_ms":driver.app.shell.indexing.perf_warm_removals.iter().find(|m|m.removed_request_id==e.victim_id).map(|m|ms(m.at.duration_since(start))),"victim_request_id":e.victim_id,"victim_tab":e.victim_tab,"prior_latest_request_id":e.prior_latest,"replacement_request_id":e.replacement_id,"actual_active_tab":e.active_tab,"actual_warm_tab":e.warm_tab,"pending_active_request_id":e.pending_active_id,"latest_active_request_id":e.latest_active_id,"queued_active_request_ids":e.queued_active_ids,"actual_inflight_count":e.inflight_count})).collect::<Vec<_>>();
     let warm_removal_rows=driver.app.shell.indexing.perf_warm_removals.iter().map(|m|serde_json::json!({"mutation_ms":ms(m.at.duration_since(start)),"removed_request_id":m.removed_request_id,"previous_warm_tab":m.previous_warm_tab,"replacement_warm_tab":m.replacement_warm_tab,"route_tab":m.route_tab})).collect::<Vec<_>>();
     let mut row = serde_json::json!({"schema_version":1,"profile_family":"extension","source":source.name(),"comparison":profile.name(),"case":if condition{profile.name()}else{"B0"},"sample_entries":fixture.records.len(),"fixture_shape":format!("{:?}",fixture.shape),"fixture_signature":fixture.signature(),"request_id":primary,"index_ready_ms":ms(t2),"results_ready_ms":ms(t3),"data_publish_end_ms":ms(observation.data_publish_end.unwrap().duration_since(start)),"terminal_publish_ms":ms(observation.terminal_published.unwrap().duration_since(start)),"bookkeeping_released_ms":ms(driver.app.shell.indexing.perf_released_requests[&primary].duration_since(start)),"last_confirmed_snapshot_unsettled_ms":ms(cutoff),"max_no_work_progress_ms":ms(max_gap),"max_ingest_gap_ms":ms(max_ingest_gap),"max_frame_ms":ms(frame_max),"frames":frames,"correct":true,"contention_eligible":eligible,"snapshot_signature":actual_signature(&roots[target].root,snapshot),"results_signature":format!("{:016x}",signature(&roots[0].root,driver.app.shell.runtime.results.iter().map(|(p,_)|p))),"full_wait_ms":ms(observation.full_wait),"full_count":observation.full_retries,"blocked_batches":observation.blocked_batches,"batches":observation.batches,"entries_emitted":observation.entries_emitted});
+    row["timed_fixture_scan_passes"] = (fixture_scan_passes - fixture_scans_before_t0).into();
+    row["fixture_scans_before_t0"] = fixture_scans_before_t0.into();
+    row["frame_diagnostics"] = frame_diagnostics.report();
     row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":tabchain_input_policy(full),"stable_edit_input_policy":if full{STABLE_EDIT_INPUT_POLICY}else{"sub100k diagnostic: checkpoint-only; not full-pressure evidence"},"stable_edit_input_admissions":stable_input_admissions,"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
     row.as_object_mut().unwrap().extend(serde_json::json!({"declared_retained_victims":victim_rows,"declared_eviction_edges":declared_edges,"actual_preemption_events":preemption_rows,"actual_warm_removal_events":warm_removal_rows,"warm_removal_observer_limit":128,"warm_removal_observer_overflow":driver.app.shell.indexing.perf_warm_removal_overflow,"active_at_removal":"NOT_DIRECTLY_OBSERVED; fixed switch source ordering and actual switch acknowledgement binding only","preemption_observer_limit":128,"preemption_observer_overflow":driver.app.shell.indexing.perf_preemption_overflow,"retained_seed_validation_policy":"full independent oracle after tentative t3; no extra frame/input before output"}).as_object().unwrap().clone());
     drop(driver);
@@ -3456,4 +3572,125 @@ fn retained_victim_role(o: &crate::app::index_mailbox::IndexPerfObservation) -> 
     } else {
         "declared-Warm-eviction-retained-last-good"
     }
+}
+
+#[test]
+fn tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver() {
+    if super::super::child_process::isolate(
+        module_path!(),
+        "tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver",
+    ) {
+        return;
+    }
+    let fixture = ExtendedFixture::new(16_384, super::fixture::Shape::FlatMixed);
+    for (profile, source) in [
+        (Profile::Files, Source::Walker),
+        (Profile::Folders, Source::Walker),
+        (Profile::IgnoreCase, Source::FileList),
+    ] {
+        for condition in [false, true] {
+            let row = run(&fixture, &[], profile, source, condition, false);
+            let filter = profile.filter(condition);
+            let expected = fixture
+                .expected
+                .iter()
+                .filter(|record| {
+                    if record.is_dir {
+                        filter.dirs
+                    } else {
+                        filter.files
+                    }
+                })
+                .count();
+            assert_eq!(row["expected_final_logical_entries"], expected);
+            assert!(
+                row["frames"].as_u64().unwrap() > 1,
+                "exercise repeated actual frames"
+            );
+            assert_eq!(
+                row["timed_fixture_scan_passes"], 0,
+                "immutable fixture scans must precede t0"
+            );
+            assert_eq!(row["fixture_scans_before_t0"], 1);
+            assert_eq!(row["correct"], true);
+        }
+    }
+}
+
+#[test]
+fn tc_233_actual_driver_records_bounded_frame_progress_without_changing_endpoints() {
+    if super::super::child_process::isolate(
+        module_path!(),
+        "tc_233_actual_driver_records_bounded_frame_progress_without_changing_endpoints",
+    ) {
+        return;
+    }
+    let fixture = ExtendedFixture::new(16_384, super::fixture::Shape::FlatMixed);
+    let row = run(
+        &fixture,
+        &[],
+        Profile::IgnoreCase,
+        Source::FileList,
+        false,
+        false,
+    );
+    let trace = &row["frame_diagnostics"];
+    assert_eq!(
+        trace["limit"], 256,
+        "bounded frame diagnostics must be present"
+    );
+    let total = row["frames"].as_u64().unwrap();
+    assert_eq!(trace["total_frames"], total);
+    let records = trace["records"].as_array().unwrap();
+    assert_eq!(records.len() as u64, total.min(256));
+    assert_eq!(trace["truncated_frames"], total.saturating_sub(256));
+    assert!(total > 1);
+    let mut previous_end = 0.0;
+    for (index, record) in records.iter().enumerate() {
+        assert_eq!(record["frame"], index + 1);
+        let start = record["started_ms"].as_f64().unwrap();
+        let end = record["ended_ms"].as_f64().unwrap();
+        assert!(start >= previous_end && end >= start);
+        assert!(record["observed_ms"].as_f64().unwrap() >= end);
+        assert!(end <= row["results_ready_ms"].as_f64().unwrap());
+        assert!(record["primary_request_id"].as_u64().unwrap() > 0);
+        previous_end = end;
+    }
+    assert_eq!(row["timed_fixture_scan_passes"], 0);
+    assert!(row["index_ready_ms"].as_f64().unwrap() <= row["results_ready_ms"].as_f64().unwrap());
+    assert_eq!(row["correct"], true);
+}
+
+#[test]
+fn tc_233_frame_diagnostics_keep_all_frame_maximum_after_bounded_overflow() {
+    let mut trace = FrameDiagnostics::new();
+    let capacity = trace.records.capacity();
+    for index in 0..300 {
+        let start = Duration::from_millis(index * 16 + if index >= 280 { 1000 } else { 0 });
+        trace.push(
+            start,
+            start + Duration::from_millis(3),
+            FrameState {
+                active_filter_cursor: Some(index as usize),
+                observed_ms: ms(start + Duration::from_millis(4)),
+                active_tab: Some(2),
+                pending_request_id: Some(3),
+                primary_request_id: 4,
+                ingested: index as usize,
+                index_debt: true,
+                result_debt: false,
+                producer_data_end_ms: None,
+                producer_terminal_ms: None,
+            },
+        );
+        assert_eq!(trace.records.capacity(), capacity, "no timed reallocation");
+    }
+    assert_eq!(trace.total, 300);
+    assert_eq!(trace.records.len(), FRAME_DIAGNOSTIC_LIMIT);
+    assert_eq!(trace.max_start_gap, Duration::from_millis(1016));
+    let report = trace.report();
+    assert_eq!(report["truncated_frames"], 44);
+    assert_eq!(report["max_frame_start_gap_ms"], 1016.0);
+    assert_eq!(report["records"][255]["frame"], 256);
+    assert_eq!(report["records"][255]["active_filter_cursor"], 255);
 }

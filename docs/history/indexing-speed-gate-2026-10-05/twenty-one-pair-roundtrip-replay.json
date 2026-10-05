@@ -1,0 +1,102 @@
+{
+  "original_contract_roundtrip_replay": "PASS",
+  "source": "7c6aa9f9db1fbfdd46962e6cd8c620c0d5d130c6",
+  "archive_sha256": "23572a6853b68ccc93221620391f0d643439efb46a9de5e4e6b9857b19499088",
+  "results": [
+    {
+      "session": 1,
+      "run": "37251090424",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 64
+    },
+    {
+      "session": 1,
+      "run": "37251090424",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 24
+    },
+    {
+      "session": 1,
+      "run": "37251090424",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48
+    },
+    {
+      "session": 2,
+      "run": "37253481130",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 64
+    },
+    {
+      "session": 2,
+      "run": "37253481130",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 24
+    },
+    {
+      "session": 2,
+      "run": "37253481130",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48
+    },
+    {
+      "session": 3,
+      "run": "37256389135",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 1,
+      "proposal_status": "indeterminate",
+      "decision_count": 64
+    },
+    {
+      "session": 3,
+      "run": "37256389135",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 24
+    },
+    {
+      "session": 3,
+      "run": "37256389135",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48
+    }
+  ],
+  "raw_rows": 4158,
+  "component_sessions": 27,
+  "held_out4_5": "NOT RUN",
+  "calibration_adopted": false,
+  "enforcement_active": false
+}
