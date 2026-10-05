@@ -1,0 +1,558 @@
+{
+  "status": "PASS",
+  "reviewed_subject_count": 89,
+  "reviewed_subjects": [
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md",
+      "sha256": "63e46decbf5a871baaf4e61384c45242bd8e7bc5a552f863f7eca5e3dbb65f3d",
+      "member": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990",
+      "member": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json",
+      "sha256": "f14c06913626f182b3dff122db1b85ddb2231b77a53800f24b7ead11d4a21910",
+      "member": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-final.json",
+      "sha256": "0b9b878ac3dbc2ef214a3e59856a9fca314c92ad1dbce8af34b57f5c03b173cb",
+      "member": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-final.json"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "sha256": "016d0a1fdf634819e4838b97da810a4d34b72835680dfc385c852471fd88d598",
+      "member": "reviewed-observation-before/rust/src/app/tests/indexing_perf/extensions/driver.rs"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/harness.rs",
+      "sha256": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7",
+      "member": "reviewed-observation-before/rust/src/app/tests/indexing_perf/harness.rs"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/src/app/state.rs",
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef",
+      "member": "reviewed-observation-before/rust/src/app/state.rs"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/src/app/tab_resources.rs",
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b",
+      "member": "reviewed-observation-before/rust/src/app/tab_resources.rs"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "rust/src/app/tab_state.rs",
+      "sha256": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598",
+      "member": "reviewed-observation-before/rust/src/app/tab_state.rs"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-observation-before/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "sha256": "2f32815b234377765675889a59e6a00b76147e954281ea122a12c073e999f513",
+      "member": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "sha256": "8486033c925ae5e146d394a4f6dcd065f0cd68a79a3d16563a7c9814cb4e0c1e",
+      "member": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md"
+    },
+    {
+      "packet": "coverage-observation-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "sha256": "0f4cde04f24f0884d313e340fce98fa81b48a1924cc79724a72018a45d35de8f",
+      "member": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "sha256": "6544c464b237d724283e569b89bead08b327df2fb9de7cec726af02227a25c9c",
+      "member": "reviewed-observation-implementation/rust/src/app/tests/indexing_perf/extensions/driver.rs"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/harness.rs",
+      "sha256": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7",
+      "member": "reviewed-observation-implementation/rust/src/app/tests/indexing_perf/harness.rs"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/src/app/state.rs",
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef",
+      "member": "reviewed-observation-implementation/rust/src/app/state.rs"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/src/app/tab_resources.rs",
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b",
+      "member": "reviewed-observation-implementation/rust/src/app/tab_resources.rs"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/src/app/tab_state.rs",
+      "sha256": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598",
+      "member": "reviewed-observation-implementation/rust/src/app/tab_state.rs"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990",
+      "member": "reviewed-observation-implementation/docs/CURRENT_STATUS.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05.md",
+      "sha256": "f6495c67c337e20d50d8bb1916bb801461a2a47caa765d994af7b68f9bf43661",
+      "member": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-observation-implementation/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md",
+      "sha256": "63e46decbf5a871baaf4e61384c45242bd8e7bc5a552f863f7eca5e3dbb65f3d",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-before-subjects.json",
+      "sha256": "7c24ad5fed3f989cbb375bb4545f90368cf2df65fe4befae9d3c63ef50d0a64f",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before-subjects.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-before-review.md",
+      "sha256": "6d583467ce9999fe4121a618d298c76daf28178a0b9829fca54da6924dac8f78",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before-review.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json",
+      "sha256": "f14c06913626f182b3dff122db1b85ddb2231b77a53800f24b7ead11d4a21910",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-red.log",
+      "sha256": "32497bd477b6fe44784ac04ed17421cfd253f8ad91f53efd0ab19a7cebb862e1",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-red.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-green.log",
+      "sha256": "17151b9b958684d58a4288c6c11caa7be0b51e680d83a9b0fb25295cd1b38572",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-green.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-green-fixed.log",
+      "sha256": "d59bc4e3c8258ae9299afef95b771669c4e63df18c2208a45e740f99ffeb0d1c",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-green-fixed.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-full-rust.log",
+      "sha256": "f7967404de589ba4a6cd4401a3cb9586160ba9a445a0f7701970f2f7658e8b89",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-full-rust.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-fmt.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-clippy.log",
+      "sha256": "0862fc5ba77204120091f89b9b5ce449e0ba0ba066418ef1986f830a47b490ad",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-clippy.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-original.log",
+      "sha256": "05bd6e9c03326323b230eae80be3962f356a2481ccda32a6d85613d8694eb2db",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-original.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-child-original.log",
+      "sha256": "6d71924d734a4029ae2517e573b559044f59353b21f61172766c092d8c999769",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-child-original.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-full-instrumented-original.log",
+      "sha256": "2dc1f31bd937ead7558a35984d34ab96330de3b4f46c53cc3a7a64152c5d3524",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-full-instrumented-original.log"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json",
+      "sha256": "d2ea3ea4142b104239590151885824b611944b21e96ce41b8f86fd059709b082",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json",
+      "sha256": "fd5698c4cb3204842a099d802eda883a61e1a8f08e96106367c33a9a0c8011f6",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-validation-plan.txt",
+      "sha256": "df95fd109c48d5d549b0200e64cfc4019361f02b3373d869812fbad17e25d42c",
+      "member": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation-plan.txt"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/campaign-original-artifacts.tar.gz",
+      "sha256": "e75ecf753fc473b31fc3ec0769422c5c59ecd9737adcfd3108d09f5213072c54",
+      "member": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/campaign-original-artifacts.tar.gz"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/review-subject-roundtrip.json",
+      "sha256": "18d662e212fa337205b2768d38e850f1951b021c435e9fb791d478e5b8b1fdaf",
+      "member": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/review-subject-roundtrip.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/evidence-manifest.json",
+      "sha256": "c379ffa5d844b7285f39f5715c34654e510d472a3cc58bf1cb6a8c5c140f3f08",
+      "member": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/evidence-manifest.json"
+    },
+    {
+      "packet": "coverage-observation-implementation-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/measurement-diagnosis.md",
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990",
+      "member": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/measurement-diagnosis.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment.md",
+      "sha256": "d9436c44ebe9b781c8af0cfd4b6799af8f76cb6f89548b1e7c4a70251f16b558",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json",
+      "sha256": "fd5698c4cb3204842a099d802eda883a61e1a8f08e96106367c33a9a0c8011f6",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json",
+      "sha256": "d2ea3ea4142b104239590151885824b611944b21e96ce41b8f86fd059709b082",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-implementation-review.md",
+      "sha256": "c8acb98a1067fe7bb8ea973a0ef93def0ffb46fd71b71abe820eaf4c8aeebd94",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-implementation-review.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json",
+      "sha256": "d2b5421e383c19137fb8bc7ec423cb0834b27583922cfce1824a0fc372b90690",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json",
+      "sha256": "3358806c0a50d1b61906ec644b0f252db2346daa17f28a873172ef67643a2705",
+      "member": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566",
+      "member": "reviewed-admission-reassessment/scripts/indexing_perf_gate.py"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "scripts/indexing_perf_contract.py",
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d",
+      "member": "reviewed-admission-reassessment/scripts/indexing_perf_contract.py"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-admission-reassessment/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990",
+      "member": "reviewed-admission-reassessment/docs/CURRENT_STATUS.md"
+    },
+    {
+      "packet": "debt-observation-admission-reassessment-subjects.json",
+      "path": "docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "sha256": "ae910363650cf873dfff6090f4c0578148348961eedf7da2bca0a37fed63c29b",
+      "member": "reviewed-admission-reassessment/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-reference-pin-before.md",
+      "sha256": "742442b791ab02ebd86dde3988611673714837014629fd6f2927ea444ac8d85c",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-reference-pin-before.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-reference-candidate-equivalence.json",
+      "sha256": "df240da99240bfddb938a4d9f1fa2c886f83c4c7a9c3433b26eb5eaf0d10ed34",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-reference-candidate-equivalence.json"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md",
+      "sha256": "07ed88b208fdf9b0c628f13941315e62a90662ada5f5e062905e4731a15bb063",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json",
+      "sha256": "d2b5421e383c19137fb8bc7ec423cb0834b27583922cfce1824a0fc372b90690",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json",
+      "sha256": "3358806c0a50d1b61906ec644b0f252db2346daa17f28a873172ef67643a2705",
+      "member": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566",
+      "member": "reviewed-pin-before/scripts/indexing_perf_gate.py"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "scripts/tests/test_indexing_perf_gate.py",
+      "sha256": "1602525c967ab791c15c1ca157ae9f1d970ae318fba9e986adb0108a5425c1ff",
+      "member": "reviewed-pin-before/scripts/tests/test_indexing_perf_gate.py"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/CI_OPERATIONS.md",
+      "sha256": "80128e719148dbaafb0236cf6fcd813ed2780d7aaac28e991f7045cb60691cc5",
+      "member": "reviewed-pin-before/docs/CI_OPERATIONS.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/design/nonfunctional-runtime.md",
+      "sha256": "a3ca16c85c4eafbc47f8638386e6cc3fd09a4aee7e7a601339b3537e1e5c0823",
+      "member": "reviewed-pin-before/docs/design/nonfunctional-runtime.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-pin-before/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990",
+      "member": "reviewed-pin-before/docs/CURRENT_STATUS.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05.md",
+      "sha256": "f6495c67c337e20d50d8bb1916bb801461a2a47caa765d994af7b68f9bf43661",
+      "member": "reviewed-pin-before/docs/history/indexing-speed-gate-2026-10-05.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "sha256": "f91dcabe888ebde4e0dbf7b940786c9816f61c9ef5aedf190a4c251420311ebe",
+      "member": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "sha256": "adc93faa9046ef6cdd6e9f48457be3bfb2bc992d5e05d029ab4ce6ab1e8cae1a",
+      "member": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md"
+    },
+    {
+      "packet": "debt-observation-reference-pin-before-subjects.json",
+      "path": "docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "sha256": "8fbecb5ec87a00c8f93e7e5c8a9b060211deeed40d706078795821f09f1e58ac",
+      "member": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/src/app/tests/support.rs",
+      "sha256": "c7a2c5ac525e52ec8246e51c87d67738639f536685058dc12fe41033b719e8ff",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/src/app/tests/support.rs"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker.rs",
+      "sha256": "e06ebc546a982c1575caef51c17861a1e829924e1b2bc491c5ad1625b2ea498b",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker.rs"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker/settings.rs",
+      "sha256": "d4e1569b981ac070a08dce55251df15ce63098099107906e76a86cc2cd6c7e47",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker/settings.rs"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker/tests.rs",
+      "sha256": "38956fb58def3cd94a39b6d571d074fb971c74c8cf23adc89e038a52b855b29e",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker/tests.rs"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/src/fs_atomic.rs",
+      "sha256": "cdf9cc18b4892c1950fa813e6f49650686dbd647415005a5e459419224ef92bb",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/src/fs_atomic.rs"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-windows-native-failed-original.log",
+      "sha256": "9cc20bff793450c5d50027c5c5e1a128c11f79805000f290683da42f29798e08",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-windows-native-failed-original.log"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json"
+    },
+    {
+      "packet": "d9-settings-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md",
+      "sha256": "07ed88b208fdf9b0c628f13941315e62a90662ada5f5e062905e4731a15bb063",
+      "member": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/src/updater/apply.rs",
+      "sha256": "bf3ad30ec08ebe23e88540b78118fe380e98ef5aebd46fe07cd49c449da0d2e0",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/apply.rs"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/src/updater/transaction.rs",
+      "sha256": "801585bbf0ef8531db98fd20fe896092ad147c3e2e5e1392bc972c5fb9c53aa1",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction.rs"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/src/updater/transaction/platform.rs",
+      "sha256": "0f9e191043832f561331544f21d7f0f539878e8ee397db6c088eacf9de994642",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/platform.rs"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/src/updater/transaction/filesystem.rs",
+      "sha256": "84146b9052da971e3bec7c40cad3f84e4e6084ece7f7f3bb8b1ddf394ba12b6e",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/filesystem.rs"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/src/updater/transaction/model.rs",
+      "sha256": "5dbb4e76c198f18f4c4227d032ef26b0f7adfb04a812f57c1a9459a5d780c55d",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/model.rs"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "scripts/manual-self-update-test.ps1",
+      "sha256": "7d9735ffa1d7b38be2bd5077021c001a2af5ed326d66fb794a9d720f1e4b9b7b",
+      "member": "reviewed-d9-gnu-failure-diagnosis/scripts/manual-self-update-test.ps1"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": ".github/workflows/ci-cross-platform.yml",
+      "sha256": "d313f7ac23e43675460a4bf580b1637d537ced451149eb5b85385bcfc934969a",
+      "member": "reviewed-d9-gnu-failure-diagnosis/.github/workflows/ci-cross-platform.yml"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-gnu-e2e-failed-original.log",
+      "sha256": "fcc6f0ba81c974fa1164d8d2a3e1f3323849399d3514f22028ebd8a58ee671f6",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-gnu-e2e-failed-original.log"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/debt-observation-ci-artifacts-original.json",
+      "sha256": "450cb38a5696e63e73416f3d9c6c38e24c1faa6cb665605dd7dc6569d0381e1b",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-artifacts-original.json"
+    },
+    {
+      "packet": "d9-gnu-failure-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057",
+      "member": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json"
+    }
+  ],
+  "original_python_sources": [
+    {
+      "path": "scripts/indexing_perf.py",
+      "member": "source-d9/scripts/indexing_perf.py",
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "scripts/indexing_perf_contract.py",
+      "member": "source-d9/scripts/indexing_perf_contract.py",
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "scripts/indexing_perf_gate.py",
+      "member": "source-d9/scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566"
+    }
+  ],
+  "interpretation": "D9 whole ordinary CI FAILED. No reference admission or performance outcomes."
+}

@@ -506,6 +506,7 @@ try {
         $psi.EnvironmentVariables['FLISTWALKER_UPDATE_ALLOW_DOWNGRADE'] = '1'
     }
 
+    $parentStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $process = [System.Diagnostics.Process]::Start($psi)
     $standardErrorTask = if ($Automated) { $process.StandardError.ReadToEndAsync() } else { $null }
 
@@ -541,6 +542,14 @@ try {
     $process.WaitForExit()
     if ($Automated -and $process.ExitCode -ne 0) {
         $standardError = $standardErrorTask.GetAwaiter().GetResult().Trim()
+        try {
+            . (Join-Path $PSScriptRoot 'self-update-failure-diagnostics.ps1')
+            $observation = Get-SelfUpdateFailureObservation -AppDirectory $AppSandboxDir -ExitCode $process.ExitCode -ElapsedMilliseconds $parentStopwatch.Elapsed.TotalMilliseconds
+            Write-Host ('SELF_UPDATE_FAILURE ' + ($observation | ConvertTo-Json -Compress))
+        }
+        catch {
+            Write-Host 'SELF_UPDATE_FAILURE {"observation_error":true}'
+        }
         throw "headless update command failed with exit code $($process.ExitCode): $standardError"
     }
 

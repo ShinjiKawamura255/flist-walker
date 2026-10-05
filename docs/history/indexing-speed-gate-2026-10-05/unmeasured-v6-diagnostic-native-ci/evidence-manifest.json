@@ -1,0 +1,629 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "c8dcd40fbb81641d013a0340ea7f58b18b0f18853855cd4d767b83f3b797b85c",
+  "files": [
+    {
+      "path": "coverage-observation-before-review.md",
+      "bytes": 585,
+      "sha256": "6d583467ce9999fe4121a618d298c76daf28178a0b9829fca54da6924dac8f78"
+    },
+    {
+      "path": "coverage-observation-before-subjects.json",
+      "bytes": 2241,
+      "sha256": "7c24ad5fed3f989cbb375bb4545f90368cf2df65fe4befae9d3c63ef50d0a64f"
+    },
+    {
+      "path": "coverage-observation-commit.json",
+      "bytes": 952,
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057"
+    },
+    {
+      "path": "coverage-observation-implementation-review.md",
+      "bytes": 831,
+      "sha256": "c8acb98a1067fe7bb8ea973a0ef93def0ffb46fd71b71abe820eaf4c8aeebd94"
+    },
+    {
+      "path": "coverage-observation-implementation-subjects.json",
+      "bytes": 5490,
+      "sha256": "e698cf31b38ea4116f90c886cbd4a1eb5fa017fc7704c49a2ae3fcd6ed8d5582"
+    },
+    {
+      "path": "coverage-observation-validation.json",
+      "bytes": 1526,
+      "sha256": "fd5698c4cb3204842a099d802eda883a61e1a8f08e96106367c33a9a0c8011f6"
+    },
+    {
+      "path": "d9-gnu-failure-diagnosis-subjects.json",
+      "bytes": 1775,
+      "sha256": "080d120ac513f8785b825d76ea163f651f2a9effff4e352653b5e14a5b37c951"
+    },
+    {
+      "path": "d9-gnu-failure-diagnosis.md",
+      "bytes": 2045,
+      "sha256": "85dcfc6df651e8a84f58d07cd44038cb2c8826f7b784fa7c938b69f1d252b7f6"
+    },
+    {
+      "path": "d9-settings-failure-diagnosis-subjects.json",
+      "bytes": 1466,
+      "sha256": "f08bd6ddc831f76c9cf27b90f5c56a8b543543f86bdbbd6cfd8433e5de089f46"
+    },
+    {
+      "path": "d9-settings-failure-diagnosis.md",
+      "bytes": 1824,
+      "sha256": "6b003c8b932e595b608932471c496d279db4ffb1cd5b4dc21510275624bc0502"
+    },
+    {
+      "path": "debt-observation-admission-reassessment-review.md",
+      "bytes": 1177,
+      "sha256": "07ed88b208fdf9b0c628f13941315e62a90662ada5f5e062905e4731a15bb063"
+    },
+    {
+      "path": "debt-observation-admission-reassessment-subjects.json",
+      "bytes": 2431,
+      "sha256": "0e4fd7bcfe72ad9a8bf3e515c478ef4f667bcd950af19a30912dafc717cd56ce"
+    },
+    {
+      "path": "debt-observation-admission-reassessment.md",
+      "bytes": 4112,
+      "sha256": "d9436c44ebe9b781c8af0cfd4b6799af8f76cb6f89548b1e7c4a70251f16b558"
+    },
+    {
+      "path": "debt-observation-cancelled-ci-original.json",
+      "bytes": 3024,
+      "sha256": "a0e827017a8f417381ed8526bc8c4a4f9a740c41846ed5524115b16562377cb2"
+    },
+    {
+      "path": "debt-observation-cancelled-guardian-original.json",
+      "bytes": 407,
+      "sha256": "101c34639c0fcf35c0ba5a7d8b48dce598f99df0ffa858a3b5abef8e02529cf4"
+    },
+    {
+      "path": "debt-observation-ci-artifacts-original.json",
+      "bytes": 1513,
+      "sha256": "450cb38a5696e63e73416f3d9c6c38e24c1faa6cb665605dd7dc6569d0381e1b"
+    },
+    {
+      "path": "debt-observation-ci-final.json",
+      "bytes": 24747,
+      "sha256": "4107075712d029c88ba46a85f6ea42ef0e17fbf35a2a9d74bdaeddbd6aa99f9b"
+    },
+    {
+      "path": "debt-observation-ci-original-logs.zip",
+      "bytes": 630362,
+      "sha256": "32d603877091fddee8ef7d726b72cb1c814395a8758368f6374360e6ede5c612"
+    },
+    {
+      "path": "debt-observation-ci-runs.json",
+      "bytes": 987,
+      "sha256": "d2b5421e383c19137fb8bc7ec423cb0834b27583922cfce1824a0fc372b90690"
+    },
+    {
+      "path": "debt-observation-coverage-original.log",
+      "bytes": 310579,
+      "sha256": "43ab835914f3968ecc332f8e64d6898c7e45f6608f1f6017ad11f2a53c55e028"
+    },
+    {
+      "path": "debt-observation-gnu-e2e-failed-original.log",
+      "bytes": 41142,
+      "sha256": "fcc6f0ba81c974fa1164d8d2a3e1f3323849399d3514f22028ebd8a58ee671f6"
+    },
+    {
+      "path": "debt-observation-guardian-final.json",
+      "bytes": 1572,
+      "sha256": "3358806c0a50d1b61906ec644b0f252db2346daa17f28a873172ef67643a2705"
+    },
+    {
+      "path": "debt-observation-linux-original.log",
+      "bytes": 302746,
+      "sha256": "d15ccb4954f66e3f0f21c2f2b820a40a0ca88efe65d27f932ccbc7d00ff878d8"
+    },
+    {
+      "path": "debt-observation-macos-original.log",
+      "bytes": 316349,
+      "sha256": "a4b3fee50ed7c7379134f511baba272022c1398ac40f528264c5cd745e5f4c03"
+    },
+    {
+      "path": "debt-observation-pr-final.json",
+      "bytes": 6566,
+      "sha256": "d955a5879a8895de6de4f017e7a6abb797bfd2039168b735c62e8848b71e5f47"
+    },
+    {
+      "path": "debt-observation-pr-published.json",
+      "bytes": 5918,
+      "sha256": "1fb917763ecfd899681dd137f7e37c9f9ad1351d3e25afc2f86101fd4d28914d"
+    },
+    {
+      "path": "debt-observation-reference-candidate-equivalence.json",
+      "bytes": 80915,
+      "sha256": "df240da99240bfddb938a4d9f1fa2c886f83c4c7a9c3433b26eb5eaf0d10ed34"
+    },
+    {
+      "path": "debt-observation-reference-pin-before-review.md",
+      "bytes": 949,
+      "sha256": "43a1dc2e5241630a345f3880afe131ca6c7932d884cecdb3483dc1dd33da2ba0"
+    },
+    {
+      "path": "debt-observation-reference-pin-before-subjects.json",
+      "bytes": 2882,
+      "sha256": "3c16c4b1a6bf7f81a954fa53156981390f5e3c6ef852b79dd675ffdccb7a7e30"
+    },
+    {
+      "path": "debt-observation-reference-pin-before.md",
+      "bytes": 3829,
+      "sha256": "742442b791ab02ebd86dde3988611673714837014629fd6f2927ea444ac8d85c"
+    },
+    {
+      "path": "debt-observation-windows-native-failed-original.log",
+      "bytes": 274450,
+      "sha256": "9cc20bff793450c5d50027c5c5e1a128c11f79805000f290683da42f29798e08"
+    },
+    {
+      "path": "identity-and-nonadmission.json",
+      "bytes": 616,
+      "sha256": "d18d8a9a932c9637c291e6456e640920a50d5e38eccef19b2f2e91d70a292b4f"
+    },
+    {
+      "path": "reviewed-admission-reassessment/docs/CURRENT_STATUS.md",
+      "bytes": 7270,
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990"
+    },
+    {
+      "path": "reviewed-admission-reassessment/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "bytes": 104167,
+      "sha256": "ae910363650cf873dfff6090f4c0578148348961eedf7da2bca0a37fed63c29b"
+    },
+    {
+      "path": "reviewed-admission-reassessment/docs/testplan/indexing-contention.md",
+      "bytes": 42276,
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "bytes": 2359,
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "bytes": 952,
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-implementation-review.md",
+      "bytes": 831,
+      "sha256": "c8acb98a1067fe7bb8ea973a0ef93def0ffb46fd71b71abe820eaf4c8aeebd94"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json",
+      "bytes": 405,
+      "sha256": "d2ea3ea4142b104239590151885824b611944b21e96ce41b8f86fd059709b082"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json",
+      "bytes": 1526,
+      "sha256": "fd5698c4cb3204842a099d802eda883a61e1a8f08e96106367c33a9a0c8011f6"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment.md",
+      "bytes": 4112,
+      "sha256": "d9436c44ebe9b781c8af0cfd4b6799af8f76cb6f89548b1e7c4a70251f16b558"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json",
+      "bytes": 987,
+      "sha256": "d2b5421e383c19137fb8bc7ec423cb0834b27583922cfce1824a0fc372b90690"
+    },
+    {
+      "path": "reviewed-admission-reassessment/rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json",
+      "bytes": 1572,
+      "sha256": "3358806c0a50d1b61906ec644b0f252db2346daa17f28a873172ef67643a2705"
+    },
+    {
+      "path": "reviewed-admission-reassessment/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "reviewed-admission-reassessment/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/.github/workflows/ci-cross-platform.yml",
+      "bytes": 16532,
+      "sha256": "d313f7ac23e43675460a4bf580b1637d537ced451149eb5b85385bcfc934969a"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/apply.rs",
+      "bytes": 14450,
+      "sha256": "bf3ad30ec08ebe23e88540b78118fe380e98ef5aebd46fe07cd49c449da0d2e0"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/filesystem.rs",
+      "bytes": 29031,
+      "sha256": "84146b9052da971e3bec7c40cad3f84e4e6084ece7f7f3bb8b1ddf394ba12b6e"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/model.rs",
+      "bytes": 3263,
+      "sha256": "5dbb4e76c198f18f4c4227d032ef26b0f7adfb04a812f57c1a9459a5d780c55d"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction/platform.rs",
+      "bytes": 15087,
+      "sha256": "0f9e191043832f561331544f21d7f0f539878e8ee397db6c088eacf9de994642"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/src/updater/transaction.rs",
+      "bytes": 38263,
+      "sha256": "801585bbf0ef8531db98fd20fe896092ad147c3e2e5e1392bc972c5fb9c53aa1"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "bytes": 952,
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-artifacts-original.json",
+      "bytes": 1513,
+      "sha256": "450cb38a5696e63e73416f3d9c6c38e24c1faa6cb665605dd7dc6569d0381e1b"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-gnu-e2e-failed-original.log",
+      "bytes": 41142,
+      "sha256": "fcc6f0ba81c974fa1164d8d2a3e1f3323849399d3514f22028ebd8a58ee671f6"
+    },
+    {
+      "path": "reviewed-d9-gnu-failure-diagnosis/scripts/manual-self-update-test.ps1",
+      "bytes": 26101,
+      "sha256": "7d9735ffa1d7b38be2bd5077021c001a2af5ed326d66fb794a9d720f1e4b9b7b"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/src/app/tests/support.rs",
+      "bytes": 10454,
+      "sha256": "c7a2c5ac525e52ec8246e51c87d67738639f536685058dc12fe41033b719e8ff"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/src/fs_atomic.rs",
+      "bytes": 14211,
+      "sha256": "cdf9cc18b4892c1950fa813e6f49650686dbd647415005a5e459419224ef92bb"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker/settings.rs",
+      "bytes": 4438,
+      "sha256": "d4e1569b981ac070a08dce55251df15ce63098099107906e76a86cc2cd6c7e47"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker/tests.rs",
+      "bytes": 61453,
+      "sha256": "38956fb58def3cd94a39b6d571d074fb971c74c8cf23adc89e038a52b855b29e"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/src/persistence/worker.rs",
+      "bytes": 24496,
+      "sha256": "e06ebc546a982c1575caef51c17861a1e829924e1b2bc491c5ad1625b2ea498b"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "bytes": 952,
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md",
+      "bytes": 1177,
+      "sha256": "07ed88b208fdf9b0c628f13941315e62a90662ada5f5e062905e4731a15bb063"
+    },
+    {
+      "path": "reviewed-d9-settings-failure-diagnosis/rust/target/indexing-speed-gate/v6-design/debt-observation-windows-native-failed-original.log",
+      "bytes": 274450,
+      "sha256": "9cc20bff793450c5d50027c5c5e1a128c11f79805000f290683da42f29798e08"
+    },
+    {
+      "path": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "bytes": 27786,
+      "sha256": "0f4cde04f24f0884d313e340fce98fa81b48a1924cc79724a72018a45d35de8f"
+    },
+    {
+      "path": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "bytes": 43495,
+      "sha256": "2f32815b234377765675889a59e6a00b76147e954281ea122a12c073e999f513"
+    },
+    {
+      "path": "reviewed-observation-before/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "bytes": 26240,
+      "sha256": "8486033c925ae5e146d394a4f6dcd065f0cd68a79a3d16563a7c9814cb4e0c1e"
+    },
+    {
+      "path": "reviewed-observation-before/docs/testplan/indexing-contention.md",
+      "bytes": 42276,
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287"
+    },
+    {
+      "path": "reviewed-observation-before/rust/src/app/state.rs",
+      "bytes": 56366,
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef"
+    },
+    {
+      "path": "reviewed-observation-before/rust/src/app/tab_resources.rs",
+      "bytes": 43542,
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b"
+    },
+    {
+      "path": "reviewed-observation-before/rust/src/app/tab_state.rs",
+      "bytes": 36697,
+      "sha256": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598"
+    },
+    {
+      "path": "reviewed-observation-before/rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "bytes": 164736,
+      "sha256": "016d0a1fdf634819e4838b97da810a4d34b72835680dfc385c852471fd88d598"
+    },
+    {
+      "path": "reviewed-observation-before/rust/src/app/tests/indexing_perf/harness.rs",
+      "bytes": 32812,
+      "sha256": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7"
+    },
+    {
+      "path": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json",
+      "bytes": 2644,
+      "sha256": "f14c06913626f182b3dff122db1b85ddb2231b77a53800f24b7ead11d4a21910"
+    },
+    {
+      "path": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "bytes": 2359,
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990"
+    },
+    {
+      "path": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md",
+      "bytes": 3656,
+      "sha256": "63e46decbf5a871baaf4e61384c45242bd8e7bc5a552f863f7eca5e3dbb65f3d"
+    },
+    {
+      "path": "reviewed-observation-before/rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-final.json",
+      "bytes": 24747,
+      "sha256": "0b9b878ac3dbc2ef214a3e59856a9fca314c92ad1dbce8af34b57f5c03b173cb"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/CURRENT_STATUS.md",
+      "bytes": 7270,
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/campaign-original-artifacts.tar.gz",
+      "bytes": 1753968,
+      "sha256": "e75ecf753fc473b31fc3ec0769422c5c59ecd9737adcfd3108d09f5213072c54"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/evidence-manifest.json",
+      "bytes": 21221,
+      "sha256": "c379ffa5d844b7285f39f5715c34654e510d472a3cc58bf1cb6a8c5c140f3f08"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/measurement-diagnosis.md",
+      "bytes": 2359,
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05/unmeasured-v6-coverage-ci/review-subject-roundtrip.json",
+      "bytes": 21370,
+      "sha256": "18d662e212fa337205b2768d38e850f1951b021c435e9fb791d478e5b8b1fdaf"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/history/indexing-speed-gate-2026-10-05.md",
+      "bytes": 39582,
+      "sha256": "f6495c67c337e20d50d8bb1916bb801461a2a47caa765d994af7b68f9bf43661"
+    },
+    {
+      "path": "reviewed-observation-implementation/docs/testplan/indexing-contention.md",
+      "bytes": 42276,
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/src/app/state.rs",
+      "bytes": 56366,
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/src/app/tab_resources.rs",
+      "bytes": 43542,
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/src/app/tab_state.rs",
+      "bytes": 36697,
+      "sha256": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "bytes": 173022,
+      "sha256": "6544c464b237d724283e569b89bead08b327df2fb9de7cec726af02227a25c9c"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/src/app/tests/indexing_perf/harness.rs",
+      "bytes": 32812,
+      "sha256": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis-subjects.json",
+      "bytes": 2644,
+      "sha256": "f14c06913626f182b3dff122db1b85ddb2231b77a53800f24b7ead11d4a21910"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-debt-diagnosis.md",
+      "bytes": 2359,
+      "sha256": "a6fbd38858aafbc6832f1e413c30cfa9ca5b268e74f3a4ddd30e7d243e9c2990"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before-review.md",
+      "bytes": 585,
+      "sha256": "6d583467ce9999fe4121a618d298c76daf28178a0b9829fca54da6924dac8f78"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before-subjects.json",
+      "bytes": 2241,
+      "sha256": "7c24ad5fed3f989cbb375bb4545f90368cf2df65fe4befae9d3c63ef50d0a64f"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-before.md",
+      "bytes": 3656,
+      "sha256": "63e46decbf5a871baaf4e61384c45242bd8e7bc5a552f863f7eca5e3dbb65f3d"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-clippy.log",
+      "bytes": 161,
+      "sha256": "0862fc5ba77204120091f89b9b5ce449e0ba0ba066418ef1986f830a47b490ad"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-fmt.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-full-instrumented-original.log",
+      "bytes": 170398,
+      "sha256": "2dc1f31bd937ead7558a35984d34ab96330de3b4f46c53cc3a7a64152c5d3524"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-full-rust.log",
+      "bytes": 170135,
+      "sha256": "f7967404de589ba4a6cd4401a3cb9586160ba9a445a0f7701970f2f7658e8b89"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-green-fixed.log",
+      "bytes": 752,
+      "sha256": "d59bc4e3c8258ae9299afef95b771669c4e63df18c2208a45e740f99ffeb0d1c"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-green.log",
+      "bytes": 2965,
+      "sha256": "17151b9b958684d58a4288c6c11caa7be0b51e680d83a9b0fb25295cd1b38572"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-child-original.log",
+      "bytes": 6528,
+      "sha256": "6d71924d734a4029ae2517e573b559044f59353b21f61172766c092d8c999769"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-instrumented-flatfiles-original.log",
+      "bytes": 956,
+      "sha256": "05bd6e9c03326323b230eae80be3962f356a2481ccda32a6d85613d8694eb2db"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-red.log",
+      "bytes": 2071,
+      "sha256": "32497bd477b6fe44784ac04ed17421cfd253f8ad91f53efd0ab19a7cebb862e1"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-unchanged-body.json",
+      "bytes": 405,
+      "sha256": "d2ea3ea4142b104239590151885824b611944b21e96ce41b8f86fd059709b082"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation-plan.txt",
+      "bytes": 5446,
+      "sha256": "df95fd109c48d5d549b0200e64cfc4019361f02b3373d869812fbad17e25d42c"
+    },
+    {
+      "path": "reviewed-observation-implementation/rust/target/indexing-speed-gate/v6-design/coverage-observation-validation.json",
+      "bytes": 1526,
+      "sha256": "fd5698c4cb3204842a099d802eda883a61e1a8f08e96106367c33a9a0c8011f6"
+    },
+    {
+      "path": "reviewed-pin-before/docs/CI_OPERATIONS.md",
+      "bytes": 26469,
+      "sha256": "80128e719148dbaafb0236cf6fcd813ed2780d7aaac28e991f7045cb60691cc5"
+    },
+    {
+      "path": "reviewed-pin-before/docs/CURRENT_STATUS.md",
+      "bytes": 7270,
+      "sha256": "38cd43779d962849a5f521cc0eb1dc51b72f1be51a2468dbdf5c5e47afcfb990"
+    },
+    {
+      "path": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "bytes": 29266,
+      "sha256": "8fbecb5ec87a00c8f93e7e5c8a9b060211deeed40d706078795821f09f1e58ac"
+    },
+    {
+      "path": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "bytes": 44975,
+      "sha256": "f91dcabe888ebde4e0dbf7b940786c9816f61c9ef5aedf190a4c251420311ebe"
+    },
+    {
+      "path": "reviewed-pin-before/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "bytes": 27720,
+      "sha256": "adc93faa9046ef6cdd6e9f48457be3bfb2bc992d5e05d029ab4ce6ab1e8cae1a"
+    },
+    {
+      "path": "reviewed-pin-before/docs/design/nonfunctional-runtime.md",
+      "bytes": 75702,
+      "sha256": "a3ca16c85c4eafbc47f8638386e6cc3fd09a4aee7e7a601339b3537e1e5c0823"
+    },
+    {
+      "path": "reviewed-pin-before/docs/history/indexing-speed-gate-2026-10-05.md",
+      "bytes": 39582,
+      "sha256": "f6495c67c337e20d50d8bb1916bb801461a2a47caa765d994af7b68f9bf43661"
+    },
+    {
+      "path": "reviewed-pin-before/docs/testplan/indexing-contention.md",
+      "bytes": 42276,
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/coverage-observation-commit.json",
+      "bytes": 952,
+      "sha256": "bb2a5581ab31b94c58da40078f5d0cb63f9a6a83b53e6b563bbbeb46424c7057"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-admission-reassessment-review.md",
+      "bytes": 1177,
+      "sha256": "07ed88b208fdf9b0c628f13941315e62a90662ada5f5e062905e4731a15bb063"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-ci-runs.json",
+      "bytes": 987,
+      "sha256": "d2b5421e383c19137fb8bc7ec423cb0834b27583922cfce1824a0fc372b90690"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-guardian-final.json",
+      "bytes": 1572,
+      "sha256": "3358806c0a50d1b61906ec644b0f252db2346daa17f28a873172ef67643a2705"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-reference-candidate-equivalence.json",
+      "bytes": 80915,
+      "sha256": "df240da99240bfddb938a4d9f1fa2c886f83c4c7a9c3433b26eb5eaf0d10ed34"
+    },
+    {
+      "path": "reviewed-pin-before/rust/target/indexing-speed-gate/v6-design/debt-observation-reference-pin-before.md",
+      "bytes": 3829,
+      "sha256": "742442b791ab02ebd86dde3988611673714837014629fd6f2927ea444ac8d85c"
+    },
+    {
+      "path": "reviewed-pin-before/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566"
+    },
+    {
+      "path": "reviewed-pin-before/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 31864,
+      "sha256": "1602525c967ab791c15c1ca157ae9f1d970ae318fba9e986adb0108a5425c1ff"
+    },
+    {
+      "path": "source-d9/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "source-d9/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "source-d9/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
