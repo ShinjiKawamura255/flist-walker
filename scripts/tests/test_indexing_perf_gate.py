@@ -17,7 +17,7 @@ from scripts import indexing_perf_gate as gate
 from scripts.tests.test_indexing_perf import control_log, synthetic_receipt, mutate_record
 
 REFERENCE = gate.REFERENCE
-POLICY = {"id": "rcr-median-ceiling-v2", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
+POLICY = {"id": "rcr-median-v3", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -63,7 +63,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
                       "receipt_sha256": collector.sha(folder / receipt_name)}
     root = json.loads((folder / "candidate-receipt.log").read_text())
     root["comparison"] = {"protocol": gate.PROTOCOL, "reference_revision": REFERENCE,
-                          "enforced": enforced, "policy": POLICY, "legs": legs,
+                          "enforced": enforced, "policy": copy.deepcopy(POLICY), "legs": legs,
                           "fixture_provenance": "synthetic-validator-control"}
     collector.write_json(folder / "receipt.json", root)
     return root
@@ -71,8 +71,8 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
-        self.assertEqual(gate.REFERENCE, "f1089f63be32cfe0b1d14d9f49ab1832bd287982")
-        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v4")
+        self.assertEqual(gate.REFERENCE, "81075f90c3997e3b38daa430f63171eb497a64ac")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v5")
 
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):
         with tempfile.TemporaryDirectory() as name:
@@ -108,7 +108,7 @@ class GateTests(unittest.TestCase):
             self.assertEqual(report["status"], "timing-fail")
             self.assertTrue(any(d["status"] == "timing-fail" and d["statistic"] == "median"
                                 for d in report["decisions"]))
-            self.assertTrue(any(d["status"] == "timing-fail" and d["statistic"] == "max"
+            self.assertTrue(any(d["status"] == "diagnostic" and not d["enforced"] and d["candidate_exceeds_limit"] and d["statistic"] == "max"
                                 for d in report["decisions"]))
             for cell in report["cells"]["candidate"]:
                 self.assertEqual(len(cell["phases"]["index_ready_ms"]["control"]), 21)
@@ -122,10 +122,10 @@ class GateTests(unittest.TestCase):
             write_fixture(Path(name), change=tail)
             collector.load_run(name, "f1")
             report = gate.load_comparison(name, "f1")
-            self.assertEqual(report["status"], "timing-fail")
+            self.assertEqual(report["status"], "pass")
             self.assertTrue(all(d["status"] == "pass" for d in report["decisions"]
                                 if d["statistic"] == "median"))
-            self.assertTrue(any(d["status"] == "timing-fail" and d["meaning"] == "tail"
+            self.assertTrue(any(d["status"] == "diagnostic" and not d["enforced"] and d["candidate_exceeds_limit"] and d["meaning"] == "tail"
                                 for d in report["decisions"]))
 
     def sessions(self, folder, group):
@@ -137,7 +137,7 @@ class GateTests(unittest.TestCase):
             sessions[role] = receipt, collector.validate_receipt(receipt, raw, group)
         return sessions
 
-    def test_all_136_families_detect_median_and_single_sample_maximum(self):
+    def test_all_68_medians_fail_and_68_single_sample_maxima_remain_diagnostic(self):
         count = 0
         for group in contract.GROUPS:
             with tempfile.TemporaryDirectory() as name:
@@ -146,6 +146,12 @@ class GateTests(unittest.TestCase):
                 self.assertEqual(healthy["status"], "pass")
                 self.assertTrue(healthy["null_rust_sources_equal"])
                 count += healthy["decision_count"]
+                self.assertEqual(healthy["enforced_count"], healthy["diagnostic_count"])
+                self.assertEqual(healthy["enforced_count"] * 2, healthy["decision_count"])
+                self.assertEqual(len({tuple(d[k] for k in ("case", "source", "arm", "endpoint", "statistic"))
+                                      for d in healthy["decisions"]}), healthy["decision_count"])
+                self.assertTrue(all(d["enforced"] == (d["statistic"] == "median")
+                                    for d in healthy["decisions"]))
                 for decision in healthy["decisions"]:
                     mutant = copy.deepcopy(sessions)
                     chosen = [r for r in mutant["candidate"][1]["rows"]
@@ -158,8 +164,10 @@ class GateTests(unittest.TestCase):
                     result = gate.evaluate_triplet(mutant, group)
                     found = next(d for d in result["decisions"] if all(d[k] == decision[k]
                         for k in ("case", "source", "arm", "endpoint", "statistic")))
-                    self.assertEqual(found["status"], "timing-fail", found)
+                    self.assertEqual(found["status"], "timing-fail" if found["enforced"] else "diagnostic", found)
+                    self.assertTrue(found["candidate_exceeds_limit"])
                     if decision["statistic"] == "max":
+                        self.assertEqual(result["status"], "pass")
                         median = next(d for d in result["decisions"] if d["statistic"] == "median"
                             and all(d[k] == decision[k] for k in ("case","source","arm","endpoint")))
                         self.assertEqual(median["status"], "pass")
@@ -180,17 +188,20 @@ class GateTests(unittest.TestCase):
             report = gate.evaluate_triplet(sessions, "f1")
             self.assertEqual(report["status"], "pass")
             self.assertEqual(report["decisions"][0]["denominator"], 125)
-            sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 187.500001
+            for row in sessions["candidate"][1]["rows"]:
+                row["index_ready_ms"] = 187.500001
             self.assertEqual(gate.evaluate_triplet(sessions,"f1")["status"], "timing-fail")
             for role, values in [("reference-before", 99.999), ("reference-after", 125.001)]:
                 mutant = copy.deepcopy(sessions)
                 for row in mutant[role][1]["rows"]:
                     row["index_ready_ms"] = values
                 self.assertEqual(gate.evaluate_triplet(mutant,"f1")["status"], "indeterminate")
-            # A single reference maximum above the common ceiling rejects even with stable median.
+            # Reference tails do not change median admission or its denominator.
+            for row in sessions["candidate"][1]["rows"]:
+                row["index_ready_ms"] = 187.5
             sessions["reference-after"][1]["rows"][0]["index_ready_ms"] = 200
             report = gate.evaluate_triplet(sessions,"f1")
-            self.assertEqual(report["status"], "indeterminate")
+            self.assertEqual(report["status"], "pass")
 
     def constant_sessions(self, folder):
         sessions = self.sessions(folder, "f1")
@@ -199,40 +210,40 @@ class GateTests(unittest.TestCase):
                 row["index_ready_ms"] = row["results_ready_ms"] = 100
         return sessions
 
-    def test_maximum_uses_reference_median_and_cannot_hide_behind_reference_tail(self):
+    def test_maximum_excess_is_visible_without_becoming_median_failure(self):
         with tempfile.TemporaryDirectory() as name:
             sessions = self.constant_sessions(Path(name))
             for role in ("reference-before", "reference-after"):
                 sessions[role][1]["rows"][0]["index_ready_ms"] = 140
             sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 151
             report = gate.evaluate_triplet(sessions, "f1")
-            self.assertEqual(report["status"], "timing-fail")
-            found = [d for d in report["decisions"] if d["status"] == "timing-fail"]
+            self.assertEqual(report["status"], "pass")
+            found = [d for d in report["decisions"] if d["status"] == "diagnostic" and d["candidate_exceeds_limit"]]
             self.assertEqual(len(found), 1)
             self.assertEqual(found[0]["statistic"], "max")
             self.assertEqual(found[0]["denominator"], 100)
             self.assertEqual(found[0]["limit_ms"], 150)
 
-    def test_reference_tail_over_common_ceiling_rejects_even_when_maxima_match(self):
+    def test_reference_tail_over_typical_ceiling_remains_diagnostic_when_medians_match(self):
         with tempfile.TemporaryDirectory() as name:
             sessions = self.constant_sessions(Path(name))
             for role in ("reference-before", "reference-after"):
                 sessions[role][1]["rows"][0]["index_ready_ms"] = 180
             report = gate.evaluate_triplet(sessions, "f1")
-            self.assertEqual(report["status"], "indeterminate")
-            affected = [d for d in report["decisions"] if d["status"] == "indeterminate"]
-            self.assertEqual({d["statistic"] for d in affected}, {"median", "max"})
-            self.assertTrue(all("reference-tail-ceiling" in d["reference_admission_reasons"]
-                                for d in affected))
+            self.assertEqual(report["status"], "pass")
+            affected = [d for d in report["decisions"] if d["reference_tail_ratio"] > 1.5]
+            self.assertTrue(affected)
+            self.assertTrue(all(not d["reference_admission_reasons"] for d in affected))
+            self.assertTrue(all(d["status"] == "diagnostic" for d in affected if not d["enforced"]))
 
-    def test_reference_maximum_bracket_drift_is_diagnostic_within_common_ceiling(self):
+    def test_reference_maximum_bracket_drift_is_diagnostic_even_over_typical_ceiling(self):
         with tempfile.TemporaryDirectory() as name:
             sessions = self.constant_sessions(Path(name))
-            sessions["reference-before"][1]["rows"][0]["index_ready_ms"] = 140
+            sessions["reference-before"][1]["rows"][0]["index_ready_ms"] = 1000
             report = gate.evaluate_triplet(sessions, "f1")
             self.assertEqual(report["status"], "pass")
             max_decisions = [d for d in report["decisions"] if d["statistic"] == "max"]
-            self.assertTrue(any(d["reference_drift_ratio"] == 1.4 for d in max_decisions))
+            self.assertTrue(any(d["reference_drift_ratio"] == 10 for d in max_decisions))
             self.assertTrue(all(d["reference_median_drift_ratio"] == 1 for d in report["decisions"]))
 
     def test_reference_tail_boundary_equality_and_reciprocal_brackets(self):
@@ -248,43 +259,68 @@ class GateTests(unittest.TestCase):
                 report = gate.evaluate_triplet(sessions, "f1")
                 self.assertEqual(report["status"], "pass")
                 sessions[first][1]["rows"][0]["index_ready_ms"] = 187.500001
-                self.assertEqual(gate.evaluate_triplet(sessions, "f1")["status"], "indeterminate")
+                self.assertEqual(gate.evaluate_triplet(sessions, "f1")["status"], "pass")
 
-    def test_uniform_slowdown_fails_both_median_and_maximum_with_common_denominator(self):
+    def test_uniform_slowdown_fails_all_medians_and_keeps_all_maximum_excess(self):
         with tempfile.TemporaryDirectory() as name:
             sessions = self.constant_sessions(Path(name))
             for row in sessions["candidate"][1]["rows"]:
                 row["index_ready_ms"] = row["results_ready_ms"] = 151
             report = gate.evaluate_triplet(sessions, "f1")
             self.assertEqual(report["status"], "timing-fail")
-            self.assertTrue(all(d["status"] == "timing-fail" for d in report["decisions"]))
+            self.assertTrue(all(d["status"] == ("timing-fail" if d["enforced"] else "diagnostic")
+                                and d["candidate_exceeds_limit"] for d in report["decisions"]))
             self.assertTrue(all(d["denominator"] == 100 for d in report["decisions"]))
 
     def test_reference_indeterminate_retains_candidate_limit_excess_diagnostic(self):
         with tempfile.TemporaryDirectory() as name:
             sessions = self.constant_sessions(Path(name))
-            sessions["reference-before"][1]["rows"][0]["index_ready_ms"] = 180
-            sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 200
+            for row in sessions["reference-before"][1]["rows"]:
+                row["index_ready_ms"] = 180
+            for row in sessions["candidate"][1]["rows"]:
+                row["index_ready_ms"] = 300
             report = gate.evaluate_triplet(sessions, "f1")
             self.assertEqual(report["status"], "indeterminate")
             self.assertTrue(any(d["status"] == "indeterminate" and d["candidate_exceeds_limit"]
                                 for d in report["decisions"]))
 
-    def test_v3_protocol_and_policy_cannot_be_relabelled_as_v4_calibration(self):
+    def test_v4_and_v3_protocols_and_policies_cannot_be_relabelled_as_v5(self):
         with tempfile.TemporaryDirectory() as name:
             folder = Path(name)
             root = write_fixture(folder)
-            root["comparison"]["protocol"] = "same-job-RCR-f1-21-observer-v3"
-            (folder / "receipt.json").unlink()
-            collector.write_json(folder / "receipt.json", root)
-            with self.assertRaises(contract.ValidationError):
-                gate.load_comparison(folder, "f1")
+            for old in ("same-job-RCR-f1-21-observer-v3", "same-job-RCR-f1-21-observer-v4"):
+                root["comparison"]["protocol"] = old
+                (folder / "receipt.json").unlink()
+                collector.write_json(folder / "receipt.json", root)
+                with self.assertRaises(contract.ValidationError):
+                    gate.load_comparison(folder, "f1")
             root["comparison"]["protocol"] = gate.PROTOCOL
-            root["comparison"]["policy"]["id"] = "rcr-completion-v1"
-            (folder / "receipt.json").unlink()
-            collector.write_json(folder / "receipt.json", root)
-            with self.assertRaises(contract.ValidationError):
-                gate.load_comparison(folder, "f1")
+            for old in ("rcr-completion-v1", "rcr-median-ceiling-v2"):
+                root["comparison"]["policy"]["id"] = old
+                (folder / "receipt.json").unlink()
+                collector.write_json(folder / "receipt.json", root)
+                with self.assertRaises(contract.ValidationError):
+                    gate.load_comparison(folder, "f1")
+
+    def test_normal_cli_accepts_isolated_maximum_excess_and_retains_raw_sample(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            def tail(row):
+                if row["pair"] == 20:
+                    row["index_ready_ms"] *= 100
+                    row["results_ready_ms"] *= 100
+            write_fixture(folder, change=tail)
+            collector.load_run(folder, "f1")
+            run = subprocess.run([sys.executable, "scripts/indexing_perf.py", "validate",
+                                  "--group", "f1", str(folder)], cwd=ROOT,
+                                 capture_output=True, text=True, timeout=20)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            report = gate.load_comparison(folder, "f1")
+            self.assertEqual((report["enforced_count"], report["diagnostic_count"]), (32, 32))
+            self.assertTrue(any(d["status"] == "diagnostic" and d["candidate_exceeds_limit"]
+                                for d in report["decisions"]))
+            self.assertTrue(all(len(cell["phases"]["index_ready_ms"]["control"]) == 21
+                                for cell in report["cells"]["candidate"]))
 
     def test_shared_control_and_condition_slowdown_cannot_cancel_in_a_ratio(self):
         with tempfile.TemporaryDirectory() as name:

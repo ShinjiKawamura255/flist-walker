@@ -20,9 +20,9 @@ else:
     import indexing_perf as collector
     import indexing_perf_contract as contract
 
-REFERENCE = "f1089f63be32cfe0b1d14d9f49ab1832bd287982"
-PROTOCOL = "same-job-RCR-f1-21-observer-v4"
-POLICY = {"id": "rcr-median-ceiling-v2", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
+REFERENCE = "81075f90c3997e3b38daa430f63171eb497a64ac"
+PROTOCOL = "same-job-RCR-f1-21-observer-v5"
+POLICY = {"id": "rcr-median-v3", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 # Activate only after the pre-reserved null campaign and independent review.
 ENFORCE_TIMING = False
 ROLES = ("reference-before", "candidate", "reference-after")
@@ -120,18 +120,18 @@ def evaluate_triplet(sessions, group, policy=POLICY):
                 reasons = []
                 if median_drift > policy["reference_drift_ratio"]:
                     reasons.append("reference-median-drift")
-                if max(maxima[0], maxima[2]) > limit:
-                    reasons.append("reference-tail-ceiling")
                 for statistic, values in zip(STATISTICS, (medians, maxima)):
                     before, candidate, after = values
-                    # Maximum bracket drift is diagnostic; both reference tails
-                    # and both candidate statistics share the median ceiling.
+                    # Every value remains observed; only median determines the
+                    # sustained-slowdown gate. MAX has no numeric latency SLO.
+                    enforced = statistic == "median"
                     drift = max(before, after) / min(before, after)
                     exceeds = candidate > limit
-                    status = ("indeterminate" if reasons else
+                    status = ("diagnostic" if not enforced else
+                              "indeterminate" if reasons else
                               "timing-fail" if exceeds else "pass")
                     decisions.append(dict(case=cell["case"], source=cell["source"], arm=arm,
-                        endpoint=endpoint, statistic=statistic,
+                        endpoint=endpoint, statistic=statistic, enforced=enforced,
                         meaning="sustained" if statistic == "median" else "tail",
                         reference_before=before, candidate=candidate, reference_after=after,
                         reference_median_before=medians[0], reference_median_after=medians[2],
@@ -143,15 +143,24 @@ def evaluate_triplet(sessions, group, policy=POLICY):
                         reference_admission_reasons=list(reasons), limit_ms=limit, status=status))
     expected = len(contract.cells_for(group)) * 8
     contract.require(len(decisions) == expected, "numeric family incomplete")
-    statuses = {d["status"] for d in decisions}
+    enforced = [d for d in decisions if d["enforced"]]
+    diagnostics = [d for d in decisions if not d["enforced"]]
+    contract.require(len(enforced) == len(diagnostics) == expected // 2,
+                     "median/MAX count partition incomplete")
+    contract.require(all(d["statistic"] == "median" and d["status"] in
+                         ("pass", "timing-fail", "indeterminate") for d in enforced)
+                     and all(d["statistic"] == "max" and d["status"] == "diagnostic"
+                             for d in diagnostics), "median/MAX role partition invalid")
+    statuses = {d["status"] for d in enforced}
     status = "indeterminate" if "indeterminate" in statuses else "timing-fail" if "timing-fail" in statuses else "pass"
     source_files = sessions["candidate"][0]["source_before"]["files"]
     reference_files = sessions[ROLES[0]][0]["source_before"]["files"]
     measured = lambda files: {k:v for k,v in files.items() if k.startswith(("rust/", ".cargo/"))}
     return dict(protocol=PROTOCOL, status=status, group=group, policy=copy.deepcopy(policy),
-                decision_count=expected, decisions=decisions, cells=summaries,
+                decision_count=expected, enforced_count=len(enforced), diagnostic_count=len(diagnostics),
+                decisions=decisions, cells=summaries,
                 null_rust_sources_equal=measured(source_files) == measured(reference_files),
-                limitation="Finite engineering check; no p95/false-positive guarantee. All observed completion times use the slower reference median ceiling; maximum bracket drift is diagnostic. Candidate-only host interference can fail the gate.")
+                limitation="Finite sustained-slowdown check; no isolated-delay, p95 or false-positive guarantee. Median uses the slower reference median ceiling; every MAX, tail ratio and maximum bracket drift is diagnostic. Candidate-only host interference can fail the gate.")
 
 
 def _load_comparison(folder, group, proposal=False):
