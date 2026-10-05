@@ -1,0 +1,81 @@
+{
+  "status": "PASS",
+  "original_review_packet_sha256": "b2b1de066bf57d8f14637138f4eae83640073a82f0f1b600c2fc93750cafbd87",
+  "review_subject_count": 14,
+  "subjects": [
+    {
+      "original_path": "rust/src/app/tests/stateful_endurance/harness.rs",
+      "archived_path": "reviewed-native-oracle/harness.rs",
+      "sha256": "d11506b00018c2bea7bb4ef33856eb6170dc92b8dd212770eb18a7441fd2b5cf"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-repair-before.md",
+      "archived_path": "native-oracle-repair-before.md",
+      "sha256": "08503030b82d5c67c55328c0ec2ad57927a920d73e8c34149768e89262c60e09"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-before-review.md",
+      "archived_path": "native-oracle-before-review.md",
+      "sha256": "6e1b6b5053978c1b4eb8c0caa6a30f67330e5af345c4753f2ad96ab0ab444ce7"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/macos-source-ci-failure.log",
+      "archived_path": "macos-source-ci-failure.log",
+      "sha256": "b74736f3da8610fb92546ad257ca4c1812fd8da28df876f3f22e9fc93f712051"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/source-ci-final-or-latest.json",
+      "archived_path": "source-ci-final-or-latest.json",
+      "sha256": "bfc9da19e3da5763dfe2a49fc06845e4526f7c63bafa04faad8dc99af5fdc727"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-red.log",
+      "archived_path": "native-oracle-red.log",
+      "sha256": "d0f342bacd96d6498e280ade05b867f8677a4430f1c9005ebb2002038d1c44cc"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-green.log",
+      "archived_path": "native-oracle-green.log",
+      "sha256": "653734a58c58b4aed8b4bac9d91dad6e78705b904148593afcc145c24884f6b1"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-related.log",
+      "archived_path": "native-oracle-related.log",
+      "sha256": "7d1a848a29060d7221975a0943a533d6cec150fee46a0cc31598e1a4950c2e69"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-focused-final.log",
+      "archived_path": "native-oracle-focused-final.log",
+      "sha256": "3516b5195b9695b3af919254b1c42eb662eb262620a32d8d1800ec5d5ed1b875"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-full-rust.log",
+      "archived_path": "native-oracle-full-rust.log",
+      "sha256": "f8a8a23519b391eca10d5f70ba1a7c218b64bd33b7cb829a73d1a91f1fdc614c"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-local-results.json",
+      "archived_path": "native-oracle-local-results.json",
+      "sha256": "3adbc3b18af62230d55bb96f9734b5300773233655a7a2a15db9d9e59f87949d"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-clippy.log",
+      "archived_path": "native-oracle-clippy.log",
+      "sha256": "496bba03342f800ebdce559adcfd8b8ae50ee66a1615e7034caa660f0f0682df"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-runtime-equivalence.json",
+      "archived_path": "native-oracle-runtime-equivalence.json",
+      "sha256": "f280291e066ae40178136d118281d604d9aa541606397a141a774ef460cca94b"
+    },
+    {
+      "original_path": "rust/target/indexing-speed-gate/v5-design/native-oracle-validation-plan.txt",
+      "archived_path": "native-oracle-validation-plan.txt",
+      "sha256": "a618bd47ad09f21ff4b208b8dcc8fa20b18b9f774d4b5d23920f765d420167d0"
+    }
+  ],
+  "archive_sha256": "051da99d22d80ee128e8bb49675d760459f13401e60b215a1e6bf4a7321d312d",
+  "original_files": 42,
+  "perf_outcome_count": 0,
+  "prior_outcomes_adopted": false
+}
