@@ -21,7 +21,7 @@ else:
     import indexing_perf_contract as contract
 
 REFERENCE = "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e"
-PROTOCOL = "same-job-RCR-v1"
+PROTOCOL = "same-job-RCR-f1-21-v2"
 POLICY = {"id": "rcr-completion-v1", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 # Activate only after the pre-reserved null campaign and independent review.
 ENFORCE_TIMING = False

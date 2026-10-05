@@ -1,0 +1,29 @@
+{
+  "original_source": "2b11f361fcfc9ce0f7f7ad7e2728b2a3b1ae0a55",
+  "archive_sha256": "26157f1ce76be7d3b1d0d2241b88fe8288c8f860e750199b7cfffc331ef976dc",
+  "roundtrip_original_contract_replay": "PASS",
+  "results": [
+    {
+      "group": "f1",
+      "original_contract_validate_exit": 0,
+      "original_contract_status": "comparison-calibration",
+      "proposal_exit": 1,
+      "proposal_status": "indeterminate"
+    },
+    {
+      "group": "matched",
+      "original_contract_validate_exit": 0,
+      "original_contract_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass"
+    },
+    {
+      "group": "stable",
+      "original_contract_validate_exit": 0,
+      "original_contract_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass"
+    }
+  ],
+  "revised_cadence_adoption": false
+}

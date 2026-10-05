@@ -50,7 +50,7 @@ class ProcessTests(unittest.TestCase):
             receipt,result=collector.load_run(out,"f1")
             self.assertEqual(receipt["compiler_temp_after"],["xcrun_db"])
             self.assertEqual(receipt["fixtures_after"],[])
-            self.assertEqual(len(result["rows"]),112)
+            self.assertEqual(len(result["rows"]),336)
             receipt["fixtures_after"]=["xcrun_db"]
             with self.assertRaises(contract.ValidationError):collector.validate_receipt(receipt,text,"f1")
 
@@ -226,7 +226,7 @@ class ReceiptTests(unittest.TestCase):
 
     def test_raw_and_receipt_both_required_and_failures_are_not_observations(self):
         text=control_log();receipt=synthetic_receipt(text)
-        self.assertEqual(len(collector.validate_receipt(receipt,text,"f1")["rows"]),112)
+        self.assertEqual(len(collector.validate_receipt(receipt,text,"f1")["rows"]),336)
         mutations=[lambda r:r.update(status="invalid"),lambda r:r.update(group="stable"),
             lambda r:r.update(raw_sha256="0"*64),lambda r:r["source_after"].update(head="0"*40),
             lambda r:r.update(fixtures_after=["owned-root"]),lambda r:r["build_profile"].update(release=False),
@@ -258,7 +258,7 @@ class ReceiptTests(unittest.TestCase):
             self.assertEqual(summary["mode"],"observation-only")
             self.assertIsNone(summary["timing_gate"])
             self.assertEqual(summary["run_count"],2)
-            self.assertEqual(len(summary["runs"][0]["cells"][0]["phases"]["index_ready_ms"]["control"]),7)
+            self.assertEqual(len(summary["runs"][0]["cells"][0]["phases"]["index_ready_ms"]["control"]),21)
             (folders[0]/"measurement.log").write_bytes(text.replace("\n","\r\n").encode())
             with self.assertRaises(contract.ValidationError):collector.load_run(folders[0],"f1")
             (folders[0]/"measurement.log").write_bytes(text.encode())
@@ -292,17 +292,28 @@ def control_log(group="f1"):
         lines = list(stream)
     meta = json.loads(next(s.split("INDEX_PERF_META ", 1)[1] for s in lines if "INDEX_PERF_META " in s))
     cells = contract.cells_for(group)
+    original_pairs = meta["pairs"]
+    pairs = contract.PAIR_COUNTS[group]
     rows = [json.loads(s.partition(" ")[2]) for s in lines if s.startswith("INDEX_PERF_SAMPLE ")]
     meta.update(selected_cases=list(contract.GROUPS[group]), selected_sources=["FileList", "Walker"],
                 supported_cells=[{"case":c,"source":s} for c,s in cells], selected_source_cells=len(cells),
-                unsupported_cells=[], coverage_kind="selected-subset", expected_rows=14*len(cells),
+                unsupported_cells=[], coverage_kind="selected-subset", pairs=pairs, expected_rows=2*pairs*len(cells),
                 tabchain_input_policy=contract.FULL_POLICY, stable_edit_input_policy=contract.STABLE_EDIT_INPUT_POLICY)
     output = ["running 1 test", "INDEX_PERF_META " + json.dumps(meta)]
     for case, source in cells:
         for condition in [False, True]:
             output.append("INDEX_PERF_RUN_START " + json.dumps(dict(profile=case, source=source, condition=condition, role="untimed-warmup", entries=100000)))
         selected = [r for r in rows if r["comparison"]==case and r["source"]==source]
-        for row in selected:
+        projected = []
+        # Explicit synthetic projection; extra rows are not measured timings.
+        for pair in range(pairs):
+            for position, condition in enumerate((False,True) if pair%2 == 0 else (True,False)):
+                original = next(r for r in selected if r["pair"] == pair%original_pairs and
+                                (r["case"] != "B0") == condition)
+                row = copy.deepcopy(original)
+                row.update(pair=pair,position=position,order="AB" if pair%2 == 0 else "BA")
+                projected.append(row)
+        for row in projected:
             row["tabchain_input_policy"] = contract.FULL_POLICY
             if case == "T1-S2":
                 # Synthetic admission controls: project timings into the preceding
@@ -404,11 +415,20 @@ class IndexingContractTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
 
     def test_complete_priority_controls_and_phase_summaries(self):
-        for group, count in [("f1",112),("matched",42),("stable",84)]:
+        for group, count, cells in [("f1",336,8),("matched",42,3),("stable",84,6)]:
             with self.subTest(group=group):
                 result=contract.validate_log(control_log(group),group)
                 self.assertEqual(len(result["rows"]),count)
-                self.assertEqual(len(contract.summarize_rows(result["rows"])),count//14)
+                self.assertEqual(len(contract.summarize_rows(result["rows"])),cells)
+
+    def test_group_cadence_rejects_wrong_pair_count_before_row_admission(self):
+        for group, wrong in (("f1",7),("matched",21),("stable",21)):
+            with self.subTest(group=group):
+                def mismatch(meta):
+                    meta.update(pairs=wrong, expected_rows=2*wrong*len(contract.cells_for(group)))
+                raw = mutate_record(control_log(group), "INDEX_PERF_META", mismatch)
+                with self.assertRaisesRegex(contract.ValidationError, "intended scale/pairs"):
+                    contract.validate_log(raw,group)
 
     def test_rejects_incomplete_malformed_or_wrong_intended_run(self):
         valid=control_log()

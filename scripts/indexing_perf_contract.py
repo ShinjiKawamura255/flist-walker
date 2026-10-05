@@ -165,6 +165,7 @@ GROUPS = {
     "matched": ("S1-ignore", "S2-files"),
     "stable": ("T1-S1-selective", "T1-S1-dense", "T1-S2"),
 }
+PAIR_COUNTS = {"f1": 21, "matched": 7, "stable": 7}
 FULL_POLICY = "observed-completion (data-end/Finished-offer/publication) waits for own committed snapshot before eviction; t0-included production frames; final unobserved publication/removal race remains strict failure"
 STABLE_EDIT_INPUT_POLICY = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing"
 PHASES = ("data_publish_end_ms", "terminal_publish_ms", "index_ready_ms", "results_ready_ms", "full_wait_ms", "max_frame_ms", "max_ingest_gap_ms", "max_no_work_progress_ms", "driver_overhead_ms")
@@ -397,9 +398,9 @@ def validate_log(text, group):
         require(len(metas) == 1, "metadata cardinality")
         meta = metas[0]
         require(type(meta["schema_version"]) is int and meta["schema_version"] == 1 and meta["runner"] == "extended" and meta["native"] is False, "metadata schema/kind")
-        require(type(meta["entries"]) is int and meta["entries"] == 100000 and type(meta["pairs"]) is int and meta["pairs"] == 7, "intended scale/pairs")
+        require(type(meta["entries"]) is int and meta["entries"] == 100000 and type(meta["pairs"]) is int and meta["pairs"] == PAIR_COUNTS[group], "intended scale/pairs")
         require(meta["selected_cases"] == list(GROUPS[group]) and meta["selected_sources"] == ["FileList", "Walker"], "requested selection")
-        require(meta["supported_cells"] == [{"case":c,"source":s} for c,s in cells] and not meta["unsupported_cells"] and meta["selected_source_cells"] == len(cells) and meta["expected_rows"] == len(cells)*14, "metadata cell count")
+        require(meta["supported_cells"] == [{"case":c,"source":s} for c,s in cells] and not meta["unsupported_cells"] and meta["selected_source_cells"] == len(cells) and meta["expected_rows"] == len(cells)*2*PAIR_COUNTS[group], "metadata cell count")
         require(meta["tabchain_input_policy"] == FULL_POLICY and meta["coverage_kind"] == "selected-subset", "metadata trace identity")
         if group == "stable":
             require(meta["stable_edit_input_policy"] == STABLE_EDIT_INPUT_POLICY, "stable edit metadata policy drift")
@@ -424,7 +425,7 @@ def validate_log(text, group):
                 cursor += 1
             for condition in (False, True):
                 start(condition, "untimed-warmup")
-            for pair in range(7):
+            for pair in range(PAIR_COUNTS[group]):
                 for position, condition in enumerate((False, True) if pair%2 == 0 else (True, False)):
                     start(condition, "sample", pair, position)
                     require(cursor < len(events) and events[cursor][0] == "row", "missing raw row")
@@ -445,10 +446,16 @@ def summarize_rows(rows):
         groups[(row["comparison"],row["source"])].append(row)
     output=[]
     for (case,source), samples in sorted(groups.items()):
+        selected = [group for group in GROUPS if (case,source) in cells_for(group)]
+        require(len(selected) == 1, "unknown summary cell")
+        pairs = PAIR_COUNTS[selected[0]]
+        require(len(samples) == pairs*2 and
+                {(r["pair"],r["case"]) for r in samples} ==
+                {(p,c) for p in range(pairs) for c in ("B0",case)}, "summary pair inventory")
         phases={}
         for phase in PHASES:
-            control=[next(r[phase] for r in samples if r["pair"]==p and r["case"]=="B0") for p in range(7)]
-            condition=[next(r[phase] for r in samples if r["pair"]==p and r["case"]==case) for p in range(7)]
+            control=[next(r[phase] for r in samples if r["pair"]==p and r["case"]=="B0") for p in range(pairs)]
+            condition=[next(r[phase] for r in samples if r["pair"]==p and r["case"]==case) for p in range(pairs)]
             ratios=[b/a if a else None for a,b in zip(control,condition)]
             phases[phase]={"control":control,"condition":condition,"paired_ratios":ratios,
                 "control_median":statistics.median(control),"condition_median":statistics.median(condition),

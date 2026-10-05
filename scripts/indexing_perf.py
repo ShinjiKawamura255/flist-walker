@@ -69,7 +69,7 @@ def child_environment(inherited, group, fixture):
              "CARGO_TARGET_DIR", "CARGO_INCREMENTAL"}
     result = {k:v for k,v in inherited.items() if k not in exact and not k.startswith(excluded)}
     result.update(TMPDIR=str(fixture), TMP=str(fixture), TEMP=str(fixture), CARGO_INCREMENTAL="0",
-                  FW_INDEX_PERF_EXTRA_ENTRIES="100000", FW_INDEX_PERF_EXTRA_PAIRS="7",
+                  FW_INDEX_PERF_EXTRA_ENTRIES="100000", FW_INDEX_PERF_EXTRA_PAIRS=str(contract.PAIR_COUNTS[group]),
                   FW_INDEX_PERF_EXTRA_CASES=",".join(contract.GROUPS[group]),
                   FW_INDEX_PERF_EXTRA_SOURCES="FileList,Walker")
     return result
@@ -410,7 +410,7 @@ def summarize_runs(folders, group):
         across.append(dict(case=cell["case"],source=cell["source"],phases=phases))
     return dict(schema_version=1,mode="observation-only",group=group,cohort=identity,
                 run_count=len(runs),runs=summaries,across_runs=across,
-                timing_gate=None,limitation="No timing threshold or statistical guarantee; all seven pairs retained. Different work and platform observations remain separate.")
+                timing_gate=None,limitation="No timing threshold or statistical guarantee; all fixed-group pairs retained. Different work and platform observations remain separate.")
 
 
 def collect_once(args):
