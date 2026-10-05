@@ -71,7 +71,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
-        self.assertEqual(gate.REFERENCE, "b997d777ac6ae64974339144b22efba7fc918d34")
+        self.assertEqual(gate.REFERENCE, "f1089f63be32cfe0b1d14d9f49ab1832bd287982")
         self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v3")
 
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):

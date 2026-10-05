@@ -20,7 +20,7 @@ else:
     import indexing_perf as collector
     import indexing_perf_contract as contract
 
-REFERENCE = "b997d777ac6ae64974339144b22efba7fc918d34"
+REFERENCE = "f1089f63be32cfe0b1d14d9f49ab1832bd287982"
 PROTOCOL = "same-job-RCR-f1-21-observer-v3"
 POLICY = {"id": "rcr-completion-v1", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 # Activate only after the pre-reserved null campaign and independent review.

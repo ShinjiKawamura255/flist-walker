@@ -1,15 +1,15 @@
 {
   "old_reference": "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e",
   "old_tree": "c7511629fd4bde160ec46096bd91aefc3aeebd5b",
-  "observer_reference": "b997d777ac6ae64974339144b22efba7fc918d34",
-  "observer_tree": "41a90aa37d27c705faaa16c6d84f8ca48246834e",
+  "observer_reference": "f1089f63be32cfe0b1d14d9f49ab1832bd287982",
+  "observer_tree": "fa168014dd4c50fa31f8e145aa63db5188124ded",
   "file_membership_same": true,
   "same_nonharness_rust_build_inputs": true,
   "allowed_test_only_harness_changes": [
     {
       "path": "rust/src/app/tests/indexing_perf/extensions/driver.rs",
       "old_sha256": "1097d2a385cd969ecdc464fbc88bf8e56d4785804877f3deb9283b058098f91b",
-      "observer_sha256": "e531d28a13f3acc4df31a3c81042abb9e8a09d966fb92ceaf6dbe33ae9efc049"
+      "observer_sha256": "016d0a1fdf634819e4838b97da810a4d34b72835680dfc385c852471fd88d598"
     }
   ],
   "identical_rust_cargo_toolchain_dotcargo_files": {
@@ -253,5 +253,7 @@
   },
   "interpretation": "Actual immutable observer source is distinct from afdd. Only named test harness differs; all other tracked Rust/Cargo/toolchain/.cargo bytes identical. This is production-byte equivalence, not timing acceptance or artifact attestation.",
   "superseded_unmeasured_observer_reference": "60866ccb1cc7271197fb0e616ef1e503f0a8592d",
-  "supersession_reason": "nonignored test fixture robustness only; measured benchmark body/helpers unchanged, no hosted outcomes on either observer source before pinning"
+  "supersession_reason": "nonignored test fixture robustness only; measured benchmark body/helpers unchanged, no hosted outcomes on either observer source before pinning",
+  "superseded_large_fixture_observer_reference": "b997d777ac6ae64974339144b22efba7fc918d34",
+  "normal_fixture_refinement_reason": "Windows ordinaryCI watchdog failed before any perf dispatch on d08.512-record actualmultiframe IgnoreCasecondition preserves defect assertions; measured helpers unchanged. No outcome reuse."
 }
