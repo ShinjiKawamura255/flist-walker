@@ -235,6 +235,61 @@ def validate_numeric_fields(value, label="sample"):
             validate_numeric_fields(item, label)
 
 
+FRAME_DIAGNOSTIC_POLICY = "bounded-scalars; state observed after frame; active-filter owner NOT_OBSERVED"
+
+
+def validate_frame_diagnostics(row):
+    """V3 observer schema; truncated diagnostics never discard timing samples."""
+    require(integer(row["timed_fixture_scan_passes"], "timed fixture scans") == 0,
+            "fixture preparation inside measurement")
+    require(integer(row["fixture_scans_before_t0"], "untimed fixture scans") == 1,
+            "missing/duplicate fixture preparation")
+    trace = row["frame_diagnostics"]
+    fields = {"policy", "limit", "total_frames", "truncated_frames", "max_frame_start_gap_ms", "records"}
+    require(type(trace) is dict and set(trace) == fields, "frame diagnostic schema")
+    require(trace["policy"] == FRAME_DIAGNOSTIC_POLICY, "frame diagnostic policy")
+    require(integer(trace["limit"], "frame diagnostic limit") == 256, "frame diagnostic bound")
+    total = integer(row["frames"], "frames", 1)
+    require(integer(trace["total_frames"], "observed frames", 1) == total, "frame diagnostic total")
+    records = trace["records"]
+    require(type(records) is list and len(records) == min(total, 256), "missing/excess frame records")
+    require(integer(trace["truncated_frames"], "truncated frames") == total-len(records),
+            "undeclared diagnostic truncation")
+    gap = number(trace["max_frame_start_gap_ms"], "maximum frame start gap")
+    # Only diagnostic timestamp subtraction tolerates floating serialization
+    # roundoff. Numeric completion/drift predicates retain their exact limits.
+    tolerance_ms = 1e-6
+    require(gap <= row["results_ready_ms"] + tolerance_ms, "gap outside measured interval")
+    fields = {"frame", "started_ms", "ended_ms", "observed_ms", "active_filter_cursor",
+              "active_tab", "pending_request_id", "primary_request_id", "ingested",
+              "index_debt", "result_debt", "producer_data_end_ms", "producer_terminal_ms"}
+    request_ids = {request["request_id"] for request in row["index_requests"]}
+    previous_start = previous_end = 0.
+    for index, record in enumerate(records):
+        require(type(record) is dict and set(record) == fields, "frame scalar schema")
+        require(integer(record["frame"], "frame number", 1) == index+1, "frame record order")
+        start, end, observed = [number(record[key], key) for key in ("started_ms", "ended_ms", "observed_ms")]
+        require(previous_end <= start <= end <= observed, "frame timestamp order")
+        require(end <= row["results_ready_ms"] + tolerance_ms, "frame end outside t3")
+        if index:
+            require(start-previous_start <= gap+tolerance_ms, "frame maximum omits retained gap")
+        previous_start, previous_end = start, end
+        for key in ("index_debt", "result_debt"):
+            require(type(record[key]) is bool, "frame boolean: " + key)
+        integer(record["ingested"], "frame ingested")
+        require(integer(record["primary_request_id"], "frame primary request", 1) in request_ids,
+                "frame primary outside measured ledger")
+        for key in ("active_tab", "pending_request_id"):
+            if record[key] is not None:
+                integer(record[key], key, 1)
+        if record["active_filter_cursor"] is not None:
+            integer(record["active_filter_cursor"], "active filter cursor")
+        for key in ("producer_data_end_ms", "producer_terminal_ms"):
+            if record[key] is not None:
+                require(number(record[key], key) <= observed+tolerance_ms,
+                        "producer state observed before its event")
+
+
 def validate_sample(row, case, source, condition):
     require(row["schema_version"] == 1 and type(row["schema_version"]) is int, "sample schema")
     require(row["profile_family"] == "extension" and row["measurement_kind"] == "headless-GUI-actual-workers", "sample kind")
@@ -251,6 +306,7 @@ def validate_sample(row, case, source, condition):
     for phase in PHASES:
         number(row[phase], phase)
     require(row["data_publish_end_ms"] <= row["terminal_publish_ms"] <= row["index_ready_ms"] <= row["results_ready_ms"], "phase order")
+    validate_frame_diagnostics(row)
     number(row["last_confirmed_snapshot_unsettled_ms"], "indexing cutoff")
     require(row["last_confirmed_snapshot_unsettled_ms"] <= row["index_ready_ms"], "cutoff after t2")
     for load in (row["index_sender_load_at_t2"], row["final_index_sender_load"]):

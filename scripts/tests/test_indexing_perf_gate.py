@@ -16,7 +16,7 @@ from scripts import indexing_perf_contract as contract
 from scripts import indexing_perf_gate as gate
 from scripts.tests.test_indexing_perf import control_log, synthetic_receipt, mutate_record
 
-REFERENCE = "afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e"
+REFERENCE = gate.REFERENCE
 POLICY = {"id": "rcr-completion-v1", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -62,7 +62,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
         legs[role] = {"raw": raw_name, "receipt": receipt_name,
                       "receipt_sha256": collector.sha(folder / receipt_name)}
     root = json.loads((folder / "candidate-receipt.log").read_text())
-    root["comparison"] = {"protocol": "same-job-RCR-f1-21-v2", "reference_revision": REFERENCE,
+    root["comparison"] = {"protocol": gate.PROTOCOL, "reference_revision": REFERENCE,
                           "enforced": enforced, "policy": POLICY, "legs": legs,
                           "fixture_provenance": "synthetic-validator-control"}
     collector.write_json(folder / "receipt.json", root)
@@ -70,6 +70,10 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 
 class GateTests(unittest.TestCase):
+    def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
+        self.assertEqual(gate.REFERENCE, "b997d777ac6ae64974339144b22efba7fc918d34")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v3")
+
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):
         with tempfile.TemporaryDirectory() as name:
             folder = Path(name)
