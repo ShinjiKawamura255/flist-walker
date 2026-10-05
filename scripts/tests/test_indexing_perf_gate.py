@@ -17,7 +17,7 @@ from scripts import indexing_perf_gate as gate
 from scripts.tests.test_indexing_perf import control_log, synthetic_receipt, mutate_record
 
 REFERENCE = gate.REFERENCE
-POLICY = {"id": "rcr-completion-v1", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
+POLICY = {"id": "rcr-median-ceiling-v2", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -72,7 +72,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
         self.assertEqual(gate.REFERENCE, "f1089f63be32cfe0b1d14d9f49ab1832bd287982")
-        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v3")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v4")
 
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):
         with tempfile.TemporaryDirectory() as name:
@@ -187,10 +187,104 @@ class GateTests(unittest.TestCase):
                 for row in mutant[role][1]["rows"]:
                     row["index_ready_ms"] = values
                 self.assertEqual(gate.evaluate_triplet(mutant,"f1")["status"], "indeterminate")
-            # A single unstable reference maximum rejects even with stable median.
+            # A single reference maximum above the common ceiling rejects even with stable median.
             sessions["reference-after"][1]["rows"][0]["index_ready_ms"] = 200
             report = gate.evaluate_triplet(sessions,"f1")
             self.assertEqual(report["status"], "indeterminate")
+
+    def constant_sessions(self, folder):
+        sessions = self.sessions(folder, "f1")
+        for _, result in sessions.values():
+            for row in result["rows"]:
+                row["index_ready_ms"] = row["results_ready_ms"] = 100
+        return sessions
+
+    def test_maximum_uses_reference_median_and_cannot_hide_behind_reference_tail(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.constant_sessions(Path(name))
+            for role in ("reference-before", "reference-after"):
+                sessions[role][1]["rows"][0]["index_ready_ms"] = 140
+            sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 151
+            report = gate.evaluate_triplet(sessions, "f1")
+            self.assertEqual(report["status"], "timing-fail")
+            found = [d for d in report["decisions"] if d["status"] == "timing-fail"]
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0]["statistic"], "max")
+            self.assertEqual(found[0]["denominator"], 100)
+            self.assertEqual(found[0]["limit_ms"], 150)
+
+    def test_reference_tail_over_common_ceiling_rejects_even_when_maxima_match(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.constant_sessions(Path(name))
+            for role in ("reference-before", "reference-after"):
+                sessions[role][1]["rows"][0]["index_ready_ms"] = 180
+            report = gate.evaluate_triplet(sessions, "f1")
+            self.assertEqual(report["status"], "indeterminate")
+            affected = [d for d in report["decisions"] if d["status"] == "indeterminate"]
+            self.assertEqual({d["statistic"] for d in affected}, {"median", "max"})
+            self.assertTrue(all("reference-tail-ceiling" in d["reference_admission_reasons"]
+                                for d in affected))
+
+    def test_reference_maximum_bracket_drift_is_diagnostic_within_common_ceiling(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.constant_sessions(Path(name))
+            sessions["reference-before"][1]["rows"][0]["index_ready_ms"] = 140
+            report = gate.evaluate_triplet(sessions, "f1")
+            self.assertEqual(report["status"], "pass")
+            max_decisions = [d for d in report["decisions"] if d["statistic"] == "max"]
+            self.assertTrue(any(d["reference_drift_ratio"] == 1.4 for d in max_decisions))
+            self.assertTrue(all(d["reference_median_drift_ratio"] == 1 for d in report["decisions"]))
+
+    def test_reference_tail_boundary_equality_and_reciprocal_brackets(self):
+        with tempfile.TemporaryDirectory() as name:
+            base = self.constant_sessions(Path(name))
+            for first, second in (("reference-before", "reference-after"),
+                                  ("reference-after", "reference-before")):
+                sessions = copy.deepcopy(base)
+                for row in sessions[second][1]["rows"]:
+                    row["index_ready_ms"] = 125
+                sessions[first][1]["rows"][0]["index_ready_ms"] = 187.5
+                sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 187.5
+                report = gate.evaluate_triplet(sessions, "f1")
+                self.assertEqual(report["status"], "pass")
+                sessions[first][1]["rows"][0]["index_ready_ms"] = 187.500001
+                self.assertEqual(gate.evaluate_triplet(sessions, "f1")["status"], "indeterminate")
+
+    def test_uniform_slowdown_fails_both_median_and_maximum_with_common_denominator(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.constant_sessions(Path(name))
+            for row in sessions["candidate"][1]["rows"]:
+                row["index_ready_ms"] = row["results_ready_ms"] = 151
+            report = gate.evaluate_triplet(sessions, "f1")
+            self.assertEqual(report["status"], "timing-fail")
+            self.assertTrue(all(d["status"] == "timing-fail" for d in report["decisions"]))
+            self.assertTrue(all(d["denominator"] == 100 for d in report["decisions"]))
+
+    def test_reference_indeterminate_retains_candidate_limit_excess_diagnostic(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.constant_sessions(Path(name))
+            sessions["reference-before"][1]["rows"][0]["index_ready_ms"] = 180
+            sessions["candidate"][1]["rows"][0]["index_ready_ms"] = 200
+            report = gate.evaluate_triplet(sessions, "f1")
+            self.assertEqual(report["status"], "indeterminate")
+            self.assertTrue(any(d["status"] == "indeterminate" and d["candidate_exceeds_limit"]
+                                for d in report["decisions"]))
+
+    def test_v3_protocol_and_policy_cannot_be_relabelled_as_v4_calibration(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            root = write_fixture(folder)
+            root["comparison"]["protocol"] = "same-job-RCR-f1-21-observer-v3"
+            (folder / "receipt.json").unlink()
+            collector.write_json(folder / "receipt.json", root)
+            with self.assertRaises(contract.ValidationError):
+                gate.load_comparison(folder, "f1")
+            root["comparison"]["protocol"] = gate.PROTOCOL
+            root["comparison"]["policy"]["id"] = "rcr-completion-v1"
+            (folder / "receipt.json").unlink()
+            collector.write_json(folder / "receipt.json", root)
+            with self.assertRaises(contract.ValidationError):
+                gate.load_comparison(folder, "f1")
 
     def test_shared_control_and_condition_slowdown_cannot_cancel_in_a_ratio(self):
         with tempfile.TemporaryDirectory() as name:

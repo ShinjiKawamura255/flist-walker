@@ -74,3 +74,5 @@
 - FR-045, NFR-008 -> SP-025 -> DES-026 -> TC-219, TC-220, TC-221, TC-222
 
 - FR-048 -> SP-026 -> DES-028 -> TC-227
+
+TC-233 common-ceiling controls directly exercise NFR-006 / SP-007, SP-010 / DES-006, DES-009: all136 candidate median/MAX predicates, reference median-drift and tail admission, retained MAX drift diagnostic, and rejection of old-protocol calibration reuse.
