@@ -1,0 +1,72 @@
+{
+  "original_contract_roundtrip_replay": "PASS",
+  "source": "ee1673a4452c51a7db0cf3c12227cdc9080dc14b",
+  "archive_sha256": "ed9da0980ff7c7baaac9376e49f27f3a65e01e74e3856e26e916b88d0f2c83f9",
+  "results": [
+    {
+      "session": 1,
+      "run": "37266079817",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 64
+    },
+    {
+      "session": 1,
+      "run": "37266079817",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 24
+    },
+    {
+      "session": 1,
+      "run": "37266079817",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48
+    },
+    {
+      "session": 2,
+      "run": "37269524181",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 64
+    },
+    {
+      "session": 2,
+      "run": "37269524181",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 1,
+      "proposal_status": "indeterminate",
+      "decision_count": 24
+    },
+    {
+      "session": 2,
+      "run": "37269524181",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48
+    }
+  ],
+  "raw_rows": 2772,
+  "component_sessions": 18,
+  "sessions3_4_5": "NOT RUN",
+  "calibration_adopted": false,
+  "enforcement_active": false
+}

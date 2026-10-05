@@ -21,8 +21,8 @@ else:
     import indexing_perf_contract as contract
 
 REFERENCE = "f1089f63be32cfe0b1d14d9f49ab1832bd287982"
-PROTOCOL = "same-job-RCR-f1-21-observer-v3"
-POLICY = {"id": "rcr-completion-v1", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
+PROTOCOL = "same-job-RCR-f1-21-observer-v4"
+POLICY = {"id": "rcr-median-ceiling-v2", "slowdown_ratio": 1.5, "reference_drift_ratio": 1.25}
 # Activate only after the pre-reserved null campaign and independent review.
 ENFORCE_TIMING = False
 ROLES = ("reference-before", "candidate", "reference-after")
@@ -109,23 +109,38 @@ def evaluate_triplet(sessions, group, policy=POLICY):
     for i, cell in enumerate(summaries["candidate"]):
         for arm in ("control", "condition"):
             for endpoint in ENDPOINTS:
-                for statistic in STATISTICS:
-                    field = arm + "_" + statistic
-                    values = [summaries[r][i]["phases"][endpoint][field] for r in ROLES]
-                    for value in values:
-                        contract.require(contract.number(value, "completion statistic") > 0, "zero completion statistic")
+                medians = [summaries[r][i]["phases"][endpoint][arm + "_median"] for r in ROLES]
+                maxima = [summaries[r][i]["phases"][endpoint][arm + "_max"] for r in ROLES]
+                for value in medians + maxima:
+                    contract.require(contract.number(value, "completion statistic") > 0, "zero completion statistic")
+                denominator = max(medians[0], medians[2])
+                median_drift = denominator / min(medians[0], medians[2])
+                limit = denominator * policy["slowdown_ratio"]
+                reference_tail = max(maxima[0], maxima[2]) / denominator
+                reasons = []
+                if median_drift > policy["reference_drift_ratio"]:
+                    reasons.append("reference-median-drift")
+                if max(maxima[0], maxima[2]) > limit:
+                    reasons.append("reference-tail-ceiling")
+                for statistic, values in zip(STATISTICS, (medians, maxima)):
                     before, candidate, after = values
-                    denominator = max(before, after)
-                    drift = denominator / min(before, after)
-                    limit = denominator * policy["slowdown_ratio"]
-                    status = ("indeterminate" if drift > policy["reference_drift_ratio"] else
-                              "timing-fail" if candidate > limit else "pass")
+                    # Maximum bracket drift is diagnostic; both reference tails
+                    # and both candidate statistics share the median ceiling.
+                    drift = max(before, after) / min(before, after)
+                    exceeds = candidate > limit
+                    status = ("indeterminate" if reasons else
+                              "timing-fail" if exceeds else "pass")
                     decisions.append(dict(case=cell["case"], source=cell["source"], arm=arm,
                         endpoint=endpoint, statistic=statistic,
                         meaning="sustained" if statistic == "median" else "tail",
                         reference_before=before, candidate=candidate, reference_after=after,
-                        denominator=denominator, candidate_ratio=candidate/denominator,
-                        reference_drift_ratio=drift, limit_ms=limit, status=status))
+                        reference_median_before=medians[0], reference_median_after=medians[2],
+                        reference_max_before=maxima[0], reference_max_after=maxima[2],
+                        denominator=denominator, denominator_statistic="median",
+                        candidate_ratio=candidate/denominator, candidate_exceeds_limit=exceeds,
+                        reference_drift_ratio=drift, reference_median_drift_ratio=median_drift,
+                        reference_tail_ratio=reference_tail,
+                        reference_admission_reasons=list(reasons), limit_ms=limit, status=status))
     expected = len(contract.cells_for(group)) * 8
     contract.require(len(decisions) == expected, "numeric family incomplete")
     statuses = {d["status"] for d in decisions}
@@ -136,7 +151,7 @@ def evaluate_triplet(sessions, group, policy=POLICY):
     return dict(protocol=PROTOCOL, status=status, group=group, policy=copy.deepcopy(policy),
                 decision_count=expected, decisions=decisions, cells=summaries,
                 null_rust_sources_equal=measured(source_files) == measured(reference_files),
-                limitation="Finite engineering check; no p95/false-positive guarantee. Comparison uses the slower reference bracket; candidate-only host interference can fail the gate.")
+                limitation="Finite engineering check; no p95/false-positive guarantee. All observed completion times use the slower reference median ceiling; maximum bracket drift is diagnostic. Candidate-only host interference can fail the gate.")
 
 
 def _load_comparison(folder, group, proposal=False):
