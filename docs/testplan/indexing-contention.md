@@ -111,9 +111,9 @@ META and T1-S2 rows stamp `stable_edit_input_policy`; each condition row records
 
 `scripts/indexing_perf.py` collects source-bound POSIX observations and validates retained raw logs and execution receipts. Its first selection contains17 of the44 nontruncated extension cells:
 
-| Group | Profiles | Cells / raw rows |
+| Group | Profiles | Cells / raw rows per leg |
 | --- | --- | --- |
-| `f1` | Files, Folders, Ignore List, Ignore Case, mid-index Ignore refresh | 8 /112 |
+| `f1` | Files, Folders, Ignore List, Ignore Case, mid-index Ignore refresh | 8 /336 |
 | `matched` | Ignore + selective search, Files + S2 edits | 3 /42 |
 | `stable` | Stable Active100k selective/dense/S2 search while Warm indexes100k | 6 /84 |
 
