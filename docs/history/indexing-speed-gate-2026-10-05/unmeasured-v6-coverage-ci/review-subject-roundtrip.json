@@ -1,0 +1,411 @@
+{
+  "status": "PASS",
+  "reviewed_subjects": [
+    {
+      "packet": "controller-packet.json",
+      "path": "scripts/indexing_perf.py",
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1",
+      "member": "reviewed-controller/scripts/indexing_perf.py"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "scripts/indexing_perf_contract.py",
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d",
+      "member": "reviewed-controller/scripts/indexing_perf_contract.py"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566",
+      "member": "reviewed-controller/scripts/indexing_perf_gate.py"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/campaign_runner_matched21_history_v6.py",
+      "sha256": "704eccdc047592064b83b4391acd1a73ba45cb9b6b248ee35b0ab51662ebdd8d",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/campaign_runner_matched21_history_v6.py"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/campaign-protocol-matched21-history-v6.json",
+      "sha256": "48f40606ecfd8145b02e36603e651e3797db984b6a2b72522865e463bd079276",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/campaign-protocol-matched21-history-v6.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-controller-before.md",
+      "sha256": "f706f2fbd656f118a6ecdb8cc3b6b220455b1b8a1d8f532a182d918b38e92f3c",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-controller-before.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-controller-controls-green.log",
+      "sha256": "2aa629b0065b709983713fc518e2ef42bd55359277ccdb320e1124601a4fa425",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-controller-controls-green.log"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/test_campaign_controller.py",
+      "sha256": "b9b2647d8bd90133e4ad278bd329b854958738135a5fe0d5cf1faeeb172a1c11",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/test_campaign_controller.py"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-runs.json",
+      "sha256": "85a5e222f7fba1ee88d40d4a72a0dd139b1b76055bb6391276e3a096bc4ff655",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-runs.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-validation.json",
+      "sha256": "ff5c9ebc326de5a553b80cc47f3ca551d21624a4d93b91698eb8d1a74fd95d23",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-validation.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-commit.json",
+      "sha256": "64dd9ace65d248b1beaa63a2fbc7eee42af4a0a84b1a2984939b5a9a2cbb240b",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-commit.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-local-review.md",
+      "sha256": "f279ed7eb1e143b30888051b51c426891784e4cc2926c6058a2039e9d9fe4b82",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-local-review.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-minor-disposition.json",
+      "sha256": "81be9cbb4b73d0e7df1151203ce321bb925c317cb14fed0a84ba48809296334f",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-minor-disposition.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-minor-review.md",
+      "sha256": "cc9965ea5caa614e449c5e6ebce59de2d2e5ea6abb6071d41000c7b6afff845c",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-minor-review.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json",
+      "sha256": "86466ef623ce7298de7aceebfeb06f93c98de926832443d9b5292dfaed8884bb",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-admission.json",
+      "sha256": "cd5e47aa6d657e0da792ff6eed1dadd6f7e9c08df3802e660a61506270c811cb",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-admission.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-equivalence.json",
+      "sha256": "44d3f69a935eee496ba17218889ca04b89c88eba05063e0a3b227a52d1a4e041",
+      "member": "reviewed-controller/rust/target/indexing-speed-gate/v6-design/history-reference-equivalence.json"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/CI_OPERATIONS.md",
+      "sha256": "80128e719148dbaafb0236cf6fcd813ed2780d7aaac28e991f7045cb60691cc5",
+      "member": "reviewed-controller/docs/CI_OPERATIONS.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-controller/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "4653f5a0ba398c366d3c05af42cd00244fb615c62d9f59be146e027665c5624c",
+      "member": "reviewed-controller/docs/CURRENT_STATUS.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "sha256": "ce7d5ad256203399e73d75efb5896a8d9f80b6bf9a9a2b52642315a679fa818d",
+      "member": "reviewed-controller/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "sha256": "c5a3dc20416b74f239864a9e4f1987c8680659502cfcc86bd6699ff1a29066dd",
+      "member": "reviewed-controller/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "sha256": "55b680c3040ff5a829fc846862884d5c74ac0ff2df84fe59236ece46c0b0f022",
+      "member": "reviewed-controller/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md"
+    },
+    {
+      "packet": "controller-packet.json",
+      "path": "docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "sha256": "b3fc066bb5646674a3e5057aa1c6b7287f2c8ee7054581321648f31cef8a06db",
+      "member": "reviewed-controller/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566",
+      "member": "reviewed-reference-pin/scripts/indexing_perf_gate.py"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "scripts/tests/test_indexing_perf_gate.py",
+      "sha256": "1602525c967ab791c15c1ca157ae9f1d970ae318fba9e986adb0108a5425c1ff",
+      "member": "reviewed-reference-pin/scripts/tests/test_indexing_perf_gate.py"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/CI_OPERATIONS.md",
+      "sha256": "80128e719148dbaafb0236cf6fcd813ed2780d7aaac28e991f7045cb60691cc5",
+      "member": "reviewed-reference-pin/docs/CI_OPERATIONS.md"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "4653f5a0ba398c366d3c05af42cd00244fb615c62d9f59be146e027665c5624c",
+      "member": "reviewed-reference-pin/docs/CURRENT_STATUS.md"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/design/nonfunctional-runtime.md",
+      "sha256": "f510d2466316073e9980bf24457d5e749f52f333c6a4b994f83c02b4986cf661",
+      "member": "reviewed-reference-pin/docs/design/nonfunctional-runtime.md"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-reference-pin/docs/testplan/indexing-contention.md"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05.md",
+      "sha256": "ef3e8479133943d8217d9a91ce7b8e05ad280f06a21dd81d33e5c996c2a2ab64",
+      "member": "reviewed-reference-pin/docs/history/indexing-speed-gate-2026-10-05.md"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/sustained-history-reference-equivalence.json",
+      "sha256": "01778408e959e28fdadbe7aada7278bee96f67fbaf0a95ee856ff558565f2d99",
+      "member": "reviewed-reference-pin/docs/history/indexing-speed-gate-2026-10-05/sustained-history-reference-equivalence.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-admission.json",
+      "sha256": "cd5e47aa6d657e0da792ff6eed1dadd6f7e9c08df3802e660a61506270c811cb",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-admission.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-final.json",
+      "sha256": "2e0cf93d572486f395dfabb10979cebb221d727541d725999260d1e44d079b30",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-ci-final.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-guardian-final.json",
+      "sha256": "bbb260649841f56ac7a16ed9c262d5b56c40b3d2e7b55cf93bfccc5d14d1df79",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-guardian-final.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-pr-final.json",
+      "sha256": "68acc1ea52904dffbc16ad098cd13c57a8b83264081e08a71b648bf45f4e1fbd",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-pr-final.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-linux-original.log",
+      "sha256": "2686cfbbfbcacff1a4aef9dcffaca042445c969007354b6de07df6b727d0f88c",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-linux-original.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-macos-original.log",
+      "sha256": "df360b9777ec37c593e307bacaf653f7ff32ab1a3a5065658e4166b52c0e056c",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-macos-original.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-checkpoint-windows-original.log",
+      "sha256": "3f3c95dfaf2de09cb1bf2adf5ce135dde732e5339123b1f30e043467787a8011",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-checkpoint-windows-original.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-red.log",
+      "sha256": "1d4a3d64127404aa82026378e71f306681dcaa890a6e10909d32814cccd5ac14",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-red.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-green.log",
+      "sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-green.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-all.log",
+      "sha256": "33802f64f69f9c98f841ea5b6970d568c8426558da191a23ed51e6b66e85e9ab",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-all.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-O.log",
+      "sha256": "ba0ca3efcbe86cf06f2d6339938f47f6274fc389445182422277abd19ebe3456",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-O.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-OO.log",
+      "sha256": "936e7d3b3f9587c71c9b55a5cf2ac90de1264cd0049693f59af3361a4e3a02eb",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-OO.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-repo.log",
+      "sha256": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-repo.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-guardian.log",
+      "sha256": "ced96b901ca8094bdc05a8359c9305171a3227d0ae3dd97ccf60a51f61949505",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-guardian.log"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json",
+      "sha256": "86466ef623ce7298de7aceebfeb06f93c98de926832443d9b5292dfaed8884bb",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json"
+    },
+    {
+      "packet": "reference-pin-packet.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-validation.json",
+      "sha256": "ff5c9ebc326de5a553b80cc47f3ca551d21624a4d93b91698eb8d1a74fd95d23",
+      "member": "reviewed-reference-pin/rust/target/indexing-speed-gate/v6-design/history-reference-pin-validation.json"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "sha256": "016d0a1fdf634819e4838b97da810a4d34b72835680dfc385c852471fd88d598",
+      "member": "reviewed-diagnosis/rust/src/app/tests/indexing_perf/extensions/driver.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/harness.rs",
+      "sha256": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7",
+      "member": "reviewed-diagnosis/rust/src/app/tests/indexing_perf/harness.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/extensions/mod.rs",
+      "sha256": "7f2d894227d91943237495fd436af2505b9eab6f6e75af82cc44c2d1f12f7836",
+      "member": "reviewed-diagnosis/rust/src/app/tests/indexing_perf/extensions/mod.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tests/indexing_perf/child_process.rs",
+      "sha256": "1811c3cec2402528754c7bfc12bd6fecf155aa2a45e9786d6dadd1c409951fa1",
+      "member": "reviewed-diagnosis/rust/src/app/tests/indexing_perf/child_process.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tabs.rs",
+      "sha256": "31e019de5f1d363680c24c6e8daa3dba65bc8e5ed5b1f1227f5ad6c9bd05beaf",
+      "member": "reviewed-diagnosis/rust/src/app/tabs.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tab_state.rs",
+      "sha256": "eab561214848f9254322f1dc14485f6a2a2cda685f4fda76ecf25d67988be598",
+      "member": "reviewed-diagnosis/rust/src/app/tab_state.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/tab_resources.rs",
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b",
+      "member": "reviewed-diagnosis/rust/src/app/tab_resources.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/pipeline.rs",
+      "sha256": "e2fd23b9f2eb72222da952c87f18241090e7c5868abf5ead48d01f55579d1e6d",
+      "member": "reviewed-diagnosis/rust/src/app/pipeline.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/index_coordinator.rs",
+      "sha256": "398dbba9b990147adb21c8e1fea8b3e6874a6e0b898bdacde3739f4920844982",
+      "member": "reviewed-diagnosis/rust/src/app/index_coordinator.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/src/app/state.rs",
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef",
+      "member": "reviewed-diagnosis/rust/src/app/state.rs"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-coverage-original.log",
+      "sha256": "d6f7778db2af2fc41eb50b191c9d1c35e74adc0787a628e3107153f7ac22a560",
+      "member": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/history-reference-pin-coverage-original.log"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json",
+      "sha256": "86466ef623ce7298de7aceebfeb06f93c98de926832443d9b5292dfaed8884bb",
+      "member": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/history-reference-pin-unchanged-native.json"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-controller-before-review.md",
+      "sha256": "a6d8473553742edeb3223789272b914906eab083276e4232c99c24afd694f73d",
+      "member": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/history-controller-before-review.md"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-runs.json",
+      "sha256": "85a5e222f7fba1ee88d40d4a72a0dd139b1b76055bb6391276e3a096bc4ff655",
+      "member": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/history-reference-pin-ci-runs.json"
+    },
+    {
+      "packet": "v6-design/coverage-debt-diagnosis-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "30542ce8ee65ed6fafa99459c3925179ebebbe91e49aca6805b489fb5a2f3287",
+      "member": "reviewed-diagnosis/docs/testplan/indexing-contention.md"
+    }
+  ],
+  "original_python_sources": [
+    {
+      "path": "scripts/indexing_perf.py",
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1",
+      "members": [
+        "reviewed-controller/scripts/indexing_perf.py",
+        "source-contract/scripts/indexing_perf.py"
+      ]
+    },
+    {
+      "path": "scripts/indexing_perf_contract.py",
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d",
+      "members": [
+        "reviewed-controller/scripts/indexing_perf_contract.py",
+        "source-contract/scripts/indexing_perf_contract.py"
+      ]
+    },
+    {
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "0c1052e9dc869f06f7ab2bb7e29adb10c42db5f12a4b36bcfefdc9dd83a70566",
+      "members": [
+        "reviewed-controller/scripts/indexing_perf_gate.py",
+        "reviewed-reference-pin/scripts/indexing_perf_gate.py",
+        "source-contract/scripts/indexing_perf_gate.py"
+      ]
+    }
+  ],
+  "interpretation": "Original7ed failure/zero measured outcomes; no admission"
+}

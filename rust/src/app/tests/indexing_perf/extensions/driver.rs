@@ -930,6 +930,177 @@ pub(super) fn all_index_debt(driver: &Driver) -> bool {
             .enumerate()
             .any(|(n, t)| n != driver.app.shell.tabs.active_tab_index() && tab_debt(t))
 }
+// Only called after the existing constructive deadline has failed, or by its
+// focused tests. This report never participates in completion or timing.
+fn index_debt_diagnostics(driver: &Driver) -> serde_json::Value {
+    let i = &driver.app.shell.indexing;
+    let load = i.tx.load();
+    let reclaimer_pending = driver.app.shell.tabs.reclaimer_pending();
+    let active = driver.app.shell.tabs.active_tab_index();
+    let shell_lifecycle = format!("{:?}", i.lifecycle());
+    let tabs = driver.app.shell.tabs.iter().enumerate().map(|(n, t)| {
+        let s = &t.index_state;
+        serde_json::json!({
+            "tab":t.id,"included_in_debt":n!=active,"stored_slot_debt":tab_debt(t),
+            "stored_slot_lifecycle":format!("{:?}",s.lifecycle()),
+            "active_shell_lifecycle":(n==active).then_some(&shell_lifecycle),
+            "index_in_progress":s.index_in_progress,"pending_index_request_id":s.pending_index_request_id,
+            "pending_index_entries_request_id":s.pending_index_entries_request_id,
+            "pending_index_finish":s.pending_index_finish.as_ref().map(|f|f.request_id),
+            "build_reclaim_pending":s.build_reclaim_pending,"build_reclaim_request_id":s.build_reclaim_request_id,
+            "refresh_after_pending_finish":s.refresh_after_pending_finish.is_some(),
+            "root_after_pending_finish":s.root_after_pending_finish.is_some(),
+            "pending_entries":s.build.pending_entries.len(),"active_filter":s.build.active_filter.is_some(),
+            "kind_resolution_in_progress":s.kind_resolution_in_progress,
+            "pending_kind_paths":s.build.pending_kind_paths.len(),"in_flight_kind_paths":s.build.in_flight_kind_paths.len(),
+            "search_resume_pending":s.search_resume_pending,"search_rerun_pending":s.search_rerun_pending
+        })
+    }).collect::<Vec<_>>();
+    serde_json::json!({
+        "consistency":"diagnostic scalars; worker load and reclaimer atomics may change between reads; not a completion predicate",
+        "reclaimer_pending":reclaimer_pending,
+        "shell":{
+            "tab":driver.app.current_tab_id(),"lifecycle":shell_lifecycle,
+            "in_progress":i.in_progress,"pending_request_id":i.pending_request_id,
+            "pending_entries":i.build.pending_entries.len(),"pending_entries_request_id":i.pending_entries_request_id,
+            "refresh_after_pending_finish":i.refresh_after_pending_finish.is_some(),
+            "root_after_pending_finish":i.root_after_pending_finish.is_some(),
+            "pending_finish":i.pending_finish.as_ref().map(|f|f.request_id),
+            "build_reclaim_pending":i.build_reclaim_pending,"build_reclaim_request_id":i.build_reclaim_request_id,
+            "pending_stale_build_reclaim":i.pending_stale_build_reclaim.is_some(),
+            "pending_replace_all":i.pending_replace_all.is_some(),
+            "background_finalizations":i.background_finalizations.keys().count(),
+            "active_filter":i.build.active_filter.is_some(),"kind_resolution_in_progress":i.kind_resolution_in_progress,
+            "pending_kind_paths":i.build.pending_kind_paths.len(),"in_flight_kind_paths":i.build.in_flight_kind_paths.len()
+        },
+        "routing":{
+            "queued":load.queued,"inflight":load.inflight,"pending_queue":i.pending_queue.len(),
+            "inflight_requests":i.inflight_requests.len(),"request_tabs":i.request_tabs.len(),
+            "background_states":i.background_states.len(),"background_state_requests":i.background_states.keys().collect::<Vec<_>>(),
+            "background_finalizations":i.background_finalizations.keys().count(),"background_finalization_requests":i.background_finalizations.keys().collect::<Vec<_>>(),
+            "deferred_response":i.deferred_response.is_some(),"deferred_non_active_responses":i.deferred_non_active_responses.len(),
+            "pending_activation_tab_id":driver.app.shell.tabs.pending_activation_tab_id
+        },
+        "tabs":tabs
+    })
+}
+
+#[test]
+fn tc_229_stall_diagnostics_locate_shell_and_inactive_entry_owner() {
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.create_new_tab();
+    settle_setup(&mut driver);
+    assert!(!all_index_debt(&driver));
+    driver.app.shell.indexing.pending_entries_request_id = Some(901);
+    let shell = index_debt_diagnostics(&driver);
+    let shell_debt = all_index_debt(&driver);
+    driver.app.shell.indexing.pending_entries_request_id = None;
+    let active = driver.app.shell.tabs.active_tab_index();
+    let inactive = usize::from(active == 0);
+    let tab = driver.app.shell.tabs.get_mut(inactive).unwrap();
+    let tab_id = tab.id;
+    tab.index_state.pending_index_entries_request_id = Some(902);
+    let background = index_debt_diagnostics(&driver);
+    let background_debt = all_index_debt(&driver);
+    driver
+        .app
+        .shell
+        .tabs
+        .get_mut(inactive)
+        .unwrap()
+        .index_state
+        .pending_index_entries_request_id = None;
+    assert!(!all_index_debt(&driver));
+    assert!(
+        shell_debt && background_debt,
+        "unconsumed ownership remains blocking"
+    );
+    assert_eq!(shell["shell"]["pending_entries_request_id"], 901);
+    assert_eq!(shell["shell"]["pending_entries"], 0);
+    let row = background["tabs"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["tab"] == tab_id)
+        .unwrap();
+    assert_eq!(row["included_in_debt"], true);
+    assert_eq!(row["pending_index_entries_request_id"], 902);
+    assert_eq!(
+        background["shell"]["pending_entries_request_id"],
+        serde_json::Value::Null
+    );
+}
+
+#[test]
+fn tc_229_stall_diagnostics_locate_held_physical_reclaimer() {
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    assert!(!all_index_debt(&driver));
+    driver.app.shell.tabs.pause_resource_reclaimer();
+    let mut resources = crate::app::tab_resources::RetiredIndexBuildResources::empty();
+    resources.set_stale_index_entries(vec![crate::app::worker::protocol::IndexEntry {
+        path: driver
+            .app
+            .shell
+            .runtime
+            .root
+            .join("held-diagnostic-resource"),
+        kind: crate::entry::EntryKind::file(),
+        kind_known: true,
+    }]);
+    driver
+        .app
+        .shell
+        .tabs
+        .try_retire_index_build_resources(resources)
+        .unwrap_or_else(|_| panic!("admit owned nonempty retirement"));
+    let report = index_debt_diagnostics(&driver);
+    let held_debt = all_index_debt(&driver);
+    // Restore and release the test-owned paused queue before the intended RED
+    // assertions, including when diagnostic fields are missing or incorrect.
+    driver.app.shell.tabs.resume_resource_reclaimer();
+    assert!(!all_index_debt(&driver));
+    assert!(
+        held_debt,
+        "completed snapshot does not discharge physical retirement"
+    );
+    assert_eq!(report["reclaimer_pending"], 1);
+    assert_eq!(report["shell"]["in_progress"], false);
+    assert_eq!(report["routing"]["background_states"], 0);
+}
+
+#[test]
+fn tc_229_stall_diagnostics_distinguish_active_shell_from_stored_slot() {
+    use crate::app::tab_state::{TabResourceLifecycle, TabResourceState};
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    let active = driver.app.shell.tabs.active_tab_index();
+    driver
+        .app
+        .shell
+        .indexing
+        .set_resource_state_for_test(TabResourceState::new(TabResourceLifecycle::Ready, true));
+    driver
+        .app
+        .shell
+        .tabs
+        .get_mut(active)
+        .unwrap()
+        .index_state
+        .set_resource_state_for_test(TabResourceState::new(TabResourceLifecycle::Dormant, false));
+    let report = index_debt_diagnostics(&driver);
+    assert!(
+        !all_index_debt(&driver),
+        "stored-slot lifecycle is not active shell debt"
+    );
+    assert_eq!(report["shell"]["lifecycle"], "Ready");
+    let row = &report["tabs"][active];
+    assert_eq!(row["stored_slot_lifecycle"], "Dormant");
+    assert_eq!(row["included_in_debt"], false);
+    assert_eq!(row["active_shell_lifecycle"], "Ready");
+}
+
 pub(super) fn result_debt(driver: &Driver) -> bool {
     let app = &driver.app;
     app.shell.search.in_progress()
@@ -1900,6 +2071,7 @@ pub(super) fn run(
                     serde_json::json!({"tab":id,"active":active,"expected_root":roots[n].root,
                         "all_count":all.len(),"visible_count":visible.len(),"oracle_valid":quiet_oracles[n].valid_snapshot(all,visible),
                         "signature":actual_signature(&roots[n].root,all),"lifecycle":format!("{:?}",t.index_state.lifecycle()),
+                        "lifecycle_owner":"stored-tab-slot","active_shell_lifecycle":active.then(||format!("{:?}",i.lifecycle())),
                         "freshness_request":fresh.map(|f|f.request_id),"freshness_root":fresh.map(|f|&f.root),"freshness_source":fresh.map(|f|format!("{:?}",f.source))})
                 }).collect::<Vec<_>>();
                 let victim_diagnostics = plans.iter().filter_map(|p| {
@@ -1975,7 +2147,7 @@ pub(super) fn run(
                         "pending_transition":pending_transition,"deferred_allocations":deferred_allocations,
                         "queue":i.pending_queue.iter().map(|r|(r.request_id,r.tab_id)).collect::<Vec<_>>(),"inflight":i.inflight_requests,
                         "load":{"queued":load.queued,"inflight":load.inflight,"capacity":load.capacity},
-                        "index_debt":all_index_debt(&driver),"result_debt":result_debt(&driver),
+                        "index_debt":all_index_debt(&driver),"index_debt_details":index_debt_diagnostics(&driver),"result_debt":result_debt(&driver),
                         "plans_valid":planned_requests_valid(&plans,&request_proofs),"planned":planned,"requests":observed,
                         "proofs":proof_rows,"snapshots":snapshots,"input_trace":events,"transition_trace":transition_events,
                         "victim_diagnostics":victim_diagnostics,"preemption_diagnostics":preemption_diagnostics,
