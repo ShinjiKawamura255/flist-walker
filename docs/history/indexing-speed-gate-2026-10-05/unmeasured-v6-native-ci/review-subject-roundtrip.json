@@ -1,0 +1,181 @@
+{
+  "status": "PASS",
+  "archive_sha256": "9a1ce1b43c43440eb0dd0355989b91aab8339f78668323776332b4353dad5423",
+  "reviewed_subjects": [
+    {
+      "packet": "controller-subjects.json",
+      "path": "scripts/indexing_perf.py",
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "scripts/indexing_perf_contract.py",
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "b19672ed25a19fef26dd6e050a24b832e56e2a0af15b3b93eeff082cb31264e1"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "scripts/tests/test_indexing_perf.py",
+      "sha256": "c8cf12c7c65e9672700ca04ae1727bb3a9a197ead7fdead9d2ed9615ce351988"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "scripts/tests/test_indexing_perf_gate.py",
+      "sha256": "533275feda62d6de9ba802add61bf5c39941349282fd8f9d9a42024650928878"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/spec/indexing-performance.md",
+      "sha256": "3eee349dad249f3c5ba2201bd9bb0e744c76b66b6500b845b4095de3b59e34fb"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/design/nonfunctional-runtime.md",
+      "sha256": "1282038b5df0fe2e110b18d1dedcee65f0126f7381b7d8e2ce7a91627591adbe"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/testplan/indexing-contention.md",
+      "sha256": "e61a0cee15ecd1488cb3f98c435427b9fc928e9a8e4f553bad8036a0fd683505"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/CI_OPERATIONS.md",
+      "sha256": "07eb64f764eea86e83e0dd13656bed6ec6e97835a11bb2a32bb3116f4ab62601"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/CURRENT_STATUS.md",
+      "sha256": "b1b28f1b1a20845a5b10a24c3922d54b678e34909264fbf2fb426b1f76daeec0"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05.md",
+      "sha256": "5b5383865f40f6236ca8ee704cfa272e6c22c0f8eb748dae99300170f1068f4d"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "docs/history/indexing-speed-gate-2026-10-05/sustained-stateful-reference-equivalence.json",
+      "sha256": "cbb9ab207009dfdfa21a62f323c85f86e0dc845349c8c8e55b2725970a9f2076"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/campaign_runner_matched21_v6.py",
+      "sha256": "a981772bdd28e968d3d02afa90d0350d74921195fbc1a5ad6025d863a7c03cd5"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/campaign-protocol-matched21-v6.json",
+      "sha256": "2c01eff8bfe9df2563cb3fbbf8924cc05d1ea9f82deaaab0267f2c27b784db9e"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/test_campaign_controller.py",
+      "sha256": "b9b2647d8bd90133e4ad278bd329b854958738135a5fe0d5cf1faeeb172a1c11"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/controller-controls-red-old-cadence.log",
+      "sha256": "46472ee4e5b963694c83b34efafc68407b726f242311a88404449fb9b37d0e92"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/controller-controls-green.log",
+      "sha256": "a26c4476f1cd41eff99db7b84c71148ad99f5ab7a46dc0d156f60bfa8892a576"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/integrated-before.md",
+      "sha256": "43adf157c258d9e0b437c1dc0a09ecc4a3a81250a063966e3d69cd36e2bd77fa"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/integrated-before-review.md",
+      "sha256": "c04cf98d5d05dc17b61cc7e23450766232769c963f572c10a9570ff1b14562d1"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/before-subjects.json",
+      "sha256": "fd50f3ae21a2b6944ab6b8f36492415b62fedfdfc6d837a6deace5538a311ea9"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/tooling-commit.json",
+      "sha256": "651ff796a72b3ff385f7a944ddb74599be38f537c0c3c6aeb14028b29fe0eeac"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/validation-results.json",
+      "sha256": "9cee304d2f4334fca08fb61976802287807993355103f79809416e0dd53a86ca"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/unchanged-native-inputs.json",
+      "sha256": "e186b3c8a4855047a70c13a076e3349705df66edf2b81acb16e474199c967e53"
+    },
+    {
+      "packet": "controller-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/v5-original-replay-after-v6.json",
+      "sha256": "f8deb6bb0dc4800e07fae0b14309dd69fe9aa19266e7a6dbde7a22d2678f4d23"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker.rs",
+      "sha256": "e06ebc546a982c1575caef51c17861a1e829924e1b2bc491c5ad1625b2ea498b"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker/tests.rs",
+      "sha256": "a7c333e890faea5d627b14b2d511a4649d1cbddf0148472646c3826cc68a3c24"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker/document.rs",
+      "sha256": "87e85350436a17ea11cf9374a71bdc33cad85e520b7edb18eb1186ad1f2f6c23"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/src/persistence/worker/settings.rs",
+      "sha256": "d4e1569b981ac070a08dce55251df15ce63098099107906e76a86cc2cd6c7e47"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/src/fs_atomic.rs",
+      "sha256": "cdf9cc18b4892c1950fa813e6f49650686dbd647415005a5e459419224ef92bb"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "docs/spec/operations-release-config.md",
+      "sha256": "92fff490611b9d52a5aa74ce18ada4f8b1f0fe42bd748a808a8fd2c12f1cb296"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "docs/testplan/test-cases.md",
+      "sha256": "2015e59d77a9f5227cb2cb7c264a48a87cd708037a94083b90f7087e88c813b9"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "docs/testplan/validation/vm-002.md",
+      "sha256": "1525703e8f1dc26176ec21fda4f408dd627bd77ce4516fbd78a8aa3df948d689"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/source-windows-failed-original.log",
+      "sha256": "4b73ea94e189595679404d942b03732d9bc7a7272d945bdd961dffec37d206e1"
+    },
+    {
+      "packet": "unmeasured-native-diagnosis-subjects.json",
+      "path": "rust/target/indexing-speed-gate/v6-design/unchanged-native-inputs.json",
+      "sha256": "e186b3c8a4855047a70c13a076e3349705df66edf2b81acb16e474199c967e53"
+    }
+  ],
+  "reviewed_subject_count": 34,
+  "original_python_source_count": 3,
+  "source": "c7f212a219ae9ca418a4b2139350b5a6d8a74ffa",
+  "perf_outcomes_for_this_source": 0,
+  "adopted": false
+}

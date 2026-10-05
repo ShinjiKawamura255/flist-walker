@@ -638,20 +638,15 @@ fn tc_167_persistence_keeps_ordered_a_b_a_deltas_as_b_a() {
 fn tc_167_persistence_deduplicates_and_caps_history_at_100() {
     let base = temp_dir("history-cap");
     let path = base.join("ui-state.json");
-    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
-        path.clone(),
-        false,
-        Duration::from_millis(50),
-    );
+    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
         UiStatePatch::default(),
         (0..101).map(|index| format!("q-{index}")).collect(),
     );
     writer.enqueue_patch_for_test(UiStatePatch::default(), vec!["q-50".into()]);
-    writer
-        .flush(Duration::from_secs(1))
-        .expect("flush capped history");
+    fixture.flush_after_entry().expect("flush capped history");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");
@@ -659,9 +654,9 @@ fn tc_167_persistence_deduplicates_and_caps_history_at_100() {
     assert_eq!(history.len(), 100);
     assert_eq!(history.first(), Some(&json!("q-1")));
     assert_eq!(history.last(), Some(&json!("q-50")));
-    writer
-        .shutdown(Duration::from_secs(1))
-        .expect("shutdown writer");
+    fixture
+        .finish(Duration::from_secs(2))
+        .expect("physically join semantic history writer");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -745,27 +740,23 @@ fn tc_167_persistence_disabled_history_is_a_load_and_save_noop() {
         json!({"query_history": ["old"], "unknown": true}).to_string(),
     )
     .expect("seed state");
-    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
-        path.clone(),
-        true,
-        Duration::from_millis(50),
-    );
+    let fixture = HistorySemanticFixture::new(path.clone(), true, Duration::from_millis(50));
+    let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
         UiStatePatch::from_json(json!({"show_preview": false})),
         vec!["new".into()],
     );
-    writer
-        .flush(Duration::from_secs(1))
-        .expect("flush disabled history");
+    fixture.flush_after_entry().expect("flush disabled history");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");
     assert_eq!(written["query_history"], json!(["old"]));
     assert_eq!(written["unknown"], true);
-    writer
-        .shutdown(Duration::from_secs(1))
-        .expect("shutdown writer");
+    assert_eq!(written["show_preview"], false);
+    fixture
+        .finish(Duration::from_secs(2))
+        .expect("physically join semantic history writer");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -1410,6 +1401,193 @@ fn tc_167_two_process_writers_preserve_alternating_history() {
 
 // Path-scoped synchronization: unrelated writers remain runnable. Unwind releases
 // the writer, and a forgotten release fails within a finite test-only deadline.
+// This fixture registers a direct writer's exact handle before any test work.
+// The registry retains ownership on timeout; an absent registration alone is
+// never accepted as physical-return evidence.
+struct HistorySemanticFixture {
+    path: PathBuf,
+    writer: AsyncHistoryPersistence,
+    gate: WriteGate,
+    ownership: Arc<Mutex<TestWorkerOwnership>>,
+}
+
+impl HistorySemanticFixture {
+    fn new(path: PathBuf, history_disabled: bool, lock_timeout: Duration) -> Self {
+        let gate = WriteGate::new(path.clone());
+        let mut registry = ui_state_persistence_registry()
+            .lock()
+            .expect("semantic fixture registry available before writer startup");
+        if registry.senders.contains_key(&path) || registry.test_workers.contains_key(&path) {
+            drop(registry);
+            panic!("semantic fixture path already has a writer owner");
+        }
+        let mut writer = AsyncHistoryPersistence::new_with_lock_timeout(
+            path.clone(),
+            history_disabled,
+            lock_timeout,
+        );
+        // This fresh, private mutex has no other user. Recover its contents even
+        // if poisoned, and transfer ownership without a fallible take/unwrap.
+        let handle = std::mem::replace(&mut writer.handle, Mutex::new(None))
+            .into_inner()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let ownership = Arc::new(Mutex::new(TestWorkerOwnership {
+            handle,
+            shutdown_sent: false,
+            completed: None,
+        }));
+        registry.senders.insert(path.clone(), writer.sender.clone());
+        registry
+            .test_workers
+            .insert(path.clone(), Arc::clone(&ownership));
+        drop(registry);
+        Self {
+            path,
+            writer,
+            gate,
+            ownership,
+        }
+    }
+
+    fn flush_after_entry(&self) -> Result<(), String> {
+        // Establish actual pre-I/O entry outside the unchanged flush deadline.
+        self.gate.wait_entered();
+        self.gate.release();
+        self.writer.flush(Duration::from_secs(1))
+    }
+
+    fn finish(&self, timeout: Duration) -> Result<(), String> {
+        self.gate.release();
+        finish_ui_state_persistence_for_test(&self.path, timeout)?;
+        let owned = self
+            .ownership
+            .try_lock()
+            .map_err(|_| "semantic writer ownership unavailable after cleanup".to_string())?;
+        if owned.handle.is_some() || !owned.completed.as_ref().is_some_and(Result::is_ok) {
+            return Err("semantic writer lacks its own physical join evidence".into());
+        }
+        Ok(())
+    }
+}
+
+impl Drop for HistorySemanticFixture {
+    fn drop(&mut self) {
+        if let Err(error) = self.finish(Duration::from_secs(2)) {
+            eprintln!("retain semantic fixture {}: {error}", self.path.display());
+            if !thread::panicking() {
+                panic!("semantic fixture writer cleanup failed: {error}");
+            }
+        }
+        // Root deletion belongs to the caller, after explicit successful join.
+        // Unwind keeps the root even when the worker has physically returned.
+    }
+}
+
+#[test]
+fn tc_167_semantic_history_fixture_rejects_missing_write_entry() {
+    let base = temp_dir("semantic-no-write-entry");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let seed = json!({"query_history": ["old"], "unknown": true}).to_string();
+    fs::write(&path, &seed).unwrap();
+    let fixture = HistorySemanticFixture::new(path.clone(), true, Duration::from_millis(50));
+    // No Enqueue: an empty Flush is valid, but cannot prove actual write entry.
+    let outcome =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| fixture.flush_after_entry()));
+    let untouched = fs::read_to_string(&path).unwrap() == seed;
+    fixture
+        .finish(Duration::from_secs(2))
+        .expect("join no-write control");
+    fs::remove_dir_all(&base).unwrap();
+    let rejected_entry = outcome.err().is_some_and(|panic| {
+        panic
+            .downcast_ref::<String>()
+            .map(String::as_str)
+            .or_else(|| panic.downcast_ref::<&str>().copied())
+            .is_some_and(|message| message.contains("writer never reached its pre-I/O barrier"))
+    });
+    assert!(untouched, "no-write control changed its seed");
+    assert!(
+        rejected_entry,
+        "empty Flush must not establish semantic write readiness"
+    );
+}
+
+#[test]
+fn tc_167_semantic_history_fixture_retains_owner_and_root_on_cleanup_timeout() {
+    let base = temp_dir("semantic-cleanup-timeout");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let lock = acquire_sidecar_lock(&path, Duration::from_millis(10)).unwrap();
+    // Only this controlled negative has a longer held-lock wait. Normal
+    // semantic fixtures retain their original 50ms lock timeout.
+    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_secs(5));
+    fixture.writer.enqueue_patch_for_test(
+        UiStatePatch::from_json(json!({"show_preview": false})),
+        vec![],
+    );
+    fixture.gate.wait_entered();
+    let first = fixture.finish(Duration::from_millis(1));
+    let root_retained = base.exists();
+    let same_owner = ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .test_workers
+        .get(&path)
+        .is_some_and(|owner| Arc::ptr_eq(owner, &fixture.ownership));
+    let handle_retained = fixture.ownership.try_lock().unwrap().handle.is_some();
+    drop(lock);
+    fixture
+        .finish(Duration::from_secs(2))
+        .expect("join after controlled lock release");
+    let written: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert!(
+        first.is_err(),
+        "blocked real write cannot physically return before release"
+    );
+    assert!(root_retained && same_owner && handle_retained);
+    assert_eq!(written["show_preview"], false);
+}
+
+#[test]
+fn tc_167_semantic_history_fixture_joins_on_unwind_and_retains_root() {
+    let base = temp_dir("semantic-cleanup-unwind");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    let ownership = Arc::clone(&fixture.ownership);
+    fixture.writer.enqueue_patch_for_test(
+        UiStatePatch::from_json(json!({"show_preview": false})),
+        vec![],
+    );
+    fixture.gate.wait_entered();
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+        let _owned_fixture = fixture;
+        panic!("controlled semantic assertion failure");
+    }));
+    let owned = ownership.try_lock().unwrap();
+    let physically_joined =
+        owned.handle.is_none() && owned.completed.as_ref().is_some_and(Result::is_ok);
+    drop(owned);
+    let no_registered_owner = !ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .test_workers
+        .contains_key(&path);
+    let root_retained = base.exists();
+    assert!(
+        physically_joined && no_registered_owner,
+        "unwind did not physically join the exact semantic writer"
+    );
+    let written: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert!(outcome.is_err() && root_retained);
+    assert_eq!(written["show_preview"], false);
+}
+
 #[derive(Default)]
 struct WriteGateState {
     entered: bool,
@@ -1443,7 +1621,9 @@ impl WriteGate {
             .changed
             .wait_timeout_while(state, Duration::from_secs(2), |state| !state.entered)
             .unwrap();
-        assert!(state.entered, "writer never reached its pre-I/O barrier");
+        let entered = state.entered;
+        drop(state);
+        assert!(entered, "writer never reached its pre-I/O barrier");
     }
     pub(crate) fn release(&self) {
         self.inner.state.lock().unwrap().released = true;
