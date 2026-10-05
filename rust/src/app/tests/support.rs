@@ -14,6 +14,7 @@ pub(crate) struct TestSettingsScope {
     base: PathBuf,
     strict_cleanup: bool,
     cleaned: bool,
+    auxiliary_writer_path: Option<PathBuf>,
 }
 
 impl TestSettingsScope {
@@ -24,6 +25,7 @@ impl TestSettingsScope {
             base,
             strict_cleanup: false,
             cleaned: false,
+            auxiliary_writer_path: None,
         }
     }
 
@@ -32,14 +34,32 @@ impl TestSettingsScope {
         self
     }
 
+    fn track_auxiliary_writer(&mut self, path: PathBuf) {
+        assert_eq!(path.parent(), Some(self.base.as_path()));
+        assert!(!self.cleaned, "cannot add a writer after cleanup");
+        assert!(self.auxiliary_writer_path.is_none(), "writer already owned");
+        self.auxiliary_writer_path = Some(path);
+    }
+
     fn cleanup(&mut self, timeout: std::time::Duration) -> Result<(), String> {
         if self.cleaned {
             return Ok(());
         }
-        crate::persistence::finish_ui_state_persistence_for_test(
+        let deadline = std::time::Instant::now() + timeout;
+        let mut result = crate::persistence::finish_ui_state_persistence_for_test(
             &FlistWalkerApp::ui_state_file_path_in(&self.base),
-            timeout,
-        )?;
+            deadline.saturating_duration_since(std::time::Instant::now()),
+        );
+        if let Some(path) = &self.auxiliary_writer_path {
+            let auxiliary = crate::persistence::finish_ui_state_persistence_for_test(
+                path,
+                deadline.saturating_duration_since(std::time::Instant::now()),
+            );
+            if result.is_ok() {
+                result = auxiliary;
+            }
+        }
+        result?;
         fs::remove_dir_all(&self.base)
             .map_err(|error| format!("remove settings fixture {}: {error}", self.base.display()))?;
         self.cleaned = true;
@@ -213,6 +233,8 @@ fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
     );
     // The retained writer cannot block another path's admission or termination.
     let other = settings.base.join("unrelated.json");
+    settings.track_auxiliary_writer(other.clone());
+    let other_gate = crate::persistence::WriteGate::new(other.clone());
     crate::persistence::enqueue_ui_state_patch(
         other.clone(),
         crate::persistence::UiStatePatch::default(),
@@ -220,8 +242,15 @@ fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
         false,
     )
     .unwrap();
+    other_gate.wait_entered();
+    other_gate.release();
     crate::persistence::finish_ui_state_persistence_for_test(&other, Duration::from_secs(1))
-        .unwrap();
+        .expect("unrelated writer must physically stop after entering its write");
+    assert_eq!(
+        settings.cleanup(Duration::from_millis(1)).unwrap_err(),
+        "test settings writer did not physically stop before deadline"
+    );
+    assert!(settings.base.is_dir(), "the first writer is still parked");
     gate.release();
     settings.cleanup(Duration::from_secs(2)).unwrap();
     assert!(!settings.base.exists());
@@ -231,6 +260,46 @@ fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
         !settings.base.exists(),
         "a physically joined writer cannot recreate the root"
     );
+}
+
+#[test]
+fn perf_settings_cleanup_retains_the_root_until_its_auxiliary_writer_returns() {
+    use std::time::Duration;
+    let mut settings = TestSettingsScope::new("strict-auxiliary-teardown").with_strict_cleanup();
+    let other = settings.base.join("unrelated.json");
+    settings.track_auxiliary_writer(other.clone());
+    let gate = crate::persistence::WriteGate::new(other.clone());
+    crate::persistence::enqueue_ui_state_patch(
+        other.clone(),
+        crate::persistence::UiStatePatch::default(),
+        vec![],
+        false,
+    )
+    .unwrap();
+    gate.wait_entered();
+    let result = settings.cleanup(Duration::from_millis(1));
+    let retained = settings.base.is_dir();
+    gate.release();
+    if result.is_ok() {
+        // Dispose safely even when the old cleanup incorrectly claimed success.
+        crate::persistence::finish_ui_state_persistence_for_test(&other, Duration::from_secs(2))
+            .unwrap();
+        if settings.base.exists() {
+            fs::remove_dir_all(&settings.base).unwrap();
+        }
+        settings.cleaned = true;
+    } else {
+        settings.cleanup(Duration::from_secs(2)).unwrap();
+    }
+    assert_eq!(
+        result.unwrap_err(),
+        "test settings writer did not physically stop before deadline"
+    );
+    assert!(
+        retained,
+        "unconfirmed auxiliary writer must retain evidence"
+    );
+    assert!(!settings.base.exists());
 }
 
 #[test]
