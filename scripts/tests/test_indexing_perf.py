@@ -286,6 +286,22 @@ class ReceiptTests(unittest.TestCase):
             with self.assertRaises(contract.ValidationError):contract.validate_log(mutant,"matched")
 
 
+def synthetic_frame_diagnostics(row):
+    """Invented scalar projection for schema tests; no actual frame observation."""
+    total = row["frames"]
+    step = row["results_ready_ms"] / total
+    return {"policy":"bounded-scalars; state observed after frame; active-filter owner NOT_OBSERVED",
+            "limit":256, "total_frames":total, "truncated_frames":max(0, total-256),
+            "max_frame_start_gap_ms":step if total > 1 else 0,
+            "records":[{"frame":i+1, "started_ms":i*step, "ended_ms":(i+.5)*step,
+                        "observed_ms":(i+.5)*step, "active_filter_cursor":None,
+                        "active_tab":row["initial_state"]["active_tab"], "pending_request_id":None,
+                        "primary_request_id":row["request_id"], "ingested":0,
+                        "index_debt":True, "result_debt":False,
+                        "producer_data_end_ms":None, "producer_terminal_ms":None}
+                       for i in range(min(total,256))]}
+
+
 def control_log(group="f1"):
     """Project retained raw values into a deliberately synthetic current schema."""
     with gzip.open(ROOT / "docs/history/indexing-perf-2026-10-04/stale-full-extra-full.log.gz", "rt",encoding="utf-8") as stream:
@@ -314,6 +330,8 @@ def control_log(group="f1"):
                 row.update(pair=pair,position=position,order="AB" if pair%2 == 0 else "BA")
                 projected.append(row)
         for row in projected:
+            row.update(timed_fixture_scan_passes=0, fixture_scans_before_t0=1,
+                       frame_diagnostics=synthetic_frame_diagnostics(row))
             row["tabchain_input_policy"] = contract.FULL_POLICY
             if case == "T1-S2":
                 # Synthetic admission controls: project timings into the preceding
@@ -475,3 +493,38 @@ class IndexingContractTests(unittest.TestCase):
         contract.validate_log("\n".join(lines),"stable")
         row["full_candidate_evaluations"]+=1;lines[i]="INDEX_PERF_SAMPLE "+json.dumps(row)
         with self.assertRaises(contract.ValidationError):contract.validate_log("\n".join(lines),"stable")
+
+
+class ObserverContractTests(unittest.TestCase):
+    def test_rejects_missing_or_timed_fixture_preparation_and_incomplete_trace(self):
+        valid = control_log()
+        contract.validate_log(valid, "f1")
+        changes = [lambda r:r.pop("frame_diagnostics"),
+                   lambda r:r.update(timed_fixture_scan_passes=1),
+                   lambda r:r.update(fixture_scans_before_t0=0),
+                   lambda r:r["frame_diagnostics"].update(total_frames=True),
+                   lambda r:r["frame_diagnostics"].update(total_frames=r["frames"]+1),
+                   lambda r:r["frame_diagnostics"].update(limit=512),
+                   lambda r:r["frame_diagnostics"].update(truncated_frames=1),
+                   lambda r:r["frame_diagnostics"]["records"].pop(),
+                   lambda r:r["frame_diagnostics"]["records"][0].update(ended_ms=-1),
+                   lambda r:r["frame_diagnostics"]["records"][0].update(primary_request_id=0),
+                   lambda r:r["frame_diagnostics"]["records"][0].update(index_debt=1)]
+        for change in changes:
+            with self.subTest(change=change):
+                text = mutate_record(valid, "INDEX_PERF_SAMPLE", change)
+                with self.assertRaises(contract.ValidationError):
+                    contract.validate_log(text, "f1")
+
+    def test_truncated_trace_keeps_all_row_samples_and_declares_loss(self):
+        valid = control_log()
+        def longer(row):
+            row["frames"] = 300
+            row["frame_diagnostics"] = synthetic_frame_diagnostics(row)
+        text = mutate_record(valid, "INDEX_PERF_SAMPLE", longer)
+        admitted = contract.validate_log(text, "f1")
+        self.assertEqual(len(admitted["rows"]), 336)
+        self.assertEqual(admitted["rows"][0]["frame_diagnostics"]["truncated_frames"], 44)
+        text = mutate_record(text, "INDEX_PERF_SAMPLE",
+                             lambda r:r["frame_diagnostics"].update(truncated_frames=0))
+        with self.assertRaises(contract.ValidationError):contract.validate_log(text, "f1")

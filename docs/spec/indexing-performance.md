@@ -155,6 +155,8 @@
 - MUST: natural reclamation and deliberately blocked reclaimer tests are distinct. A controlled Full positive guard starts its settlement deadline only after consumer resumption; a frozen negative guard must fail. Failed refresh retaining an old snapshot cannot satisfy a new-generation membership oracle.
 - SHOULD: finite preview selection, internal follow-links, deep/wide Walker and explicit truncation provide supplementary profiles. Follow-links changes logical work, and truncation can have nondeterministic membership; require explicit counts/topology or valid subset/duplicate/reason checks rather than a false equal-work comparison.
 
+- MUST: TC-233 observer preparation scans fixed fixture membership once before t0 and never in the timed loop. Bounded frame diagnostics retain separate frame-end/state-observation timestamps, actual scalar identities, explicit truncation and all-frame maximum start gap; they neither alter endpoints/production frame budgets nor discard timing samples. Reference measurement harness changes require a new actual immutable source, documented unchanged production/build inputs and fresh calibration; prior outcomes remain bound to their original contracts.
+
 ## SP-021 候補収集の最大深度
 
 ### Requirements
