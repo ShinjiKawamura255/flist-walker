@@ -1,0 +1,374 @@
+{
+  "source": "f9cde6624e388bfcfab201a544fc64a007cc01c1",
+  "reference": "f1089f63be32cfe0b1d14d9f49ab1832bd287982",
+  "run": "37284416662",
+  "attempt": 1,
+  "calibration_adopted": false,
+  "numeric_enforcement_active": false,
+  "measurement_raw_sha256": {
+    "reference-before-measurement.log": "5c4354055a80317dc599a86d195ceb2bc54c887c8fb96b192954aaabc8e27c13",
+    "measurement.log": "45fdde7e9aea27de24142c26e83703e9dd67c712eeeba022f164cea73d27ee37",
+    "reference-after-measurement.log": "92a43810581f7536dab6e4b9a6279bffbcf4eb174bcd97f7d5b8c536b55a6969"
+  },
+  "f1_rows_checked": 1008,
+  "timed_fixture_scans": 0,
+  "observations": [
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "reference-before",
+      "all_21_t2_samples_ms": [
+        355.923666,
+        323.585027,
+        339.057399,
+        322.636939,
+        419.524446,
+        322.997251,
+        307.091036,
+        323.461561,
+        291.386261,
+        371.25665000000004,
+        306.84540300000003,
+        322.97391600000003,
+        339.351919,
+        291.172933,
+        307.442311,
+        290.435789,
+        339.643378,
+        322.100249,
+        371.642138,
+        306.76693500000005,
+        338.997257
+      ],
+      "median_sample": {
+        "pair": 5,
+        "t2_ms": 322.997251,
+        "t3_ms": 322.997251,
+        "data_publish_end_ms": 203.674442,
+        "full_wait_ms": 97.627117,
+        "frames": 21,
+        "ingested_at_first_observed_producer_completion": 87144,
+        "frame_start_gap_max_ms": 16.126927,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 4,
+        "t2_ms": 419.524446,
+        "t3_ms": 419.524446,
+        "data_publish_end_ms": 203.933724,
+        "full_wait_ms": 92.312584,
+        "frames": 27,
+        "ingested_at_first_observed_producer_completion": 74882,
+        "frame_start_gap_max_ms": 16.126449,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "reference-before",
+      "all_21_t2_samples_ms": [
+        403.266775,
+        387.107716,
+        467.738312,
+        420.094718,
+        403.41694900000005,
+        516.2869169999999,
+        371.202834,
+        419.169332,
+        403.10969600000004,
+        386.603997,
+        354.932421,
+        370.800148,
+        339.282886,
+        355.831048,
+        370.553935,
+        355.016027,
+        355.524228,
+        419.338774,
+        371.390106,
+        338.85046600000004,
+        371.393684
+      ],
+      "median_sample": {
+        "pair": 20,
+        "t2_ms": 371.393684,
+        "t3_ms": 371.393684,
+        "data_publish_end_ms": 251.59608599999999,
+        "full_wait_ms": 103.955224,
+        "frames": 24,
+        "ingested_at_first_observed_producer_completion": 86264,
+        "frame_start_gap_max_ms": 16.115332,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 5,
+        "t2_ms": 516.2869169999999,
+        "t3_ms": 516.2869169999999,
+        "data_publish_end_ms": 271.986972,
+        "full_wait_ms": 85.621977,
+        "frames": 33,
+        "ingested_at_first_observed_producer_completion": 70336,
+        "frame_start_gap_max_ms": 16.161399,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "candidate",
+      "all_21_t2_samples_ms": [
+        322.729529,
+        339.46664100000004,
+        339.218858,
+        387.469784,
+        370.91819599999997,
+        354.773868,
+        370.94581900000003,
+        258.743185,
+        291.00588,
+        274.891706,
+        354.88782299999997,
+        290.753381,
+        274.01930899999996,
+        338.37714,
+        273.8601,
+        402.432135,
+        290.34986000000004,
+        354.71784699999995,
+        339.169402,
+        339.362139,
+        290.473659
+      ],
+      "median_sample": {
+        "pair": 18,
+        "t2_ms": 339.169402,
+        "t3_ms": 339.169402,
+        "data_publish_end_ms": 204.26846600000002,
+        "full_wait_ms": 104.933442,
+        "frames": 22,
+        "ingested_at_first_observed_producer_completion": 83935,
+        "frame_start_gap_max_ms": 16.108539,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 15,
+        "t2_ms": 402.432135,
+        "t3_ms": 402.432135,
+        "data_publish_end_ms": 203.632093,
+        "full_wait_ms": 99.64750699999999,
+        "frames": 26,
+        "ingested_at_first_observed_producer_completion": 77410,
+        "frame_start_gap_max_ms": 16.103484,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "candidate",
+      "all_21_t2_samples_ms": [
+        326.19078099999996,
+        355.082136,
+        419.077134,
+        323.095416,
+        338.69264999999996,
+        387.02513700000003,
+        322.90436300000005,
+        339.005161,
+        290.62216,
+        306.38158300000003,
+        322.376755,
+        305.86956100000003,
+        339.079123,
+        338.33270799999997,
+        516.706794,
+        370.983904,
+        386.794664,
+        355.557376,
+        355.49807,
+        386.933965,
+        354.999332
+      ],
+      "median_sample": {
+        "pair": 12,
+        "t2_ms": 339.079123,
+        "t3_ms": 339.079123,
+        "data_publish_end_ms": 249.832753,
+        "full_wait_ms": 114.464798,
+        "frames": 22,
+        "ingested_at_first_observed_producer_completion": 90287,
+        "frame_start_gap_max_ms": 16.082247000000002,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 14,
+        "t2_ms": 516.706794,
+        "t3_ms": 516.706794,
+        "data_publish_end_ms": 301.337065,
+        "full_wait_ms": 70.513262,
+        "frames": 33,
+        "ingested_at_first_observed_producer_completion": 73702,
+        "frame_start_gap_max_ms": 16.237030999999998,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    },
+    {
+      "case": "F1-ignore-list",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "reference-after",
+      "all_21_t2_samples_ms": [
+        500.96241,
+        306.663406,
+        274.197612,
+        258.059053,
+        242.146904,
+        258.040002,
+        258.974168,
+        241.88386500000001,
+        242.51864,
+        306.156514,
+        258.138975,
+        291.100622,
+        526.986631,
+        355.355889,
+        242.438367,
+        274.77464000000003,
+        274.07115,
+        338.816405,
+        290.50147300000003,
+        306.094241,
+        386.809364
+      ],
+      "median_sample": {
+        "pair": 15,
+        "t2_ms": 274.77464000000003,
+        "t3_ms": 274.77464000000003,
+        "data_publish_end_ms": 202.907538,
+        "full_wait_ms": 111.26823900000001,
+        "frames": 18,
+        "ingested_at_first_observed_producer_completion": 92219,
+        "frame_start_gap_max_ms": 16.08202,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 12,
+        "t2_ms": 526.986631,
+        "t3_ms": 526.986631,
+        "data_publish_end_ms": 272.62746500000003,
+        "full_wait_ms": 45.886494,
+        "frames": 33,
+        "ingested_at_first_observed_producer_completion": 71007,
+        "frame_start_gap_max_ms": 16.560988,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    },
+    {
+      "case": "F1-mid-ignore",
+      "source": "FileList",
+      "arm": "condition",
+      "role": "reference-after",
+      "all_21_t2_samples_ms": [
+        564.6570250000001,
+        339.091067,
+        323.37251,
+        323.007288,
+        355.02826,
+        354.922438,
+        403.183613,
+        354.27267,
+        338.59293299999996,
+        498.889945,
+        338.388294,
+        338.96695700000004,
+        338.9967,
+        338.471075,
+        371.224155,
+        354.42557000000005,
+        450.833445,
+        581.640258,
+        323.033858,
+        338.34628100000003,
+        371.15831399999996
+      ],
+      "median_sample": {
+        "pair": 7,
+        "t2_ms": 354.27267,
+        "t3_ms": 354.27267,
+        "data_publish_end_ms": 250.738063,
+        "full_wait_ms": 113.480751,
+        "frames": 23,
+        "ingested_at_first_observed_producer_completion": 89409,
+        "frame_start_gap_max_ms": 16.078024,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      },
+      "maximum_sample": {
+        "pair": 17,
+        "t2_ms": 581.640258,
+        "t3_ms": 581.640258,
+        "data_publish_end_ms": 324.010373,
+        "full_wait_ms": 110.773323,
+        "frames": 37,
+        "ingested_at_first_observed_producer_completion": 66280,
+        "frame_start_gap_max_ms": 16.369251000000002,
+        "truncated_frames": 0,
+        "active_filter_cursors": [
+          null
+        ],
+        "result_debt_observed": false
+      }
+    }
+  ],
+  "independent_assessor": "/root/calibration_feasibility (read-only; no implementation or external actions)",
+  "assessment": "No observer defect established. Observed variable intake before producer completion leaves different outstanding entries; subsequent2048/frame bounded drain amplifies completion variation. CPU scheduling/allocator/path/filter/IO causes remain unmeasured. CursorNone/result-debtfalse do not establish absence of filter CPU work. Fullwait decreases in the IgnoreList R2 peak, unlike prior matched failure; do not reuse that causal explanation. No sample exclusion, unchanged retry, newpolicy adoption, freeze or activation.",
+  "unexecuted": "held-outs4/5, numeric activation, overallFINAL, merge/closure"
+}
