@@ -3582,7 +3582,7 @@ fn tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver() {
     ) {
         return;
     }
-    let fixture = ExtendedFixture::new(16_384, super::fixture::Shape::FlatMixed);
+    let fixture = ExtendedFixture::new(65_536, super::fixture::Shape::FlatMixed);
     for (profile, source) in [
         (Profile::Files, Source::Walker),
         (Profile::Folders, Source::Walker),
@@ -3603,10 +3603,12 @@ fn tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver() {
                 })
                 .count();
             assert_eq!(row["expected_final_logical_entries"], expected);
-            assert!(
-                row["frames"].as_u64().unwrap() > 1,
-                "exercise repeated actual frames"
-            );
+            if profile == Profile::Files {
+                // More file candidates than the32,768-entry production intake
+                // limit guarantee multiple frames independently of host speed.
+                assert!(expected > 32_768);
+                assert!(row["frames"].as_u64().unwrap() > 1);
+            }
             assert_eq!(
                 row["timed_fixture_scan_passes"], 0,
                 "immutable fixture scans must precede t0"
@@ -3625,15 +3627,8 @@ fn tc_233_actual_driver_records_bounded_frame_progress_without_changing_endpoint
     ) {
         return;
     }
-    let fixture = ExtendedFixture::new(16_384, super::fixture::Shape::FlatMixed);
-    let row = run(
-        &fixture,
-        &[],
-        Profile::IgnoreCase,
-        Source::FileList,
-        false,
-        false,
-    );
+    let fixture = ExtendedFixture::new(65_536, super::fixture::Shape::FlatMixed);
+    let row = run(&fixture, &[], Profile::Files, Source::Walker, false, false);
     let trace = &row["frame_diagnostics"];
     assert_eq!(
         trace["limit"], 256,
