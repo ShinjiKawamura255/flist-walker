@@ -1,0 +1,99 @@
+{
+  "source": "83aa173deeb16308c838606313131843247f566c",
+  "reference": "5ab325136bbca4d5a94d541b708f2e07c1eb1255",
+  "run": "37330978548",
+  "attempt": 1,
+  "whole_workflow": "SUCCESS",
+  "calibration_adopted": false,
+  "enforcement_active": false,
+  "raw_rows": 1386,
+  "observations": 136,
+  "enforced_medians": 68,
+  "maximum_diagnostics": 68,
+  "mandatory_pass": 66,
+  "mandatory_indeterminate": 2,
+  "all_candidate_medians_within_limit": true,
+  "unique_components": 9,
+  "resources": [
+    {
+      "group": "f1",
+      "shared_build_seconds": 506.004710862,
+      "shared_measurement_seconds": 1621.4601144609999,
+      "job_seconds": 2150.0
+    },
+    {
+      "group": "matched",
+      "shared_build_seconds": 497.763430814,
+      "shared_measurement_seconds": 367.881908397,
+      "job_seconds": 886.0
+    },
+    {
+      "group": "stable",
+      "shared_build_seconds": 707.5195437569998,
+      "shared_measurement_seconds": 1276.6099410390002,
+      "job_seconds": 2013.0
+    }
+  ],
+  "rejected": [
+    {
+      "case": "S1-ignore",
+      "source": "FileList",
+      "arm": "control",
+      "endpoint": "index_ready_ms",
+      "statistic": "median",
+      "enforced": true,
+      "meaning": "sustained",
+      "reference_before": 371.682775,
+      "candidate": 274.569482,
+      "reference_after": 290.933025,
+      "reference_median_before": 371.682775,
+      "reference_median_after": 290.933025,
+      "reference_max_before": 514.427681,
+      "reference_max_after": 322.158895,
+      "denominator": 371.682775,
+      "denominator_statistic": "median",
+      "candidate_ratio": 0.7387199527876964,
+      "candidate_exceeds_limit": false,
+      "reference_drift_ratio": 1.2775544302679285,
+      "reference_median_drift_ratio": 1.2775544302679285,
+      "reference_tail_ratio": 1.3840503666063084,
+      "reference_admission_reasons": [
+        "reference-median-drift"
+      ],
+      "limit_ms": 557.5241625,
+      "status": "indeterminate"
+    },
+    {
+      "case": "S1-ignore",
+      "source": "FileList",
+      "arm": "control",
+      "endpoint": "results_ready_ms",
+      "statistic": "median",
+      "enforced": true,
+      "meaning": "sustained",
+      "reference_before": 371.682775,
+      "candidate": 274.569482,
+      "reference_after": 290.933025,
+      "reference_median_before": 371.682775,
+      "reference_median_after": 290.933025,
+      "reference_max_before": 514.427681,
+      "reference_max_after": 322.158895,
+      "denominator": 371.682775,
+      "denominator_statistic": "median",
+      "candidate_ratio": 0.7387199527876964,
+      "candidate_exceeds_limit": false,
+      "reference_drift_ratio": 1.2775544302679285,
+      "reference_median_drift_ratio": 1.2775544302679285,
+      "reference_tail_ratio": 1.3840503666063084,
+      "reference_admission_reasons": [
+        "reference-median-drift"
+      ],
+      "limit_ms": 557.5241625,
+      "status": "indeterminate"
+    }
+  ],
+  "sessions2_5": "NOT RUN",
+  "freeze": "NOT RUN",
+  "source_cli_replay": "PASS preserving original indeterminate",
+  "interpretation": "Valid measurements and successful inactive collection do not establish numeric calibration."
+}

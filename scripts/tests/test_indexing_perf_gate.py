@@ -72,7 +72,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
         self.assertEqual(gate.REFERENCE, "5ab325136bbca4d5a94d541b708f2e07c1eb1255")
-        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-21-observer-v5")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v6")
 
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):
         with tempfile.TemporaryDirectory() as name:
@@ -90,7 +90,7 @@ class GateTests(unittest.TestCase):
             self.assertIn("timing-fail", run.stdout + run.stderr)
 
     def test_repaired_group_cadence_is_fixed_in_child_environment(self):
-        for group, pairs in (("f1", 21), ("matched", 7), ("stable", 7)):
+        for group, pairs in (("f1", 21), ("matched", 21), ("stable", 7)):
             with self.subTest(group=group):
                 env = collector.child_environment({}, group, Path("synthetic-fixture"))
                 self.assertEqual(env["FW_INDEX_PERF_EXTRA_PAIRS"], str(pairs))
@@ -127,6 +127,51 @@ class GateTests(unittest.TestCase):
                                 if d["statistic"] == "median"))
             self.assertTrue(any(d["status"] == "diagnostic" and not d["enforced"] and d["candidate_exceeds_limit"] and d["meaning"] == "tail"
                                 for d in report["decisions"]))
+
+    def test_matched_later_fourteen_pairs_affect_completion_medians(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            def slow(row):
+                if row["pair"] >= 7:
+                    row["index_ready_ms"] *= 3
+                    row["results_ready_ms"] *= 3
+            write_fixture(folder, "matched", change=slow)
+            collector.load_run(folder, "matched")
+            report = gate.load_comparison(folder, "matched")
+            self.assertEqual(report["status"], "timing-fail")
+            self.assertTrue(all(d["status"] == "timing-fail" for d in report["decisions"]
+                                if d["enforced"]))
+            self.assertEqual((report["enforced_count"], report["diagnostic_count"]), (12, 12))
+
+    def test_matched_twenty_first_pair_retained_in_all_roles_without_median_failure(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            def tail(row):
+                if row["pair"] == 20:
+                    row["index_ready_ms"] *= 100
+                    row["results_ready_ms"] *= 100
+            write_fixture(folder, "matched", change=tail)
+            collector.load_run(folder, "matched")
+            report = gate.load_comparison(folder, "matched")
+            self.assertEqual(report["status"], "pass")
+            self.assertTrue(any(not d["enforced"] and d["candidate_exceeds_limit"]
+                                and d["status"] == "diagnostic" for d in report["decisions"]))
+            for role in gate.ROLES:
+                for cell in report["cells"][role]:
+                    for endpoint in ("index_ready_ms", "results_ready_ms"):
+                        for arm in ("control", "condition"):
+                            self.assertEqual(len(cell["phases"][endpoint][arm]), 21)
+
+    def test_old_v5_protocol_rejected_even_with_current_matched_cadence(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            root = write_fixture(folder, "matched")
+            collector.load_run(folder, "matched")
+            root["comparison"]["protocol"] = "same-job-RCR-f1-21-observer-v5"
+            (folder / "receipt.json").unlink()
+            collector.write_json(folder / "receipt.json", root)
+            with self.assertRaises(contract.ValidationError):
+                gate.load_comparison(folder, "matched")
 
     def sessions(self, folder, group):
         root = write_fixture(folder, group)
@@ -284,7 +329,7 @@ class GateTests(unittest.TestCase):
             self.assertTrue(any(d["status"] == "indeterminate" and d["candidate_exceeds_limit"]
                                 for d in report["decisions"]))
 
-    def test_v4_and_v3_protocols_and_policies_cannot_be_relabelled_as_v5(self):
+    def test_v4_and_v3_protocols_and_policies_cannot_be_relabelled_as_v6(self):
         with tempfile.TemporaryDirectory() as name:
             folder = Path(name)
             root = write_fixture(folder)

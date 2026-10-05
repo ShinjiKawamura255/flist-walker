@@ -1,0 +1,48 @@
+{
+  "original_contract_roundtrip_replay": "PASS",
+  "source": "83aa173deeb16308c838606313131843247f566c",
+  "archive_sha256": "d0728ab1f3f143ff307c532fdc1ed4fb20379f012e8b7f1a930b3d9db521c287",
+  "results": [
+    {
+      "session": 1,
+      "run": "37330978548",
+      "group": "f1",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 64,
+      "enforced_count": 32,
+      "diagnostic_count": 32
+    },
+    {
+      "session": 1,
+      "run": "37330978548",
+      "group": "matched",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 1,
+      "proposal_status": "indeterminate",
+      "decision_count": 24,
+      "enforced_count": 12,
+      "diagnostic_count": 12
+    },
+    {
+      "session": 1,
+      "run": "37330978548",
+      "group": "stable",
+      "validate_exit": 0,
+      "validation_status": "comparison-calibration",
+      "proposal_exit": 0,
+      "proposal_status": "pass",
+      "decision_count": 48,
+      "enforced_count": 24,
+      "diagnostic_count": 24
+    }
+  ],
+  "raw_rows": 1386,
+  "component_sessions": 9,
+  "sessions2_5": "NOT RUN",
+  "calibration_adopted": false,
+  "enforcement_active": false
+}

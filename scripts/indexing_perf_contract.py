@@ -165,7 +165,7 @@ GROUPS = {
     "matched": ("S1-ignore", "S2-files"),
     "stable": ("T1-S1-selective", "T1-S1-dense", "T1-S2"),
 }
-PAIR_COUNTS = {"f1": 21, "matched": 7, "stable": 7}
+PAIR_COUNTS = {"f1": 21, "matched": 21, "stable": 7}
 FULL_POLICY = "observed-completion (data-end/Finished-offer/publication) waits for own committed snapshot before eviction; t0-included production frames; final unobserved publication/removal race remains strict failure"
 STABLE_EDIT_INPUT_POLICY = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing"
 PHASES = ("data_publish_end_ms", "terminal_publish_ms", "index_ready_ms", "results_ready_ms", "full_wait_ms", "max_frame_ms", "max_ingest_gap_ms", "max_no_work_progress_ms", "driver_overhead_ms")
