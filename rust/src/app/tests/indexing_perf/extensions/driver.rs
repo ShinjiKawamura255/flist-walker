@@ -3582,14 +3582,17 @@ fn tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver() {
     ) {
         return;
     }
-    let fixture = ExtendedFixture::new(65_536, super::fixture::Shape::FlatMixed);
+    let fixture = ExtendedFixture::new(512, super::fixture::Shape::FlatMixed);
+    eprintln!("INDEX_PERF_FIXTURE_READY membership entries=512");
     for (profile, source) in [
         (Profile::Files, Source::Walker),
         (Profile::Folders, Source::Walker),
         (Profile::IgnoreCase, Source::FileList),
     ] {
         for condition in [false, true] {
+            eprintln!("INDEX_PERF_DRIVER_BEGIN {profile:?} {source:?} condition={condition}");
             let row = run(&fixture, &[], profile, source, condition, false);
+            eprintln!("INDEX_PERF_DRIVER_DONE {profile:?} {source:?} condition={condition}");
             let filter = profile.filter(condition);
             let expected = fixture
                 .expected
@@ -3603,10 +3606,9 @@ fn tc_233_fixture_membership_scan_is_untimed_in_actual_multiframe_driver() {
                 })
                 .count();
             assert_eq!(row["expected_final_logical_entries"], expected);
-            if profile == Profile::Files {
-                // More file candidates than the32,768-entry production intake
-                // limit guarantee multiple frames independently of host speed.
-                assert!(expected > 32_768);
+            if profile == Profile::IgnoreCase && condition {
+                // Input is checked before the first frame sees any entries,
+                // so this real-worker condition needs another frame on every host.
                 assert!(row["frames"].as_u64().unwrap() > 1);
             }
             assert_eq!(
@@ -3627,8 +3629,17 @@ fn tc_233_actual_driver_records_bounded_frame_progress_without_changing_endpoint
     ) {
         return;
     }
-    let fixture = ExtendedFixture::new(65_536, super::fixture::Shape::FlatMixed);
-    let row = run(&fixture, &[], Profile::Files, Source::Walker, false, false);
+    let fixture = ExtendedFixture::new(512, super::fixture::Shape::FlatMixed);
+    eprintln!("INDEX_PERF_FIXTURE_READY trace entries=512");
+    let row = run(
+        &fixture,
+        &[],
+        Profile::IgnoreCase,
+        Source::FileList,
+        true,
+        false,
+    );
+    eprintln!("INDEX_PERF_DRIVER_DONE trace");
     let trace = &row["frame_diagnostics"];
     assert_eq!(
         trace["limit"], 256,

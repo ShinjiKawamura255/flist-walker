@@ -1,0 +1,89 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "observer-v3-premeasurement-ci-original-artifacts.tar.gz",
+  "archive_sha256": "0ada653670652ee9801c36eec23574cdc2d095d24493862b6a185b32fadc53e2",
+  "files": [
+    {
+      "path": "core-pr-checks.json",
+      "bytes": 4437,
+      "sha256": "71ab3241741940ccd9e140c2d834005af50809e0e3ebd543e54c44a5d878af60"
+    },
+    {
+      "path": "previous-rejection.json",
+      "bytes": 452,
+      "sha256": "faa59f138cdcba4578593de15c2fb1934e33e0810a9d1f18e7263966bd24d839"
+    },
+    {
+      "path": "protocol-before-outcomes.json",
+      "bytes": 2980,
+      "sha256": "518dd9f3709e68244ddf0d8d1e55e6c6bc204e9dda1f8001d37704c0e2eaf070"
+    },
+    {
+      "path": "source-ci-attempt1-final.json",
+      "bytes": 16270,
+      "sha256": "b37fa715f443ba5e098ce050ac0c4b9b71d358e734c4b07005031f27bb8b833e"
+    },
+    {
+      "path": "source-ci-attempt1-latest.json",
+      "bytes": 24747,
+      "sha256": "0b1ce6801781f497cdf9e63a5403921a01723e82305a6f91d1271ddb04b677f7"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf_contract.py",
+      "bytes": 42148,
+      "sha256": "051a6ad1dc84d3b9370ee4628dad92d0f1a2427f0e798cb91a380e1c55f43a6e"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf_gate.py",
+      "bytes": 14052,
+      "sha256": "265a73349ecf69cbe5e36fb735677b33e92fbcc4bd60b75f2512be9b15749ff9"
+    },
+    {
+      "path": "source-contract-identity.json",
+      "bytes": 749,
+      "sha256": "4e8f501d49fbb5f000812b752d821b3c080bad2619d13a38c0cf0ae2cf5b5229"
+    },
+    {
+      "path": "stopped.json",
+      "bytes": 201,
+      "sha256": "e7ee1828a7d6a118e57c26e4f9fdcc787787e0038af8d577519969a621b13817"
+    },
+    {
+      "path": "tooling-support/campaign-protocol-observer-v3.json",
+      "bytes": 2980,
+      "sha256": "518dd9f3709e68244ddf0d8d1e55e6c6bc204e9dda1f8001d37704c0e2eaf070"
+    },
+    {
+      "path": "tooling-support/campaign_runner_observer_v3.py",
+      "bytes": 9085,
+      "sha256": "594ff66bbb52575590eaa185d3bec5b3ed2f2d305ff7dc0ca9cf27a167b9264b"
+    },
+    {
+      "path": "tooling-support/observer-pinning-checkpoint.json",
+      "bytes": 4775,
+      "sha256": "c8facf76af830f74595c68e8dbac852d27e04fb810a7964687c6da96a4b4d645"
+    },
+    {
+      "path": "tooling-support/observer-repair-before-review.md",
+      "bytes": 1534,
+      "sha256": "69f9052c60a8e1c019842462c6035c1d0fa415d031958b9367aedd4d994039ef"
+    },
+    {
+      "path": "tooling-support/observer-v3-aggregate-validation-plan.txt",
+      "bytes": 2197,
+      "sha256": "b591405719e54ad79935146fa92d93e8ae8767cc767211a7f685859785792d0a"
+    },
+    {
+      "path": "tooling-support/observer-v3-source-ci-failed.log",
+      "bytes": 336867,
+      "sha256": "047e0ed71ef54ea2474bf4011f287c0174d6b56b3423e7cd9cd1de7ec5edc3f4"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
