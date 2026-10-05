@@ -433,14 +433,14 @@ class IndexingContractTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
 
     def test_complete_priority_controls_and_phase_summaries(self):
-        for group, count, cells in [("f1",336,8),("matched",42,3),("stable",84,6)]:
+        for group, count, cells in [("f1",336,8),("matched",126,3),("stable",84,6)]:
             with self.subTest(group=group):
                 result=contract.validate_log(control_log(group),group)
                 self.assertEqual(len(result["rows"]),count)
                 self.assertEqual(len(contract.summarize_rows(result["rows"])),cells)
 
     def test_group_cadence_rejects_wrong_pair_count_before_row_admission(self):
-        for group, wrong in (("f1",7),("matched",21),("stable",21)):
+        for group, wrong in (("f1",7),("matched",7),("stable",21)):
             with self.subTest(group=group):
                 def mismatch(meta):
                     meta.update(pairs=wrong, expected_rows=2*wrong*len(contract.cells_for(group)))
