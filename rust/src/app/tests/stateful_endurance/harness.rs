@@ -392,6 +392,18 @@ impl StatefulHarness {
             // removes their submitted IDs. Duplicate IDs remain one owner, and
             // unrelated in-flight routes do not acquire ownership here.
             let indexing = &self.app.shell.indexing;
+            // complete_frame retries a retained active finish even when the
+            // newly submitted response belongs to another request. Attribute
+            // only the matching live request route, never every active tab.
+            if let (Some(finish), Some(active_id)) =
+                (&indexing.pending_finish, self.app.current_tab_id())
+            {
+                if indexing.pending_request_id == Some(finish.request_id)
+                    && indexing.request_tabs.get(&finish.request_id) == Some(&active_id)
+                {
+                    owners.insert(active_id);
+                }
+            }
             // prepare_frame retries retained work before reading the new
             // response. Attribute the exact pending finish, not every route.
             if let Some(tab) = self
@@ -1354,6 +1366,160 @@ mod tests {
             .unwrap()
             .is_empty());
         harness.cleanup();
+    }
+
+    #[test]
+    fn tc_184_retained_active_finish_retry_has_exact_owner_and_preserves_isolation() {
+        let mut harness = StatefulHarness::new("endurance-retained-active-finish-owner");
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        let active_id = harness.app.current_tab_id().unwrap();
+        let unrelated_id = harness.app.shell.tabs.get(0).unwrap().id;
+        let request_id = 42;
+        harness.app.shell.tabs.pause_resource_reclaimer();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            for _ in 0..crate::app::tab_resources::TAB_RESOURCE_RECLAIMER_CAPACITY {
+                let mut retired = crate::app::tab_resources::RetiredIndexBuildResources::empty();
+                retired.set_stale_index_entries(vec![IndexEntry {
+                    path: harness.roots[0].join("retired"),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }]);
+                assert!(harness
+                    .app
+                    .shell
+                    .tabs
+                    .try_retire_index_build_resources(retired)
+                    .is_ok());
+            }
+            harness.app.shell.indexing.pending_queue.clear();
+            harness.app.shell.indexing.request_tabs.clear();
+            harness
+                .app
+                .shell
+                .indexing
+                .request_tabs
+                .insert(request_id, active_id);
+            harness.app.shell.indexing.pending_request_id = Some(request_id);
+            harness.app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+                request_id,
+                source: IndexSource::Walker,
+            });
+            harness
+                .app
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries = Vec::with_capacity(1);
+            harness.app.shell.runtime.include_files = true;
+            harness.app.shell.runtime.include_dirs = true;
+            harness.app.shell.ui.ignore_list_enabled = false;
+            harness
+                .app
+                .set_notice("Waiting for background tab resource reclamation");
+            let event = Event::DeliverStaleIndex;
+            let owners = harness.response_owners(&event).unwrap();
+            let before = harness.snapshot();
+            let scratch_pointer = harness
+                .app
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .as_ptr();
+            let scratch_capacity = harness
+                .app
+                .shell
+                .indexing
+                .build
+                .incremental_filtered_entries
+                .capacity();
+            harness.poll_index_responses_and_track_consumption();
+            let after = harness.snapshot();
+            assert_eq!(
+                harness
+                    .app
+                    .shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .as_ptr(),
+                scratch_pointer
+            );
+            assert_eq!(
+                harness
+                    .app
+                    .shell
+                    .indexing
+                    .build
+                    .incremental_filtered_entries
+                    .capacity(),
+                scratch_capacity
+            );
+            let active = after.tabs.iter().find(|tab| tab.id == active_id).unwrap();
+            assert_eq!(
+                active.notice,
+                "Waiting for background index scratch reclamation"
+            );
+            assert!(active.reclaim_pending && active.index_finalization_pending);
+            harness.assert_other_tab_content_unchanged(&before, &after, &owners, 0x184e, 1, &event);
+            assert_eq!(owners, HashSet::from([active_id]));
+            let mut mutated = after.clone();
+            mutated
+                .tabs
+                .iter_mut()
+                .find(|tab| tab.id == unrelated_id)
+                .unwrap()
+                .results_digest += 1;
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                harness.assert_other_tab_content_unchanged(
+                    &before, &mutated, &owners, 0x184e, 1, &event,
+                );
+            }))
+            .is_err());
+            let mut mutated = after.clone();
+            mutated
+                .tabs
+                .iter_mut()
+                .find(|tab| tab.id == unrelated_id)
+                .unwrap()
+                .notice = "Waiting for background index scratch reclamation".to_string();
+            assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                harness.assert_other_tab_content_unchanged(
+                    &before, &mutated, &owners, 0x184e, 1, &event,
+                );
+            }))
+            .is_err());
+            harness.app.shell.indexing.pending_request_id = Some(request_id + 1);
+            assert!(harness.response_owners(&event).unwrap().is_empty());
+            harness.app.shell.indexing.pending_request_id = Some(request_id);
+            harness
+                .app
+                .shell
+                .indexing
+                .request_tabs
+                .insert(request_id, unrelated_id);
+            assert!(harness.response_owners(&event).unwrap().is_empty());
+            harness.app.shell.indexing.request_tabs.remove(&request_id);
+            assert!(harness.response_owners(&event).unwrap().is_empty());
+            harness
+                .app
+                .shell
+                .indexing
+                .request_tabs
+                .insert(request_id, active_id);
+            harness.app.shell.indexing.pending_finish = None;
+            assert!(harness.response_owners(&event).unwrap().is_empty());
+        }));
+        // Restore the test reclaimer even when an assertion fails before teardown.
+        harness.app.shell.tabs.resume_resource_reclaimer();
+        harness.app.shell.indexing.pending_finish = None;
+        harness.app.shell.indexing.pending_request_id = None;
+        harness.app.shell.indexing.request_tabs.remove(&request_id);
+        harness.cleanup();
+        if let Err(error) = result {
+            std::panic::resume_unwind(error);
+        }
     }
 
     fn snapshot(index_pending: bool, notice: &str) -> TabSemanticSnapshot {
