@@ -62,7 +62,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
         legs[role] = {"raw": raw_name, "receipt": receipt_name,
                       "receipt_sha256": collector.sha(folder / receipt_name)}
     root = json.loads((folder / "candidate-receipt.log").read_text())
-    root["comparison"] = {"protocol": "same-job-RCR-v1", "reference_revision": REFERENCE,
+    root["comparison"] = {"protocol": "same-job-RCR-f1-21-v2", "reference_revision": REFERENCE,
                           "enforced": enforced, "policy": POLICY, "legs": legs,
                           "fixture_provenance": "synthetic-validator-control"}
     collector.write_json(folder / "receipt.json", root)
@@ -84,6 +84,45 @@ class GateTests(unittest.TestCase):
                                  capture_output=True, text=True, timeout=20)
             self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
             self.assertIn("timing-fail", run.stdout + run.stderr)
+
+    def test_repaired_group_cadence_is_fixed_in_child_environment(self):
+        for group, pairs in (("f1", 21), ("matched", 7), ("stable", 7)):
+            with self.subTest(group=group):
+                env = collector.child_environment({}, group, Path("synthetic-fixture"))
+                self.assertEqual(env["FW_INDEX_PERF_EXTRA_PAIRS"], str(pairs))
+
+    def test_f1_later_fourteen_pairs_affect_completion_median_and_maximum(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            def slow(row):
+                if row["pair"] >= 7:
+                    row["index_ready_ms"] *= 3
+                    row["results_ready_ms"] *= 3
+            write_fixture(folder, change=slow)
+            collector.load_run(folder, "f1")
+            report = gate.load_comparison(folder, "f1")
+            self.assertEqual(report["status"], "timing-fail")
+            self.assertTrue(any(d["status"] == "timing-fail" and d["statistic"] == "median"
+                                for d in report["decisions"]))
+            self.assertTrue(any(d["status"] == "timing-fail" and d["statistic"] == "max"
+                                for d in report["decisions"]))
+            for cell in report["cells"]["candidate"]:
+                self.assertEqual(len(cell["phases"]["index_ready_ms"]["control"]), 21)
+
+    def test_f1_twenty_first_pair_is_in_maximum_without_becoming_sustained_failure(self):
+        with tempfile.TemporaryDirectory() as name:
+            def tail(row):
+                if row["pair"] == 20:
+                    row["index_ready_ms"] *= 100
+                    row["results_ready_ms"] *= 100
+            write_fixture(Path(name), change=tail)
+            collector.load_run(name, "f1")
+            report = gate.load_comparison(name, "f1")
+            self.assertEqual(report["status"], "timing-fail")
+            self.assertTrue(all(d["status"] == "pass" for d in report["decisions"]
+                                if d["statistic"] == "median"))
+            self.assertTrue(any(d["status"] == "timing-fail" and d["meaning"] == "tail"
+                                for d in report["decisions"]))
 
     def sessions(self, folder, group):
         root = write_fixture(folder, group)

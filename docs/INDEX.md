@@ -32,6 +32,7 @@ This is the canonical map of FlistWalker documentation. Start from the question 
 | How do CI, machine PRs, pins, and canaries operate? | [CI_OPERATIONS.md](CI_OPERATIONS.md) |
 | How are overlapping indexing performance measurements run? | [Indexing Contention](testplan/indexing-contention.md) |
 | Where are the retained hosted indexing measurements and their limits? | [Hosted indexing observations](history/indexing-perf-hosted-2026-10-05.md) |
+| How is the same-run indexing speed comparison calibrated? | [Speed comparison calibration](history/indexing-speed-gate-2026-10-05.md) |
 | What evidence supports past CI rollouts and timing changes? | [CI rollout history](history/ci-rollouts.md) |
 | What evidence exists for a previous release? | [releases/INDEX.md](releases/INDEX.md) |
 | What native GUI residual evidence exists outside a release record? | [gui-test-results/2026-08-20-native-residuals.md](gui-test-results/2026-08-20-native-residuals.md) |
