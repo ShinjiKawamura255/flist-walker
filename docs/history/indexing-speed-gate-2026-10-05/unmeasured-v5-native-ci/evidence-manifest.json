@@ -1,0 +1,219 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "051da99d22d80ee128e8bb49675d760459f13401e60b215a1e6bf4a7321d312d",
+  "files": [
+    {
+      "path": "controller-controls-green-complete-fixture.log",
+      "bytes": 103,
+      "sha256": "5124818e1486cf22cccb6116116f20e914e4541ce9ae65cbaaf2bc911a37003d"
+    },
+    {
+      "path": "controller-controls-red-complete-fixture.log",
+      "bytes": 3872,
+      "sha256": "dc83cde9a543c51bd93d87549ee6a062ed1cfdf340568a042371b56cd5c8f0ea"
+    },
+    {
+      "path": "controller-initial-review.md",
+      "bytes": 492,
+      "sha256": "73a437b2d4a7db833797212acc84c6150c0707e2ecb8fd1d2a43c94c52f632c8"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/campaign-protocol-sustained-v5.json",
+      "bytes": 3664,
+      "sha256": "b7e0e802bef731946abd223ea82284e25cba87000ac40b373a89a5b6b5ab440a"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/campaign_runner_sustained_v5.py",
+      "bytes": 14133,
+      "sha256": "2ba99c85a51cf96c978cacd257e22d1059416de81f3cbef047e61babe8048e0e"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/v5-design/integrated-before-review.md",
+      "bytes": 1270,
+      "sha256": "2ec2a7028a3dda1d9dd596deb97666061a2c0ae2727563822f01c57a018b95a9"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/v5-design/tooling-checkpoint.json",
+      "bytes": 2693,
+      "sha256": "85db009f865d2b6040e256912021573eea4c3cf1987c3811abf27b045054a650"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/v5-design/tooling-commit.json",
+      "bytes": 713,
+      "sha256": "f7340ea98761d48c5716dd6cc69a9a4422b0ca8a5592dfa6f84a1cdae3a4155c"
+    },
+    {
+      "path": "controller-initial-subjects/rust/target/indexing-speed-gate/v5-design/validation-results.json",
+      "bytes": 1550,
+      "sha256": "c9b0c9d606147791531d9987d6d1ee5404fcd20e028d660b43bc8f90d7292129"
+    },
+    {
+      "path": "controller-initial-subjects/scripts/indexing_perf_gate.py",
+      "bytes": 15938,
+      "sha256": "807883d8d5f560051d73a8081de266893c2fa2ec3078f11ab580bb5b8f87cf6e"
+    },
+    {
+      "path": "controller-initial-subjects/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 29443,
+      "sha256": "7beec6fea230d2953944cba909abd015ef9ae952b7a72fdc857db77e80d11a44"
+    },
+    {
+      "path": "controller-subjects.json",
+      "bytes": 1450,
+      "sha256": "5e8b6192af2d7954ba79287f97bada96e0775ae466017f336293db6899993bf9"
+    },
+    {
+      "path": "macos-source-ci-failure-plain.log",
+      "bytes": 267748,
+      "sha256": "870b5363c04ac19570b3b5059a9fb6ef95f8210ff10c6ed91fb0a6e4e2635a6b"
+    },
+    {
+      "path": "macos-source-ci-failure.log",
+      "bytes": 272003,
+      "sha256": "b74736f3da8610fb92546ad257ca4c1812fd8da28df876f3f22e9fc93f712051"
+    },
+    {
+      "path": "native-oracle-additional-profile-subjects.json",
+      "bytes": 740,
+      "sha256": "bb349599fb883bfed1587b85c0aa0ddb27221fd66f4260c4f237fe723b7cae2f"
+    },
+    {
+      "path": "native-oracle-before-review.md",
+      "bytes": 708,
+      "sha256": "6e1b6b5053978c1b4eb8c0caa6a30f67330e5af345c4753f2ad96ab0ab444ce7"
+    },
+    {
+      "path": "native-oracle-clippy.log",
+      "bytes": 161,
+      "sha256": "496bba03342f800ebdce559adcfd8b8ae50ee66a1615e7034caa660f0f0682df"
+    },
+    {
+      "path": "native-oracle-extended.log",
+      "bytes": 558,
+      "sha256": "6f2b68b9e1e7bef42ef094a93bb498d1bba1120751c68d9a53581386f5faa988"
+    },
+    {
+      "path": "native-oracle-final-subjects.json",
+      "bytes": 2638,
+      "sha256": "b2b1de066bf57d8f14637138f4eae83640073a82f0f1b600c2fc93750cafbd87"
+    },
+    {
+      "path": "native-oracle-focused-final.log",
+      "bytes": 497,
+      "sha256": "3516b5195b9695b3af919254b1c42eb662eb262620a32d8d1800ec5d5ed1b875"
+    },
+    {
+      "path": "native-oracle-full-rust.log",
+      "bytes": 169426,
+      "sha256": "f8a8a23519b391eca10d5f70ba1a7c218b64bd33b7cb829a73d1a91f1fdc614c"
+    },
+    {
+      "path": "native-oracle-green.log",
+      "bytes": 6109,
+      "sha256": "653734a58c58b4aed8b4bac9d91dad6e78705b904148593afcc145c24884f6b1"
+    },
+    {
+      "path": "native-oracle-implementation-review.md",
+      "bytes": 1184,
+      "sha256": "4171b607d458b0a2f6d22a0f13481310350de0d1739b2b563f59283ba5ffa128"
+    },
+    {
+      "path": "native-oracle-local-results.json",
+      "bytes": 825,
+      "sha256": "3adbc3b18af62230d55bb96f9734b5300773233655a7a2a15db9d9e59f87949d"
+    },
+    {
+      "path": "native-oracle-minor-disposition.json",
+      "bytes": 799,
+      "sha256": "4342e1494c2b13fcf719d9b3b422f08cfa72d1e151207fc5253e6f622cd2cf46"
+    },
+    {
+      "path": "native-oracle-minor-focused.log",
+      "bytes": 497,
+      "sha256": "5b9289f61670b9aba756c4dbe3739b9d1a135e4f4291a7fce845e7062d3b6583"
+    },
+    {
+      "path": "native-oracle-profile-results.json",
+      "bytes": 551,
+      "sha256": "de0eb23bb07a0097feac00c8088173479816e8c6280286474a071ec5e5678ff3"
+    },
+    {
+      "path": "native-oracle-real-worker.log",
+      "bytes": 2260,
+      "sha256": "50bb5ee1dbeefdce7dbe71f4c96b97d295dc3fe3b199c715ce5bf317f9ee6cec"
+    },
+    {
+      "path": "native-oracle-red.log",
+      "bytes": 3583,
+      "sha256": "d0f342bacd96d6498e280ade05b867f8677a4430f1c9005ebb2002038d1c44cc"
+    },
+    {
+      "path": "native-oracle-related.log",
+      "bytes": 3022,
+      "sha256": "7d1a848a29060d7221975a0943a533d6cec150fee46a0cc31598e1a4950c2e69"
+    },
+    {
+      "path": "native-oracle-repair-before.md",
+      "bytes": 3917,
+      "sha256": "08503030b82d5c67c55328c0ec2ad57927a920d73e8c34149768e89262c60e09"
+    },
+    {
+      "path": "native-oracle-repo-contract.log",
+      "bytes": 23,
+      "sha256": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3"
+    },
+    {
+      "path": "native-oracle-runtime-equivalence.json",
+      "bytes": 924,
+      "sha256": "f280291e066ae40178136d118281d604d9aa541606397a141a774ef460cca94b"
+    },
+    {
+      "path": "native-oracle-validation-plan.txt",
+      "bytes": 1104,
+      "sha256": "a618bd47ad09f21ff4b208b8dcc8fa20b18b9f774d4b5d23920f765d420167d0"
+    },
+    {
+      "path": "reviewed-native-oracle/harness.rs",
+      "bytes": 66729,
+      "sha256": "d11506b00018c2bea7bb4ef33856eb6170dc92b8dd212770eb18a7441fd2b5cf"
+    },
+    {
+      "path": "source-ci-final-or-latest.json",
+      "bytes": 16270,
+      "sha256": "bfc9da19e3da5763dfe2a49fc06845e4526f7c63bafa04faad8dc99af5fdc727"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf_contract.py",
+      "bytes": 42148,
+      "sha256": "051a6ad1dc84d3b9370ee4628dad92d0f1a2427f0e798cb91a380e1c55f43a6e"
+    },
+    {
+      "path": "source-contract/scripts/indexing_perf_gate.py",
+      "bytes": 15938,
+      "sha256": "807883d8d5f560051d73a8081de266893c2fa2ec3078f11ab580bb5b8f87cf6e"
+    },
+    {
+      "path": "source-contract/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 29443,
+      "sha256": "7beec6fea230d2953944cba909abd015ef9ae952b7a72fdc857db77e80d11a44"
+    },
+    {
+      "path": "source-status.json",
+      "bytes": 635,
+      "sha256": "05d305fb32059339ccaacedaa2749f0c34c6df2bbc2784eff7e402a4ec55e6df"
+    },
+    {
+      "path": "test_campaign_controller.py",
+      "bytes": 4628,
+      "sha256": "f78fb93921f927e5105d367febd69c8c8c9866f4f236b874db1d0ffc7719524a"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
