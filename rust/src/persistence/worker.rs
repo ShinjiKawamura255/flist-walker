@@ -45,6 +45,85 @@ struct AdmissionState {
 struct PersistenceSender {
     tx: SyncSender<UiStatePersistenceCommand>,
     state: Arc<Mutex<AdmissionState>>,
+    #[cfg(test)]
+    progress: Arc<TestWorkerProgress>,
+}
+
+#[cfg(test)]
+struct TestWorkerProgress {
+    started: std::time::Instant,
+    phase: std::sync::atomic::AtomicU8,
+    last_timeout: Mutex<Option<Value>>,
+}
+
+#[cfg(test)]
+impl TestWorkerProgress {
+    fn new() -> Self {
+        Self {
+            started: std::time::Instant::now(),
+            phase: std::sync::atomic::AtomicU8::new(0),
+            last_timeout: Mutex::new(None),
+        }
+    }
+    fn set_phase(&self, phase: u8) {
+        self.phase
+            .store(phase, std::sync::atomic::Ordering::Relaxed);
+    }
+    fn phase(&self) -> &'static str {
+        match self.phase.load(std::sync::atomic::Ordering::Relaxed) {
+            0 => "starting",
+            1 => "waiting-command",
+            2 => "pre-io-gate",
+            3 => "write-result",
+            4 => "result-published",
+            5 => "returning",
+            _ => "worker-body-returned",
+        }
+    }
+}
+
+/// Observational only: atomics/status may advance between reads. Never wait for
+/// diagnostic locks, and never replace is_finished/join with a phase label.
+#[cfg(test)]
+fn record_test_worker_timeout(
+    sender: Option<&PersistenceSender>,
+    started: std::time::Instant,
+    registry_elapsed: Duration,
+    ownership_elapsed: Duration,
+    stage: &str,
+    shutdown_sent: Option<bool>,
+) {
+    let Some(sender) = sender else {
+        eprintln!("TEST_WRITER_TIMEOUT sender_missing=true stage={stage}");
+        return;
+    };
+    let status = sender.state.try_lock().ok().map(|state| {
+        (
+            state.status.accepted_generation,
+            state.status.persisted_generation,
+            state.outstanding,
+            state.status.last_error.is_some(),
+        )
+    });
+    let diagnostic = serde_json::json!({
+        "stage": stage,
+        "phase": sender.progress.phase(),
+        "worker_age_ms": sender.progress.started.elapsed().as_secs_f64() * 1000.0,
+        "elapsed_ms": started.elapsed().as_secs_f64() * 1000.0,
+        "registry_acquisition_ms": registry_elapsed.as_secs_f64() * 1000.0,
+        "ownership_acquisition_ms": ownership_elapsed.as_secs_f64() * 1000.0,
+        "shutdown_sent": shutdown_sent,
+        "physical_finished": (stage == "physical-stop").then_some(false),
+        "status_available": status.is_some(),
+        "accepted_generation": status.map(|status| status.0),
+        "persisted_generation": status.map(|status| status.1),
+        "outstanding": status.map(|status| status.2),
+        "last_error_present": status.map(|status| status.3),
+    });
+    eprintln!("TEST_WRITER_TIMEOUT {diagnostic}");
+    if let Ok(mut last) = sender.progress.last_timeout.try_lock() {
+        *last = Some(diagnostic);
+    }
 }
 
 impl PersistenceSender {
@@ -309,6 +388,10 @@ fn spawn_ui_state_persistence_worker(
         outstanding: 0,
     }));
     let worker_state = Arc::clone(&state);
+    #[cfg(test)]
+    let progress = Arc::new(TestWorkerProgress::new());
+    #[cfg(test)]
+    let worker_progress = Arc::clone(&progress);
     let handle = thread::spawn(move || {
         run_ui_state_persistence_worker(
             rx,
@@ -316,9 +399,19 @@ fn spawn_ui_state_persistence_worker(
             history_persist_disabled,
             lock_timeout,
             worker_state,
+            #[cfg(test)]
+            worker_progress,
         )
     });
-    (PersistenceSender { tx, state }, handle)
+    (
+        PersistenceSender {
+            tx,
+            state,
+            #[cfg(test)]
+            progress,
+        },
+        handle,
+    )
 }
 fn registry_sender(
     registry: &mut UiStatePersistenceRegistry,
@@ -458,7 +551,8 @@ pub(crate) fn finish_ui_state_persistence_for_test(
     path: &Path,
     timeout: Duration,
 ) -> Result<(), String> {
-    let deadline = std::time::Instant::now() + timeout;
+    let started = std::time::Instant::now();
+    let deadline = started + timeout;
     let (sender, ownership) = {
         let mut registry = ui_state_persistence_registry()
             .lock()
@@ -470,6 +564,8 @@ pub(crate) fn finish_ui_state_persistence_for_test(
         };
         (registry.senders.get(path).cloned(), ownership)
     };
+    let registry_elapsed = started.elapsed();
+    let ownership_started = std::time::Instant::now();
     // Never wait while holding the global registry lock. Serialize only this path.
     let mut worker = loop {
         match ownership.try_lock() {
@@ -479,12 +575,21 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             }
             Err(std::sync::TryLockError::WouldBlock) => {
                 if std::time::Instant::now() >= deadline {
+                    record_test_worker_timeout(
+                        sender.as_ref(),
+                        started,
+                        registry_elapsed,
+                        ownership_started.elapsed(),
+                        "ownership",
+                        None,
+                    );
                     return Err("test writer ownership wait timed out".into());
                 }
                 thread::sleep(Duration::from_millis(1));
             }
         }
     };
+    let ownership_elapsed = ownership_started.elapsed();
     if worker.completed.is_none() {
         if !worker.shutdown_sent {
             let (tx, _rx) = mpsc::channel();
@@ -510,6 +615,14 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             .is_some_and(thread::JoinHandle::is_finished)
         {
             if std::time::Instant::now() >= deadline {
+                record_test_worker_timeout(
+                    sender.as_ref(),
+                    started,
+                    registry_elapsed,
+                    ownership_elapsed,
+                    "physical-stop",
+                    Some(worker.shutdown_sent),
+                );
                 return Err("test settings writer did not physically stop before deadline".into());
             }
             thread::sleep(Duration::from_millis(1));
@@ -547,9 +660,12 @@ fn run_ui_state_persistence_worker(
     history_persist_disabled: bool,
     lock_timeout: Duration,
     state: Arc<Mutex<AdmissionState>>,
+    #[cfg(test)] progress: Arc<TestWorkerProgress>,
 ) {
     let mut pending = Vec::<PendingUiStateWrite>::new();
     loop {
+        #[cfg(test)]
+        progress.set_phase(1);
         let command = rx.recv_timeout(UI_STATE_PERSISTENCE_RETRY_DELAY);
         let mut flush_reply = None;
         let mut shutdown_reply = None;
@@ -611,9 +727,15 @@ fn run_ui_state_persistence_worker(
             .map(|state| state.status.startup_protected)
             .unwrap_or(true);
         #[cfg(test)]
-        if attempted && !protected {
-            tests::pause_before_write(&path);
-        }
+        progress.set_phase(2);
+        #[cfg(test)]
+        let after_write_gate = if attempted && !protected {
+            tests::pause_before_write(&path)
+        } else {
+            None
+        };
+        #[cfg(test)]
+        progress.set_phase(3);
         let result = if let Some((request, response)) = settings_commit {
             let request_id = request.request_id;
             let result = if protected {
@@ -644,17 +766,27 @@ fn run_ui_state_persistence_worker(
             publish_write_result(&state, &mut pending, &result, attempted);
             result
         };
+        #[cfg(test)]
+        progress.set_phase(4);
+        #[cfg(test)]
+        tests::pause_after_write(after_write_gate);
         if let Some(reply) = flush_reply {
             let _ = reply.send(result.clone());
         }
         if let Some(reply) = shutdown_reply {
             let _ = reply.send(result);
+            #[cfg(test)]
+            progress.set_phase(5);
             break;
         }
         if disconnected {
+            #[cfg(test)]
+            progress.set_phase(5);
             break;
         }
     }
+    #[cfg(test)]
+    progress.set_phase(6);
 }
 fn publish_write_result(
     state: &Mutex<AdmissionState>,

@@ -214,6 +214,7 @@ fn tc_168_disconnected_admission_never_claims_a_generation() {
     let sender = PersistenceSender {
         tx,
         state: Arc::new(Mutex::new(AdmissionState::default())),
+        progress: Arc::new(TestWorkerProgress::new()),
     };
     assert!(sender
         .enqueue(UiStatePatch::default(), vec!["retry".into()])
@@ -266,6 +267,7 @@ fn tc_168_settings_flush_and_shutdown_preserve_admission_barriers() {
     let sender = PersistenceSender {
         tx,
         state: Arc::clone(&state),
+        progress: Arc::new(TestWorkerProgress::new()),
     };
     sender
         .enqueue(
@@ -315,6 +317,7 @@ fn tc_168_settings_flush_and_shutdown_preserve_admission_barriers() {
             false,
             Duration::from_millis(10),
             worker_state,
+            Arc::new(TestWorkerProgress::new()),
         )
     });
     let settings = settings_rx.recv_timeout(Duration::from_secs(2)).unwrap();
@@ -346,6 +349,7 @@ fn tc_168_control_channel_is_bounded_and_full_is_explicit() {
     let sender = PersistenceSender {
         tx,
         state: Arc::new(Mutex::new(AdmissionState::default())),
+        progress: Arc::new(TestWorkerProgress::new()),
     };
     for _ in 0..UI_STATE_COMMAND_CAPACITY {
         let (reply, _) = mpsc::channel();
@@ -1593,9 +1597,10 @@ struct WriteGateState {
     entered: bool,
     released: bool,
 }
-struct WriteGateInner {
+pub(super) struct WriteGateInner {
     state: Mutex<WriteGateState>,
     changed: std::sync::Condvar,
+    after_write: bool,
 }
 static WRITE_GATES: OnceLock<
     Mutex<std::collections::HashMap<PathBuf, std::sync::Weak<WriteGateInner>>>,
@@ -1606,9 +1611,16 @@ pub(crate) struct WriteGate {
 }
 impl WriteGate {
     pub(crate) fn new(path: PathBuf) -> Self {
+        Self::at_position(path, false)
+    }
+    fn after_write(path: PathBuf) -> Self {
+        Self::at_position(path, true)
+    }
+    fn at_position(path: PathBuf, after_write: bool) -> Self {
         let inner = Arc::new(WriteGateInner {
             state: Mutex::new(WriteGateState::default()),
             changed: std::sync::Condvar::new(),
+            after_write,
         });
         let mut gates = WRITE_GATES.get_or_init(Default::default).lock().unwrap();
         assert!(gates.insert(path.clone(), Arc::downgrade(&inner)).is_none());
@@ -1623,7 +1635,15 @@ impl WriteGate {
             .unwrap();
         let entered = state.entered;
         drop(state);
-        assert!(entered, "writer never reached its pre-I/O barrier");
+        assert!(
+            entered,
+            "{}",
+            if self.inner.after_write {
+                "writer never reached its result-published barrier"
+            } else {
+                "writer never reached its pre-I/O barrier"
+            }
+        );
     }
     pub(crate) fn release(&self) {
         self.inner.state.lock().unwrap().released = true;
@@ -1641,7 +1661,7 @@ impl Drop for WriteGate {
             .remove(&self.path);
     }
 }
-pub(super) fn pause_before_write(path: &Path) {
+pub(super) fn pause_before_write(path: &Path) -> Option<Arc<WriteGateInner>> {
     let gate = WRITE_GATES.get().and_then(|gates| {
         gates
             .lock()
@@ -1650,15 +1670,102 @@ pub(super) fn pause_before_write(path: &Path) {
             .and_then(std::sync::Weak::upgrade)
     });
     if let Some(gate) = gate {
-        let mut state = gate.state.lock().unwrap();
-        state.entered = true;
-        gate.changed.notify_all();
-        let (state, _) = gate
-            .changed
-            .wait_timeout_while(state, Duration::from_secs(5), |state| !state.released)
-            .unwrap();
-        assert!(state.released, "test failed to release its settings writer");
+        if gate.after_write {
+            return Some(gate);
+        }
+        pause_at_write_gate(&gate);
     }
+    None
+}
+pub(super) fn pause_after_write(gate: Option<Arc<WriteGateInner>>) {
+    if let Some(gate) = gate {
+        pause_at_write_gate(&gate);
+    }
+}
+fn pause_at_write_gate(gate: &WriteGateInner) {
+    let mut state = gate.state.lock().unwrap();
+    state.entered = true;
+    gate.changed.notify_all();
+    let (state, _) = gate
+        .changed
+        .wait_timeout_while(state, Duration::from_secs(5), |state| !state.released)
+        .unwrap();
+    let released = state.released;
+    drop(state);
+    assert!(released, "test failed to release its settings writer");
+}
+
+fn assert_shutdown_timeout_observes_owned_phase(after_write: bool) {
+    let base = temp_dir(if after_write {
+        "timeout-after-write"
+    } else {
+        "timeout-before-write"
+    });
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let gate = if after_write {
+        WriteGate::after_write(path.clone())
+    } else {
+        WriteGate::new(path.clone())
+    };
+    let generation =
+        enqueue_ui_state_patch(path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    gate.wait_entered();
+    let (progress, ownership) = {
+        let registry = ui_state_persistence_registry().lock().unwrap();
+        (
+            Arc::clone(&registry.senders[&path].progress),
+            Arc::clone(&registry.test_workers[&path]),
+        )
+    };
+    let failure = finish_ui_state_persistence_for_test(&path, Duration::from_millis(1));
+    let diagnostic = progress.last_timeout.lock().unwrap().clone();
+    let retained = ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .test_workers
+        .get(&path)
+        .is_some_and(|owner| Arc::ptr_eq(owner, &ownership));
+    let handle_retained = ownership.lock().unwrap().handle.is_some();
+    let root_retained = base.is_dir();
+    gate.release();
+    // Release and physically join before assertions, including the RED assertion.
+    finish_ui_state_persistence_for_test(&path, Duration::from_secs(2)).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert_eq!(
+        failure.unwrap_err(),
+        "test settings writer did not physically stop before deadline"
+    );
+    assert!(retained && handle_retained && root_retained);
+    let diagnostic = diagnostic.expect("actual timeout must record its path-owned worker phase");
+    assert_eq!(
+        diagnostic["phase"],
+        if after_write {
+            "result-published"
+        } else {
+            "pre-io-gate"
+        }
+    );
+    assert_eq!(diagnostic["shutdown_sent"], true);
+    assert_eq!(diagnostic["physical_finished"], false);
+    assert_eq!(diagnostic["accepted_generation"], generation);
+    assert_eq!(
+        diagnostic["persisted_generation"],
+        if after_write { generation } else { 0 }
+    );
+    assert!(diagnostic["elapsed_ms"].as_f64().unwrap() >= 1.0);
+    assert!(!base.exists());
+    assert!(ownership.lock().unwrap().handle.is_none());
+}
+
+#[test]
+fn shutdown_timeout_diagnostic_identifies_owned_pre_io_phase() {
+    assert_shutdown_timeout_observes_owned_phase(false);
+}
+
+#[test]
+fn shutdown_timeout_diagnostic_identifies_owned_published_write_phase() {
+    assert_shutdown_timeout_observes_owned_phase(true);
 }
 
 #[test]
