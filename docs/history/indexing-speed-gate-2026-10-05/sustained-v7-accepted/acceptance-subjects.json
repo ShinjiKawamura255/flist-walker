@@ -1,0 +1,74 @@
+{
+  "base": "212cd502c19b6bc36e02c7b04d2000beaeb7e31d",
+  "scope": "Actual True v7 prospective five-session acceptance and corrected published active proof; no overall FINAL, merge or master-source proof",
+  "subjects": [
+    {
+      "path": "rust/target/indexing-speed-gate/active-v7-five-original-archive/campaign-original-artifacts.tar.gz",
+      "sha256": "34a9e0b9e6db4b0f908915ab28fae42d0fd8a71877a5c8443e6389c1a1d4f969"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/active-v7-five-original-archive/evidence-manifest.json",
+      "sha256": "d20c7527649e752b0ebfde43edce7dc25d37c7780e63d4eefc50617539d11bac"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-active-v7/complete.json",
+      "sha256": "2ed40ac98fd33bedd7dbbc33aedd0a3aff5ce96a74274b17f66fae632713f68b"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-active-v7/frozen-before-held-out.json",
+      "sha256": "1fd96283478b42df76cec39ba5553eb3c95b0119b344e3508b2548c35965b9bd"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-active-v7/protocol-reservation-original.json",
+      "sha256": "0f04e8178a93218597785e8ee0494b1eca7d443a3e9064143235cc7599419513"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/v6-design/active-v7-five-descriptive-replay.json",
+      "sha256": "73ebca1e0078e613333eb4b6eb5b36b537aad88f12bf3ffa2b0b845c1a58da3d"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/v6-design/active-v7-five-family-summary.json",
+      "sha256": "d89fefc4de73fbf75e2559bdffdd6ca1ab5568c85f46ebf5494118b2cbbdd39d"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-active-v7/after-campaign-verification/whole-workflow-zip-inventory.json",
+      "sha256": "9754e095a8da07d4d7332c40d5582c293db4019f9fbbea81818d663e0c963f53"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-active-v7/after-campaign-verification/campaign-budget-diagnostic.json",
+      "sha256": "e4e43d953eb271c654306454247eb1117b019478bda9dd7186dfbac4fa909427"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign_runner_active_v7.py",
+      "sha256": "6f9966165d26a3660f57230935db8c57ccbd88401f81ed1270834166e368d4bb"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/campaign-protocol-active-v7.json",
+      "sha256": "0f04e8178a93218597785e8ee0494b1eca7d443a3e9064143235cc7599419513"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/verify_active_v7_campaign.py",
+      "sha256": "ccc3407294742a88f1ace0624ff242f29c28d6463ae72f30d198417b22c8660e"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/summarize_active_v7_campaign.py",
+      "sha256": "9698b768169681222282d63af8955575233aba796a6cf7898d71ba9d1255fc27"
+    },
+    {
+      "path": "rust/target/indexing-speed-gate/prepare_active_v7_acceptance_packet.py",
+      "sha256": "ea0aafff93989a26f890a706eaacb24d5a318f3ef15a63fb4b2b47e0658bfcd0"
+    },
+    {
+      "path": "scripts/indexing_perf.py",
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "scripts/indexing_perf_contract.py",
+      "sha256": "b59e088be72029c9adf3a9e52a4d2206138136ac66be311a7cb14591dc93ea14"
+    },
+    {
+      "path": "scripts/indexing_perf_gate.py",
+      "sha256": "7b22dd250da3a34075818b0f5d1388dfd09f261ffd20d81585405498c87a0e00"
+    }
+  ]
+}
