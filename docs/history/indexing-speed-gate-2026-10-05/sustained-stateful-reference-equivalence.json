@@ -738,7 +738,7 @@
       "rust/windows_resource_build.rs": "af2cf422cb879075320ccee8a4c30c948b2dd240c8bda24fcae90f56f1800b68"
     }
   },
-  "scope": "Only cfg(test) observer, settings fixture and stateful owner oracle differ; production/Cargo/build and measured benchmark bodies are unchanged",
+  "scope": "Relative to original AFDD, only cfg(test) observer, settings fixture and stateful owner oracle differ; production/Cargo/build bodies are unchanged. Measured benchmark bodies are unchanged relative to previous810, while the observer driver differs from AFDD. Only the cfg(test) stateful harness differs from previous810; no originalAFDD full test-program or binary equivalence is claimed",
   "calibration_eligible_prior_outcomes": false,
   "fresh_campaign": "Required; zero perf outcomes on previous c0 and no prior timing reuse",
   "unchanged_rust_build_input_count": 235,
