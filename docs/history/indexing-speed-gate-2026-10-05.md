@@ -201,3 +201,8 @@ A causal regression test reproduces the real production background terminal hand
 ## Actual v7 healthy reference adoption
 
 [Actual native reference admission](indexing-speed-gate-2026-10-05/owned-progress-v7-native-reference/measurement-diagnosis.md) binds `9640bef9884525ea641087d09122541877f40f29` to whole CI37427336513/Guardian37427334186attempt1 success, all native/coverage/GNU/build axes and independent20-subject BEFORE. Its238-input inventory retains230 identical AFDD Rust/build inputs and distinguishes8cfg(test) surfaces; full old test-program/binary equivalence and original settings-failure causal repair are not claimed. The collector now pins this actual successful source with unchanged True/v7/1.50/1.25/MAX-diagnostic/21,21,7/work/physical/budgets. Exact pin-source CI, concrete active controller/source review, new prospective active five sessions, overall FINAL and protected merge remain pending. Earlier failed and accepted campaigns retain their exact original source meanings.
+
+
+## Final-source native rejection and normal-only repair
+
+[Source7f native rejection](indexing-speed-gate-2026-10-05/normal-v7-native-rejected/measurement-diagnosis.md) retains whole CI37466598553attempt1FAIL, Windows1,612PASS/2FAIL/20ignored, its21-file original archive and exact unknown-stage limits. Independent BEFORE permits only after-write readiness and nine-leaf normal42-cell partitioning with unchanged deadlines/work. Accepted212 calibration remains historical; new candidate native/ordinary-active proof and integration FINAL/protected merge/master execution are separate.

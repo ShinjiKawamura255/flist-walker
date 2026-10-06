@@ -234,8 +234,10 @@ fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
     // The retained writer cannot block another path's admission or termination.
     let other = settings.base.join("unrelated.json");
     settings.track_auxiliary_writer(other.clone());
-    let other_gate = crate::persistence::WriteGate::new(other.clone());
-    crate::persistence::enqueue_ui_state_patch(
+    // Readiness includes the real write and result publication. The unchanged
+    // one-second stop bound then tests physical termination, independently of I/O.
+    let other_gate = crate::persistence::WriteGate::after_write(other.clone());
+    let other_generation = crate::persistence::enqueue_ui_state_patch(
         other.clone(),
         crate::persistence::UiStatePatch::default(),
         vec![],
@@ -243,6 +245,19 @@ fn perf_settings_cleanup_waits_for_the_app_writer_before_removing_its_root() {
     )
     .unwrap();
     other_gate.wait_entered();
+    let other_status = crate::persistence::ui_state_persistence_status(&other);
+    assert_eq!(
+        other_status.persisted_generation, other_generation,
+        "unrelated writer readiness must observe the successful real write"
+    );
+    assert!(other_status.last_error.is_none());
+    assert!(other.is_file(), "readiness follows real file publication");
+    assert!(
+        crate::persistence::finish_ui_state_persistence_for_test(&other, Duration::from_millis(1))
+            .is_err(),
+        "published status cannot substitute for a physically stopped writer"
+    );
+    assert!(settings.base.is_dir(), "held writers retain the same root");
     other_gate.release();
     crate::persistence::finish_ui_state_persistence_for_test(&other, Duration::from_secs(1))
         .expect("unrelated writer must physically stop after entering its write");

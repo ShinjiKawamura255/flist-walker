@@ -1613,7 +1613,7 @@ impl WriteGate {
     pub(crate) fn new(path: PathBuf) -> Self {
         Self::at_position(path, false)
     }
-    fn after_write(path: PathBuf) -> Self {
+    pub(crate) fn after_write(path: PathBuf) -> Self {
         Self::at_position(path, true)
     }
     fn at_position(path: PathBuf, after_write: bool) -> Self {
