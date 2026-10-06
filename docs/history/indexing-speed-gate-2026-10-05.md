@@ -1,6 +1,6 @@
 # Indexing speed comparison calibration, 2026-10-05
 
-This record retains a rejected null comparison and its sampling refinement. Current operation belongs to [CI Operations](../CI_OPERATIONS.md); [TC-233](../testplan/indexing-contention.md#same-job-reference-comparison-tooling-tc-233) owns the comparison contract. Numeric enforcement remains inactive at this measurement checkpoint.
+This record preserves original rejected comparisons and later accepted calibration without reinterpreting their sources or outcomes. The [accepted v6 five-session record](indexing-speed-gate-2026-10-05/sustained-v6-accepted/measurement-diagnosis.md) retains all8,190 rows, 680 observations and 45 component identities, original-source replay and independent acceptance. Current operation belongs to [CI Operations](../CI_OPERATIONS.md); [TC-233](../testplan/indexing-contention.md#same-job-reference-comparison-tooling-tc-233) owns the active sustained median contract. The earlier checkpoints below remain historical, with their original inactive modes and unresolved causes.
 
 The original candidate source is `2b11f361fcfc9ce0f7f7ad7e2728b2a3b1ae0a55`, fixed healthy reference `afdd0c4e6b4c97a270e737ed9e14a2a694db2d7e`. Rust/build inputs are byte-identical for the null construction. Execution workflow/job/image identities remain those of the candidate collector; measured reference source is separate. The original seven-pair R1→C→R2 protocol has17cells,714 raw leg rows and136 numeric decisions. Its other27 extension cells and native input/frame behavior are separate coverage.
 

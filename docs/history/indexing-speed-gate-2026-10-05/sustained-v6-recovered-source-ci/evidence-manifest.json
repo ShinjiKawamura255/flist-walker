@@ -1,0 +1,244 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "6274ba5f782dde805d34c452ffe51a801cda0f47ec1b02e2364ca453d21cd423",
+  "files": [
+    {
+      "path": "actual-f60-git-python/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-f60-git-python/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "actual-f60-git-python/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "current-source-stateful-endurance.log",
+      "bytes": 3022,
+      "sha256": "e174ce2bf6db34e17655dd04af223385acf5e40e8f5f10bd46ea58824c4d2dd2"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-execution.json",
+      "bytes": 624,
+      "sha256": "b5f7bec418917e45caa4cad0e6d39b61f2a5f6bcf61da1924f11eef9a9767023"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-review.md",
+      "bytes": 951,
+      "sha256": "8f4a954a90efe8c40a9062ef1be7bffcb84c44de20d92f98beb0d5d16023405b"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-recovered-v6.json",
+      "bytes": 5825,
+      "sha256": "56c04f8cbeb410457eb065265d76a2be0faf7957bf56f9ce68818b11fd8aed53"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_recovered_v6.py",
+      "bytes": 17565,
+      "sha256": "314b1a57335cd7df6330e5101222540e811e9cebd944e55fcd96725757ff54b0"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/githubstatus-resume-original.json",
+      "bytes": 5538,
+      "sha256": "320f3d7138832fc5978aaa512af94c4371fba43e04930ebb12977b440079c954"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-external-recovery-resume-before.md",
+      "bytes": 2236,
+      "sha256": "1e70baf1e8520fc37df6b332605ab7c03909f610edd4866c47a5710ff00ca1d8"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-implementation-review.md",
+      "bytes": 1116,
+      "sha256": "ab71855458fe365e653e9aae6b54b93c7ce2d39a1fe30976aa1423d5510a1b92"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-source-infra-bounded-stop.json",
+      "bytes": 757,
+      "sha256": "5f6bdddecf0ab38f66254b81ca576857ba5887d33cb868126d24bb0e34f645f2"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/pr-resume-original.json",
+      "bytes": 3042,
+      "sha256": "ac71535710eadab34b3d0b502212a762170a249d6df85383f5a7a65bfa1bcf67"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/source-ci-resume-original.json",
+      "bytes": 3957,
+      "sha256": "63a358df6a9a45144586a30afd954ed9e41b99007d7cdd8bef5c972baa34d5ec"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-reviewed/rust/target/indexing-speed-gate/v6-design/source-guardian-resume-original.json",
+      "bytes": 430,
+      "sha256": "485b72358239c5080736439e7bf8414466e9d6a7cb83bf8931d1157589adc4bd"
+    },
+    {
+      "path": "native-diagnostic-external-recovery-resume-subjects.json",
+      "bytes": 1962,
+      "sha256": "3e5839160a09646b65614b3166187d8447e7b987c4809defd6f0eb1c5ee189cf"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-review.md",
+      "bytes": 1874,
+      "sha256": "07ce0a90114dc2db57630085eb9e2c26d239771829c3462b831e8521b01345ae"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/docs/history/indexing-speed-gate-2026-10-05/sustained-native-diagnostic-reference-equivalence.json",
+      "bytes": 112011,
+      "sha256": "ac0c39f5e1c1b83e3d8462072ba983bb3b334337190ef80b72cddc3566ecdc91"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-recovered-v6.json",
+      "bytes": 5825,
+      "sha256": "56c04f8cbeb410457eb065265d76a2be0faf7957bf56f9ce68818b11fd8aed53"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_recovered_v6.py",
+      "bytes": 17565,
+      "sha256": "314b1a57335cd7df6330e5101222540e811e9cebd944e55fcd96725757ff54b0"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/githubstatus-official-recovery-observation.json",
+      "bytes": 244,
+      "sha256": "d6f2ff354ac3efbc0b1bc3c843f48c5d971cff55ee9ffd2da85200bff2cdccae"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/githubstatus-official-recovery-original.json",
+      "bytes": 5538,
+      "sha256": "320f3d7138832fc5978aaa512af94c4371fba43e04930ebb12977b440079c954"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-external-recovery-resume-review.md",
+      "bytes": 951,
+      "sha256": "8f4a954a90efe8c40a9062ef1be7bffcb84c44de20d92f98beb0d5d16023405b"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-implementation-review.md",
+      "bytes": 1116,
+      "sha256": "ab71855458fe365e653e9aae6b54b93c7ce2d39a1fe30976aa1423d5510a1b92"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-admission-before.md",
+      "bytes": 2036,
+      "sha256": "524e08a7fe5c9d88749ecc0ceb02c9e28d29bc18b1bfe653b633300c7eb5ccbe"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-ci-admission.json",
+      "bytes": 1119,
+      "sha256": "2d5f9809bb874a9b30b36934ba1e210f23e7dba75fd35768f9fa0a6a00a2d050"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-ci-final.json",
+      "bytes": 24776,
+      "sha256": "b5eaf1d5557d155bea6a2bf33c713284d0063489994c255175bb301bd6573549"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-ci-original-logs.zip",
+      "bytes": 650287,
+      "sha256": "ef8207dad94a0df0991c1e148e24949f1667bde239f21ab2d89d1a9ba6ed1599"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-coverage-original.log",
+      "bytes": 310844,
+      "sha256": "5b89636ae496c5812ea43f41a432f51543cca1da9a10fffddc24e862c8f4c951"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-gnu-original.log",
+      "bytes": 41876,
+      "sha256": "79b19832caa036928ed3fae75e76d170596a4582d62764101f308d90ca2d392b"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-guardian-final.json",
+      "bytes": 1597,
+      "sha256": "f3ec51e9214e2709d3ba61c08a2f0e4d560f0561235b9682d5c2c199fe0eeb26"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-guardian-original-logs.zip",
+      "bytes": 12160,
+      "sha256": "27d92868bf9e13b346c472d2e6830784b1397a0759d55de8e3dc33363e6cf062"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-linux-original.log",
+      "bytes": 303080,
+      "sha256": "4be6842b8b563038f1cc5c1a29221efd0b0ad189da1bff326ad60bfa00663212"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-macos-original.log",
+      "bytes": 314620,
+      "sha256": "03cb7962cb69e6036e9949806b125bb8bba14c7fb51d24f103a05294173d070f"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-pr-final.json",
+      "bytes": 3689,
+      "sha256": "a8045d86f03e16c5b59d5cd908d007a7b131e5789e68f1748787d42f402672fe"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-support-ready.json",
+      "bytes": 228,
+      "sha256": "a61f4f16acce522994af88e01a6273ecb4d180dcbc8b24703021c585c83769c7"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-source-windows-original.log",
+      "bytes": 320276,
+      "sha256": "5791f8921bc9adb3f262db007d9fa3f005e2440e0a18c0c2b4f8865470889bdf"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/rust/target/indexing-speed-gate/v6-design/prepare_recovered_native_diagnostic_source_admission.py",
+      "bytes": 4583,
+      "sha256": "efbddfc13eda70f121d95f4f1af6f3194f45fc452af5f6ac17978cf70519fff9"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-reviewed/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-admission-subjects.json",
+      "bytes": 4965,
+      "sha256": "9098ed5300e6941c3c7a509211dadca12243c00993d35f39b56990ea0a639193"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-ci-dispatch-readback.json",
+      "bytes": 12087,
+      "sha256": "29a2dbbf77753f32400d934b96fbc58ab69b91dd145e3d0368236e55b6653ebb"
+    },
+    {
+      "path": "native-diagnostic-recovered-source-guardian-dispatch-readback.json",
+      "bytes": 1592,
+      "sha256": "5e9f376d6f741174696247f8471e9d60f0dcf433498668987d7e913c5c16d42c"
+    },
+    {
+      "path": "recovered-source-ci-rerun-request.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "recovered-source-guardian-rerun-request.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "reviewed-subject-index.json",
+      "bytes": 14613,
+      "sha256": "68bbc46aebca32abe37f53db9dff9d32943d6d482aff29a3fadf5d1b0d30174c"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}

@@ -1,0 +1,489 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "b7e7da23c6546565c78dff567c5ff96b33cc7b22c6e8c3bb0133db773c1c43ac",
+  "files": [
+    {
+      "path": "actual-f60-git-python/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-f60-git-python/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "actual-f60-git-python/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "ci-gate-original.log",
+      "bytes": 2547,
+      "sha256": "cabc6f71bb674524de579ca9ae836b4f30b06aaed90372146b12936a64eb5de4"
+    },
+    {
+      "path": "githubstatus-actions-at-source-terminal.json",
+      "bytes": 6837,
+      "sha256": "95eeb0d756e4fb4df02a01d84842541f1e0c9e3ddb87d08b7756bf1010de08cb"
+    },
+    {
+      "path": "native-diagnostic-controller-before-review.md",
+      "bytes": 1349,
+      "sha256": "9d37d6698cc98cd43f4e7a384621c08e4070703b1fbc403f05d9f10775ea95b8"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/.github/workflows/perf-regression.yml",
+      "bytes": 4783,
+      "sha256": "fd04b77ce58f01ac1d465ffa2cffe56b6a1cb8d95378d3e639317df18bb95583"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "bytes": 33593,
+      "sha256": "a367f8789d881984f72e78c6febcf51ba25549a38150029008626f5b5decc57c"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "bytes": 47600,
+      "sha256": "99d61dc22a1267ec4a9e761b99a184ed92ba390afb2e35e3dc078f230579095b"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "bytes": 32047,
+      "sha256": "3d7f84d92a3720deea038104c17b15b48380cdea15feccd2bee13d3ca460e6c5"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "bytes": 124992,
+      "sha256": "a19ed74dee21c3009e9cc6dbc0fd12afcc74c80d9972ccd1ec6ec7ce8dc4b94e"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/docs/history/indexing-speed-gate-2026-10-05/sustained-native-diagnostic-reference-equivalence.json",
+      "bytes": 112011,
+      "sha256": "ac0c39f5e1c1b83e3d8462072ba983bb3b334337190ef80b72cddc3566ecdc91"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-v6.json",
+      "bytes": 5270,
+      "sha256": "72b2350a137af34bc4eab375b4cbaf0d6c02e29d23aaf1292ae8728d2a433272"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_v6.py",
+      "bytes": 16265,
+      "sha256": "6cb5a369a5de3b08ed1689e7747662020b77b3a711e1ece7f19eba62bf3ed405"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-ast-equivalence.json",
+      "bytes": 644,
+      "sha256": "1a1c18c4e32ba0286b3d80f0e482fca93ea88f3147e2a7a712d7f349bd18c675"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-before.md",
+      "bytes": 2522,
+      "sha256": "797c70b1eaa9e643f270411a2cfa50d86cbd427925ae4cc8d9e62fb2b5212d93"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-controls-green.log",
+      "bytes": 103,
+      "sha256": "2661d955b45f2ecc029526ebf0bae08b048dfa128d5cda9e9fca7133d770dd55"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-source-ci-before-snapshot.json",
+      "bytes": 2294,
+      "sha256": "527d41f2deb9e6c23b3a90c0ead48d6d642ff1e91f34f1cb908186285462daf9"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-validate-only.log",
+      "bytes": 114,
+      "sha256": "87b818ebd0426e8f24e4ccff6e44d4edc5fa2b64f9018e32ccf34c6969debb10"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-commit.json",
+      "bytes": 719,
+      "sha256": "f3d8a386c6559df089c3b77050a315087e4b5a29c100e90dfbf0df9e26121cbf"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-local-review.md",
+      "bytes": 1242,
+      "sha256": "5799d60832e8ef6cb63215ec1120ba60f3dcc43ad4164e8ee0f668eac5bf6f5f"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-pr-published.json",
+      "bytes": 1056,
+      "sha256": "e53607095825f7c0da0322118a3636e11044e853abd55d2c95e3d76a12c61639"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-unchanged-native.json",
+      "bytes": 36862,
+      "sha256": "820bd014d59765d12d72dc2b356cd4efbfa11d1c1725b16007b6821d35a5d731"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-validation.json",
+      "bytes": 1261,
+      "sha256": "706184fff5bafd85f1e70f27b8fcbf161d942455ad648e3565c7556dd4f312df"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-failure-ci-final.json",
+      "bytes": 24747,
+      "sha256": "aa551938ea9d1a17387a013f49a19c22c2005625e0468ffe15549ec3690d1d97"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-failure-guardian-final.json",
+      "bytes": 1572,
+      "sha256": "d6f629fe5428a9a497640f40139c94eca7053b47b3851e5bb4ee644fe3b35f8c"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-failure-pr-final.json",
+      "bytes": 3622,
+      "sha256": "a29ea4304aad6d183949eb78fe3318d8c716e157044a7106f866bf273a080181"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/native-failure-production-and-measurement-scope.json",
+      "bytes": 1845,
+      "sha256": "816ba855db544813e8e2ebf3729f22ee7cd19c8c0338697b28bfbda567c26d55"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/rust/target/indexing-speed-gate/v6-design/test_campaign_controller.py",
+      "bytes": 4665,
+      "sha256": "b9b2647d8bd90133e4ad278bd329b854958738135a5fe0d5cf1faeeb172a1c11"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "native-diagnostic-controller-reviewed-before/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 31864,
+      "sha256": "68b621896b256bd88dfc12f0d547aebe426641566b6399b926e94a75f082517b"
+    },
+    {
+      "path": "native-diagnostic-controller-subjects.json",
+      "bytes": 5206,
+      "sha256": "3b5f698d6028c9cea8d760d80bd0392212ce5a18997aa4ccefc04ee4b0ce029a"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-ci-final.json",
+      "bytes": 5462,
+      "sha256": "8c18b93a5793e868c6adaa78aab3d19de00fa0ae01cac7e8c306433fe9f97e29"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-ci-watch.log",
+      "bytes": 1287,
+      "sha256": "79d23457f43e2f556dd8b5e74f7196f4ced0e38f6cc8790d570239c3da57e1b8"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-commit.json",
+      "bytes": 719,
+      "sha256": "f3d8a386c6559df089c3b77050a315087e4b5a29c100e90dfbf0df9e26121cbf"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-local-review.md",
+      "bytes": 1242,
+      "sha256": "5799d60832e8ef6cb63215ec1120ba60f3dcc43ad4164e8ee0f668eac5bf6f5f"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-policy-original.log",
+      "bytes": 16359,
+      "sha256": "20035a7ba80403dc85ef21145e9e51f8f52b2d63247022e6f28456618bfa8fbd"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/CI_OPERATIONS.md",
+      "bytes": 26806,
+      "sha256": "b656d097a84b83a61976f44edd386876d2c95128c05b9207c62943f4957857f7"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/CURRENT_STATUS.md",
+      "bytes": 6385,
+      "sha256": "9a5838b4454f51eaf0ad7e777711fe8546ea030603e351ce5ba989793d159aff"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/design/nonfunctional-runtime.md",
+      "bytes": 76087,
+      "sha256": "48491a1f184f410359c0eda33ad8e74680289288fbdc39bdfc3cc36f4ff9f454"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/history/indexing-speed-gate-2026-10-05/sustained-native-diagnostic-reference-equivalence.json",
+      "bytes": 112011,
+      "sha256": "ac0c39f5e1c1b83e3d8462072ba983bb3b334337190ef80b72cddc3566ecdc91"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/history/indexing-speed-gate-2026-10-05.md",
+      "bytes": 42976,
+      "sha256": "04715d953f7811e6d6b3fef78bdfa149939a791e292ece0c9fbd7a5032da274c"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/docs/testplan/indexing-contention.md",
+      "bytes": 42498,
+      "sha256": "051533c4a74581a13f721ecd2774e3a2209af3992ddafbae4ebd551a97b04d79"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-O-all.log",
+      "bytes": 150,
+      "sha256": "b15f0d25609b4cdcc3229bcd9e197ff70320a111334bbf4b45c403591f44f9c4"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-OO-all.log",
+      "bytes": 150,
+      "sha256": "bc05309bebce359c16b9cd5b834078da54fb0da559a67b8341fbbaa191752622"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-all.log",
+      "bytes": 217,
+      "sha256": "d472d57cbcc4fe98534e5ac798415cf90ab35d9b9ef9351ecf7359c5e7faf9e6"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-green.log",
+      "bytes": 98,
+      "sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-mode.log",
+      "bytes": 23,
+      "sha256": "ced96b901ca8094bdc05a8359c9305171a3227d0ae3dd97ccf60a51f61949505"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-implementation.md",
+      "bytes": 1843,
+      "sha256": "0240b1a6ced1a6a86e7e08ef8fd468ce10a728c8890b1e91502a91f07cafb34b"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-red.log",
+      "bytes": 1012,
+      "sha256": "faea7ad66b065c4ebcdacc2025890e64db5887ea874a8e7e14a252905c743a12"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-repo.log",
+      "bytes": 23,
+      "sha256": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-unchanged-native.json",
+      "bytes": 36862,
+      "sha256": "820bd014d59765d12d72dc2b356cd4efbfa11d1c1725b16007b6821d35a5d731"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-v5-original-replay-correct.log",
+      "bytes": 141,
+      "sha256": "74602c43a6c888d12644f75383a80458d2c5d36cb5c360aa1fc1337f8b76d1a7"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-validation-plan.txt",
+      "bytes": 1160,
+      "sha256": "5016e9c08833c7d559bb5fd6626fa43b3936f774363997053fecb87cddc82ce5"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-validation.json",
+      "bytes": 1261,
+      "sha256": "706184fff5bafd85f1e70f27b8fcbf161d942455ad648e3565c7556dd4f312df"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-yaml.json",
+      "bytes": 32,
+      "sha256": "70a98b40850082322e997d9d7ee3f275bce27e5b4b042410bf5b5d587a62ab3f"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-ci-final.json",
+      "bytes": 24747,
+      "sha256": "aa551938ea9d1a17387a013f49a19c22c2005625e0468ffe15549ec3690d1d97"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-ci-original-logs.zip",
+      "bytes": 650340,
+      "sha256": "2e4aaae8cd99a84f4a484c32700f5398943ef13df00b8716c664a8f0c10fcac3"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-coverage-original.log",
+      "bytes": 310849,
+      "sha256": "2f46e986256ffcb21eddac3ce7d9ec3bf8888222b89e1aae56b721b14881c5e7"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-gnu-original.log",
+      "bytes": 41882,
+      "sha256": "1981a0d2b1761dc08b28d4a202dd9c6701cf78a52118b67a0934d981cb70565e"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-guardian-final.json",
+      "bytes": 1572,
+      "sha256": "d6f629fe5428a9a497640f40139c94eca7053b47b3851e5bb4ee644fe3b35f8c"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-linux-original.log",
+      "bytes": 303011,
+      "sha256": "b37ce39051fbee8d19319b92d6b64cb63a0cb188f2bf9d778a6f3530d9c4369d"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-macos-original.log",
+      "bytes": 314692,
+      "sha256": "529d16f0701281909266d9a7c7ad13ea3df2c4554291eb2d34e861e3a97a8778"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-pr-final.json",
+      "bytes": 3622,
+      "sha256": "a29ea4304aad6d183949eb78fe3318d8c716e157044a7106f866bf273a080181"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-production-and-measurement-scope.json",
+      "bytes": 1845,
+      "sha256": "816ba855db544813e8e2ebf3729f22ee7cd19c8c0338697b28bfbda567c26d55"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-reference-pin-before-review.md",
+      "bytes": 933,
+      "sha256": "8f0f002f492c869563b68925d4753f00a7978eb7edd1f26bf3d85b892e62348a"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-reference-pin-before-subjects.json",
+      "bytes": 2745,
+      "sha256": "2dab24711c47d11d8d80dbc60ddcc871132020a74863804b15f04616712901a5"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-reference-pin-before-supplement.json",
+      "bytes": 432,
+      "sha256": "f158ce1927c47832e1cefc14388911b7ebe0710df96d7274bb6f992b81d7859f"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/native-failure-windows-original.log",
+      "bytes": 320265,
+      "sha256": "aa6566e32be1381d0d1071cdfaec02a2614bfe3ed3d86ed812093f065eee3452"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/rust/target/indexing-speed-gate/v6-design/v5-original-replay-after-native-diagnostic-pin.json",
+      "bytes": 1285,
+      "sha256": "f8deb6bb0dc4800e07fae0b14309dd69fe9aa19266e7a6dbde7a22d2678f4d23"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-reviewed/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 31864,
+      "sha256": "68b621896b256bd88dfc12f0d547aebe426641566b6399b926e94a75f082517b"
+    },
+    {
+      "path": "native-diagnostic-reference-pin-subjects.json",
+      "bytes": 6769,
+      "sha256": "e76704569cd5720f6d1ee62522fb8f5f78cb60ea2e3d1e0e4cb9008756b9dab6"
+    },
+    {
+      "path": "native-diagnostic-source-infra-ci-original-logs.zip",
+      "bytes": 14736,
+      "sha256": "13a2b743c099f3f2eff5c8220cb1e75f1cae82437f186ba39828b50de3fdeb98"
+    },
+    {
+      "path": "native-diagnostic-source-infra-ci-terminal-original.json",
+      "bytes": 4063,
+      "sha256": "a09d94683aff01c87bbaac52b002b65e9fe4a2d8793f54cb6da53d58aca47527"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-review.md",
+      "bytes": 2167,
+      "sha256": "328d26a6e3cf47847738e8a4c4cfd398945e2edf07b059c2a28b62612a00b903"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-v6.json",
+      "bytes": 5270,
+      "sha256": "72b2350a137af34bc4eab375b4cbaf0d6c02e29d23aaf1292ae8728d2a433272"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_v6.py",
+      "bytes": 16265,
+      "sha256": "6cb5a369a5de3b08ed1689e7747662020b77b3a711e1ece7f19eba62bf3ed405"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/githubstatus-actions-incident-original.json",
+      "bytes": 6837,
+      "sha256": "5921a30c4375721e872a65ea4bd19c31c4a9bcae9fdc9ce26625c909fedf7a67"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-before-review.md",
+      "bytes": 1349,
+      "sha256": "9d37d6698cc98cd43f4e7a384621c08e4070703b1fbc403f05d9f10775ea95b8"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-controller-support-required.json",
+      "bytes": 2522,
+      "sha256": "fa9ad542cb0b73502e3b786e94c077876985d3eec3e37af4e729aef217303aa4"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-detect-annotations-original.json",
+      "bytes": 352,
+      "sha256": "69699238df79dad4e60e39be57e8ee4c563aa45a798a7726d5a19ffc771e8832"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-detect-job-original.json",
+      "bytes": 920,
+      "sha256": "39b366821467045799d8f6b8ea49a3cc5a2f3140bff5ea73a8cb34a8a711257b"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-exact-source-runs-after-cancellation.json",
+      "bytes": 28244,
+      "sha256": "1ec5ab2910118379f1f0921ea01d0ad535688b21a6c6a3fb10d93d1a914b7f1a"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-annotations-original.json",
+      "bytes": 352,
+      "sha256": "69699238df79dad4e60e39be57e8ee4c563aa45a798a7726d5a19ffc771e8832"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-check-original.json",
+      "bytes": 3618,
+      "sha256": "ace30a2a36909b7e893e4c48c4ca2e5e4202f35ea792a9de0f63423c01d582bb"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-failed-original.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-final.json",
+      "bytes": 405,
+      "sha256": "72f210b81971dd4f4c17aec19e3555fed8f4e9aa7cdfdb9da3f62d9f0afa50a9"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-reference-pin-guardian-job-original.json",
+      "bytes": 925,
+      "sha256": "26b0a730078eb8a1e10d886611057ac1bf2437117affbcbf77eb870a1824d734"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-source-infra-ci-at-diagnosis.json",
+      "bytes": 4456,
+      "sha256": "79a54e1f24d52d675e7c19145a834f81d789aabdad429f559d8e09c660b39687"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-source-infra-diagnosis-before.md",
+      "bytes": 2893,
+      "sha256": "ccddefbc44eb5a889ec032b13409977f2beccbda67ea702ef7e8aa95714bff49"
+    },
+    {
+      "path": "native-diagnostic-source-infra-diagnosis-subjects.json",
+      "bytes": 3360,
+      "sha256": "8b25023cb315be53a4dfd621d9a86b860fcc0f8bfeb56d23f7f6da736315c7fe"
+    },
+    {
+      "path": "native-diagnostic-source-infra-pr-terminal-original.json",
+      "bytes": 3019,
+      "sha256": "23a3f1859c56687bcd2ba1281db340902bab50158fb28afe371ee14b95b52762"
+    },
+    {
+      "path": "reviewed-subject-index.json",
+      "bytes": 30829,
+      "sha256": "7010909d976da00c750cbfd07254caefcd5a127f68de379b5cae4e609ca90772"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}

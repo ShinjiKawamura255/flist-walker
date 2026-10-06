@@ -1,0 +1,249 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "d2338b8d5eb05d8027c497cad318fb491724bbaf11681d02f18afd96f459f122",
+  "files": [
+    {
+      "path": "controls-at-stop/AGENTS.md",
+      "bytes": 6926,
+      "sha256": "58e79599c530615b77d8954fa52c718c5b1bee9a37b07f388a8014818a2ca3aa"
+    },
+    {
+      "path": "controls-at-stop/docs/EXECUTION-PLAN-20261005-roadmap-indexing-speed-gate.md",
+      "bytes": 38089,
+      "sha256": "1c2b80b03de4e9bab83ef10775932ef60db41dfce7f6d40edd909c44ea8b90c1"
+    },
+    {
+      "path": "controls-at-stop/docs/EXECUTION-PLAN-20261005-slice-a-indexing-speed-gate.md",
+      "bytes": 49687,
+      "sha256": "bb28235bb1bea253fb38e71edabbb894bc0aa6887ce1acac8cfed6951da9fef4"
+    },
+    {
+      "path": "controls-at-stop/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "bytes": 36337,
+      "sha256": "bbf2a8b5e65af8a8d6f21d9a057f333e3f4d56a556ccd65e6db895ca27d3cbfb"
+    },
+    {
+      "path": "controls-at-stop/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "bytes": 134218,
+      "sha256": "735f2fdd0442001dadea9ef6d9de5a7866685ebc165d1550c90dfc635c6325db"
+    },
+    {
+      "path": "first-source-attempt-archive/campaign-original-artifacts.tar.gz",
+      "bytes": 1234994,
+      "sha256": "b7e7da23c6546565c78dff567c5ff96b33cc7b22c6e8c3bb0133db773c1c43ac"
+    },
+    {
+      "path": "first-source-attempt-archive/evidence-manifest.json",
+      "bytes": 23572,
+      "sha256": "94b978b385d2b6f7130058e32a68b2c5ffc488f4602da1437e71b56a7dda600a"
+    },
+    {
+      "path": "first-source-attempt-archive/review-subject-roundtrip.json",
+      "bytes": 289,
+      "sha256": "e1550a84f88d17764aa0f6f6f0235fbc62678a93c53d5c1da4c97eef6e646511"
+    },
+    {
+      "path": "githubstatus-actions-major-outage-observed.json",
+      "bytes": 7936,
+      "sha256": "0d0c50118196e43fa8ee9a91767a2f671e40f5f5a56b30514a8e4da833677923"
+    },
+    {
+      "path": "githubstatus-recovery-watch-latest.json",
+      "bytes": 9495,
+      "sha256": "aa01374f0c48810b3b7571ebc53f6c986029dcdb4f2d246fdceb3def1cb67e2f"
+    },
+    {
+      "path": "githubstatus-recovery-watch-timeout.json",
+      "bytes": 166,
+      "sha256": "6bb7c2b4a90856fcb7ce2068b2e6579fa31a2451fa1060f5cf188c49a4788959"
+    },
+    {
+      "path": "githubstatus-recovery-watch.log",
+      "bytes": 1312,
+      "sha256": "c8a2443d91d215e2a5eefb518ba22b93216e0a0701a7f3050cfa9102fd17e182"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-review.md",
+      "bytes": 879,
+      "sha256": "73f0bbc9064a97d74cdf664dbc86ebdb056baf96f3568e534705ad2afc4992e8"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/docs/EXECUTION-PLAN-20261005-slice-b-indexing-speed-gate.md",
+      "bytes": 34882,
+      "sha256": "a8b66b28fcab7bb1056a7e061a6831d03ee908d5a115630a243a9f451e31c1da"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/docs/EXECUTION-WORK-ITEMS-20261005-indexing-speed-gate.json",
+      "bytes": 132431,
+      "sha256": "63d8751cb1615c82f764562ce926ca256207779cc482d9c7b92b7b65db15171d"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-v6.json",
+      "bytes": 5270,
+      "sha256": "72b2350a137af34bc4eab375b4cbaf0d6c02e29d23aaf1292ae8728d2a433272"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_v6.py",
+      "bytes": 16265,
+      "sha256": "6cb5a369a5de3b08ed1689e7747662020b77b3a711e1ece7f19eba62bf3ed405"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/unmeasured-v6-f60-infra-archive/evidence-manifest.json",
+      "bytes": 23572,
+      "sha256": "94b978b385d2b6f7130058e32a68b2c5ffc488f4602da1437e71b56a7dda600a"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/unmeasured-v6-f60-infra-archive/review-subject-roundtrip.json",
+      "bytes": 289,
+      "sha256": "e1550a84f88d17764aa0f6f6f0235fbc62678a93c53d5c1da4c97eef6e646511"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-proposal.md",
+      "bytes": 2405,
+      "sha256": "76a4285c264fecdd8a6a261956b3fa52bfeac16da1391ad4374e17b961a0695c"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-source-infra-diagnosis-review.md",
+      "bytes": 2167,
+      "sha256": "328d26a6e3cf47847738e8a4c4cfd398945e2edf07b059c2a28b62612a00b903"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-source-infra-recovery-exception.json",
+      "bytes": 1328,
+      "sha256": "417486b552e017e21c032e518c50ead0d42a31527ef5ed3e50b4b7e13a59b687"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/rust/target/indexing-speed-gate/v6-design/test_campaign_controller.py",
+      "bytes": 4665,
+      "sha256": "b9b2647d8bd90133e4ad278bd329b854958738135a5fe0d5cf1faeeb172a1c11"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-reviewed/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-before-subjects.json",
+      "bytes": 2417,
+      "sha256": "8e3de52917ae7bbc0210c87a4c94ad22440d90b4e56d844a749ff44a977d9dad"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-review.md",
+      "bytes": 1116,
+      "sha256": "ab71855458fe365e653e9aae6b54b93c7ce2d39a1fe30976aa1423d5510a1b92"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/campaign-protocol-matched21-native-diagnostic-recovered-v6.json",
+      "bytes": 5825,
+      "sha256": "56c04f8cbeb410457eb065265d76a2be0faf7957bf56f9ce68818b11fd8aed53"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/campaign_runner_matched21_native_diagnostic_recovered_v6.py",
+      "bytes": 17565,
+      "sha256": "314b1a57335cd7df6330e5101222540e811e9cebd944e55fcd96725757ff54b0"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-before-review.md",
+      "bytes": 879,
+      "sha256": "73f0bbc9064a97d74cdf664dbc86ebdb056baf96f3568e534705ad2afc4992e8"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-before-subjects.json",
+      "bytes": 2417,
+      "sha256": "8e3de52917ae7bbc0210c87a4c94ad22440d90b4e56d844a749ff44a977d9dad"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-implementation.md",
+      "bytes": 1108,
+      "sha256": "dea443754cf1fcc065f655d46f11edc1ba0c7fe5c7ec04f41bc157a3091f2cd8"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/native-diagnostic-recovered-controller-validation.json",
+      "bytes": 1163,
+      "sha256": "8144037a9ed0808e967ca475d0874b94ad19b5b01f1570789d61d939a55d0ab1"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/prepare_recovered_native_diagnostic_source_admission.py",
+      "bytes": 4583,
+      "sha256": "efbddfc13eda70f121d95f4f1af6f3194f45fc452af5f6ac17978cf70519fff9"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/recovered-controller-ast-equivalence.json",
+      "bytes": 493,
+      "sha256": "8e9dc23e32b3a1c4459d305b181e207d56478442dbbc2064c5e395101ede7506"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/recovered-controller-controls-green.log",
+      "bytes": 117,
+      "sha256": "f1ac329531af9b030976e106e19d55a8f19761c4d084fa8d4c05f53b6611c29a"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/recovered-controller-red.log",
+      "bytes": 1083,
+      "sha256": "9f59bb5a7f686e1e4a8826bf7c72394e3add2477b9b5db5539dd1eff512e9325"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/recovered-controller-validate-only.log",
+      "bytes": 114,
+      "sha256": "87b818ebd0426e8f24e4ccff6e44d4edc5fa2b64f9018e32ccf34c6969debb10"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/test_campaign_controller_recovered.py",
+      "bytes": 7069,
+      "sha256": "0c097ce2e6c3220026c22b15e13289cf198d14f28a2b46ecd63616798deb3652"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/rust/target/indexing-speed-gate/v6-design/watch_recovered_source_ci.py",
+      "bytes": 1223,
+      "sha256": "f9470ad315f3209add776c5a7deabe74d334b635555850bf4ba7ad6c34ff23bc"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/scripts/indexing_perf_contract.py",
+      "bytes": 42149,
+      "sha256": "0bde4edbcc48782b99ec3deef57e25e1b9df4e2b9543eec3115d7d52fe15fa5d"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-reviewed/scripts/indexing_perf_gate.py",
+      "bytes": 15946,
+      "sha256": "fe06081058a594616c1b5326b49f597aba39487437a90c25af9f6f668e183110"
+    },
+    {
+      "path": "native-diagnostic-recovered-controller-implementation-subjects.json",
+      "bytes": 3090,
+      "sha256": "2101fb75cdfc833f7f0e532962986697232f0e4ced21710047568edf5db54ba2"
+    },
+    {
+      "path": "native-diagnostic-source-infra-bounded-stop.json",
+      "bytes": 757,
+      "sha256": "5f6bdddecf0ab38f66254b81ca576857ba5887d33cb868126d24bb0e34f645f2"
+    },
+    {
+      "path": "native-diagnostic-source-infra-ci-at-timeout.json",
+      "bytes": 3957,
+      "sha256": "63a358df6a9a45144586a30afd954ed9e41b99007d7cdd8bef5c972baa34d5ec"
+    },
+    {
+      "path": "native-diagnostic-source-infra-guardian-at-timeout.json",
+      "bytes": 430,
+      "sha256": "485b72358239c5080736439e7bf8414466e9d6a7cb83bf8931d1157589adc4bd"
+    },
+    {
+      "path": "native-diagnostic-source-infra-pr-at-timeout.json",
+      "bytes": 202,
+      "sha256": "d0832045701837f0696e97015f63addd8461f0c6410529628430ab0b1002785d"
+    },
+    {
+      "path": "watch_official_infra_recovery.py",
+      "bytes": 2143,
+      "sha256": "f9b9188f7b8980cc139988579c3891e27d7b749d072730ec4fe0092b7f4437be"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
