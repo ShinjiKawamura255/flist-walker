@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from contextlib import ExitStack
 import json
 import subprocess
 import sys
@@ -527,6 +528,68 @@ class OrchestrationTests(unittest.TestCase):
             self.assertEqual(git(source,"status","--porcelain"),"")
             self.assertEqual(git(clone,"rev-parse","HEAD"),reference)
             self.assertEqual((clone/"file").read_text(),"baseline")
+
+
+class HostedActivationTests(unittest.TestCase):
+    def test_default_hosted_collection_rejects_numeric_only_completion_regression(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            options, calls, patches = OrchestrationTests().simulate(folder, slow=True)
+            with ExitStack() as stack:
+                for patch in patches:
+                    stack.enter_context(patch)
+                # No enforcement-mode mock: exercise the published hosted default.
+                with self.assertRaisesRegex(contract.ValidationError, "timing-fail"):
+                    gate.collect_triplet(options)
+            receipt = json.loads((Path(options.output)/"receipt.json").read_text())
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(receipt["status"], "observed-valid")
+            self.assertTrue(receipt["comparison"]["enforced"])
+            self.assertEqual(gate.load_comparison(options.output, "f1")["status"], "timing-fail")
+
+    def test_default_hosted_collection_accepts_normal_completion_and_records_enforcement(self):
+        with tempfile.TemporaryDirectory() as name:
+            options, calls, patches = OrchestrationTests().simulate(Path(name))
+            with ExitStack() as stack:
+                for patch in patches:
+                    stack.enter_context(patch)
+                gate.collect_triplet(options)
+            receipt = json.loads((Path(options.output)/"receipt.json").read_text())
+            self.assertEqual(len(calls), 3)
+            self.assertTrue(receipt["comparison"]["enforced"])
+            self.assertEqual(gate.load_comparison(options.output, "f1")["status"], "pass")
+
+
+    def test_default_hosted_collection_keeps_isolated_maximum_excess_diagnostic(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as name:
+            folder=Path(name)
+            options,calls,patches=OrchestrationTests().simulate(folder)
+            blueprint=folder/'controls'
+            for path in blueprint.iterdir():
+                path.unlink()
+            def tail(row):
+                if row['pair']==20:
+                    row['index_ready_ms']*=100
+                    row['results_ready_ms']*=100
+            write_fixture(blueprint,change=tail)
+            with ExitStack() as stack:
+                for patch in patches:
+                    stack.enter_context(patch)
+                # Published default is intentionally not mocked.
+                gate.collect_triplet(options)
+            root=json.loads((Path(options.output)/'receipt.json').read_text())
+            self.assertTrue(root['comparison']['enforced'])
+            self.assertEqual(root['status'],'observed-valid')
+            self.assertEqual(len(calls),3)
+            report=gate.load_comparison(options.output,'f1')
+            self.assertEqual(report['status'],'pass')
+            self.assertEqual((report['enforced_count'],report['diagnostic_count']),(32,32))
+            self.assertTrue(any(d['status']=='diagnostic' and d['candidate_exceeds_limit'] for d in report['decisions']))
+            run=subprocess.run([sys.executable,'scripts/indexing_perf.py','validate','--group','f1',options.output],cwd=ROOT,capture_output=True,text=True,timeout=20)
+            self.assertEqual(run.returncode,0,run.stdout+run.stderr)
+            self.assertEqual(json.loads(run.stdout),report)
 
 
 if __name__ == "__main__":
