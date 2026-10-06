@@ -24,6 +24,32 @@
 ### Known issues
 - なし。
 
+## [0.30.1] - 2026-10-07
+### Added
+- なし。
+
+### Changed
+- indexing と searching・filter・tab 操作が重なる性能検証を強化し、同じ実行内の参照との比較で持続的な速度低下を検出するようにした。
+- 検証 fixture の準備・終了待機と失敗時の診断を改善し、request・全件順序・worker 回収の確認を維持した。
+
+### Fixed
+- Active / Warm tab を切り替える際に、受信済み indexing batch の順序が入れ替わる問題を修正した。
+- 公開済み v0.30.0 の updater capability と、v0.30.1 の exact checksum inventory に対する前版互換性回帰テストを登録した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は未 notarized。
+- v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降は通常の自動更新を利用できる。
+- 大規模な候補集合では query 準備中の index 取り込みを一時停止する。v0.30.0 の50万候補検証の query dispatch 中央値339〜498 ms、最大536 msは元版の観測値であり、本版の再測定値ではない。
+
 ## [0.30.0] - 2026-10-03
 ### Added
 - GUI に preview の keyboard control mode を追加した。Primary+Shift+L で切り替え、ページ移動・scroll・Color 操作を keyboard から行える。
@@ -2150,7 +2176,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...HEAD
+[0.30.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.1
 [0.30.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...v0.29.0
 [0.28.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.27.1...v0.28.0
