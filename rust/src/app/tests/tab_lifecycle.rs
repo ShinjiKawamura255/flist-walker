@@ -1254,6 +1254,146 @@ fn tc_207_deferred_root_is_a_barrier_for_refresh_close_and_restore() {
     }
 }
 
+fn tc207_close_probe(
+    app: &FlistWalkerApp,
+    target_id: u64,
+    old_root: &Path,
+    new_root: &Path,
+) -> serde_json::Value {
+    let target = if app.current_tab_id() == Some(target_id) {
+        serde_json::json!({
+            "present":true,"owner":"active-shell","root_old":app.shell.runtime.root.as_path()==old_root,
+            "root_new":app.shell.runtime.root.as_path()==new_root,
+            "deferred_new_root":app.shell.indexing.root_after_pending_finish.as_deref()==Some(new_root),
+            "terminal_pending":app.shell.indexing.pending_finish.is_some(),
+            "lifecycle":format!("{:?}",app.shell.indexing.lifecycle()),
+            "pending_request":app.shell.indexing.pending_request_id,
+            "build_reclaim_request":app.shell.indexing.build_reclaim_request_id,
+            "build_reclaim_pending":app.shell.indexing.build_reclaim_pending,
+            "in_progress":app.shell.indexing.in_progress
+        })
+    } else if let Some(tab) = app.shell.tabs.iter().find(|tab| tab.id == target_id) {
+        serde_json::json!({
+            "present":true,"owner":"stored-slot","root_old":tab.root.as_path()==old_root,
+            "root_new":tab.root.as_path()==new_root,
+            "deferred_new_root":tab.index_state.root_after_pending_finish.as_deref()==Some(new_root),
+            "terminal_pending":tab.index_state.pending_index_finish.is_some(),
+            "lifecycle":format!("{:?}",tab.index_state.lifecycle()),
+            "pending_request":tab.index_state.pending_index_request_id,
+            "build_reclaim_request":tab.index_state.build_reclaim_request_id,
+            "build_reclaim_pending":tab.index_state.build_reclaim_pending,
+            "in_progress":tab.index_state.index_in_progress
+        })
+    } else {
+        serde_json::json!({"present":false,"owner":"absent"})
+    };
+    let (heavy_count, heavy_weight, pending, available) =
+        app.shell.tabs.close_probe_pressure_for_test();
+    let notice = if app.shell.runtime.notice == "Waiting for background tab resource reclamation" {
+        "waiting-resource"
+    } else if !app.shell.runtime.notice.is_empty() {
+        "other"
+    } else {
+        "none"
+    };
+    serde_json::json!({
+        "tabs":app.shell.tabs.len(),"active_index":app.shell.tabs.active_tab_index(),
+        "active_id":app.current_tab_id(),"target_id":target_id,"target":target,
+        "pending_activation":app.shell.tabs.pending_activation_tab_id,
+        "target_request_owners":app.shell.indexing.request_ids_for_tab(target_id),
+        "request_routes":app.shell.indexing.request_tabs.len(),
+        "background_states":app.shell.indexing.background_states.len(),
+        "background_finalizers":app.shell.indexing.background_finalizations.keys().count(),
+        "all_heavy_count":heavy_count,"all_heavy_weight":heavy_weight,
+        "closed_history":app.shell.tabs.closed_tab_count(),
+        "reclaimer":{"pending":pending,"available_slots":available,"capacity":TAB_RESOURCE_RECLAIMER_CAPACITY,
+            "reads":"nontransactional","reserved_state":"NOT_OBSERVED"},
+        "notice_classification":notice,"notice_is_return_branch_proof":false
+    })
+}
+
+#[test]
+fn tc_207_close_probe_distinguishes_known_full_terminal_and_target_identity() {
+    let settings = super::support::TestSettingsScope::new("tc207-close-probe-controlled")
+        .with_strict_cleanup();
+    let root = settings
+        .runtime_config_path()
+        .parent()
+        .unwrap()
+        .join("root");
+    let next = root.join("next");
+    fs::create_dir_all(&next).unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.create_new_tab();
+    let target_id = app.shell.tabs.get(0).unwrap().id;
+    {
+        let tab = app.shell.tabs.get_mut(0).unwrap();
+        tab.index_state.root_after_pending_finish = Some(next.clone());
+        tab.index_state
+            .set_lifecycle_for_test(TabResourceLifecycle::Ready);
+        tab.index_state
+            .set_committed_snapshot_present_for_test(true);
+        tab.result_state.committed.all_entries = Arc::new(vec![file_entry(root.join("old.txt"))]);
+    }
+    app.shell.tabs.pause_resource_reclaimer();
+    for index in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut tab = app.capture_active_tab_state(20_000 + index as u64);
+        tab.result_state.committed.all_entries =
+            Arc::new(vec![file_entry(root.join(format!("held-{index}")))]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(tab.take_heavy_resources())
+            .unwrap();
+    }
+    let full = tc207_close_probe(&app, target_id, &root, &next);
+    assert_eq!(
+        full["reclaimer"]["available_slots"], 0,
+        "diagnostic must identify real held Full state"
+    );
+    assert_eq!(full["target"]["owner"], "stored-slot");
+    assert_eq!(full["target"]["deferred_new_root"], true);
+    assert_eq!(full["target"]["terminal_pending"], false);
+    assert_eq!(
+        full,
+        tc207_close_probe(&app, target_id, &root, &next),
+        "probe must not alter state or reservations"
+    );
+    assert!(!full.to_string().contains(root.to_string_lossy().as_ref()));
+    app.close_tab_index(0);
+    assert_eq!(app.shell.tabs.len(), 2);
+    {
+        let tab = app.shell.tabs.get_mut(0).unwrap();
+        tab.index_state.root_after_pending_finish = None;
+        tab.index_state.pending_index_finish = Some(PendingActiveIndexFinish {
+            request_id: 607,
+            source: IndexSource::Walker,
+        });
+    }
+    let terminal = tc207_close_probe(&app, target_id, &root, &next);
+    assert_eq!(terminal["target"]["terminal_pending"], true);
+    assert_eq!(terminal["target"]["deferred_new_root"], false);
+    assert_eq!(terminal["reclaimer"]["available_slots"], 0);
+    app.close_tab_index(0);
+    assert_eq!(app.shell.tabs.len(), 2);
+    assert_eq!(
+        tc207_close_probe(&app, 99_999, &root, &next)["target"]["present"],
+        false,
+        "missing target must not read another tab by index"
+    );
+    let active = app.current_tab_id().unwrap();
+    assert_eq!(
+        tc207_close_probe(&app, active, &root, &next)["target"]["owner"],
+        "active-shell"
+    );
+    drop(app);
+    // Strict scope Drop confirms physical writer return before deleting its base.
+    drop(settings);
+    assert!(
+        !root.exists(),
+        "successful probe cleanup removes its owned root"
+    );
+}
+
 #[test]
 fn tc_207_inactive_deferred_root_survives_background_refresh_and_close() {
     let root_a = test_root("tc-207-inactive-deferred-root-a");
@@ -1310,8 +1450,15 @@ fn tc_207_inactive_deferred_root_survives_background_refresh_and_close() {
     assert!(request_rx.try_recv().is_err());
 
     app.shell.tabs.resume_resource_reclaimer();
+    let close_before = tc207_close_probe(&app, target_id, &root_a, &root_b);
     app.close_tab_index(target_index);
-    assert_eq!(app.shell.tabs.len(), 1);
+    assert_eq!(
+        app.shell.tabs.len(),
+        1,
+        "TC207_CLOSE before={} after={}",
+        close_before,
+        tc207_close_probe(&app, target_id, &root_a, &root_b)
+    );
     app.restore_recently_closed_tab();
 
     let restored_id = app.current_tab_id().expect("restored tab id");

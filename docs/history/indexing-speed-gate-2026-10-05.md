@@ -206,3 +206,8 @@ A causal regression test reproduces the real production background terminal hand
 ## Final-source native rejection and normal-only repair
 
 [Source7f native rejection](indexing-speed-gate-2026-10-05/normal-v7-native-rejected/measurement-diagnosis.md) retains whole CI37466598553attempt1FAIL, Windows1,612PASS/2FAIL/20ignored, its21-file original archive and exact unknown-stage limits. Independent BEFORE permits only after-write readiness and nine-leaf normal42-cell partitioning with unchanged deadlines/work. Accepted212 calibration remains historical; new candidate native/ordinary-active proof and integration FINAL/protected merge/master execution are separate.
+
+
+## TC207 native rejection and diagnostic scope
+
+[Source2de TC207 rejection](indexing-speed-gate-2026-10-05/tc207-native-rejected/measurement-diagnosis.md) preserves whole CI37475828481attempt1FAIL/Linux1,593PASS1FAIL19ignored while other native/build/GNU/coverage and Guardian succeed. Twenty original files/787,569 bytes and the exact unknown-branch limits remain unchanged. Scalar diagnostics retain every single-close assertion and do not promise a causal repair. Old212 calibration, new candidate native/ordinary-active proofs and future master execution keep separate source identities.

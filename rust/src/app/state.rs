@@ -1487,6 +1487,24 @@ impl TabSessionState {
     }
 
     #[cfg(test)]
+    pub(super) fn close_probe_pressure_for_test(&self) -> (usize, usize, usize, usize) {
+        let weights = self
+            .tabs
+            .iter()
+            .map(|tab| tab.heavy_resource_weight())
+            .chain(
+                self.closed_tabs
+                    .iter()
+                    .map(|closed| closed.tab.heavy_resource_weight()),
+            );
+        let (count, weight) = weights.fold((0usize, 0usize), |(count, sum), weight| {
+            (count + usize::from(weight > 0), sum.saturating_add(weight))
+        });
+        let (pending, available) = self.resource_reclaimer.close_probe_counts_for_test();
+        (count, weight, pending, available)
+    }
+
+    #[cfg(test)]
     pub(super) fn last_closed_tab_results_compacted(&self) -> Option<bool> {
         self.closed_tabs
             .last()

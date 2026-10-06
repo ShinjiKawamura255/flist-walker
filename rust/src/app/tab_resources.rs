@@ -1068,6 +1068,16 @@ impl TabResourceReclaimer {
     pub(super) fn pending(&self) -> usize {
         self.pending.load(Ordering::Acquire)
     }
+
+    #[cfg(test)]
+    pub(super) fn close_probe_counts_for_test(&self) -> (usize, usize) {
+        // Separate worker-atomic observations, not a transactional reservation
+        // snapshot or evidence of physical payload destruction.
+        (
+            self.pending.load(Ordering::Acquire),
+            self.available_slots.load(Ordering::Acquire),
+        )
+    }
 }
 
 impl Drop for TabResourceReclaimer {
