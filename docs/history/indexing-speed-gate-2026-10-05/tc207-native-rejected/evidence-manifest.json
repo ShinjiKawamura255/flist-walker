@@ -1,0 +1,109 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "9a203f731a7f801f4df623690f773fa208557184509a432c25339e4d40a41f5d",
+  "files": [
+    {
+      "path": "actual-source/rust/src/app/state.rs",
+      "bytes": 56366,
+      "sha256": "762061370320e9dafeda7761a6f709dc840910f7e117113088bd90be38cd3aef"
+    },
+    {
+      "path": "actual-source/rust/src/app/tab_resources.rs",
+      "bytes": 43542,
+      "sha256": "ebd2a5ab8367e9fe72db6ee6979729a33e3a78760897ec26830f46080921198b"
+    },
+    {
+      "path": "actual-source/rust/src/app/tabs.rs",
+      "bytes": 76310,
+      "sha256": "31e019de5f1d363680c24c6e8daa3dba65bc8e5ed5b1f1227f5ad6c9bd05beaf"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/indexing_perf/extensions/mod.rs",
+      "bytes": 86397,
+      "sha256": "c36085a5f91a0f1e28490c4f785d5c7deb394b3c61a304bf9686fc4295686993"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/support.rs",
+      "bytes": 11302,
+      "sha256": "b63f97468a417639911d18c83873e2755ac9388820b1a413b7105394d82f1ae9"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/tab_lifecycle.rs",
+      "bytes": 114914,
+      "sha256": "fbccfef47893915f061a533fa39569a1dec57e5e37b1d1131ab2d20c101fd704"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf_contract.py",
+      "bytes": 42225,
+      "sha256": "b59e088be72029c9adf3a9e52a4d2206138136ac66be311a7cb14591dc93ea14"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf_gate.py",
+      "bytes": 15945,
+      "sha256": "7b22dd250da3a34075818b0f5d1388dfd09f261ffd20d81585405498c87a0e00"
+    },
+    {
+      "path": "ci-whole-attempt1-original-logs.zip",
+      "bytes": 638063,
+      "sha256": "bf8d46dcf8da65e0486188a01524766b66c71b6ac1c44086348bf3d4d191104d"
+    },
+    {
+      "path": "diagnosis-observation.json",
+      "bytes": 760,
+      "sha256": "67ff8bdd7b4d61f82f3df1fd5e7da72d32d4150897d8b0f35ebe319bce87e43a"
+    },
+    {
+      "path": "guardian-whole-attempt1-original-logs.zip",
+      "bytes": 12228,
+      "sha256": "3b7812656cbad66c854d8127ea8b1ff6138eb5f8568534f0edb19fb043227384"
+    },
+    {
+      "path": "normal-repair-commit.json",
+      "bytes": 1128,
+      "sha256": "dc2beb5759a5b8c4c97f97ecc03178bb68cd911c6ea37978cb7ffef78c971b94"
+    },
+    {
+      "path": "normal-repair-local-review.md",
+      "bytes": 1241,
+      "sha256": "46bd34844092cdcb8b61180fecd3b5306ec12efd60744a156a1cf7cad971f557"
+    },
+    {
+      "path": "normal-repair-local-subjects.json",
+      "bytes": 8525,
+      "sha256": "7cc6418c2c0c353ecc1d35d0d04fce06a68e67df25f546df3d55d6cbe3a2fb2d"
+    },
+    {
+      "path": "normal-repair-measured-work-equivalence.json",
+      "bytes": 5003,
+      "sha256": "11fbe5a4bf1df22a0d062362b807e4915fd92dbd58e0e9a5e0ea4312eb1413fe"
+    },
+    {
+      "path": "normal-repair-source-ci-final.json",
+      "bytes": 24776,
+      "sha256": "f71b31a0486fa50564e4976f43fbe71ec255a4564d8cddc1393dd61c7be7bed5"
+    },
+    {
+      "path": "normal-repair-source-guardian-final.json",
+      "bytes": 1597,
+      "sha256": "5a477f46301e728f1d1d3883807c98f439315912cda1dcbef9306c7f083629cd"
+    },
+    {
+      "path": "normal-repair-source-linux-failed-original.log",
+      "bytes": 272063,
+      "sha256": "4f50a43ffbe4d268142b0b99084cc5bbdf33592034daa2e6e23d4bde3f0bae02"
+    },
+    {
+      "path": "normal-repair-validation.json",
+      "bytes": 1722,
+      "sha256": "700015b6bfa0fa0e4537161fa00b1661ae6b147129b4668581d64cc7daf098ef"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}

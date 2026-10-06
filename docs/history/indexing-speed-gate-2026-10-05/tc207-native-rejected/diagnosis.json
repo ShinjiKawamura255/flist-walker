@@ -1,0 +1,13 @@
+{
+  "source": "2de9d1714ae0cabf9a8555247b4f8902bf2b621a",
+  "run": "37475828481attempt1",
+  "whole": "FAIL",
+  "Guardian": "37475823898attempt1SUCCESS",
+  "Linux": "1593PASS1FAIL19ignored TC207inactive_deferred_root background_refresh_close at1314 count2 expected1",
+  "Windows_mac_coverage_GNU_build": "SUCCESS",
+  "Audit": "intentionalSKIP",
+  "CI_Gate": "FAIL",
+  "scope": "No retry/performance dispatch/merge. Exactcause notyetestablished; normalA/BWindowsPASS distinctfromwholeNativeFAIL.",
+  "resume_helper": "cfgtest resumes by replacing with fresh defaultreclaimer/capacity4; do notassume oldqueue draining causedrace",
+  "timed_work": "old212five retainedsource; current7WORK/Python/driver unchanged; unrelatedTC207testfile unchanged fromold7f/212"
+}
