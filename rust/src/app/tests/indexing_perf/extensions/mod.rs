@@ -122,7 +122,7 @@ normal_smoke_leaves!(
     (tc_229_real_worker_extended_profiles_smoke_wide, Wide),
 );
 
-const STABLE_EDIT_INPUT_POLICY: &str = "full-scale stable-A previous owned query evaluated in full before next input; normal production frames/indexing continue; all three inputs must overlap unsettled indexing";
+const STABLE_EDIT_INPUT_POLICY: &str = "full-scale stable-A previous owned query evaluated in full before next input; actual owned indexing checkpoint must reach previous admitted actual count; normal production frames/indexing continue; all three inputs must overlap unsettled indexing";
 
 #[derive(Clone, Copy)]
 struct StableQueryIdentity<'a> {
@@ -164,8 +164,74 @@ fn stable_edit_input_allowed(
     profile: cases::Profile,
     stage: usize,
     evaluated: bool,
+    checkpoint: usize,
+    previous_admitted: Option<usize>,
 ) -> bool {
-    !(full && profile == cases::Profile::StableEdit && stage > 0) || evaluated
+    !(full && profile == cases::Profile::StableEdit && stage > 0)
+        || (evaluated && previous_admitted.is_some_and(|previous| checkpoint >= previous))
+}
+
+#[test]
+fn tc_229_stable_edit_progress_guard_keeps_full_pressure_scope() {
+    use cases::Profile;
+    for stage in [1, 2] {
+        assert!(!stable_edit_input_allowed(
+            true,
+            Profile::StableEdit,
+            stage,
+            true,
+            51200,
+            Some(65536)
+        ));
+        assert!(stable_edit_input_allowed(
+            true,
+            Profile::StableEdit,
+            stage,
+            true,
+            65536,
+            Some(65536)
+        ));
+        assert!(!stable_edit_input_allowed(
+            true,
+            Profile::StableEdit,
+            stage,
+            false,
+            65536,
+            Some(65536)
+        ));
+        assert!(!stable_edit_input_allowed(
+            true,
+            Profile::StableEdit,
+            stage,
+            true,
+            65536,
+            None
+        ));
+    }
+    assert!(stable_edit_input_allowed(
+        true,
+        Profile::StableEdit,
+        0,
+        false,
+        15360,
+        None
+    ));
+    assert!(stable_edit_input_allowed(
+        false,
+        Profile::StableEdit,
+        2,
+        false,
+        51200,
+        Some(65536)
+    ));
+    assert!(stable_edit_input_allowed(
+        true,
+        Profile::EditFiles,
+        2,
+        false,
+        51200,
+        Some(65536)
+    ));
 }
 
 #[test]
@@ -204,13 +270,17 @@ fn tc_229_stable_edit_next_input_requires_owned_full_evaluation() {
         true,
         cases::Profile::StableEdit,
         0,
-        false
+        false,
+        65536,
+        Some(65536)
     ));
     assert!(!stable_edit_input_allowed(
         true,
         cases::Profile::StableEdit,
         1,
-        stable_query_evaluated(&binding, &stats, &expected)
+        stable_query_evaluated(&binding, &stats, &expected),
+        65536,
+        Some(65536)
     ));
     stats.evaluated_candidates = 100000;
     stats.evaluation_completed_at = Some(start + Duration::from_millis(3));
@@ -219,19 +289,25 @@ fn tc_229_stable_edit_next_input_requires_owned_full_evaluation() {
         true,
         cases::Profile::StableEdit,
         1,
-        true
+        true,
+        65536,
+        Some(65536)
     ));
     assert!(stable_edit_input_allowed(
         false,
         cases::Profile::StableEdit,
         1,
-        false
+        false,
+        65536,
+        Some(65536)
     ));
     assert!(stable_edit_input_allowed(
         true,
         cases::Profile::EditFiles,
         1,
-        false
+        false,
+        65536,
+        Some(65536)
     ));
     // Evaluation completion is sufficient; sorting/delivery is a separate phase.
     assert!(stats.completed_at.is_none());
