@@ -111,6 +111,11 @@ impl ConfigSettingsService {
         Some(response)
     }
 
+    #[cfg(test)]
+    pub(in crate::app) fn pending_operation_for_test(&self) -> Option<(u64, bool)> {
+        self.pending
+    }
+
     pub(in crate::app) fn disconnect(&mut self) {
         self.tx = None;
     }

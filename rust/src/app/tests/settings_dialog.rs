@@ -5,11 +5,43 @@ use crate::app::worker::config_open::ConfigOpenService;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+// Request bookkeeping and UI state are not physical worker timing observations.
+// This formatting is evaluated only by a failed assertion (or its focused test).
+fn settings_wait_diagnostics(app: &FlistWalkerApp, deadline: Instant) -> String {
+    let phase = match &app.settings_dialog.view {
+        SettingsView::Closed => "closed",
+        SettingsView::Loading => "loading",
+        SettingsView::Reloading { .. } => "reloading",
+        SettingsView::Editing { .. } => "editing",
+        SettingsView::Saving { .. } => "saving",
+        SettingsView::Failed(_) => "failed",
+    };
+    let pending = app
+        .shell
+        .worker_bus
+        .config_settings
+        .pending_operation_for_test();
+    let generation = pending.map_or_else(
+        || "none".to_string(),
+        |(generation, _)| generation.to_string(),
+    );
+    let operation = pending.map_or("none", |(_, is_save)| if is_save { "save" } else { "load" });
+    format!(
+        "settings worker did not settle; ui_phase={phase} expected_generation={} pending_generation={generation} pending_operation={operation} overdue_ms={} (after poll; physical worker phase unobserved)",
+        app.settings_dialog.generation,
+        Instant::now().saturating_duration_since(deadline).as_millis(),
+    )
+}
+
 fn settle_settings_dialog(app: &mut FlistWalkerApp) {
     let deadline = Instant::now() + Duration::from_secs(2);
     while app.shell.worker_bus.config_settings.in_progress() {
         app.poll_config_settings_response();
-        assert!(Instant::now() < deadline, "settings worker did not settle");
+        assert!(
+            Instant::now() < deadline,
+            "{}",
+            settings_wait_diagnostics(app, deadline)
+        );
         thread::yield_now();
     }
 }
@@ -688,4 +720,86 @@ fn regression_narrow_settings_title_and_footer_stay_inside_client_area() {
             }
         }
     }
+}
+
+#[test]
+fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() {
+    let scope = test_settings_scope("settings-wait-diagnostic");
+    fs::write(scope.runtime_config_path(), "{}").expect("seed config");
+    let mut app = scope.app(
+        test_root("settings-wait-diagnostic-root"),
+        30,
+        String::new(),
+    );
+    let deadline = Instant::now();
+    app.open_settings_dialog();
+    let generation = app.settings_dialog.generation;
+    assert_eq!(
+        app.shell
+            .worker_bus
+            .config_settings
+            .pending_operation_for_test(),
+        Some((generation, false))
+    );
+    let diagnostic = settings_wait_diagnostics(&app, deadline);
+    assert!(diagnostic.contains("ui_phase=loading"), "{diagnostic}");
+    assert!(
+        diagnostic.contains("pending_operation=load"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains(&format!("expected_generation={generation}")),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains(&format!("pending_generation={generation}")),
+        "{diagnostic}"
+    );
+    settle_settings_dialog(&mut app);
+    assert_eq!(
+        app.shell
+            .worker_bus
+            .config_settings
+            .pending_operation_for_test(),
+        None
+    );
+    let diagnostic = settings_wait_diagnostics(&app, deadline);
+    assert!(diagnostic.contains("ui_phase=editing"), "{diagnostic}");
+    assert!(
+        diagnostic.contains("pending_generation=none"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains("pending_operation=none"),
+        "{diagnostic}"
+    );
+    let SettingsView::Editing { limit_text, .. } = &mut app.settings_dialog.view else {
+        panic!("owned real load must reach Editing");
+    };
+    *limit_text = "1234".into();
+    app.request_settings_save();
+    let generation = app.settings_dialog.generation;
+    assert_eq!(
+        app.shell
+            .worker_bus
+            .config_settings
+            .pending_operation_for_test(),
+        Some((generation, true))
+    );
+    let diagnostic = settings_wait_diagnostics(&app, deadline);
+    assert!(diagnostic.contains("ui_phase=saving"), "{diagnostic}");
+    assert!(
+        diagnostic.contains("pending_operation=save"),
+        "{diagnostic}"
+    );
+    assert!(
+        diagnostic.contains(&format!("pending_generation={generation}")),
+        "{diagnostic}"
+    );
+    settle_settings_dialog(&mut app);
+    assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
+    assert!(settings_wait_diagnostics(&app, deadline).contains("ui_phase=closed"));
+    let saved: serde_json::Value =
+        serde_json::from_slice(&fs::read(scope.runtime_config_path()).unwrap()).unwrap();
+    assert_eq!(saved["walker_max_entries"], 1234);
 }
