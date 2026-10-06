@@ -1,0 +1,114 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "6337de2131b58a12a90102eb2c3ddd5d09638d15747f78b3f693fc399a886315",
+  "files": [
+    {
+      "path": "active-v7-final-doc-ci-final.json",
+      "bytes": 24776,
+      "sha256": "a7738cf5f9b9ad20fe954f60f2b0f74c3ca02d747b9adb542c14fa898d06a8bd"
+    },
+    {
+      "path": "active-v7-final-doc-commit.json",
+      "bytes": 1588,
+      "sha256": "a3e495b7297e3284c81bec2b9eb30aaf7a6cbf2cfd3ad4fc597019248babca7f"
+    },
+    {
+      "path": "active-v7-final-doc-guardian-final.json",
+      "bytes": 1597,
+      "sha256": "41d6c333eb6fe455abd5c83ded5af0193e4f7c598173cbd033f3c215d669bb91"
+    },
+    {
+      "path": "active-v7-final-doc-pr-published.json",
+      "bytes": 249,
+      "sha256": "ad6e18576b31936a980a8bf38a86d9c81f5624b5fc447c2d14caa952c59c644a"
+    },
+    {
+      "path": "active-v7-final-doc-windows-failed-original.log",
+      "bytes": 291617,
+      "sha256": "46c5d005e8471305aebf8e21fc8abf80df274e402bff3d01f24df73757aa3936"
+    },
+    {
+      "path": "active-v7-final25-source-before-merge.json",
+      "bytes": 14515,
+      "sha256": "26ea55c17165c72ba2c47702168b3e06355d0614e53f855d38960f1d70d3cde6"
+    },
+    {
+      "path": "active-v7-overall-final-review.md",
+      "bytes": 1799,
+      "sha256": "abc50d11188726a5bf180399a13faff961ce1909699b7c74e86f7977e64ead5e"
+    },
+    {
+      "path": "active-v7-overall-final-subjects.json",
+      "bytes": 36897,
+      "sha256": "f4c6d06bdec6009f1f655913ac2fe250009c50b5a1b892a5dbc91757a0422d85"
+    },
+    {
+      "path": "active-v7-overall-final-validation-matrix.json",
+      "bytes": 35396,
+      "sha256": "9493f5d72a15b9a74154b271be456f9c118fb7a1c5b901809301c2ca9bb356dd"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/indexing_perf/child_process.rs",
+      "bytes": 12629,
+      "sha256": "1811c3cec2402528754c7bfc12bd6fecf155aa2a45e9786d6dadd1c409951fa1"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/indexing_perf/extensions/driver.rs",
+      "bytes": 181263,
+      "sha256": "ca4c184a12537f69c8a3a235ddd4b3a360a3dd7ab574324b4042acef8a345b73"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/indexing_perf/extensions/mod.rs",
+      "bytes": 82312,
+      "sha256": "a94899c3c84e85a88c0da5c7461b2a07646832343a6e92c96508c19258fce358"
+    },
+    {
+      "path": "actual-source/rust/src/app/tests/support.rs",
+      "bytes": 10454,
+      "sha256": "c7a2c5ac525e52ec8246e51c87d67738639f536685058dc12fe41033b719e8ff"
+    },
+    {
+      "path": "actual-source/rust/src/persistence/worker/tests.rs",
+      "bytes": 65105,
+      "sha256": "517ca26a737f36708e25e91822b83fab29bbb1fdfb0914960455951dc0406f9f"
+    },
+    {
+      "path": "actual-source/rust/src/persistence/worker.rs",
+      "bytes": 28842,
+      "sha256": "a34f23e855f3dd93aaca42eb403f553770a122eac292af74edfe07724b12088c"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf_contract.py",
+      "bytes": 42225,
+      "sha256": "b59e088be72029c9adf3a9e52a4d2206138136ac66be311a7cb14591dc93ea14"
+    },
+    {
+      "path": "actual-source/scripts/indexing_perf_gate.py",
+      "bytes": 15945,
+      "sha256": "7b22dd250da3a34075818b0f5d1388dfd09f261ffd20d81585405498c87a0e00"
+    },
+    {
+      "path": "ci-whole-attempt1-original-logs.zip",
+      "bytes": 635859,
+      "sha256": "09dbc42237e9fed2d712cdabc3fe00c6f10e5185bc3deb52380775de94a20d9a"
+    },
+    {
+      "path": "diagnosis-observation.json",
+      "bytes": 779,
+      "sha256": "27c2663223845ce0726e0d1727f52d18ac84954719e6210dcd570bf16e7c4adb"
+    },
+    {
+      "path": "guardian-whole-attempt1-original-logs.zip",
+      "bytes": 12266,
+      "sha256": "63f3bfe14076c540aefbd4185b8616d5a837175bb4281f0443141bc06e988de8"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}

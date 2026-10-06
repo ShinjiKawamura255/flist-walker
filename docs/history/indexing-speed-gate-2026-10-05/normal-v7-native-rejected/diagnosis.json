@@ -1,0 +1,13 @@
+{
+  "source": "7f9f52cfa6ccf8db685704496d30680deed357e9",
+  "whole_ci_run": "37466598553",
+  "guardian_run": "37466593228",
+  "attempt": 1,
+  "whole_ci": "FAIL",
+  "Guardian": "PASS",
+  "Windows": "1612passed2failed20ignored; relatedsettingsphysicalstop1s and tc229ownedchild180s watchdog",
+  "all_other_jobs": "SUCCESS exceptCargoAudit intentionalSKIP/CI GateFAIL",
+  "physical_cleanup": "tc229child ready/reaped/fixturecleaned TRUE watchdogexpired TRUE",
+  "writer_phase_limit": "write-result is set BEFORE commit/write_pending call, so it spans actualI/O and result/status publication; exact internal blocking stage unknown",
+  "performance_scope": "Old212 acceptedTruefive unchanged; this source7f nativeFAIL blocksmerge. No unchanged retry/subset/merge/settings actions."
+}

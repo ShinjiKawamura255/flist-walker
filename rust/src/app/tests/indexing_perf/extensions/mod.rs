@@ -7,59 +7,157 @@ mod oracle;
 mod runner;
 mod supplementary;
 
-fn normal_smoke_profiles_for(shape: fixture::Shape) -> Vec<cases::Profile> {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NormalSmokePartition {
+    All,
+    BasicFlatFiles,
+    Reclaim,
+    WarmReclaim,
+}
+
+fn normal_smoke_profiles_for(
+    shape: fixture::Shape,
+    partition: NormalSmokePartition,
+) -> Vec<cases::Profile> {
     cases::Profile::ALL
         .into_iter()
         .filter(|p| !p.parser() && *p != cases::Profile::Truncated && p.shape() == shape)
+        .filter(|p| match partition {
+            NormalSmokePartition::All => true,
+            NormalSmokePartition::BasicFlatFiles => {
+                !matches!(p, cases::Profile::Reclaim | cases::Profile::WarmReclaim)
+            }
+            NormalSmokePartition::Reclaim => *p == cases::Profile::Reclaim,
+            NormalSmokePartition::WarmReclaim => *p == cases::Profile::WarmReclaim,
+        })
         .collect()
 }
-#[test]
-fn tc_229_normal_smoke_shape_partition_preserves_all_42_cells() {
-    let expected = cases::Profile::ALL
+
+fn validate_normal_smoke_inventory(
+    leaves: &[(fixture::Shape, NormalSmokePartition)],
+) -> Result<HashSet<(&'static str, &'static str)>, &'static str> {
+    use cases::Profile;
+    use fixture::Shape;
+    for &(shape, partition) in leaves {
+        if shape == Shape::FlatFiles && partition == NormalSmokePartition::All {
+            return Err("FlatFiles requires separate workload partitions");
+        }
+        if shape != Shape::FlatFiles && partition != NormalSmokePartition::All {
+            return Err("workload partitions require FlatFiles shape");
+        }
+    }
+    let expected = Profile::ALL
         .into_iter()
-        .filter(|p| !p.parser() && *p != cases::Profile::Truncated)
-        .flat_map(|p| {
-            p.sources()
-                .into_iter()
-                .map(move |source| (p.name(), source.name()))
-        })
+        .filter(|p| !p.parser() && *p != Profile::Truncated)
+        .flat_map(|p| p.sources().into_iter().map(move |s| (p.name(), s.name())))
         .collect::<HashSet<_>>();
     assert_eq!(expected.len(), 42, "declared normal GUI cell inventory");
     let mut actual = HashSet::new();
-    for &shape in NORMAL_SMOKE_SHAPES {
-        let profiles = normal_smoke_profiles_for(shape);
-        assert!(!profiles.is_empty(), "every owned shape leaf performs work");
+    for &(shape, partition) in leaves {
+        let profiles = normal_smoke_profiles_for(shape, partition);
+        if profiles.is_empty() {
+            return Err("owned leaf has no declared work");
+        }
+        match partition {
+            NormalSmokePartition::BasicFlatFiles => {
+                if profiles
+                    .iter()
+                    .any(|p| matches!(p, Profile::Reclaim | Profile::WarmReclaim))
+                {
+                    return Err("heavy profiles must own separate physical children");
+                }
+            }
+            NormalSmokePartition::Reclaim if profiles != vec![Profile::Reclaim] => {
+                return Err("Reclaim leaf must own exactly that profile");
+            }
+            NormalSmokePartition::WarmReclaim if profiles != vec![Profile::WarmReclaim] => {
+                return Err("WarmReclaim leaf must own exactly that profile");
+            }
+            _ => {}
+        }
         for profile in profiles {
-            assert_eq!(profile.shape(), shape, "leaf creates only its owned shape");
+            if profile.shape() != shape {
+                return Err("profile assigned to wrong fixture shape");
+            }
             for source in profile.sources() {
-                assert!(
-                    actual.insert((profile.name(), source.name())),
-                    "cell must run exactly once"
-                );
+                if !actual.insert((profile.name(), source.name())) {
+                    return Err("duplicate normal GUI cell");
+                }
             }
         }
     }
-    assert_eq!(actual, expected, "no omitted or extra normal GUI cells");
+    if actual != expected {
+        return Err("missing or extra normal GUI cell");
+    }
+    if leaves.len() != 9 {
+        return Err("normal coverage requires nine physical children");
+    }
+    Ok(actual)
 }
 
-fn run_normal_smoke_shape(shape: fixture::Shape) {
+#[test]
+fn tc_229_normal_smoke_shape_partition_preserves_all_42_cells() {
+    let actual = validate_normal_smoke_inventory(NORMAL_SMOKE_LEAVES).unwrap();
+    assert_eq!(actual.len(), 42);
+}
+
+#[test]
+fn tc_229_normal_smoke_partition_rejects_missing_duplicate_shape_and_heavy_work() {
+    use fixture::Shape;
+    let mut missing = NORMAL_SMOKE_LEAVES.to_vec();
+    missing.retain(|&(_, partition)| partition != NormalSmokePartition::Reclaim);
+    assert_eq!(
+        validate_normal_smoke_inventory(&missing).unwrap_err(),
+        "missing or extra normal GUI cell"
+    );
+    let mut duplicate = NORMAL_SMOKE_LEAVES.to_vec();
+    duplicate.push(duplicate[0]);
+    assert_eq!(
+        validate_normal_smoke_inventory(&duplicate).unwrap_err(),
+        "duplicate normal GUI cell"
+    );
+    let mut wrong_shape = NORMAL_SMOKE_LEAVES.to_vec();
+    let heavy = wrong_shape
+        .iter_mut()
+        .find(|(_, p)| *p == NormalSmokePartition::Reclaim)
+        .unwrap();
+    heavy.0 = Shape::Deep;
+    assert_eq!(
+        validate_normal_smoke_inventory(&wrong_shape).unwrap_err(),
+        "workload partitions require FlatFiles shape"
+    );
+    let mut combined = NORMAL_SMOKE_LEAVES.to_vec();
+    let basic = combined
+        .iter_mut()
+        .find(|(_, p)| *p == NormalSmokePartition::BasicFlatFiles)
+        .unwrap();
+    basic.1 = NormalSmokePartition::All;
+    assert_eq!(
+        validate_normal_smoke_inventory(&combined).unwrap_err(),
+        "FlatFiles requires separate workload partitions"
+    );
+}
+
+fn run_normal_smoke_shape(shape: fixture::Shape, partition: NormalSmokePartition) {
     use cases::Profile;
     use fixture::{ExtendedFixture, Shape};
+    validate_normal_smoke_inventory(NORMAL_SMOKE_LEAVES).expect("registered normal coverage");
     let begin = Instant::now();
     let phase = |name, profile: Option<Profile>, source: Option<Source>| {
         eprintln!(
             "INDEX_PERF_NORMAL_PHASE {}",
             serde_json::json!({
-                "shape":format!("{shape:?}"),"phase":name,"elapsed_ms":ms(begin.elapsed()),
+                "shape":format!("{shape:?}"),"partition":format!("{partition:?}"),
+                "phase":name,"elapsed_ms":ms(begin.elapsed()),
                 "profile":profile.map(Profile::name),"source":source.map(Source::name),"entries":4096
             })
         );
     };
-    let profiles = normal_smoke_profiles_for(shape);
+    let profiles = normal_smoke_profiles_for(shape, partition);
     assert!(!profiles.is_empty(), "owned leaf has declared work");
     phase("fixtures-started", None, None);
-    // This leaf owns only its shape and companions required by these profiles.
-    // The 180s physical-child watchdog and every per-request guard stay intact.
+    // Every leaf retains the same 4096-entry inputs, per-request guards and
+    // 180-second physical-child watchdog; only normal work grouping differs.
     let f = ExtendedFixture::new(4096, shape);
     let b = profiles
         .iter()
@@ -86,40 +184,54 @@ fn run_normal_smoke_shape(shape: fixture::Shape) {
     }
 }
 macro_rules! normal_smoke_leaves {
-    ($(($name:ident, $shape:ident)),+ $(,)?) => {
-        const NORMAL_SMOKE_SHAPES: &[fixture::Shape] = &[$(fixture::Shape::$shape),+];
+    ($(($name:ident, $shape:ident, $partition:ident)),+ $(,)?) => {
+        const NORMAL_SMOKE_LEAVES: &[(fixture::Shape, NormalSmokePartition)] = &[$((fixture::Shape::$shape, NormalSmokePartition::$partition)),+];
         $(
             #[test]
             fn $name() {
                 if crate::app::tests::indexing_perf::harness::child_process::isolate(module_path!(), stringify!($name)) {
                     return;
                 }
-                run_normal_smoke_shape(fixture::Shape::$shape);
+                run_normal_smoke_shape(fixture::Shape::$shape, NormalSmokePartition::$partition);
             }
         )+
     };
 }
-// The coverage guard and real test registrations share this single inventory.
+// Real registrations and the coverage guard share this single inventory.
 normal_smoke_leaves!(
-    (tc_229_real_worker_extended_profiles_smoke, FlatMixed),
+    (tc_229_real_worker_extended_profiles_smoke, FlatMixed, All),
     (
         tc_229_real_worker_extended_profiles_smoke_flat_files,
-        FlatFiles
+        FlatFiles,
+        BasicFlatFiles
+    ),
+    (
+        tc_229_real_worker_extended_profiles_smoke_flat_files_reclaim,
+        FlatFiles,
+        Reclaim
+    ),
+    (
+        tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim,
+        FlatFiles,
+        WarmReclaim
     ),
     (
         tc_229_real_worker_extended_profiles_smoke_nested_early,
-        NestedEarly
+        NestedEarly,
+        All
     ),
     (
         tc_229_real_worker_extended_profiles_smoke_nested_late,
-        NestedLate
+        NestedLate,
+        All
     ),
     (
         tc_229_real_worker_extended_profiles_smoke_internal_links,
-        InternalLinks
+        InternalLinks,
+        All
     ),
-    (tc_229_real_worker_extended_profiles_smoke_deep, Deep),
-    (tc_229_real_worker_extended_profiles_smoke_wide, Wide),
+    (tc_229_real_worker_extended_profiles_smoke_deep, Deep, All),
+    (tc_229_real_worker_extended_profiles_smoke_wide, Wide, All),
 );
 
 const STABLE_EDIT_INPUT_POLICY: &str = "full-scale stable-A previous owned query evaluated in full before next input; actual owned indexing checkpoint must reach previous admitted actual count; normal production frames/indexing continue; all three inputs must overlap unsettled indexing";
