@@ -1,0 +1,214 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "1ccdab4f354a743af6e0eb506e5889669609590c96482590913fdff1c6d966b4",
+  "files": [
+    {
+      "path": "actual-9640-git-python/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-9640-git-python/scripts/indexing_perf_contract.py",
+      "bytes": 42225,
+      "sha256": "b59e088be72029c9adf3a9e52a4d2206138136ac66be311a7cb14591dc93ea14"
+    },
+    {
+      "path": "actual-9640-git-python/scripts/indexing_perf_gate.py",
+      "bytes": 15945,
+      "sha256": "d5f0513da459061b6c49018f02f9c0ee102a54f8def6266282a6928f4cdfa9e5"
+    },
+    {
+      "path": "owned-progress-reference-pin-before-review.md",
+      "bytes": 1196,
+      "sha256": "b5a6de110566abc04b3f3dc0e2ba0d3efa289c544c2d00fbce371b3e199b8cca"
+    },
+    {
+      "path": "owned-progress-reference-pin-before-subjects.json",
+      "bytes": 4078,
+      "sha256": "14f21b960ad8dfd81abdd3bc192c954976f99b879d8c1d80725c95c79fa23da8"
+    },
+    {
+      "path": "owned-progress-reference-pin-proposal.md",
+      "bytes": 3031,
+      "sha256": "fa9cfe3b03409c32f5d2976de1563bf27a6986cc71ca5958697a36bffc297b15"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/owned-admission-local-review.md",
+      "bytes": 1095,
+      "sha256": "41056dff9d050fe2bfd83964a5ef59a11380ff14cbeee028d41de5771e77cb27"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/owned-progress-admission-repair-before-review.md",
+      "bytes": 1382,
+      "sha256": "6b4126aa7234212e23dd8b01c2d9b0be80cf59695ac2db6282f6e676939ade64"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/owned-progress-reference-pin-proposal.md",
+      "bytes": 3031,
+      "sha256": "fa9cfe3b03409c32f5d2976de1563bf27a6986cc71ca5958697a36bffc297b15"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-ci-final.json",
+      "bytes": 24776,
+      "sha256": "8182434a310a860f76d37794e40282d5bf0285cdffe0ed61e93d1b60522f3c15"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-ci-original-logs.zip",
+      "bytes": 652978,
+      "sha256": "4796bdc5c2a83d5cbb8c584ce4a10dee0494b36eb56f8146f774fe6380e658df"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-commit.json",
+      "bytes": 865,
+      "sha256": "0918b08f368c7c237076a0385519eef92a1ec488b4b6dd95660e143a36ba7eb7"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-coverage-original.log",
+      "bytes": 312090,
+      "sha256": "1f792f8a52d05e97d23566887da8ecabce42f4dd52fc80c01c2ed1f952fa568f"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-gnu-e2e-original.log",
+      "bytes": 42657,
+      "sha256": "48bb188ac634ee83c52431878255c06a4cba27c0a9c0d8755fe93c12828099f6"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-guardian-final.json",
+      "bytes": 2336,
+      "sha256": "bc3fcd6cb5c3f3c51339a785dc32d4d3ebdbc0c9f3b2492586c1f3f3ddac77c9"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-guardian-original-logs.zip",
+      "bytes": 12205,
+      "sha256": "ac6c14d3c66fd6614ad07269f3182ebd31e1c32eb8719bfb741428f1bb8a8cf1"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-linux-original.log",
+      "bytes": 304244,
+      "sha256": "f011abc611251782c26abe5c8ecb7f5560a9d7c1912f19a7a3fd35b3305f1cbb"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-local-review.md",
+      "bytes": 1013,
+      "sha256": "76ebc4fdf2052871c8ca9205e386b8cb03f0f835d6e87cdece3d8e4d70117291"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-macos-original.log",
+      "bytes": 315850,
+      "sha256": "e7adb34cece52dfb9ab63ff9173b6d4db4d24d995d04f11654953b5984f01dc3"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-native-admission.json",
+      "bytes": 1476,
+      "sha256": "6052514c29e20546a5e150a5b537eebc4cfefc052c1a1f61181382da8684fcfd"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-pr-final.json",
+      "bytes": 4464,
+      "sha256": "ac15d150344d69bed928dc2e39314333d6a812b2beaf8279a01196728370d4e0"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-reference-candidate-equivalence.json",
+      "bytes": 133925,
+      "sha256": "146ad1246d609b997ccd4e6da04866e79a8ef94c1c12f20c62475d53c720a449"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-source-inverse.json",
+      "bytes": 714,
+      "sha256": "4ace61d4b85500145bbbe0cf25f9dde39aba963c35544b905ec4f559732011ec"
+    },
+    {
+      "path": "reviewed-reference-admission/rust/target/indexing-speed-gate/v6-design/settings-wait-diagnostic-windows-original.log",
+      "bytes": 321669,
+      "sha256": "be9ae0ce4a069e097d3629abb542625c1aefc4d90a77bcea34021214e2637765"
+    },
+    {
+      "path": "reviewed-reference-admission/scripts/indexing_perf_gate.py",
+      "bytes": 15945,
+      "sha256": "d5f0513da459061b6c49018f02f9c0ee102a54f8def6266282a6928f4cdfa9e5"
+    },
+    {
+      "path": "reviewed-reference-admission/scripts/tests/test_indexing_perf_gate.py",
+      "bytes": 35301,
+      "sha256": "7448083ae340b76e0c7bbcffa5fb2c624916ad7e3aff6114096dc69969177e7a"
+    },
+    {
+      "path": "settings-wait-diagnostic-ci-final.json",
+      "bytes": 24776,
+      "sha256": "8182434a310a860f76d37794e40282d5bf0285cdffe0ed61e93d1b60522f3c15"
+    },
+    {
+      "path": "settings-wait-diagnostic-ci-original-logs.zip",
+      "bytes": 652978,
+      "sha256": "4796bdc5c2a83d5cbb8c584ce4a10dee0494b36eb56f8146f774fe6380e658df"
+    },
+    {
+      "path": "settings-wait-diagnostic-commit.json",
+      "bytes": 865,
+      "sha256": "0918b08f368c7c237076a0385519eef92a1ec488b4b6dd95660e143a36ba7eb7"
+    },
+    {
+      "path": "settings-wait-diagnostic-coverage-original.log",
+      "bytes": 312090,
+      "sha256": "1f792f8a52d05e97d23566887da8ecabce42f4dd52fc80c01c2ed1f952fa568f"
+    },
+    {
+      "path": "settings-wait-diagnostic-gnu-e2e-original.log",
+      "bytes": 42657,
+      "sha256": "48bb188ac634ee83c52431878255c06a4cba27c0a9c0d8755fe93c12828099f6"
+    },
+    {
+      "path": "settings-wait-diagnostic-guardian-final.json",
+      "bytes": 2336,
+      "sha256": "bc3fcd6cb5c3f3c51339a785dc32d4d3ebdbc0c9f3b2492586c1f3f3ddac77c9"
+    },
+    {
+      "path": "settings-wait-diagnostic-guardian-original-logs.zip",
+      "bytes": 12205,
+      "sha256": "ac6c14d3c66fd6614ad07269f3182ebd31e1c32eb8719bfb741428f1bb8a8cf1"
+    },
+    {
+      "path": "settings-wait-diagnostic-linux-original.log",
+      "bytes": 304244,
+      "sha256": "f011abc611251782c26abe5c8ecb7f5560a9d7c1912f19a7a3fd35b3305f1cbb"
+    },
+    {
+      "path": "settings-wait-diagnostic-local-review.md",
+      "bytes": 1013,
+      "sha256": "76ebc4fdf2052871c8ca9205e386b8cb03f0f835d6e87cdece3d8e4d70117291"
+    },
+    {
+      "path": "settings-wait-diagnostic-macos-original.log",
+      "bytes": 315850,
+      "sha256": "e7adb34cece52dfb9ab63ff9173b6d4db4d24d995d04f11654953b5984f01dc3"
+    },
+    {
+      "path": "settings-wait-diagnostic-native-admission.json",
+      "bytes": 1476,
+      "sha256": "6052514c29e20546a5e150a5b537eebc4cfefc052c1a1f61181382da8684fcfd"
+    },
+    {
+      "path": "settings-wait-diagnostic-pr-final.json",
+      "bytes": 4464,
+      "sha256": "ac15d150344d69bed928dc2e39314333d6a812b2beaf8279a01196728370d4e0"
+    },
+    {
+      "path": "settings-wait-diagnostic-reference-candidate-equivalence.json",
+      "bytes": 133925,
+      "sha256": "146ad1246d609b997ccd4e6da04866e79a8ef94c1c12f20c62475d53c720a449"
+    },
+    {
+      "path": "settings-wait-diagnostic-source-inverse.json",
+      "bytes": 714,
+      "sha256": "4ace61d4b85500145bbbe0cf25f9dde39aba963c35544b905ec4f559732011ec"
+    },
+    {
+      "path": "settings-wait-diagnostic-windows-original.log",
+      "bytes": 321669,
+      "sha256": "be9ae0ce4a069e097d3629abb542625c1aefc4d90a77bcea34021214e2637765"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
