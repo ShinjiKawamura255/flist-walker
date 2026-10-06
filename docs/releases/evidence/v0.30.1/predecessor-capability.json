@@ -1,0 +1,14 @@
+{
+  "tag": "v0.30.0",
+  "release_id": 402465964,
+  "published_at": "2026-10-03T11:11:56Z",
+  "asset_count": 28,
+  "manifest_entries": 26,
+  "manifest_sha256": "c66b1caa383502cffcc1009d4bf1e63da7e4111f004fe89a7d3ad83df2c0a3f2",
+  "capability_source": "git show v0.30.0:rust/src/updater/manifest.rs, parse_checksum_line: strict ASCII/two spaces/safe basenames, FlistWalker- and fw- allowlist",
+  "families": [
+    "FlistWalker-",
+    "fw-"
+  ],
+  "release_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.0"
+}
