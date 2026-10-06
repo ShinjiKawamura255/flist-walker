@@ -1,0 +1,199 @@
+{
+  "format": "original-campaign-bytes-v1",
+  "archive": "campaign-original-artifacts.tar.gz",
+  "archive_sha256": "b0252aed1cede9f37dcda1795bdc643640acc0d76c1c6930b3b3dc025bc8ddc8",
+  "files": [
+    {
+      "path": "actual-41dc-git-source/rust/src/app/settings_dialog.rs",
+      "bytes": 8854,
+      "sha256": "aa08a78e55271c03ebd989b4855482ebf813c452194308153b4764e2d173827b"
+    },
+    {
+      "path": "actual-41dc-git-source/rust/src/app/tests/settings_dialog.rs",
+      "bytes": 25907,
+      "sha256": "78ba577db3cfaa13c0fd8797dc7b20faf163e2f564ada7441035bfe8e57a5518"
+    },
+    {
+      "path": "actual-41dc-git-source/rust/src/app/worker/config_settings.rs",
+      "bytes": 4908,
+      "sha256": "b639b60bc3d69eb5af3d0832f5bb19c96b7c9ef4a2e1123e7ab9cb314ef869f7"
+    },
+    {
+      "path": "actual-41dc-git-source/scripts/indexing_perf.py",
+      "bytes": 33034,
+      "sha256": "bf92c711301adc67046d9e94d92bdf58cb42d59a3277aec544c7136c80019bc1"
+    },
+    {
+      "path": "actual-41dc-git-source/scripts/indexing_perf_contract.py",
+      "bytes": 42225,
+      "sha256": "b59e088be72029c9adf3a9e52a4d2206138136ac66be311a7cb14591dc93ea14"
+    },
+    {
+      "path": "actual-41dc-git-source/scripts/indexing_perf_gate.py",
+      "bytes": 15945,
+      "sha256": "d5f0513da459061b6c49018f02f9c0ee102a54f8def6266282a6928f4cdfa9e5"
+    },
+    {
+      "path": "coverage-original-all-step-logs.log",
+      "bytes": 623108,
+      "sha256": "0dccad8035b13f2ff95463e86c406128c8a40e97ce2be8814b51dc52051a2e48"
+    },
+    {
+      "path": "exact-native-sibling-counts.json",
+      "bytes": 2995,
+      "sha256": "09083544652d1ba9685897d7dbc042cb88986b9123dc32c31654a01fd6f5a71a"
+    },
+    {
+      "path": "gnu-e2e-original-all-step-logs.log",
+      "bytes": 84536,
+      "sha256": "04148eb96408965b4d6e6e0ae43bcf4118a2d4c5265b2034c76b4ed36bb352de"
+    },
+    {
+      "path": "linux-original-all-step-logs.log",
+      "bytes": 607419,
+      "sha256": "f67748b22ec4014ea57794ca287503a1fdecb6b7058fe2467c1628831c3a7bed"
+    },
+    {
+      "path": "macos-original-all-step-logs.log",
+      "bytes": 630793,
+      "sha256": "5b77dd4941d62b620f0115661b6438f79e1a4a03cd69c5600445664bf46d339a"
+    },
+    {
+      "path": "owned-admission-ci-final.json",
+      "bytes": 24776,
+      "sha256": "1948c1105d5eb70ca36807b40e4f6c7791c2a483137d164403fd2673a5be7691"
+    },
+    {
+      "path": "owned-admission-ci-original-logs.zip",
+      "bytes": 630193,
+      "sha256": "31c3f9d5d144dd059f9d1fcccd26291634c0e07e3483756a2aa09a474b55d055"
+    },
+    {
+      "path": "owned-admission-commit.json",
+      "bytes": 1255,
+      "sha256": "7b66b0776abaea2c7c1c5e69bd3922ae02733f4bc87b89a2ecaf2b477518b246"
+    },
+    {
+      "path": "owned-admission-doc-fix-subjects.json",
+      "bytes": 713,
+      "sha256": "6b71240b77a1dff60c8900c1549c0f4416f4cd26400d2e7a40d68fe7576fea5a"
+    },
+    {
+      "path": "owned-admission-guardian-final.json",
+      "bytes": 2336,
+      "sha256": "c4adb309ae2efefe870054894789699d6fcef0e3efb6a8de57a55b47852722b4"
+    },
+    {
+      "path": "owned-admission-guardian-original-logs.zip",
+      "bytes": 12223,
+      "sha256": "491a8bb818cc9382243bddb19de5864ce9225e8f8b1b6cee36a9a6a7a04fabab"
+    },
+    {
+      "path": "owned-admission-implementation-subjects.json",
+      "bytes": 8574,
+      "sha256": "c94424d36b8378e619b89121b9bcfb1538d206252222b53e91f7338c2201ae2d"
+    },
+    {
+      "path": "owned-admission-local-review.md",
+      "bytes": 1095,
+      "sha256": "41056dff9d050fe2bfd83964a5ef59a11380ff14cbeee028d41de5771e77cb27"
+    },
+    {
+      "path": "owned-admission-native-input-scope.json",
+      "bytes": 56982,
+      "sha256": "8073a81eb4cb4c80e115067f86a797a42851c8611a5740d955431a273d274110"
+    },
+    {
+      "path": "owned-admission-native-settings-failure-diagnosis.md",
+      "bytes": 3851,
+      "sha256": "e7c68650333ca458686463c21ea14642916443c3bc134e9f53a2854a9ffd2d78"
+    },
+    {
+      "path": "owned-admission-native-settings-failure-observed-ci.json",
+      "bytes": 24776,
+      "sha256": "1948c1105d5eb70ca36807b40e4f6c7791c2a483137d164403fd2673a5be7691"
+    },
+    {
+      "path": "owned-admission-native-settings-failure-review.md",
+      "bytes": 1293,
+      "sha256": "6ceeafbb7b260b3943d681991822304c46e32c05534526728e418cd7d59efee9"
+    },
+    {
+      "path": "owned-admission-native-settings-failure-subjects.json",
+      "bytes": 1873,
+      "sha256": "d3a714c4b83aacdd3e596b2389442538b2c167b794e8c716c2388a76566b3ab9"
+    },
+    {
+      "path": "owned-admission-pr-final-failed.json",
+      "bytes": 4464,
+      "sha256": "97bff6a7814ab3c105662e785afcd7c23635e2d0b75cd3691d158d6ea8e8b294"
+    },
+    {
+      "path": "owned-admission-windows-failed-original.log",
+      "bytes": 274795,
+      "sha256": "c3fa09561ae96947f46dd08d061c04987cc19e28d35674a96b761744e97d08f7"
+    },
+    {
+      "path": "reviewed-diagnosis/docs/testplan/validation/vm-002.md",
+      "bytes": 2581,
+      "sha256": "1525703e8f1dc26176ec21fda4f408dd627bd77ce4516fbd78a8aa3df948d689"
+    },
+    {
+      "path": "reviewed-diagnosis/docs/testplan/validation/vm-008.md",
+      "bytes": 798,
+      "sha256": "8e61d0114afee1f6ebae7149ef8937ea2ef765c312805cda3c925619ec05005b"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/src/app/settings_dialog.rs",
+      "bytes": 8854,
+      "sha256": "aa08a78e55271c03ebd989b4855482ebf813c452194308153b4764e2d173827b"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/src/app/tests/settings_dialog.rs",
+      "bytes": 25907,
+      "sha256": "78ba577db3cfaa13c0fd8797dc7b20faf163e2f564ada7441035bfe8e57a5518"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/src/app/worker/config_settings.rs",
+      "bytes": 4908,
+      "sha256": "b639b60bc3d69eb5af3d0832f5bb19c96b7c9ef4a2e1123e7ab9cb314ef869f7"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/src/runtime_config.rs",
+      "bytes": 34617,
+      "sha256": "689d7a12892892227dcd10668eb646822fe121b951c6183efc8337451169cd93"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/owned-admission-ci-latest.json",
+      "bytes": 24776,
+      "sha256": "1948c1105d5eb70ca36807b40e4f6c7791c2a483137d164403fd2673a5be7691"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/owned-admission-guardian-final.json",
+      "bytes": 2336,
+      "sha256": "c4adb309ae2efefe870054894789699d6fcef0e3efb6a8de57a55b47852722b4"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/owned-admission-native-settings-failure-diagnosis.md",
+      "bytes": 3851,
+      "sha256": "e7c68650333ca458686463c21ea14642916443c3bc134e9f53a2854a9ffd2d78"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/owned-admission-native-settings-failure-observed-ci.json",
+      "bytes": 24776,
+      "sha256": "1948c1105d5eb70ca36807b40e4f6c7791c2a483137d164403fd2673a5be7691"
+    },
+    {
+      "path": "reviewed-diagnosis/rust/target/indexing-speed-gate/v6-design/owned-admission-windows-failed-original.log",
+      "bytes": 274795,
+      "sha256": "c3fa09561ae96947f46dd08d061c04987cc19e28d35674a96b761744e97d08f7"
+    },
+    {
+      "path": "windows-original-all-step-logs.log",
+      "bytes": 550359,
+      "sha256": "4059c158807962d54a222268cd4b49f3adf81a1d0d001556e434e1cba3ad4172"
+    }
+  ],
+  "roundtrip_verified": true,
+  "interpretation": "Original source/run/attempt/role and rejected outcomes remain unchanged; archive membership never means numeric PASS."
+}
