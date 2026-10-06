@@ -1,0 +1,91 @@
+{
+  "raw_rows": 84,
+  "failed_edges": [
+    {
+      "case": "T1-S2",
+      "source": "FileList",
+      "arm": null,
+      "pair": 0,
+      "seed": null,
+      "trace": [
+        {
+          "GUI_ingested": 15360,
+          "active_tab": 1,
+          "at_ms": 48.271775000000005,
+          "input": "production-handler",
+          "query": "item",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 0
+        },
+        {
+          "GUI_ingested": 65536,
+          "active_tab": 1,
+          "at_ms": 178.912091,
+          "input": "production-handler",
+          "query": "needle",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 1
+        },
+        {
+          "GUI_ingested": 51200,
+          "active_tab": 1,
+          "at_ms": 646.215978,
+          "input": "production-handler",
+          "query": "",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 2
+        }
+      ],
+      "violation": {
+        "time_strict": true,
+        "GUI_monotonic": false
+      }
+    },
+    {
+      "case": "T1-S2",
+      "source": "FileList",
+      "arm": null,
+      "pair": 5,
+      "seed": null,
+      "trace": [
+        {
+          "GUI_ingested": 15360,
+          "active_tab": 1,
+          "at_ms": 48.273916,
+          "input": "production-handler",
+          "query": "item",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 0
+        },
+        {
+          "GUI_ingested": 65536,
+          "active_tab": 1,
+          "at_ms": 179.210187,
+          "input": "production-handler",
+          "query": "needle",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 1
+        },
+        {
+          "GUI_ingested": 51200,
+          "active_tab": 1,
+          "at_ms": 646.3156690000001,
+          "input": "production-handler",
+          "query": "",
+          "requested_root": "/home/runner/work/_temp/indexing-contention-stable/leg-01/fixtures/fff-rs-app-indexing-perf-extended-7327-0-1791263670803257420",
+          "requested_tab": 1,
+          "stage": 2
+        }
+      ],
+      "violation": {
+        "time_strict": true,
+        "GUI_monotonic": false
+      }
+    }
+  ]
+}

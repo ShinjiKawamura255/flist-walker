@@ -368,6 +368,26 @@ def mutate_record(text, marker, change):
 
 
 class IndexingContractTests(unittest.TestCase):
+    def test_stable_edit_actual_checkpoints_and_overlap_remain_mandatory(self):
+        text = control_log("stable")
+        original = next(json.loads(line.partition(" ")[2]) for line in text.splitlines()
+                        if line.startswith("INDEX_PERF_SAMPLE ") and
+                        json.loads(line.partition(" ")[2])["case"] == "T1-S2")
+        for counts in ((15360, 65536, 51200), (15360, 25000, 49999)):
+            row = copy.deepcopy(original)
+            for event, count in zip(row["input_trace"], counts):
+                event["GUI_ingested"] = count
+            with self.assertRaises(contract.ValidationError):
+                contract.validate_sample(row, "T1-S2", row["source"], True)
+        row = copy.deepcopy(original)
+        row["input_trace"][-1]["at_ms"] = row["last_confirmed_snapshot_unsettled_ms"] + 1
+        with self.assertRaises(contract.ValidationError):
+            contract.validate_sample(row, "T1-S2", row["source"], True)
+        row = copy.deepcopy(original)
+        row["input_trace"][1]["GUI_ingested"] = 65536
+        row["input_trace"][2]["GUI_ingested"] = 65536
+        contract.validate_sample(row, "T1-S2", row["source"], True)
+
     def test_stable_edit_requires_previous_full_evaluation_before_next_input(self):
         valid=control_log("stable")
         contract.validate_log(valid,"stable")

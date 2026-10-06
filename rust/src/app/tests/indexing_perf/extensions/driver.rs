@@ -1163,6 +1163,60 @@ fn owned_count(driver: &Driver, tab: u64, request: Option<u64>) -> usize {
     }
     t.result_state.committed.all_entries.len()
 }
+// This is the measured edit path, shared with its controlled owner-handoff test.
+// Read the previous checkpoint from the raw admission, never from observed highs.
+struct EditInputContext {
+    full: bool,
+    profile: Profile,
+    checkpoint: usize,
+    preceding: Option<serde_json::Value>,
+    start: Instant,
+    at: Instant,
+}
+fn apply_edit_input(
+    driver: &mut Driver,
+    stage: &mut usize,
+    events: &mut Vec<serde_json::Value>,
+    previous_input: &mut Option<Instant>,
+    admissions: &mut Vec<serde_json::Value>,
+    input: EditInputContext,
+) -> bool {
+    let previous = events.last().map(|e| {
+        usize::try_from(e["GUI_ingested"].as_u64().expect("admitted actual count"))
+            .expect("admitted count fits usize")
+    });
+    if !stable_edit_input_allowed(
+        input.full,
+        input.profile,
+        *stage,
+        input.preceding.is_some(),
+        input.checkpoint,
+        previous,
+    ) {
+        return false;
+    }
+    if let Some(proof) = input.preceding {
+        admissions.push(proof);
+    }
+    let query = match *stage {
+        0 => "item",
+        1 => "needle",
+        _ => "",
+    };
+    driver.query(query);
+    if input.full && input.profile == Profile::StableEdit {
+        *previous_input = Some(input.at);
+    }
+    events.push(serde_json::json!({
+        "stage":*stage,"at_ms":ms(input.at.duration_since(input.start)),
+        "GUI_ingested":input.checkpoint,"query":query,
+        "active_tab":driver.app.current_tab_id(),"input":"production-handler",
+        "requested_tab":driver.app.current_tab_id(),"requested_root":driver.app.shell.runtime.root
+    }));
+    *stage += 1;
+    true
+}
+
 fn request_for(driver: &Driver, tab: u64) -> Option<u64> {
     driver.app.shell.indexing.latest_request_for_tab(tab)
 }
@@ -1813,23 +1867,23 @@ pub(super) fn run(
                         } else {
                             None
                         };
-                        if stable_edit_input_allowed(full, profile, stage, preceding.is_some()) {
-                            if let Some(proof) = preceding {
-                                stable_input_admissions.push(proof);
-                            }
-                            driver.query(match stage {
-                                0 => "item",
-                                1 => "needle",
-                                _ => "",
-                            });
-                            if full && profile == Profile::StableEdit {
-                                stable_previous_input = Some(input_at);
-                            }
-                            if stage == 2 {
-                                done_inputs = true;
-                            }
-                        } else {
-                            input_admitted = false;
+                        input_admitted = apply_edit_input(
+                            &mut driver,
+                            &mut stage,
+                            &mut events,
+                            &mut stable_previous_input,
+                            &mut stable_input_admissions,
+                            EditInputContext {
+                                full,
+                                profile,
+                                checkpoint,
+                                preceding,
+                                start,
+                                at: input_at,
+                            },
+                        );
+                        if input_admitted && stage == 3 {
+                            done_inputs = true;
                         }
                     }
                     Profile::NameShown
@@ -1940,9 +1994,11 @@ pub(super) fn run(
                     {
                         wait["end_ms"] = ms(input_at.duration_since(start)).into();
                     }
-                    events.push(serde_json::json!({"stage":stage,"at_ms":ms(input_at.duration_since(start)),"GUI_ingested":checkpoint,"query":match profile{Profile::EditFiles|Profile::StableEdit=>match stage{0=>"item",1=>"needle",_=>""},_=>profile.query(true)},"active_tab":driver.app.current_tab_id(),"input":"production-handler","requested_tab":pending_transition.map(|(n,_)|tabs[n]).or(driver.app.current_tab_id()),"requested_root":pending_transition.map(|(n,_)|&roots[n].root).unwrap_or(&driver.app.shell.runtime.root)}));
-                    if pending_transition.is_none() {
-                        stage += 1;
+                    if !matches!(profile, Profile::EditFiles | Profile::StableEdit) {
+                        events.push(serde_json::json!({"stage":stage,"at_ms":ms(input_at.duration_since(start)),"GUI_ingested":checkpoint,"query":match profile{Profile::EditFiles|Profile::StableEdit=>match stage{0=>"item",1=>"needle",_=>""},_=>profile.query(true)},"active_tab":driver.app.current_tab_id(),"input":"production-handler","requested_tab":pending_transition.map(|(n,_)|tabs[n]).or(driver.app.current_tab_id()),"requested_root":pending_transition.map(|(n,_)|&roots[n].root).unwrap_or(&driver.app.shell.runtime.root)}));
+                        if pending_transition.is_none() {
+                            stage += 1;
+                        }
                     }
                 }
             }
@@ -3871,4 +3927,174 @@ fn tc_233_frame_diagnostics_keep_all_frame_maximum_after_bounded_overflow() {
     assert_eq!(report["max_frame_start_gap_ms"], 1016.0);
     assert_eq!(report["records"][255]["frame"], 256);
     assert_eq!(report["records"][255]["active_filter_cursor"], 255);
+}
+
+#[test]
+fn tc_229_stable_edit_admission_waits_for_actual_owned_handoff_progress() {
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.create_new_tab();
+    settle_setup(&mut driver);
+    let b_index = 0;
+    let b_tab = driver.app.shell.tabs.get(b_index).unwrap().id;
+    let b_root = driver.app.shell.tabs.get(b_index).unwrap().root.clone();
+    let request = driver.app.shell.indexing.allocate_request_id(Some(b_tab));
+    {
+        let tab = driver.app.shell.tabs.get_mut(b_index).unwrap();
+        tab.index_state.pending_index_request_id = Some(request);
+        tab.index_state.pending_index_entries_request_id = Some(request);
+        tab.index_state.index_in_progress = true;
+    }
+    let batch = |first, end| IndexResponse::Batch {
+        request_id: request,
+        entries: (first..end)
+            .map(|n| IndexEntry {
+                path: b_root.join(format!("logical-{n}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect(),
+    };
+    driver
+        .app
+        .apply_background_index_response(b_index, batch(0, 15360));
+    let start = Instant::now();
+    let mut stage = 0;
+    let mut events = Vec::new();
+    let mut previous_input = None;
+    let mut admissions = Vec::new();
+    let admitted_at = start + Duration::from_millis(5);
+    {
+        let mut admit = |driver: &mut Driver, evaluated: bool, at: Instant| {
+            let before = (stage, events.clone(), previous_input, admissions.clone());
+            let allowed = apply_edit_input(
+                driver,
+                &mut stage,
+                &mut events,
+                &mut previous_input,
+                &mut admissions,
+                EditInputContext {
+                    full: true,
+                    profile: Profile::StableEdit,
+                    checkpoint: owned_count(driver, b_tab, Some(request)),
+                    preceding: evaluated.then(|| serde_json::json!({"owned_full_evaluation":true})),
+                    start,
+                    at,
+                },
+            );
+            if !allowed {
+                assert_eq!((stage, events.clone(), previous_input, admissions.clone()), before,
+                "rejection must leave the admitted stage, raw trace, time and witnesses unchanged");
+            }
+            allowed
+        };
+        assert!(admit(&mut driver, false, start));
+        assert_eq!(driver.pending_query.as_deref(), Some("item"));
+        driver
+            .app
+            .apply_background_index_response(b_index, batch(15360, 65536));
+        assert_eq!(owned_count(&driver, b_tab, Some(request)), 65536);
+        assert!(admit(&mut driver, true, start + Duration::from_millis(1)));
+        assert_eq!(driver.pending_query.as_deref(), Some("needle"));
+        // A queued remainder is not yet GUI-ingested. Terminal handoff moves real
+        // state/build owners into the production finalizer, whose prefix starts over.
+        driver
+            .app
+            .shell
+            .tabs
+            .get_mut(b_index)
+            .unwrap()
+            .index_state
+            .build
+            .pending_entries = (65536..100000)
+            .map(|n| IndexEntry {
+                path: b_root.join(format!("logical-{n}.txt")),
+                kind: EntryKind::file(),
+                kind_known: true,
+            })
+            .collect();
+        driver.app.apply_background_index_response(
+            b_index,
+            IndexResponse::Finished {
+                request_id: request,
+                source: IndexSource::Walker,
+            },
+        );
+        assert!(!driver
+            .app
+            .shell
+            .indexing
+            .background_states
+            .contains_key(&request));
+        assert!(owned_count(&driver, b_tab, Some(request)) < 15360);
+        let advance_to = |driver: &mut Driver, target: usize| {
+            let begin = Instant::now();
+            while owned_count(driver, b_tab, Some(request)) < target {
+                assert!(begin.elapsed() < Duration::from_secs(5));
+                let remaining = target - owned_count(driver, b_tab, Some(request));
+                driver
+                    .app
+                    .shell
+                    .indexing
+                    .background_finalizations
+                    .get_mut(&request)
+                    .unwrap()
+                    .advance(remaining.min(2048), Duration::from_millis(1));
+            }
+            assert_eq!(owned_count(driver, b_tab, Some(request)), target);
+        };
+        advance_to(&mut driver, 51200);
+        assert!(all_index_debt(&driver));
+        let rejected_at = start + Duration::from_millis(2);
+        assert!(
+            !admit(&mut driver, true, rejected_at),
+            "51200 must not supersede the actually admitted 65536 checkpoint"
+        );
+        assert_eq!(driver.pending_query.as_deref(), Some("needle"));
+        assert!(!admit(&mut driver, false, start + Duration::from_millis(3)));
+        advance_to(&mut driver, 65536);
+        assert!(
+            !admit(&mut driver, false, start + Duration::from_millis(4)),
+            "equal progress still requires the preceding full owned evaluation"
+        );
+        assert!(admit(&mut driver, true, admitted_at));
+        assert_eq!(driver.pending_query.as_deref(), Some(""));
+    }
+    assert_eq!(stage, 3);
+    assert_eq!(events.len(), 3);
+    assert_eq!(
+        events
+            .iter()
+            .map(|e| e["GUI_ingested"].as_u64().unwrap())
+            .collect::<Vec<_>>(),
+        [15360, 65536, 65536]
+    );
+    assert_eq!(events[2]["at_ms"], ms(admitted_at.duration_since(start)));
+    assert_eq!(previous_input, Some(admitted_at));
+    assert_eq!(admissions.len(), 2);
+    assert!(all_index_debt(&driver));
+    assert_eq!(
+        driver.app.shell.indexing.latest_request_for_tab(b_tab),
+        Some(request),
+        "admission must not allocate a replacement index request"
+    );
+    // Settle the same real finalizer/owner before normal Driver teardown.
+    let begin = Instant::now();
+    while driver
+        .app
+        .shell
+        .indexing
+        .background_finalizations
+        .contains_key(&request)
+    {
+        assert!(begin.elapsed() < Duration::from_secs(5));
+        driver.app.apply_background_index_response(
+            b_index,
+            IndexResponse::Finished {
+                request_id: request,
+                source: IndexSource::Walker,
+            },
+        );
+    }
+    assert_eq!(owned_count(&driver, b_tab, None), 100000);
 }
