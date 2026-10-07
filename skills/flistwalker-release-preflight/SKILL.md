@@ -47,7 +47,8 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 16. `cargo audit` を実行し、accepted transitive warning が出る場合は `docs/OSS_COMPLIANCE.md` の owner / review cadence / re-evaluation trigger と一致しているか確認する。
 17. current CI coverage結果と選択されたGUI/headful/性能のRUN/REUSEを確認する。対象外residualはgate化せず、full matrixや全wrapperを毎candidateで反復しない。三軸の元PASS/FAIL/SKIPPED/NOT RUN、元identity、再利用根拠を残す。known defectの修正native確認はheadlessで代用しない。
 17a. native GUI が FAIL なら、`docs/RELEASE.md` の「候補の停止要因と GUI 失敗の記録」に従い、正確なバイナリ・fixture・操作・時刻と、クリック dispatch / request / worker 応答の観測有無を dated addendum に残す。未観測の因果は unknown とし、headless PASS で FAIL を上書きしない。
-18. release asset build または GitHub Actions の release build logs に warning が出ていないことを確認する。外部 Action の warning も停止条件とし、例外には version と exact run を限定したユーザの明示承認を要する。理由と follow-up だけで承認を代用せず、後続候補・tag run に継承しない。
+18. 完了したrelease runの全build/test/clippy/audit/job logsとcheck annotationsを確認する。外部Action警告は [`docs/RELEASE.md` の判定手順](../../docs/RELEASE.md#external-action-warning-disposition)を正本とし、公式最新stable/full SHA/runtime互換性・実実行・出所/呼び出し方/影響・全必須gate・独立reviewが揃う軽微ケースだけ、ユーザー承認済みのリポジトリ運用としてexact version/source/run/attemptごとの例外を記録できる。最新版やgreen、deprecationという名前だけでは許可しない。
+    重大・不明・未検証・対象外の警告は停止し、具体的な対策を記録する。診断の再現/推論をhosted観測と区別し、過去runの例外を後続candidate/taggedへ継承せず毎回再判定する。warning抑制や安全gateの弱化は禁止する。この手順はプラットフォームの保存済み承認設定やツール実行権限を変更しない。
 19. tag 名 `vX.Y.Z`、`CHANGELOG.md`、`rust/Cargo.toml`、`rust/Cargo.lock` の version が一致していることを確認する。
 20. この確認が終わるまで tag 作成・push・draft release publish を行わない。
 21. release 本文が必要なら `skills/flistwalker-release-notes/SKILL.md` を続けて使う。
@@ -74,7 +75,7 @@ description: FlistWalker の release/tag/publish 前に使う。version 更新�
 - 公開向け文書に開発・手動試験専用 update override 名が混入していないか。
 - `THIRD_PARTY_NOTICES.txt` と `docs/OSS_COMPLIANCE.md` が依存・配布導線の変更に追従しているか。
 - `cargo test --locked` が成功する状態か。
-- `cargo clippy --all-targets -- -D warnings` が成功し、release build logs に warning が残っていないか。
+- `cargo clippy --all-targets -- -D warnings` が成功し、全release logs/annotationsのwarningが正本の条件で分類・記録され、重大/不明/未検証の停止条件が残っていないか。
 - `cargo audit` が成功するか。accepted warning がある場合は `docs/OSS_COMPLIANCE.md` の記録と一致しているか。
 - GUI-adjacent 変更または release candidate で `GSM-*` 証跡が必要な場合、証跡パスが作業報告に残っているか。
 
