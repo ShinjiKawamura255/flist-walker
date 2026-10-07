@@ -24,7 +24,16 @@ This bounded causal evidence supports assessment of the specific extraction case
 
 ## Promotion boundary
 
-[CI_OPERATIONS](../../../CI_OPERATIONS.md#pin-update-triggers-and-promotion) requires two consecutive **scheduled** canary successes for ordinary pin promotion, except its stated security/EOL/deprecation-deadline cases. v8.0.2 was just published; this record does not claim two such runs or a stated deadline. A draft pin-update PR can provide reviewable validation, but must not auto-merge/promote absent the required evidence or explicit user authorization for that precise waiting exception. Required CI Gate/Guardian, protected rebase, independent review and every release artifact gate remain mandatory. No settings/trusted-policy change is needed or proposed.
+[CI_OPERATIONS](../../../CI_OPERATIONS.md#pin-update-triggers-and-promotion) requires two consecutive **scheduled** canary successes for ordinary pin promotion. Actual readback confirmed the latest two scheduled runs, with no intervening scheduled failure among the latest five:
+
+| Scheduled run | Actual source / outcome | Execution |
+| --- | --- | --- |
+| [2026-10-05 —37390566744](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37390566744) | `520261fe24eb820badf8c6938601400a5c2a9b56` / whole SUCCESS, attempt1 | master/schedule; all3OS test/clippy SUCCESS |
+| [2026-09-28 —36495487113](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/36495487113) | `8fd62b89345e0feb75734e7630bbd73d1deb6574` / whole SUCCESS, attempt1 | master/schedule; all3OS test/clippy SUCCESS |
+
+Independent read-only API review confirmed both runs and the current/exact-run canary workflows. The canonical rule does not add an after-publication, target-Action or candidate-SHA condition. Canary does not use download-artifact; these are the ordinary scheduling prerequisite, not a claim that v8.0.2 ran in either canary. The new exact PR CI and candidate/tagged executions separately validate the actual new pin, runtime, transport and distribution.
+
+The initial hold before retrieving actual scheduled evidence is resolved by the existing two PASS results. No waiting exception or additional approval is needed or claimed; no security/EOL/deprecation deadline is invented. Required CI Gate/Guardian, protected rebase, independent review and every release artifact gate remain mandatory. No settings/trusted-policy change is needed or proposed.
 
 ## Retained raw diagnostic identity
 
