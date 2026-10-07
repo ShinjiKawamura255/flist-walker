@@ -1,6 +1,6 @@
 # v0.30.1 release-range classification
 
-Source range `v0.30.0..ece44846a00611877c77aaf9be7cee4809805f7d`. Every subject and changed-file inventory inspected. Preparation adds version/changelog and verified predecessor registration only.
+Final protected source range `v0.30.0..7f9a7a3a6d191cf2bd876453f1beec33838b394d`. Every subject and changed-file inventory inspected. Preparation adds version/changelog, verified predecessor registration and recovered evidence identity only.
 
 | Commit | Subject | Public-note mapping | Changed files |
 | --- | --- | --- | --- |
@@ -46,3 +46,9 @@ Source range `v0.30.0..ece44846a00611877c77aaf9be7cee4809805f7d`. Every subject 
 | `d4a4726d95e4a54596fa72bb987293861469e3b7` | test: isolate normal smoke workloads and await writer readiness | Changed: validation/diagnostics/evidence | 11 |
 | `12453afeede99f13cc00b26f47748bf3cd8f19ec` | test: observe deferred tab close ownership without changing admission | Changed: validation/diagnostics/evidence | 11 |
 | `ece44846a00611877c77aaf9be7cee4809805f7d` | docs: clarify diagnostic and historical equivalence evidence | Changed: validation/diagnostics/evidence | 2 |
+| `e49815b1baffe23f78c958ed4ffcbcfd5cbb43b1` | chore(release): prepare v0.30.1 and register shipped predecessor | Fixed: predecessor registration; Summary: patch version | 10 |
+| `05e1d651e8c3a240b1f28c6e86c22e2893705b56` | docs(release): retain recovered native smoke identity and reuse boundary | Summary: validation evidence only; no new product bullet | 2 |
+| `f9b65fbf9b071999876855017ce82fca8aa3c5b0` | docs(release): distinguish untriggered CLI timing from historical evidence | Summary: validation evidence only; no new product bullet | 1 |
+| `8a15c0501aba9207f7be7a18915fb03c7ec6c96c` | release: assess minor external Action warnings per run | Changed: release operation/validation only; no new product claim | 5 |
+| `a584e9c8f322a07ffbc5d567febbd2e629b394e7` | ci: prepare download-artifact v8.0.2 for release | Changed: release/CI validation only; no new product claim | 4 |
+| `7f9a7a3a6d191cf2bd876453f1beec33838b394d` | docs: record existing scheduled canary promotion evidence | Changed: validation evidence only; no new product claim | 2 |

@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.1",
+  "release_id": 405723931,
+  "tag": "v0.30.1",
+  "tag_object": "8a7b785e95411a4095c98e381a69d8781823e42b",
+  "source": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+  "published_at": "2026-10-07T12:38:32Z",
+  "latest": true,
+  "assets": 28,
+  "checksum_entries": 26,
+  "all_public_downloads_match_tagged": true,
+  "body_sha256": "03a7105aa48225eed898133725379410a5c85f196a8b0e6be20d4220157393a4",
+  "update_route": "unauthenticated latest feed and all28 downloads, exact variant assets, prior embedded key signature, strict real manifest N-1 PASS; installed application was not replaced"
+}

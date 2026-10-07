@@ -1,0 +1,68 @@
+{
+  "conclusion": "success",
+  "headSha": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+  "status": "completed",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102",
+  "jobs": [
+    {
+      "name": "Detect Changes",
+      "conclusion": "success",
+      "id": 112753824354,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753824354"
+    },
+    {
+      "name": "CI Policy",
+      "conclusion": "success",
+      "id": 112753824681,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753824681"
+    },
+    {
+      "name": "Cargo Audit",
+      "conclusion": "success",
+      "id": 112753877202,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877202"
+    },
+    {
+      "name": "Clippy and Coverage",
+      "conclusion": "success",
+      "id": 112753877302,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877302"
+    },
+    {
+      "name": "Windows GNU Updater Build",
+      "conclusion": "success",
+      "id": 112753877324,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877324"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success",
+      "id": 112753877348,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877348"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success",
+      "id": 112753877432,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877432"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success",
+      "id": 112753877439,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112753877439"
+    },
+    {
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "success",
+      "id": 112755557659,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112755557659"
+    },
+    {
+      "name": "CI Gate",
+      "conclusion": "success",
+      "id": 112760107144,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37609742102/job/112760107144"
+    }
+  ]
+}

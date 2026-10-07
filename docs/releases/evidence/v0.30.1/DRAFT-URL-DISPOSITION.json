@@ -1,0 +1,12 @@
+{
+  "release_id": 405723931,
+  "tag": "v0.30.1",
+  "draft": true,
+  "assets": 28,
+  "id_size_digest_match_tagged": true,
+  "body_uses": "stable v0.30.1 URLs only",
+  "public_gate": "Exact stable URL and actual unauthenticated bytes/hash/signature/N-1 required after publication",
+  "actual_prefix_before_notes_edit": "untagged-1adb06bbf164f294c3f5",
+  "actual_prefix_after_notes_edit": "untagged-03eaab2c6593a25f9c66",
+  "final_draft_html_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/untagged-03eaab2c6593a25f9c66"
+}

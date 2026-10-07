@@ -1,0 +1,19 @@
+{
+  "result": "PASS",
+  "reviewer": "release_prep_review",
+  "review_record": "DRAFT-INDEPENDENT-REVIEW.md",
+  "findings": {
+    "critical": 0,
+    "high": 0,
+    "medium": 0
+  },
+  "recorded_at_utc": "2026-10-07T12:38:28.723675+00:00",
+  "release_id": 405723931,
+  "tag": "v0.30.1",
+  "source": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+  "tagged_run": 37616202550,
+  "attempt": 1,
+  "body_sha256": "03a7105aa48225eed898133725379410a5c85f196a8b0e6be20d4220157393a4",
+  "asset_identity_sha256": "5d7413f578f10ca79262dcba43b3327ec6ca3f1bf7b07641f9f728503d7c6151",
+  "asset_count": 28
+}

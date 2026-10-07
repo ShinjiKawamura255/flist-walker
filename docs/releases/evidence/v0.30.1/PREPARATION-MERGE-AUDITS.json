@@ -1,0 +1,71 @@
+{
+  "prep-merge-audit": {
+    "result": "PASS",
+    "base": "ece44846a00611877c77aaf9be7cee4809805f7d",
+    "reviewed_source": "c08933fd9c37f46cb3dcb2eb70a05ca46018219f",
+    "merged": "f9b65fbf9b071999876855017ce82fca8aa3c5b0",
+    "ordered_pairs": [
+      {
+        "source": "5bb294a4dd20f6c8143e2c7560c9f6416cac59e9",
+        "merged": "e49815b1baffe23f78c958ed4ffcbcfd5cbb43b1",
+        "stable_patch_id": "c5a3cb80b7c4296089710454c2d3c57dfb3c5fae",
+        "tree": "2536f259ae3025b4df868b058fd759e80d4e3aec"
+      },
+      {
+        "source": "0f1c7f205b0a63d0f41f53f089427ba699781350",
+        "merged": "05e1d651e8c3a240b1f28c6e86c22e2893705b56",
+        "stable_patch_id": "4bc2ee60117c7923d2c5a472ef2551374318b3cb",
+        "tree": "f414a872f715e495bb6d89c139f71beab572e024"
+      },
+      {
+        "source": "c08933fd9c37f46cb3dcb2eb70a05ca46018219f",
+        "merged": "f9b65fbf9b071999876855017ce82fca8aa3c5b0",
+        "stable_patch_id": "6026d9f174c206b4aee1ddcc65dbad249ef43a4b",
+        "tree": "253164723dc6bdf0db424a331f6269cd8f9119bd"
+      }
+    ],
+    "commit_count": 3,
+    "merge_commit_count": 0,
+    "final_tree_equal": true
+  },
+  "warning-pr-merge-audit": {
+    "result": "PASS",
+    "base": "f9b65fbf9b071999876855017ce82fca8aa3c5b0",
+    "reviewed_source": "1b500ae52b96d28501b07e7c27a281725db40260",
+    "merged": "8a15c0501aba9207f7be7a18915fb03c7ec6c96c",
+    "ordered_pairs": [
+      {
+        "source": "1b500ae52b96d28501b07e7c27a281725db40260",
+        "merged": "8a15c0501aba9207f7be7a18915fb03c7ec6c96c",
+        "stable_patch_id": "61ded49af86148149c4a073609bfe7220e6fa771",
+        "tree": "93bffbb8e6fc74358f7f38d0cc6ededffa04de00"
+      }
+    ],
+    "commit_count": 1,
+    "merge_commit_count": 0,
+    "final_tree_equal": true
+  },
+  "latest-pin-merge-audit": {
+    "result": "PASS",
+    "base": "8a15c0501aba9207f7be7a18915fb03c7ec6c96c",
+    "reviewed_source": "5a152df9a1d93ec699ffdf78e763ebc673bcab6d",
+    "merged": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+    "ordered_pairs": [
+      {
+        "source": "5f90213a69e4e2c0831dd5912f5f6ab43f4f6396",
+        "merged": "a584e9c8f322a07ffbc5d567febbd2e629b394e7",
+        "stable_patch_id": "fc942f5dd5b7acfb07e5b3b1a4629c0bb0d3d84e",
+        "tree": "43df3d3ecbefb38cd12c363468acc3e821fd8cab"
+      },
+      {
+        "source": "5a152df9a1d93ec699ffdf78e763ebc673bcab6d",
+        "merged": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+        "stable_patch_id": "eaa0b841c9d3adc5b6bf6ca0830e70daf1bed70b",
+        "tree": "210cc8ef4ff1a4c3bdba7947f304aa46f1d67e06"
+      }
+    ],
+    "commit_count": 2,
+    "merge_commit_count": 0,
+    "final_tree_equal": true
+  }
+}

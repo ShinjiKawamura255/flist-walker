@@ -6,34 +6,34 @@
 
 ## Downloads
 - macOS の `.app` bundle 自体は notarization 用の中間成果物であり、GitHub Release の添付対象には含めない。
-- `FlistWalker-0.30.1-linux-x86_64`
-- `FlistWalker-0.30.1-linux-x86_64.tar.gz`
-- `FlistWalker-0.30.1-linux-x86_64.README.txt`
-- `FlistWalker-0.30.1-linux-x86_64.LICENSE.txt`
-- `FlistWalker-0.30.1-linux-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.30.1-linux-x86_64`
-- `FlistWalker-0.30.1-windows-x86_64.exe`
-- `FlistWalker-0.30.1-windows-x86_64.zip`
-- `FlistWalker-0.30.1-windows-x86_64.README.txt`
-- `FlistWalker-0.30.1-windows-x86_64.LICENSE.txt`
-- `FlistWalker-0.30.1-windows-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.30.1-windows-x86_64.exe`
-- `FlistWalker-0.30.1-macos-x86_64`
-- `FlistWalker-0.30.1-macos-x86_64-app.zip`
-- `FlistWalker-0.30.1-macos-x86_64.tar.gz`
-- `FlistWalker-0.30.1-macos-x86_64.README.txt`
-- `FlistWalker-0.30.1-macos-x86_64.LICENSE.txt`
-- `FlistWalker-0.30.1-macos-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.30.1-macos-x86_64`
-- `FlistWalker-0.30.1-macos-arm64`
-- `FlistWalker-0.30.1-macos-arm64-app.zip`
-- `FlistWalker-0.30.1-macos-arm64.tar.gz`
-- `FlistWalker-0.30.1-macos-arm64.README.txt`
-- `FlistWalker-0.30.1-macos-arm64.LICENSE.txt`
-- `FlistWalker-0.30.1-macos-arm64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.30.1-macos-arm64`
-- `SHA256SUMS`
-- `SHA256SUMS.sig`
+- [FlistWalker-0.30.1-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-linux-x86_64)
+- [FlistWalker-0.30.1-linux-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-linux-x86_64.tar.gz)
+- [FlistWalker-0.30.1-linux-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-linux-x86_64.README.txt)
+- [FlistWalker-0.30.1-linux-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-linux-x86_64.LICENSE.txt)
+- [FlistWalker-0.30.1-linux-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-linux-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.30.1-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/fw-0.30.1-linux-x86_64)
+- [FlistWalker-0.30.1-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-windows-x86_64.exe)
+- [FlistWalker-0.30.1-windows-x86_64.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-windows-x86_64.zip)
+- [FlistWalker-0.30.1-windows-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-windows-x86_64.README.txt)
+- [FlistWalker-0.30.1-windows-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-windows-x86_64.LICENSE.txt)
+- [FlistWalker-0.30.1-windows-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-windows-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.30.1-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/fw-0.30.1-windows-x86_64.exe)
+- [FlistWalker-0.30.1-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64)
+- [FlistWalker-0.30.1-macos-x86_64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64-app.zip)
+- [FlistWalker-0.30.1-macos-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64.tar.gz)
+- [FlistWalker-0.30.1-macos-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64.README.txt)
+- [FlistWalker-0.30.1-macos-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64.LICENSE.txt)
+- [FlistWalker-0.30.1-macos-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.30.1-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/fw-0.30.1-macos-x86_64)
+- [FlistWalker-0.30.1-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64)
+- [FlistWalker-0.30.1-macos-arm64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64-app.zip)
+- [FlistWalker-0.30.1-macos-arm64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64.tar.gz)
+- [FlistWalker-0.30.1-macos-arm64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64.README.txt)
+- [FlistWalker-0.30.1-macos-arm64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64.LICENSE.txt)
+- [FlistWalker-0.30.1-macos-arm64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/FlistWalker-0.30.1-macos-arm64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.30.1-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/fw-0.30.1-macos-arm64)
+- [SHA256SUMS](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/SHA256SUMS)
+- [SHA256SUMS.sig](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.1/SHA256SUMS.sig)
 
 ## Added
 - なし。
@@ -53,7 +53,7 @@
 - なし。
 
 ## Security
-- query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を案内する。
+- query history は既定で平文永続化される。保存を無効にするには runtime config の `history_persist_disabled=true` を設定する。
 - 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
 
 ## Known issues

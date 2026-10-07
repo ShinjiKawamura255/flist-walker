@@ -1,0 +1,120 @@
+{
+  "status": "ACCEPTED CONDITIONAL MINOR EXTERNAL ACTION EXCEPTION",
+  "policy": "docs/RELEASE.md#external-action-warning-disposition",
+  "assessed_at_utc": "2026-10-07T12:30:16.869130+00:00",
+  "version": "v0.30.1",
+  "source": "7f9a7a3a6d191cf2bd876453f1beec33838b394d",
+  "run": 37616202550,
+  "attempt": 1,
+  "mode": "tagged",
+  "official_action": {
+    "checked_at_utc": "2026-10-07T12:30:16.828305+00:00",
+    "official_release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "version": "v8.0.2",
+    "sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "workflow_full_sha_equal": true,
+    "action_runtime": "node24",
+    "runner_requirement": ">=2.327.1",
+    "actual_runners": {
+      "0_Create Draft Release.txt": "2.337.0",
+      "1_Assemble Release Bundle.txt": "2.337.0",
+      "2_Build Release Assets (macos-x86_64).txt": "2.337.0",
+      "3_Build Release Assets (macos-arm64).txt": "2.337.0",
+      "4_Build Release Assets (windows-x86_64).txt": "2.337.0",
+      "5_Build Release Assets (linux-x86_64).txt": "2.337.0",
+      "6_Release Preflight (linux-native).txt": "2.337.0",
+      "7_Release Preflight (macos-native).txt": "2.337.0",
+      "8_Release Cargo Audit.txt": "2.337.0",
+      "9_Release Preflight (windows-native).txt": "2.337.0",
+      "10_Resolve Release Context.txt": "2.337.0"
+    },
+    "files": {
+      "action.yml": {
+        "git_blob_sha": "8b8c65029ccad20750a29fecb438eca5a607fc57",
+        "size": 2635,
+        "sha256": "e98559b7a31ba31be4709f20d22102dc2737fa630f69a339eb89981151e505fe"
+      },
+      "README.md": {
+        "git_blob_sha": "2e08793c965402b42ac99a7b42a1ed1fa8a9dc9c",
+        "size": 11492,
+        "sha256": "3c2ed3a17c8d87820ba42981b9703be715a8ce99984a1926d4e144bc0afffb41"
+      },
+      "package.json": {
+        "git_blob_sha": "4dc240531f589c7883d48758f334314fe0421fb5",
+        "size": 1710,
+        "sha256": "3cb12ab5f8f76d115f8c85469a155d56b79610ddd5faa945697c16098ec83a6e"
+      },
+      "dist/index.js": {
+        "git_blob_sha": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+        "size": 4432922,
+        "sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+        "diagnosed_source_identical": true
+      }
+    },
+    "disposition": "NONE: fresh source/runtime evidence only; exact run warning/artifact/review decision separate"
+  },
+  "actual_emissions": [
+    {
+      "job": "Create Draft Release",
+      "step_log": "Create Draft Release/4_Download validated candidate bundle.txt",
+      "message": "(node:2207) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "count": 1,
+      "classification_proposed": "minor external Action API deprecation; bounded callsite/input case"
+    },
+    {
+      "job": "Assemble Release Bundle",
+      "step_log": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "message": "(node:2445) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "count": 1,
+      "classification_proposed": "minor external Action API deprecation; bounded callsite/input case"
+    }
+  ],
+  "actual_count": 2,
+  "warning_annotations": 0,
+  "product_rust_test_clippy_audit_warning_count": 0,
+  "classification_proposed": "MINOR only this uninitialized-buffer-free ZIP extraction callsite/input boundary",
+  "causal_evidence_reused": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; unchanged diagnosed official dist blob, normal extraction inputs and full safe actual ZIP/output verification",
+  "observation_inference_boundary": "Hosted logs show exact pin/step/message and successful verified output; retained full unmodified Action loopback probe traces UnzipStream empty-string Buffer and fixed4-byte fully initialized path. Hosted stack/HTTPS/auth/four-way parallel behavior is not claimed tested by that probe. No general DEP0005 allowance.",
+  "fresh_gates": {
+    "actual_assets": 28,
+    "manifest_entries": 26,
+    "all_digests": true,
+    "detached_signature_new_previous_keys": true,
+    "all8_embedded_keys": true,
+    "actual_n_minus_one": true,
+    "archive_notice_version_architecture": true,
+    "native_test_clippy_audit": true,
+    "windows_compiler_equal": true
+  },
+  "broad_warning_hits_manual_review": "PASS: checkout advice and trace instruction are non-emissions; every actual emission separately counted without suppression",
+  "owner": "release operator on Tsukuyomi",
+  "follow_up_owner": "repository maintainer / release operator",
+  "reassessment": "Every candidate/tagged run: refresh official stable/full SHA/runtime/all logs/actual artifacts. New source/callsite/message/input or unexplained count increase reopens diagnosis; major/unknown/unverified stops. No inherited waiver.",
+  "operator_decision_at_utc": "2026-10-07T12:33:22.445770+00:00",
+  "classification": "MINOR: only documented ZIP extraction callsite and unchanged bounded inputs; not code-wide DEP0005 allowance",
+  "annotations": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "level": "notice",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "level": "notice",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+    }
+  ],
+  "independent_review": {
+    "reviewer": "release_prep_review",
+    "record": "INDEPENDENT-REVIEW.md",
+    "findings": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0
+    }
+  },
+  "additional_actual_gates": {
+    "archive_executable_modes": "PASS",
+    "owned_mac_arm64_universal_fw_version": "PASS; --version only, no GUI/config/updater initialization"
+  }
+}

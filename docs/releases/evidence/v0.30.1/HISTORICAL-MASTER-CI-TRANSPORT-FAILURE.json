@@ -1,0 +1,62 @@
+{
+  "run": {
+    "id": 37606404807,
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/37606404807",
+    "head_sha": "8a15c0501aba9207f7be7a18915fb03c7ec6c96c",
+    "conclusion": "failure",
+    "run_attempt": 1
+  },
+  "job": {
+    "id": 112742891899,
+    "name": "Rust Test and Build (macos-native)",
+    "conclusion": "failure",
+    "steps": [
+      {
+        "name": "Set up job",
+        "conclusion": "success"
+      },
+      {
+        "name": "Checkout",
+        "conclusion": "success"
+      },
+      {
+        "name": "Record runner image",
+        "conclusion": "success"
+      },
+      {
+        "name": "Install Rust",
+        "conclusion": "failure"
+      },
+      {
+        "name": "Cache Cargo downloads",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run tests",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run platform clippy",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run lightweight perf gate",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Build release",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Post Checkout",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "cause": "2026-10-07T10:19:13Z Install Rust checksum retrieval from static.rust-lang.org TCP connect timeout / os error60; test/clippy/build skipped, not PASS",
+  "disposition": "Historical installer transport failure. No old-SHA rerun: protected PR176 then new exact master CI and candidate native tests/clippy/audit supply success. Original skipped steps remain NOT RUN."
+}
