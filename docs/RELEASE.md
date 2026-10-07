@@ -217,9 +217,29 @@
 
 - 実行開始時に `Preparation → Candidate → Native GUI → Tag/Tagged build → Draft review → Publish/readback → Closure PR` のgateを一つのpacketへ固定する。各gateは入力identity、必要証跡、停止条件、外部変更、完了readbackを1箇所だけに持ち、同じ判断を複数のplanへ複製しない。
 - GUI開始前に変更影響によりrequired subflow/axisを選び、`docs/GUI-TESTPLAN.md` のexecution profileと選択範囲だけのprerequisite表を完成させる。利用不能なrequired条件のdeviation判断は1回に集約する。対象外residualの環境準備や承認を要求しない。
-- candidateとtagged runは別identityなのでwarning dispositionを共有しない。ただし各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、1 runにつき1つの承認判断として提示する。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
+- candidateとtagged runは別identityなのでwarning dispositionを共有しない。各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、[外部Action警告の判定](#external-action-warning-disposition)に従う判断を1 runにつき1つ記録する。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
 - residual addendumは選択済みの失敗/未実行axisだけを追加検証する。source/binary変更時は全変更と依存境界を照合し、affectedな証跡だけを無効化する。digest/signature/inventoryなど新artifact固有の確認は毎回実施する。
 - 公開後はrelease URL、release/tag/source identity、本文、asset count/name/size/digestを直ちにread backし、versioned release recordと検証processの恒久修正を同じclosure PRへまとめる。release公開とclosure PR mergeを別の完了条件として追跡する。
+
+### External Action Warning Disposition
+
+ユーザーが承認したリポジトリ運用として、以下の条件をすべて満たす**軽微な外部Action由来の警告だけ**を、operatorが実行ごとに評価して例外扱いできる。最新版でも警告が残ること、workflowがgreenであること、またはdeprecationという名前だけでは条件を満たさない。これはリポジトリのrelease判定であり、プラットフォームの保存済みカスタム承認ルール、ツール実行の承認レビュー、認証・権限、required checkやbranch保護を変更しない。
+
+1. 完了したrunの全build/test/clippy/audit/job logsとcheck annotationsを確認し、actual emissionの出所、step、warning code/message、重複数を記録する。製品/Rust/test/clippy/audit警告はこの外部Action例外の対象外とする。
+2. 元の公式repositoryの最新stable release（draft/prereleaseを除く）と対象runtimeの対応条件を確認し、release tagを検証済みfull commit SHAへ解決する。確認時刻、release URL/version、SHA、Action runtime、runner要件と実runnerを記録する。公開日時だけで旧系列の保守releaseを選ばず、`main`、浮動tag、fork、未検証の新pinを最新版の証明に使わない。最新版がruntime非互換なら対応を完了するまで停止する。
+3. そのSHA/runtime/関連inputsで実際に実行し、完了結果と完成配布物を確認する。既に最新版をpinした実runがある場合はその正確な実行を評価できる。更新が必要ならprotected PRで更新後のsource/runを使い、机上のversion比較や古いpinのPASSを実実行の代用にしない。
+4. 下表で原因・呼び出し方・影響を根拠付きで分類する。必要な限定probeはowned fixture/一時領域で行い、元の失敗/警告を保存する。full Actionの無変更コード、実引数、stack/source経路、影響する境界を照合し、hosted観測と診断上の再現・推論を区別する。抜粋probeや同一bundle hashだけで発生元の不明を解除しない。
+5. 必須gateと新artifact固有のinventory/digest/署名/archive/notice/N-1検証をすべて満たし、独立reviewで分類と例外の適用範囲を確認する。条件不足や未解決の重大/不明は例外にせず停止し、具体的な対策を記録する。
+
+| 分類 | 判断根拠と動作 |
+| --- | --- |
+| 軽微 | 外部Actionの特定code/callsiteと引数・経路を説明でき、当該警告によるセキュリティ、完全性、機能への悪影響がないと根拠付きで確認できる。実実行と全必須gateが成功し、必要な診断/reviewも完了した場合だけ条件付き例外を記録できる。一般のwarning code全体をallowlistにしない。 |
+| 重大 | セキュリティ上の問題・漏えい・脆弱性、完全性/機能の問題、署名/digest不一致、asset欠落/破損、runtime非互換、実行失敗など。最新版でも停止し、原因に応じた修正・更新・安全な代替を検証する。 |
+| 不明 | 出所、呼び出し方、影響、安全性、最新版/互換性または必要な検証を確認できない。軽微と推定せず停止し、限定診断または不足gateを完了する。 |
+
+判断はexact version/source/run/attemptに固定し、Action pinと最新版確認、全emission、分類、根拠・観測/推論の境界、配布物検証、独立review、operator、follow-up owner/再評価条件をrelease packetへ記録する。後続candidate/tagged runでは最新版・runtime・全警告・実物gateを改めて確認し、過去の診断はcode/input/影響境界の無変更を示せる範囲だけ根拠に使う。過去runの例外そのものは継承しない。新しいcallsite/message/影響や説明できない増加は再分類する。
+
+warning抑制、`continue-on-error`、失敗の無視、digest/署名/N-1検証の弱化、warningが消えるまでの同条件再試行で判定を成立させてはならない。既存の監査例外は`docs/OSS_COMPLIANCE.md`の独立した条件に従う。
 
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
@@ -234,7 +254,7 @@
 - tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
 - TC-193性能は [変更triggerと再利用条件](testplan/release-validation.md) に従う。CLI/startup/shared engine/build等の影響変更時に固定200-file fixture、5 warmup+25 sample、ratio≤0.70を満たし、無影響なら既存PASSを再利用する。新Windows assetのsubsystem/import検査は維持する。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
-- release candidate の Rust build / test / clippy / release asset build logs に warning が残っていないこと。外部 Action 由来を含め warning が 1 件でもあれば停止し、出所・影響・follow-up を記録する。例外扱いには version と exact run を限定したユーザの明示承認が必要であり、理由の記載だけでは解除できない。例外は次の候補や tag workflow に引き継がない。
+- release candidateの全warningを確認すること。外部Action警告は[外部Action警告の判定](#external-action-warning-disposition)の全条件を満たす軽微ケースに限り、ユーザー承認済みの運用としてexact version/runの例外を記録できる。重大・不明・条件未達、およびこの規則の対象外の警告は停止条件とし、最新版/greenだけで解除しない。次の候補やtag workflowで独立に再判定する。
 - tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
