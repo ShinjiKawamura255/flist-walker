@@ -1,0 +1,9 @@
+# Independent tagged artifact and warning review
+
+Reviewer release_prep_review, read-only final review2026-10-07. Critical 0 / High 0 / Medium 0; blocking / major / minor findings0 / 0 / 0.
+
+Exact v0.30.1/source7f9a7a3a6d191cf2bd876453f1beec33838b394d/run37616202550/attempt1; all11jobs SUCCESS. Artifact11481014258,85608560bytes, ZIP SHA256ecf3514f4734ec925faf1aff427dfc616d4b24314a572e31d5402cf200261c5a. Independently reconciled actual28assets/26digests, archives/notices/executable modes/Mac metadata/all8binary keys/signatures/versions/formats, prior public key signature, PE boundary and real manifest N-1 PASS.
+
+Full logs identical to independently fetched precheck, SHA256078ef0f5c972864065a46db6136a3f06aba716aaab9e9d3813696342fe81bdb2. Actual DEP0005 emissions2, one Assembly Download packaged assets and one Draft Download validated candidate bundle. Distinct Node processes explain the count; identical bounded extraction path, both download/digest successful. Product/Rust/test/clippy/audit warnings0; warning/error annotations0. Capacity notices2, checkout advice9, trace instructions2 are non-emissions. Official latestv8.0.2/full pin/diagnosed unchanged blob/Node24/actual2.337.0 runners and inputs match. Named artifact download joins same downloadArtifact extraction path. Local full unchanged Action causal trace is bounded inference, not claimed hosted stack/HTTPS/auth/four-way parallel certification. These two emissions can be conditionally classified minor for this exact run only; no old waiver or code-wide DEP0005 allowance.
+
+No blocker before operator disposition. Draft final text/review, publication and public readback remain future gates. Public download timeout1800s preserves all hash/signature/N-1/unauthenticated checks. Reviewer performed no GH mutation or product launch.
