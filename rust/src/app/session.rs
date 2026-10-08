@@ -48,6 +48,8 @@ pub(super) struct LaunchSettings {
     pub(super) suppress_update_check_failure_dialog: bool,
     #[cfg(test)]
     pub(super) test_settings_paths: Option<super::TestSettingsPaths>,
+    #[cfg(test)]
+    pub(super) activation_observer: Option<super::activation_observer::Probe>,
 }
 
 /// Submission and durable completion are different states. In particular, an
@@ -246,6 +248,8 @@ impl FlistWalkerApp {
             suppress_update_check_failure_dialog: ui_state.suppress_update_check_failure_dialog,
             #[cfg(test)]
             test_settings_paths: None,
+            #[cfg(test)]
+            activation_observer: None,
         }
     }
 

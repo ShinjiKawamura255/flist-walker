@@ -29,7 +29,7 @@
 - DES-005 -> TC-006, TC-006A, TC-015, TC-162, TC-163, TC-164, TC-165, TC-166, TC-169, TC-170, TC-172 (SP-001, SP-006)
 - DES-006 -> TC-007, TC-057B, TC-156, TC-161, TC-185 (SP-007, SP-013)
 - DES-006, DES-009, DES-013 -> TC-228, TC-229, TC-230, TC-231, TC-232 (SP-007, SP-010, SP-013)
-- DES-006, DES-009 -> TC-234 (SP-007, SP-010): test-only activation origin/admission controls; runtime collector and numeric policy remain deferred.
+- DES-006, DES-009 -> TC-234 (SP-007, SP-010): test-only activation origin/admission controls and opt-in B0 real-worker/headless receipts; native display and numeric policy remain deferred.
 - DES-006, DES-007, DES-009 -> TC-150, TC-151, TC-152, TC-153 (SP-010)
 - DES-007 -> TC-008, TC-050, TC-051, TC-164, TC-165, TC-166 (SP-001, SP-004, SP-006, SP-008)
 - DES-008 -> TC-009 (SP-009)
