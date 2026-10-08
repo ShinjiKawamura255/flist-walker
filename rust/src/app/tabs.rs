@@ -1292,8 +1292,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index_at(&mut self, next_index: usize, now: Instant) {
+        // Test-only real receipt clock precedes all observer target/state preparation.
+        // Do not substitute `now`: callers can inject it for lifecycle policy tests.
         #[cfg(test)]
-        self.observe_activation_ingress(next_index);
+        let activation_entered = self.activation_observer.as_ref().map(|_| Instant::now());
+        #[cfg(test)]
+        if let Some(entered) = activation_entered {
+            self.observe_activation_ingress(next_index, entered);
+        }
         if next_index >= self.shell.tabs.len() {
             return;
         }

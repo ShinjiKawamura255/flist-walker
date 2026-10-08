@@ -251,6 +251,10 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
         .last()
         .unwrap();
     let initial_origin = (original.id, original.target, original.t0_ns);
+    let metadata_done = serde_json::to_value(original).unwrap()["ingress_metadata_done_ns"]
+        .as_u64()
+        .expect("switch t0 needs metadata completion witness");
+    assert!(original.t0_ns.is_some_and(|t0| t0 <= metadata_done));
 
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
     assert_eq!(
@@ -281,6 +285,11 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
     assert_eq!(
         (observed.id, observed.target, observed.t0_ns),
         initial_origin
+    );
+    assert_eq!(
+        serde_json::to_value(observed).unwrap()["ingress_metadata_done_ns"].as_u64(),
+        Some(metadata_done),
+        "retry must retain the first metadata witness too"
     );
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
     assert_eq!(
@@ -313,6 +322,11 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
     assert_eq!(
         (observed.id, observed.target, observed.t0_ns),
         initial_origin
+    );
+    assert_eq!(
+        serde_json::to_value(observed).unwrap()["ingress_metadata_done_ns"].as_u64(),
+        Some(metadata_done),
+        "retry must retain the first metadata witness too"
     );
     assert!(
         observed.attempts >= 2,

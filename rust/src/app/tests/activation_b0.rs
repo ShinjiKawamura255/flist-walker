@@ -131,14 +131,18 @@ fn intent_records(
             && r["entries_emitted"].as_u64()==Some(128) && r["root"]==json!(intent.root)
             && r["started_root"]==json!(intent.root) && r["skipped_closed"]==false);
         let generation = intent.first_model.as_ref().and_then(|r|r.generation);
-        let identity = generation.is_some_and(|id| requests.iter().any(|r|r["id"].as_u64()==Some(id)&&r["tab"].as_u64()==intent.target))
-            && (retained || target.iter().any(|r|r["id"].as_u64()==generation));
+        let identity = generation.and_then(|id| {
+            let binding = requests.iter().find(|r| r["id"].as_u64() == Some(id))?;
+            let tab = binding["tab"].as_u64()?;
+            Some(Some(tab) == intent.target && (retained || target.iter().any(|r| r["id"].as_u64() == Some(id))))
+        });
         let mut first_model = probe.receipt_guard(intent.first_model.as_ref(),intent,false);
         let first_frame = probe.receipt_guard(intent.first_frame.as_ref(),intent,true);
-        if !identity || !final_guards[n] || intent.first_later_failure.is_some() {first_model="FAIL";}
-        if first_model != "FAIL" && intent.first_later_unknown.is_some() { first_model="UNKNOWN"; }
+        if identity == Some(false) || !final_guards[n] || intent.first_later_failure.is_some() {first_model="FAIL";}
+        if first_model != "FAIL" && (identity.is_none() || intent.first_later_unknown.is_some()) { first_model="UNKNOWN"; }
         let mut clock = probe.clock_valid && intent.t0_ns.is_some() && !intent.canceled;
         let t0=intent.t0_ns.unwrap_or(u64::MAX);
+        if intent.kind == "tab-switch" { clock &= intent.ingress_metadata_done_ns.is_some_and(|done| t0 <= done && done <= settled[n]); }
         let model=intent.first_model.as_ref().and_then(|r|r.at_ns);
         let display=intent.first_frame.as_ref().and_then(|r|r.at_ns);
         clock &= model.is_some_and(|m|m>=t0)&&display.is_some_and(|d|model.is_some_and(|m|d>=m)&&d<=settled[n]);
@@ -308,7 +312,7 @@ fn tc_234_activation_b0_owned_child() {
         && ready_precondition
         && clean_join
         && !base.exists();
-    let sample = json!({"format":"activation-b0-v2","process_id":std::process::id(),"scenario":scenario,"observer":observer,
+    let sample = json!({"format":"activation-b0-v3","ingress_clock_contract":"switch entry before observer metadata","process_id":std::process::id(),"scenario":scenario,"observer":observer,
         "planned_intents":if scenario=="restore"{3}else{1},"observed_intents":intents.len(),"planned_roots":roots,"actual_tab_count":actual_tab_count,"next_request_id":final_next_request_id,
         "settled_debt":settled_debt,"index_load":{"queued":index_load.queued,"inflight":index_load.inflight},"requests":requests,"intents":intents,
         "clock":"process-local std::time::Instant","numeric_policy":null,"numeric_status":"NOT_EVALUATED",
@@ -490,6 +494,114 @@ fn tc_234_existing_perf_observer_has_no_b0_retry_cap_or_worker_clocks() {
     assert!(app.shell.indexing.pending_queue.is_empty());
     assert!(rx.try_recv().is_ok());
     drop(rx);
+    drop(app);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn tc_234_b0_real_emitter_keeps_missing_first_evidence_indeterminate() {
+    let _settings = test_settings_scope("b0-emitter-missing-first");
+    let root = test_root("b0-emitter-missing-first");
+    fs::create_dir_all(&root).unwrap();
+    let paths = (0..128)
+        .map(|n| root.join(format!("entry-{n:03}.txt")))
+        .collect::<Vec<_>>();
+    for path in &paths {
+        fs::write(path, "fixture").unwrap();
+    }
+    fs::write(
+        root.join("FileList.txt"),
+        paths
+            .iter()
+            .map(|p| format!("{}\n", p.file_name().unwrap().to_string_lossy()))
+            .collect::<String>(),
+    )
+    .unwrap();
+    let ctx = egui::Context::default();
+    let mut app = FlistWalkerApp::new(root.clone(), 500, String::new());
+    settle(&mut app, &ctx, Instant::now() + Duration::from_secs(5));
+    assert!(final_oracle(&app, &root, &paths));
+    let tab = app.current_tab_id().unwrap();
+    let generation = app.shell.indexing.next_request_id - 1;
+    let mut probe = Probe::new(
+        Instant::now(),
+        root.clone(),
+        BTreeMap::from([(root.clone(), paths)]),
+    );
+    let intent = &mut probe.intents[0];
+    intent.kind = "tab-switch";
+    intent.target = Some(tab);
+    intent.lifecycle = "Ready".into();
+    intent.committed = true;
+    intent.request_floor = app.shell.indexing.next_request_id;
+    intent.ingress_metadata_done_ns = Some(0);
+    probe.generations.insert(tab, generation);
+    probe
+        .sources
+        .insert(tab, format!("{:?}", app.shell.indexing.build.index.source));
+    app.activation_observer = Some(probe);
+    app.observe_activation_model();
+    frame(&mut app, &ctx);
+    let settled = [ns(
+        app.activation_observer.as_ref().unwrap().origin,
+        Instant::now(),
+    )
+    .unwrap()];
+    let joined = app
+        .shutdown_workers_with_timeout(Duration::from_secs(5), "B0 emitter control")
+        .unwrap();
+    let cleanup =
+        joined.joined == joined.total && joined.pending.is_empty() && joined.panicked.is_empty();
+    assert!(cleanup);
+    let requests = [json!({"id":generation,"tab":tab})];
+    let healthy = app.activation_observer.clone();
+    assert_eq!(
+        intent_records(&app, &requests, &settled, &[true], cleanup)[0]["status"],
+        "OBSERVATION_VALID"
+    );
+    for missing in ["model", "generation", "frame", "request-binding"] {
+        app.activation_observer = healthy.clone();
+        let intent = &mut app.activation_observer.as_mut().unwrap().intents[0];
+        match missing {
+            "model" => intent.first_model = None,
+            "generation" => intent.first_model.as_mut().unwrap().generation = None,
+            "frame" => intent.first_frame = None,
+            _ => {}
+        }
+        let binding = if missing == "request-binding" {
+            &[][..]
+        } else {
+            &requests[..]
+        };
+        let row = &intent_records(&app, binding, &settled, &[true], cleanup)[0];
+        assert_eq!(
+            row["status"], "INDETERMINATE",
+            "{missing}: missing evidence is not a product FAIL"
+        );
+        assert!(row["metrics_ns"]
+            .as_object()
+            .unwrap()
+            .values()
+            .all(Value::is_null));
+        // Observed wrong frame still dominates missing model/generation.
+        if missing != "frame" {
+            app.activation_observer.as_mut().unwrap().intents[0]
+                .first_frame
+                .as_mut()
+                .unwrap()
+                .results[0]
+                .1 = 123.0;
+            assert_eq!(
+                intent_records(&app, binding, &settled, &[true], cleanup)[0]["status"],
+                "FAIL"
+            );
+        }
+        assert_eq!(
+            intent_records(&app, binding, &settled, &[false], cleanup)[0]["status"],
+            "FAIL",
+            "known final result failure must dominate"
+        );
+    }
     drop(app);
     fs::remove_dir_all(root).unwrap();
 }

@@ -59,6 +59,7 @@ pub(super) struct Intent {
     pub(super) committed: bool,
     pub(super) warm: bool,
     pub(super) t0_ns: Option<u64>,
+    pub(super) ingress_metadata_done_ns: Option<u64>,
     pub(super) request_floor: u64,
     pub(super) attempts: usize,
     pub(super) first_retry_ns: Option<u64>,
@@ -98,6 +99,7 @@ impl Probe {
                 committed: false,
                 warm: false,
                 t0_ns: Some(0),
+                ingress_metadata_done_ns: None,
                 request_floor: 1,
                 attempts: 1,
                 first_retry_ns: None,
@@ -239,7 +241,7 @@ impl FlistWalkerApp {
         }
     }
 
-    pub(super) fn observe_activation_ingress(&mut self, next: usize) {
+    pub(super) fn observe_activation_ingress(&mut self, next: usize, entered: Instant) {
         if self.activation_observer.is_none() {
             return;
         }
@@ -252,11 +254,16 @@ impl FlistWalkerApp {
         let committed = tab.index_state.committed_snapshot_present();
         let same_active = next == self.shell.tabs.active_tab_index();
         let pending = self.shell.tabs.pending_activation_tab_id;
+        let warm = self.shell.indexing.warm_tab_id == Some(id);
+        let metadata_done = Instant::now();
         let Some(probe) = self.activation_observer.as_mut() else {
             return;
         };
-        let at = probe.ns(Instant::now());
-        probe.clock_valid &= at.is_some();
+        let at = probe.ns(entered);
+        let metadata_done_ns = probe.ns(metadata_done);
+        probe.clock_valid &= at
+            .zip(metadata_done_ns)
+            .is_some_and(|(start, done)| start <= done);
         if same_active {
             probe.cancel_pending(pending);
             return;
@@ -288,8 +295,9 @@ impl FlistWalkerApp {
             root,
             lifecycle,
             committed,
-            warm: self.shell.indexing.warm_tab_id == Some(id),
+            warm,
             t0_ns: at,
+            ingress_metadata_done_ns: metadata_done_ns,
             request_floor: self.shell.indexing.next_request_id,
             attempts: 1,
             first_retry_ns: None,
