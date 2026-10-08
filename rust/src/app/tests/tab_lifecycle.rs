@@ -183,7 +183,8 @@ fn ctrl_t_creates_new_tab_and_activates_it() {
 fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
     let root = test_root("tc-209-meaningful-recent-inactive");
     fs::create_dir_all(&root).expect("create root");
-    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let settings = test_settings_scope("tc-209-retention-settings");
+    let mut app = settings.app(root.clone(), 50, String::new());
     app.create_new_tab();
     app.switch_to_tab_index(0);
     app.shell.indexing.pending_request_id = None;
@@ -205,10 +206,39 @@ fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
             .set_committed_snapshot_present_for_test(true);
     }
 
+    let activated_at = Instant::now();
+    app.shell.tabs.set_active_tab_index_at(0, activated_at);
+    app.shell.runtime.query_state.query = "sentinel".into();
+    app.mark_query_edited();
+    // Query edit invalidates sort; seed the settled query/sort snapshot AFTER it.
     let active_id = app.current_tab_id().expect("active tab");
-    let retained = Arc::new(Vec::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1));
+    let paths = ["sentinel-c.txt", "sentinel-b.txt", "sentinel-a.txt"].map(|name| root.join(name));
+    for path in &paths {
+        fs::write(path, "fixture").expect("write sentinel");
+    }
+    let mut contents = Vec::with_capacity(TAB_RESOURCE_CACHE_MAX_WEIGHT + 1);
+    contents.extend(paths.iter().cloned().map(file_entry));
+    let retained = Arc::new(contents);
+    let allocation = retained.as_ptr();
     app.shell.runtime.committed_for_test_mut().all_entries = Arc::clone(&retained);
     app.shell.runtime.committed_for_test_mut().entries = retained;
+    let base = paths
+        .iter()
+        .enumerate()
+        .map(|(i, p)| (p.clone(), (3 - i) as f64))
+        .collect::<Vec<_>>();
+    let visible = base.iter().rev().cloned().collect::<Vec<_>>();
+    {
+        let committed = app.shell.runtime.committed_for_test_mut();
+        committed.base_results = base.clone();
+        committed.results = visible.clone();
+        committed.current_row = Some(1);
+        committed.total_match_count = 3;
+    }
+    app.shell.runtime.result_sort_mode = ResultSortMode::NameAsc;
+    app.shell.runtime.result_sort_scope = ResultSortScope::ShownResults;
+    app.shell.runtime.pinned_paths.insert(paths[2].clone());
+    let next_request_id = app.shell.indexing.next_request_id;
     app.shell
         .indexing
         .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -216,9 +246,6 @@ fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
         .indexing
         .set_committed_snapshot_present_for_test(true);
 
-    let activated_at = Instant::now();
-    app.shell.tabs.set_active_tab_index_at(0, activated_at);
-    app.mark_query_edited();
     app.switch_to_tab_index_at(1, activated_at + Duration::from_millis(10));
 
     assert_eq!(app.shell.tabs.recent_inactive_tab_id(), Some(active_id));
@@ -229,6 +256,11 @@ fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
     );
     assert!(retained_tab.index_state.committed_snapshot_present());
     assert!(retained_tab.heavy_resource_weight() > TAB_RESOURCE_CACHE_MAX_WEIGHT);
+    assert_eq!(
+        retained_tab.result_state.committed.all_entries.as_ptr(),
+        allocation
+    );
+    assert_eq!(retained_tab.result_state.committed.results, visible);
 
     app.switch_to_tab_index_at(0, activated_at + Duration::from_millis(20));
     assert_eq!(app.current_tab_id(), Some(active_id));
@@ -236,6 +268,43 @@ fn tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot() {
         app.shell.runtime.all_entries.capacity(),
         TAB_RESOURCE_CACHE_MAX_WEIGHT + 1
     );
+    assert_eq!(app.shell.runtime.all_entries.as_ptr(), allocation);
+    assert_eq!(app.shell.runtime.entries.as_ptr(), allocation);
+    assert_eq!(
+        app.shell
+            .runtime
+            .all_entries
+            .iter()
+            .map(|e| &e.path)
+            .collect::<Vec<_>>(),
+        paths.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(
+        app.shell
+            .runtime
+            .entries
+            .iter()
+            .map(|e| &e.path)
+            .collect::<Vec<_>>(),
+        paths.iter().collect::<Vec<_>>()
+    );
+    assert_eq!(app.shell.runtime.base_results, base);
+    assert_eq!(app.shell.runtime.results, visible);
+    assert_eq!(app.shell.runtime.query_state.query, "sentinel");
+    assert_eq!(app.shell.runtime.result_sort_mode, ResultSortMode::NameAsc);
+    assert_eq!(
+        app.shell.runtime.result_sort_scope,
+        ResultSortScope::ShownResults
+    );
+    assert_eq!(
+        app.shell.runtime.pinned_paths,
+        std::collections::BTreeSet::from([paths[2].clone()])
+    );
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert_eq!(app.shell.runtime.results[1].0, paths[1]);
+    assert_eq!(app.shell.indexing.next_request_id, next_request_id);
+    assert!(app.shell.indexing.pending_request_id.is_none());
+    assert!(app.shell.indexing.pending_queue.is_empty());
     assert!(
         index_rx.try_recv().is_err(),
         "retained Ready tab must not reindex"

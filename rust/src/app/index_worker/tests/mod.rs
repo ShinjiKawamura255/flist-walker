@@ -945,6 +945,11 @@ fn tc_152_index_workers_bound_total_to_four() {
 
 #[test]
 fn tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regression() {
+    let root = test_root("tc-206-closed-mailboxes");
+    let third_root = root.join("request-3");
+    std::fs::create_dir_all(&third_root).expect("create third root");
+    let sentinel = third_root.join("sentinel.txt");
+    std::fs::write(&sentinel, "fixture").expect("write sentinel");
     let shutdown = Arc::new(AtomicBool::new(false));
     let latest_request_ids = Arc::new(Mutex::new(HashMap::from([(1, 1), (2, 2), (3, 3)])));
     let gate = Arc::new((Mutex::new(false), Condvar::new()));
@@ -952,7 +957,10 @@ fn tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regre
     let resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync> = {
         let gate = Arc::clone(&gate);
         Arc::new(move |root| {
-            started_tx.send(()).expect("signal root resolution");
+            // This hook is before canonicalization/discovery, unlike Started.
+            started_tx
+                .send(root.to_path_buf())
+                .expect("signal worker execution");
             let (lock, ready) = &*gate;
             let mut open = lock.lock().expect("lock gate");
             while !*open {
@@ -968,53 +976,112 @@ fn tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regre
         Arc::clone(&mailboxes),
         resolve_root,
     );
-    let request = |request_id| IndexRequest {
-        request_id,
-        tab_id: request_id,
-        root: PathBuf::from(format!("missing-root-{request_id}")),
-        use_filelist: false,
-        include_files: true,
-        include_dirs: true,
-        max_depth: crate::indexer::MaxDepth::unlimited(),
-        follow_links: false,
-        complete_walker_snapshot: false,
-    };
-    for request_id in 1..=3 {
-        establish_prequeued_mailbox_invariant(&mailboxes, request_id);
-    }
-
-    tx.send(request(1)).expect("send first index request");
-    tx.send(request(2)).expect("send second index request");
-    started_rx
-        .recv_timeout(Duration::from_secs(1))
-        .expect("first worker acquired request mailbox");
-    started_rx
-        .recv_timeout(Duration::from_secs(1))
-        .expect("second worker acquired request mailbox");
-    {
-        let mailboxes = mailboxes.lock().expect("mailboxes");
-        mailboxes.get(&1).expect("first mailbox").close();
-        mailboxes.get(&2).expect("second mailbox").close();
-    }
-    tx.send(request(3))
-        .expect("queue request after both request mailboxes close");
-
-    let (lock, ready) = &*gate;
-    *lock.lock().expect("lock gate") = true;
-    ready.notify_all();
-
-    assert!(matches!(
-        recv_index_response(&mailboxes, 3, Duration::from_secs(1)),
-        IndexResponse::Started {
-            request_id: 3,
-            source: IndexSource::Walker,
+    // Always release/join our workers, including a failing regression control.
+    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let request = |request_id| IndexRequest {
+            request_id,
+            tab_id: request_id,
+            root: root.join(format!("request-{request_id}")),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
+            complete_walker_snapshot: false,
+        };
+        for request_id in 1..=3 {
+            establish_prequeued_mailbox_invariant(&mailboxes, request_id);
         }
-    ));
-
+        tx.send(request(1)).expect("send first index request");
+        tx.send(request(2)).expect("send second index request");
+        let mut acquired = (0..2)
+            .map(|_| {
+                started_rx
+                    .recv_timeout(Duration::from_secs(1))
+                    .expect("resident worker acquired request mailbox")
+            })
+            .collect::<Vec<_>>();
+        acquired.sort();
+        assert_eq!(
+            acquired,
+            vec![root.join("request-1"), root.join("request-2")]
+        );
+        {
+            let mailboxes = mailboxes.lock().expect("mailboxes");
+            mailboxes[&1].close();
+            mailboxes[&2].close();
+        }
+        tx.send(request(3))
+            .expect("queue request after both request mailboxes close");
+        {
+            let (lock, ready) = &*gate;
+            *lock.lock().expect("lock gate") = true;
+            ready.notify_all();
+        }
+        assert_eq!(
+            started_rx
+                .recv_timeout(Duration::from_secs(1))
+                .expect("third request must reach actual worker execution"),
+            third_root
+        );
+        let deadline = Instant::now() + Duration::from_secs(1);
+        let mut started = false;
+        let mut entries = Vec::new();
+        loop {
+            assert!(Instant::now() < deadline, "third request must finish");
+            let response = recv_index_response(
+                &mailboxes,
+                3,
+                deadline.saturating_duration_since(Instant::now()),
+            );
+            match response {
+                IndexResponse::Started {
+                    request_id: 3,
+                    source: IndexSource::Walker,
+                } => {
+                    assert!(!started, "Started must be unique");
+                    started = true;
+                }
+                IndexResponse::Batch {
+                    request_id: 3,
+                    entries: batch,
+                } => {
+                    assert!(started, "Batch must follow Started");
+                    entries.extend(batch);
+                }
+                IndexResponse::Finished {
+                    request_id: 3,
+                    source: IndexSource::Walker,
+                } => break,
+                _ => panic!(
+                    "unexpected third response: wrong identity/source or non-success terminal"
+                ),
+            }
+        }
+        assert!(started);
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].path, sentinel);
+        assert_eq!(entries[0].kind, EntryKind::file());
+        assert!(entries[0].kind_known);
+        assert!(started_rx.try_recv().is_err(), "one execution per request");
+        assert!(
+            handles.iter().all(|handle| !handle.is_finished()),
+            "both resident workers survive request-local mailbox close"
+        );
+    }));
+    {
+        let (lock, ready) = &*gate;
+        *lock.lock().expect("lock gate") = true;
+        ready.notify_all();
+    }
     shutdown.store(true, Ordering::Relaxed);
     drop(tx);
     for handle in handles {
         handle.join().expect("join index worker");
+    }
+    std::fs::remove_dir_all(root).expect("remove fixture after workers joined");
+    if let Err(panic) = outcome {
+        std::panic::resume_unwind(panic);
     }
 }
 
