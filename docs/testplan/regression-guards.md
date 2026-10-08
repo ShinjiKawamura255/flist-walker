@@ -55,14 +55,24 @@ Back to the [Validation Matrix](validation-matrix.md).
 - Scenario: refresh、root change、tab close が、worker が取得済みの request-scoped mailbox を通常 cleanup で閉じる。隣接する2要求で同時に起きると、mailbox への `Started` / data / terminal publish は失敗する。
 - Expected Behavior: publish failure はその要求だけを終了し、常駐する2 index worker は次の要求を処理できる。shutdown で request receiver を閉じた場合だけ worker loop を終了する。
 - Non-goals: 閉じた mailbox への応答再送、cleanup 済み要求の terminal 復元、index worker 数や mailbox 容量の変更。
-- Related Tests: TC-206, `tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regression`。
+- Related Tests: TC-206, `tc_206_closed_request_mailboxes_do_not_terminate_resident_index_workers_regression`。第三rootの実file1件についてresolve-root前の着手、unique Started、正しいBatch、正常Finished、両residentのshutdown前生存とjoinを確認する。Startedだけを生存/結果成立としない。
 - Notes for Future Changes: request mailbox の `Closed` / `SlotOccupied` は worker endpoint の切断と同一視しない。index response publish の失敗経路を変更した場合は、2 worker が隣接して mailbox close を受けた後の後続要求を必ず検証する。
 
 ### Regression Guard: restored-tab job and resource ownership
 - Scenario: active priority is restored by preempting every background request or moving background batches into an unbounded deferred queue; closed/open-inactive tabs retain every heavy snapshot; refresh clears the last-good view.
 - Expected: Active + sole Warm scheduling, ordered request-scoped bounded mailboxes, lifecycle plus optional committed snapshot, common live/closed LRU, engagement-qualified Recent Inactive soft protection with a hard bound, and bounded off-UI reclaimer satisfy TC-203 through TC-211.
+
 - Non-goals: Persisting full snapshots across restarts or imposing a hard byte cap on one active FileList snapshot.
 - Future-change rule: Changes to index dispatch/response, tab transition, close/restore, snapshot compaction, Recent Inactive classification/budget, or worker shutdown MUST run TC-203 through TC-211 as selected by the affected owner and MUST update SP-010/DES-009 when a bound or transition changes.
+
+### Regression Guard: activation correctness precedes timing admission
+
+- Scenario: 同期switchが速くても保持した結果を失う、partial Warm復帰で重複requestを作る、deferred retryで初回起点をリセットする、Started/最終正常snapshotだけで欠測や初回誤表示を隠す。
+- Expected: TC-209はsoft超過capacityに実3要素だけを初期化し、all/filtered/base/resultsの内容・順序・score、allocation、query/sort/PIN/selected pathとtarget新request0を保持する。TC-207 ordered handoffは最初の復帰build/request/sourceと最終7件を確認し、Readyの相手tabを含めallocation追加0。deferred rollbackは既存Full/解放後finite再開を維持する。TC-234 typed controlsは不正/欠測を性能成功へ変換せず、必須first-model/first-frame receiptの脱落を後続正常frameで置き換えない。
+- Related Tests: `tc_209_meaningful_interaction_protects_large_recent_inactive_snapshot`, `tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order`, `tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity`, `tc_234_activation_contract_*`。TC-210/211の合法なrollback/hard evictionを維持し、Evictedに旧Arc保持を要求しない。
+- Normal CI: 既存`cargo test --locked`の非ignored unitとして自動発見。局所確認は`cargo test --locked activation_contract --lib`と上記exact test名。`python3 scripts/validate_change.py --base <base> --full`は通常のrepo contract/fmt/Rust suite/clippyを集約する。新workflowやperformance gateは追加しない。
+- Non-goals: 実runtimeのlatency起点保存、実worker時刻collector、JSON raw schema/cardinality validator、immutable frame receipt capture、native/Windows/UX保証、計装負荷校正、時間閾値。test-only sampleのguardはsynthetic oracle controlで、実frameの検証済み表示ではない。既存TC-154/TC-233の数値契約を変更しない。
+
 
 ### Regression Guard: active committed payload mutation stays owner-oriented
 

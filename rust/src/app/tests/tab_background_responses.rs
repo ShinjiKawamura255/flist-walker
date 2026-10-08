@@ -12,6 +12,8 @@ fn tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order() {
     app.filelist_auto_check_enabled = false;
     app.create_new_tab();
     reset_index_request_state_for_test(&mut app);
+    let (index_tx, index_rx) = bounded_request_channel::<IndexRequest>(2);
+    app.shell.indexing.tx = index_tx;
     for tab in &mut app.shell.tabs {
         tab.index_state
             .set_lifecycle_for_test(TabResourceLifecycle::Ready);
@@ -55,6 +57,7 @@ fn tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order() {
         active_mailbox_blocked: false,
         from_shared_response_queue: false,
     });
+    let next_request_id = app.shell.indexing.next_request_id;
     app.switch_to_tab_index(1);
     assert_eq!(app.shell.indexing.warm_tab_id, Some(tab_id));
     mailbox.try_publish(batch(3..5)).unwrap();
@@ -67,6 +70,33 @@ fn tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order() {
     );
     app.switch_to_tab_index(0);
     assert_eq!(app.current_tab_id(), Some(tab_id));
+    assert_eq!(app.shell.indexing.pending_request_id, Some(request_id));
+    assert!(app.shell.indexing.in_progress);
+    assert_eq!(
+        app.shell
+            .indexing
+            .latest_request_ids
+            .lock()
+            .unwrap()
+            .get(&tab_id),
+        Some(&request_id)
+    );
+
+    assert_eq!(app.shell.indexing.next_request_id, next_request_id);
+    assert_eq!(app.shell.indexing.build.index.source, source);
+    assert_eq!(
+        app.shell
+            .indexing
+            .build
+            .index
+            .entries
+            .iter()
+            .map(|e| e.path.clone())
+            .collect::<Vec<_>>(),
+        (0..2)
+            .map(|i| root.join(format!("e{i}.txt")))
+            .collect::<Vec<_>>()
+    );
     mailbox.try_publish(batch(5..7)).unwrap();
     mailbox
         .try_publish(IndexResponse::Finished {
@@ -116,6 +146,14 @@ fn tc_207_promoted_handoff_preserves_active_warm_active_mailbox_order() {
             .map(|(p, _)| p.clone())
             .collect::<Vec<_>>(),
         expected
+    );
+    assert_eq!(app.shell.indexing.next_request_id, next_request_id);
+    assert!(
+        matches!(
+            index_rx.try_recv(),
+            Err(std::sync::mpsc::TryRecvError::Empty)
+        ),
+        "same-generation Warm restoration must not dispatch another request"
     );
     let freshness = app.shell.runtime.freshness.as_ref().unwrap();
     assert_eq!(freshness.request_id, request_id);

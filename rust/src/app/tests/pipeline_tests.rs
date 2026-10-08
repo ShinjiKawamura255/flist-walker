@@ -235,6 +235,11 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
             .expect("fill reclaimer");
     }
 
+    // Observe driver ingress separately from the production tenure/retry clock.
+    // This test-only origin is not a runtime latency collector.
+    let origin_clock = Instant::now();
+    let initial_origin = (1, target_tab_id, 0);
+    let mut intent = super::activation_contract::ActivationIntent::new(1, target_tab_id, 0);
     app.switch_to_tab_index(target_index);
 
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
@@ -255,7 +260,9 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
     assert!(mailbox.has_terminal_response());
     assert!(index_rx.try_recv().is_err());
 
+    assert!(intent.retry(target_tab_id, origin_clock.elapsed().as_nanos() as u64));
     app.poll_index_response();
+    assert_eq!(intent.origin(), Some(initial_origin));
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
     assert_eq!(
         app.shell.tabs.pending_activation_tab_id,
@@ -270,9 +277,15 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
             Instant::now() < deadline,
             "deferred superseded activation must settle after reclaimer capacity returns"
         );
+        assert_eq!(
+            app.shell.tabs.pending_activation_tab_id,
+            Some(target_tab_id)
+        );
+        assert!(intent.retry(target_tab_id, origin_clock.elapsed().as_nanos() as u64));
         app.poll_index_response();
         thread::yield_now();
     }
+    assert_eq!(intent.origin(), Some(initial_origin));
     let replacement = index_rx.try_recv().expect("one fresh generation");
     assert_eq!(replacement.tab_id, target_tab_id);
     assert_ne!(replacement.request_id, request_id);
