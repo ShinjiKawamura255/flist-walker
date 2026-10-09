@@ -94,14 +94,42 @@ pub(super) fn write_pending_ui_state(
     pending: &[PendingUiStateWrite],
     history_persist_disabled: bool,
     lock_timeout: Duration,
+    #[cfg(test)] diagnostic: Option<&super::FlushDiagnostic>,
 ) -> std::io::Result<()> {
     debug_assert!(pending
         .windows(2)
         .all(|writes| writes[0].generation < writes[1].generation));
-    let _lock = acquire_sidecar_lock(path, lock_timeout)?;
-    let document = build_ui_state_document(path, pending, None, history_persist_disabled)?;
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record("sidecar-acquire-enter", None);
+    }
+    let lock = acquire_sidecar_lock(path, lock_timeout);
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record_io("sidecar-acquire-return", &lock);
+    }
+    let _lock = lock?;
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record("document-enter", None);
+    }
+    let document = build_ui_state_document(path, pending, None, history_persist_disabled);
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record_io("document-return", &document);
+    }
+    let document = document?;
     let text = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
-    write_text_atomic(path, &text)
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record("atomic-write-enter", None);
+    }
+    let written = write_text_atomic(path, &text);
+    #[cfg(test)]
+    if let Some(trace) = diagnostic {
+        trace.record_io("atomic-write-return", &written);
+    }
+    written
 }
 
 pub(crate) fn canonicalize_last_root_for_persistence(document: &mut Value) {

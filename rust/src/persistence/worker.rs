@@ -1,6 +1,10 @@
 //! Owns bounded admission, ordered barriers, retry and persistence status.
+#[cfg(test)]
+mod diagnostic;
 mod document;
 mod settings;
+#[cfg(test)]
+use diagnostic::FlushDiagnostic;
 
 use super::history_persist_disabled;
 use super::paths::ui_state_file_path;
@@ -54,12 +58,14 @@ struct TestWorkerProgress {
     started: std::time::Instant,
     phase: std::sync::atomic::AtomicU8,
     last_timeout: Mutex<Option<Value>>,
+    diagnostic: Option<Arc<FlushDiagnostic>>,
 }
 
 #[cfg(test)]
 impl TestWorkerProgress {
-    fn new() -> Self {
+    fn new(diagnostic: Option<Arc<FlushDiagnostic>>) -> Self {
         Self {
+            diagnostic,
             started: std::time::Instant::now(),
             phase: std::sync::atomic::AtomicU8::new(0),
             last_timeout: Mutex::new(None),
@@ -154,6 +160,10 @@ impl PersistenceSender {
         }
         state.outstanding += 1;
         state.status.accepted_generation = generation;
+        #[cfg(test)]
+        if let Some(trace) = &self.progress.diagnostic {
+            trace.record("enqueue-accepted", Some(generation));
+        }
         Ok(generation)
     }
 
@@ -270,11 +280,34 @@ impl AsyncHistoryPersistence {
         history_persist_disabled: bool,
         lock_timeout: Duration,
     ) -> Self {
-        let (sender, handle) =
-            spawn_ui_state_persistence_worker(path, history_persist_disabled, lock_timeout, false);
+        let (sender, handle) = spawn_ui_state_persistence_worker(
+            path,
+            history_persist_disabled,
+            lock_timeout,
+            false,
+            #[cfg(test)]
+            None,
+        );
         Self {
             sender,
             history_persist_disabled,
+            handle: Mutex::new(Some(handle)),
+        }
+    }
+    #[cfg(test)]
+    fn new_with_diagnostic(
+        path: PathBuf,
+        disabled: bool,
+        lock_timeout: Duration,
+        label: &'static str,
+    ) -> Self {
+        let trace = Arc::new(FlushDiagnostic::new(label));
+        trace.record("spawn-requested", None);
+        let (sender, handle) =
+            spawn_ui_state_persistence_worker(path, disabled, lock_timeout, false, Some(trace));
+        Self {
+            sender,
+            history_persist_disabled: disabled,
             handle: Mutex::new(Some(handle)),
         }
     }
@@ -377,6 +410,7 @@ fn spawn_ui_state_persistence_worker(
     history_persist_disabled: bool,
     lock_timeout: Duration,
     startup_protected: bool,
+    #[cfg(test)] diagnostic: Option<Arc<FlushDiagnostic>>,
 ) -> (PersistenceSender, thread::JoinHandle<()>) {
     let (tx, rx) = mpsc::sync_channel(UI_STATE_COMMAND_CAPACITY);
     let state = Arc::new(Mutex::new(AdmissionState {
@@ -389,7 +423,7 @@ fn spawn_ui_state_persistence_worker(
     }));
     let worker_state = Arc::clone(&state);
     #[cfg(test)]
-    let progress = Arc::new(TestWorkerProgress::new());
+    let progress = Arc::new(TestWorkerProgress::new(diagnostic));
     #[cfg(test)]
     let worker_progress = Arc::clone(&progress);
     let handle = thread::spawn(move || {
@@ -445,6 +479,7 @@ fn registry_sender(
             history_persist_disabled,
             UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
             startup_protected,
+            None,
         );
         registry.test_workers.insert(
             path.clone(),
@@ -521,9 +556,43 @@ pub(crate) fn enqueue_settings_commit(
 }
 fn flush_sender(sender: &PersistenceSender, timeout: Duration) -> Result<(), String> {
     let (tx, rx) = mpsc::channel();
-    sender.send_control(UiStatePersistenceCommand::Flush(tx))?;
-    rx.recv_timeout(timeout)
-        .map_err(|_| "UI-state persistence flush timed out".to_string())?
+    #[cfg(test)]
+    if let Some(trace) = &sender.progress.diagnostic {
+        trace.record("flush-send-enter", None);
+    }
+    let admitted = sender.send_control(UiStatePersistenceCommand::Flush(tx));
+    #[cfg(test)]
+    if let Some(trace) = &sender.progress.diagnostic {
+        trace.record(
+            if admitted.is_ok() {
+                "flush-send-accepted"
+            } else {
+                "flush-send-error"
+            },
+            None,
+        );
+    }
+    admitted?;
+    #[cfg(test)]
+    if let Some(trace) = &sender.progress.diagnostic {
+        trace.record("flush-recv-enter", None);
+        trace.begin_receive();
+    }
+    let received = rx.recv_timeout(timeout);
+    #[cfg(test)]
+    if let Some(trace) = &sender.progress.diagnostic {
+        trace.finish_receive(&received);
+        trace.record(
+            match &received {
+                Ok(Ok(())) => "flush-recv-Ok",
+                Ok(Err(_)) => "flush-recv-WorkerError",
+                Err(mpsc::RecvTimeoutError::Timeout) => "flush-recv-Timeout",
+                Err(mpsc::RecvTimeoutError::Disconnected) => "flush-recv-Disconnected",
+            },
+            None,
+        );
+    }
+    received.map_err(|_| "UI-state persistence flush timed out".to_string())?
 }
 pub(crate) fn flush_ui_state_persistence(path: &Path, timeout: Duration) -> Result<(), String> {
     let registry = ui_state_persistence_registry()
@@ -662,6 +731,8 @@ fn run_ui_state_persistence_worker(
     state: Arc<Mutex<AdmissionState>>,
     #[cfg(test)] progress: Arc<TestWorkerProgress>,
 ) {
+    #[cfg(test)]
+    let _trace_lifetime = diagnostic::WorkerLifetime::new(progress.diagnostic.clone());
     let mut pending = Vec::<PendingUiStateWrite>::new();
     loop {
         #[cfg(test)]
@@ -676,15 +747,27 @@ fn run_ui_state_persistence_worker(
                 generation,
                 patch,
                 history_delta,
-            }) => pending.push(PendingUiStateWrite {
-                generation,
-                patch,
-                history_delta,
-            }),
+            }) => {
+                #[cfg(test)]
+                if let Some(trace) = &progress.diagnostic {
+                    trace.record("worker-received-enqueue", Some(generation));
+                }
+                pending.push(PendingUiStateWrite {
+                    generation,
+                    patch,
+                    history_delta,
+                });
+            }
             Ok(UiStatePersistenceCommand::CommitSettings { request, response }) => {
                 settings_commit = Some((request, response))
             }
-            Ok(UiStatePersistenceCommand::Flush(reply)) => flush_reply = Some(reply),
+            Ok(UiStatePersistenceCommand::Flush(reply)) => {
+                #[cfg(test)]
+                if let Some(trace) = &progress.diagnostic {
+                    trace.record("worker-received-flush", None);
+                }
+                flush_reply = Some(reply);
+            }
             Ok(UiStatePersistenceCommand::Shutdown(reply)) => shutdown_reply = Some(reply),
             Err(mpsc::RecvTimeoutError::Timeout) => {}
             Err(mpsc::RecvTimeoutError::Disconnected) => disconnected = true,
@@ -700,16 +783,26 @@ fn run_ui_state_persistence_worker(
                         generation,
                         patch,
                         history_delta,
-                    } => pending.push(PendingUiStateWrite {
-                        generation,
-                        patch,
-                        history_delta,
-                    }),
+                    } => {
+                        #[cfg(test)]
+                        if let Some(trace) = &progress.diagnostic {
+                            trace.record("worker-received-enqueue", Some(generation));
+                        }
+                        pending.push(PendingUiStateWrite {
+                            generation,
+                            patch,
+                            history_delta,
+                        });
+                    }
                     UiStatePersistenceCommand::CommitSettings { request, response } => {
                         settings_commit = Some((request, response));
                         break;
                     }
                     UiStatePersistenceCommand::Flush(reply) => {
+                        #[cfg(test)]
+                        if let Some(trace) = &progress.diagnostic {
+                            trace.record("worker-received-flush", None);
+                        }
                         flush_reply = Some(reply);
                         break;
                     }
@@ -722,12 +815,21 @@ fn run_ui_state_persistence_worker(
         }
         debug_assert!(pending.len() <= MAX_PENDING_UI_STATE_WRITES);
         let attempted = settings_commit.is_some() || !pending.is_empty();
+        #[cfg(test)]
+        if let Some(trace) = &progress.diagnostic {
+            trace.record("status-read-enter", None);
+        }
         let protected = state
             .lock()
             .map(|state| state.status.startup_protected)
             .unwrap_or(true);
         #[cfg(test)]
         progress.set_phase(2);
+        #[cfg(test)]
+        if let Some(trace) = &progress.diagnostic {
+            trace.record("status-read-return", None);
+            trace.record("gate-enter", None);
+        }
         #[cfg(test)]
         let after_write_gate = if attempted && !protected {
             tests::pause_before_write(&path)
@@ -736,6 +838,10 @@ fn run_ui_state_persistence_worker(
         };
         #[cfg(test)]
         progress.set_phase(3);
+        #[cfg(test)]
+        if let Some(trace) = &progress.diagnostic {
+            trace.record("gate-return", None);
+        }
         let result = if let Some((request, response)) = settings_commit {
             let request_id = request.request_id;
             let result = if protected {
@@ -760,10 +866,25 @@ fn run_ui_state_persistence_worker(
             } else if pending.is_empty() {
                 Ok(())
             } else {
-                write_pending_ui_state(&path, &pending, history_persist_disabled, lock_timeout)
-                    .map_err(|error| error.to_string())
+                write_pending_ui_state(
+                    &path,
+                    &pending,
+                    history_persist_disabled,
+                    lock_timeout,
+                    #[cfg(test)]
+                    progress.diagnostic.as_deref(),
+                )
+                .map_err(|error| error.to_string())
             };
+            #[cfg(test)]
+            if let Some(trace) = &progress.diagnostic {
+                trace.record("publish-enter", None);
+            }
             publish_write_result(&state, &mut pending, &result, attempted);
+            #[cfg(test)]
+            if let Some(trace) = &progress.diagnostic {
+                trace.record("publish-return", None);
+            }
             result
         };
         #[cfg(test)]
@@ -771,7 +892,23 @@ fn run_ui_state_persistence_worker(
         #[cfg(test)]
         tests::pause_after_write(after_write_gate);
         if let Some(reply) = flush_reply {
-            let _ = reply.send(result.clone());
+            #[cfg(test)]
+            if let Some(trace) = &progress.diagnostic {
+                trace.record("flush-reply-enter", None);
+            }
+            let sent = reply.send(result.clone());
+            #[cfg(test)]
+            if let Some(trace) = &progress.diagnostic {
+                trace.record(
+                    if sent.is_ok() {
+                        "flush-reply-sent"
+                    } else {
+                        "flush-reply-disconnected"
+                    },
+                    None,
+                );
+            }
+            let _ = sent;
         }
         if let Some(reply) = shutdown_reply {
             let _ = reply.send(result);
