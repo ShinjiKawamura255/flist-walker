@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::paged_preview_flow::PreviewAction;
 use crate::ui_model::{PagedTextPreview, PreviewPageError, PreviewPageState};
 
 fn settle_preview(app: &mut FlistWalkerApp) {
@@ -8,6 +9,66 @@ fn settle_preview(app: &mut FlistWalkerApp) {
         assert!(Instant::now() < deadline, "preview worker did not settle");
         thread::yield_now();
     }
+}
+
+#[test]
+fn gui_initial_body_errors_keep_file_information_and_reload_updates_it() {
+    let root = test_root("preview-file-information");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("sample.bin");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.set_entry_kind(&path, EntryKind::file());
+    for (body, size, reason) in [
+        (&b"\0binary"[..], "7 B", PreviewPageError::Binary),
+        (&b""[..], "0 B", PreviewPageError::Empty),
+    ] {
+        fs::write(&path, body).expect("write fixture");
+        if app.initial_preview_reload_available() {
+            app.apply_preview_action(PreviewAction::Reload);
+        } else {
+            app.reload_paged_preview();
+        }
+        settle_preview(&mut app);
+        assert!(app.initial_preview_reload_available());
+        assert_eq!(app.paged_preview_view.error, Some(reason));
+        let preview = &app.shell.runtime.preview;
+        assert!(
+            preview.contains(&format!("File: {}", path.display())),
+            "{preview}"
+        );
+        assert!(preview.contains(&format!("Size: {size}")), "{preview}");
+        assert!(preview.contains("Created:"), "{preview}");
+        assert!(preview.contains("Updated:"), "{preview}");
+        assert!(
+            preview.contains(super::super::paged_preview_flow::page_error_label(reason)),
+            "{preview}"
+        );
+    }
+    fs::write(&path, "text after reload\n").expect("replace fixture");
+    app.reload_paged_preview();
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current()
+            .expect("text document")
+            .body(),
+        "text after reload\n"
+    );
+    fs::remove_file(&path).expect("delete fixture");
+    app.reload_paged_preview();
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_view.error,
+        Some(PreviewPageError::NotFound)
+    );
+    let preview = &app.shell.runtime.preview;
+    assert!(preview.contains("Size: <unavailable>"), "{preview}");
+    assert!(preview.contains("Created: <unavailable>"), "{preview}");
+    assert!(preview.contains("Updated: <unavailable>"), "{preview}");
+    assert!(!preview.contains("text after reload"));
+    fs::remove_dir_all(root).expect("cleanup root");
 }
 
 #[test]
@@ -1485,4 +1546,218 @@ fn regression_short_preview_keyboard_focus_reveals_selected_control() {
         selected.rect
     );
     fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[cfg(unix)]
+#[test]
+fn gui_body_permission_error_keeps_metadata_and_broken_link_keeps_target() {
+    use std::os::unix::fs::{symlink, PermissionsExt};
+    let root = test_root("preview-permissions-links");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("read-denied.bin");
+    fs::write(&path, b"\0binary").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.set_entry_kind(&path, EntryKind::file());
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o0)).expect("deny body read");
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    let error = app.paged_preview_view.error;
+    let preview = app.shell.runtime.preview.clone();
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("restore permission");
+    assert_eq!(error, Some(PreviewPageError::PermissionDenied));
+    assert!(preview.contains("Size: 7 B"), "{preview}");
+    assert!(preview.contains("Updated:"), "{preview}");
+    assert!(preview.contains("Attributes: Read-only"), "{preview}");
+
+    let link = root.join("link.bin");
+    symlink("read-denied.bin", &link).expect("create link");
+    app.shell.runtime.committed_for_test_mut().results = vec![(link.clone(), 0.0)];
+    app.set_entry_kind(&link, EntryKind::link(false));
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    let preview = &app.shell.runtime.preview;
+    assert!(preview.contains("Target Size: 7 B"), "{preview}");
+    assert!(preview.contains("Target: read-denied.bin"), "{preview}");
+    fs::remove_file(&path).expect("break link");
+    app.set_entry_kind(&link, EntryKind::link_unknown());
+    app.apply_preview_action(PreviewAction::Reload);
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_view.error,
+        Some(PreviewPageError::NotFound)
+    );
+    let preview = &app.shell.runtime.preview;
+    assert!(preview.contains("Target Size: <unavailable>"), "{preview}");
+    assert!(
+        preview.contains("Target Created: <unavailable>"),
+        "{preview}"
+    );
+    assert!(preview.contains("Target: read-denied.bin"), "{preview}");
+    fs::remove_dir_all(root).expect("cleanup root");
+}
+
+#[test]
+fn initial_error_header_is_request_path_and_tab_scoped() {
+    let root = test_root("preview-header-ownership");
+    fs::create_dir_all(&root).expect("create root");
+    let path = root.join("a.bin");
+    fs::write(&path, b"\0").expect("write fixture");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results = vec![(path.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.runtime.set_preview("current".into());
+    app.prepare_paged_preview_initial(&path, 9002);
+    let mut response = PreviewResponse {
+        request_id: 9001,
+        path: path.clone(),
+        preview: "File: stale\nSize: 1 B".into(),
+        document: None,
+        page_error: Some(PreviewPageError::Binary),
+        canceled: false,
+        is_more: false,
+    };
+    app.apply_paged_preview_response(&response);
+    assert_eq!(app.shell.runtime.preview, "current");
+    response.request_id = 9002;
+    response.path = root.join("wrong.bin");
+    app.apply_paged_preview_response(&response);
+    assert_eq!(app.shell.runtime.preview, "current");
+
+    let first_tab = app.current_tab_id().expect("first tab");
+    app.create_new_tab();
+    let active_preview = app.shell.runtime.preview.clone();
+    let background_before = app
+        .shell
+        .tabs
+        .get(0)
+        .expect("background tab")
+        .result_state
+        .committed
+        .preview
+        .clone();
+    for request_id in [9003, 9004] {
+        let tab = app.shell.tabs.get_mut(0).expect("background tab");
+        tab.pending_preview_request_id = Some(request_id);
+        tab.preview_in_progress = true;
+        app.bind_preview_request_to_tab(request_id, first_tab);
+        response.request_id = request_id;
+        response.path = if request_id == 9003 {
+            root.join("wrong.bin")
+        } else {
+            path.clone()
+        };
+        response.preview = "File: owned\nSize: 7 B\nCreated: <unavailable>".into();
+        app.apply_background_preview_response(response.clone());
+        assert_eq!(app.shell.runtime.preview, active_preview);
+        let background = &app
+            .shell
+            .tabs
+            .get(0)
+            .expect("background tab")
+            .result_state
+            .committed
+            .preview;
+        if request_id == 9003 {
+            assert_eq!(background, &background_before);
+        } else {
+            assert!(background.contains("File: owned"));
+            assert!(background.contains("Size: 7 B"));
+            assert!(background.contains("binary content"));
+        }
+    }
+    fs::remove_dir_all(root).expect("cleanup root");
+}
+
+#[test]
+fn initial_error_reload_button_dispatches_and_rapid_selection_keeps_latest_information() {
+    fn text_shape<'a>(shape: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_shape(shape, label)),
+            _ => None,
+        }
+    }
+    let root = test_root("preview-header-pointer-reload");
+    fs::create_dir_all(&root).expect("create root");
+    let paths = [
+        root.join("binary.bin"),
+        root.join("empty.txt"),
+        root.join("text.txt"),
+    ];
+    fs::write(&paths[0], b"\0binary").expect("binary");
+    fs::write(&paths[1], b"").expect("empty");
+    fs::write(&paths[2], b"latest text\n").expect("text");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results =
+        paths.iter().cloned().map(|path| (path, 0.0)).collect();
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    for path in &paths {
+        app.set_entry_kind(path, EntryKind::file());
+    }
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    assert!(app.initial_preview_reload_available());
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1100.0, 800.0));
+    let mut output = egui::FullOutput::default();
+    for _ in 0..3 {
+        output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| {
+                crate::app::render_panels::render_results_and_preview(&mut app, ui);
+            },
+        );
+    }
+    let button = output
+        .shapes
+        .iter()
+        .find_map(|shape| text_shape(&shape.shape, "Reload"))
+        .expect("visible Reload button");
+    let pos = button.pos + button.galley.rect.center().to_vec2();
+    fs::write(&paths[0], b"\0changed binary").expect("update size");
+    for pressed in [true, false] {
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                events: vec![
+                    egui::Event::PointerMoved(pos),
+                    egui::Event::PointerButton {
+                        pos,
+                        button: egui::PointerButton::Primary,
+                        pressed,
+                        modifiers: egui::Modifiers::NONE,
+                    },
+                ],
+                ..Default::default()
+            },
+            |ui| crate::app::render_panels::render_results_and_preview(&mut app, ui),
+        );
+    }
+    assert!(
+        app.shell.worker_bus.preview.in_progress,
+        "pointer Reload must dispatch"
+    );
+    settle_preview(&mut app);
+    assert!(app.shell.runtime.preview.contains("Size: 15 B"));
+    for row in (0..30).map(|step| step % 3) {
+        app.shell.runtime.committed_for_test_mut().current_row = Some(row);
+        app.request_preview_for_current();
+    }
+    settle_preview(&mut app);
+    let document = app
+        .paged_preview_for_current()
+        .expect("latest text document");
+    assert_eq!(document.header.path, paths[2]);
+    assert_eq!(document.header.size, Some(12));
+    assert_eq!(document.body(), "latest text\n");
+    assert!(!app.shell.runtime.preview.contains("changed binary"));
+    fs::remove_dir_all(root).expect("cleanup root");
 }

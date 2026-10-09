@@ -6,7 +6,10 @@ use std::time::SystemTime;
 
 use encoding_rs::{EUC_JP, SHIFT_JIS, WINDOWS_1252};
 
-use super::{metadata_attributes, normalize_path_for_display, should_skip_preview};
+use super::{
+    format_file_size, format_system_time, metadata_attributes, normalize_path_for_display,
+    should_skip_preview,
+};
 use super::{SyntaxHighlight, SyntaxLanguage, SyntaxSpan};
 
 const INITIAL_LINE_LIMIT: usize = 100;
@@ -52,12 +55,98 @@ pub enum PreviewEncoding {
 #[derive(Clone, Debug)]
 pub struct PreviewHeader {
     pub path: PathBuf,
-    pub size: u64,
+    pub size: Option<u64>,
     pub created: Option<SystemTime>,
     pub modified: Option<SystemTime>,
     pub is_symlink: bool,
     pub target: Option<String>,
     pub attributes: Vec<&'static str>,
+}
+
+impl PreviewHeader {
+    fn from_metadata(path: &Path, metadata: Option<&Metadata>, link: Option<&Metadata>) -> Self {
+        let is_symlink = link.is_some_and(|meta| meta.file_type().is_symlink());
+        Self {
+            path: path.to_path_buf(),
+            size: metadata.filter(|meta| meta.is_file()).map(Metadata::len),
+            created: metadata.and_then(|meta| meta.created().ok()),
+            modified: metadata.and_then(|meta| meta.modified().ok()),
+            is_symlink,
+            target: is_symlink.then(|| {
+                std::fs::read_link(path)
+                    .map(|target| normalize_path_for_display(&target))
+                    .unwrap_or_else(|_| "<unavailable>".to_string())
+            }),
+            attributes: link
+                .or(metadata)
+                .map(metadata_attributes)
+                .unwrap_or_default(),
+        }
+    }
+
+    /// Worker-only fallback: query metadata without opening or reading the body,
+    /// including on-demand placeholders. Link metadata never substitutes for target metadata.
+    pub(crate) fn read(path: &Path, canceled: &dyn Fn() -> bool) -> Option<Self> {
+        if canceled() {
+            return None;
+        }
+        let link = std::fs::symlink_metadata(path).ok();
+        if canceled() {
+            return None;
+        }
+        let target_metadata = if link
+            .as_ref()
+            .is_some_and(|meta| meta.file_type().is_symlink())
+        {
+            std::fs::metadata(path).ok()
+        } else {
+            None
+        };
+        if canceled() {
+            return None;
+        }
+        let metadata = if link
+            .as_ref()
+            .is_some_and(|meta| meta.file_type().is_symlink())
+        {
+            target_metadata.as_ref()
+        } else {
+            link.as_ref()
+        };
+        let header = Self::from_metadata(path, metadata, link.as_ref());
+        (!canceled()).then_some(header)
+    }
+
+    pub(crate) fn lines(&self) -> Vec<String> {
+        let prefix = if self.is_symlink { "Target " } else { "" };
+        let unavailable = || "<unavailable>".to_string();
+        let mut lines = vec![
+            format!("File: {}", normalize_path_for_display(&self.path)),
+            format!(
+                "{prefix}Size: {}",
+                self.size.map(format_file_size).unwrap_or_else(unavailable)
+            ),
+            format!(
+                "{prefix}Created: {}",
+                self.created
+                    .and_then(format_system_time)
+                    .unwrap_or_else(unavailable)
+            ),
+            format!(
+                "{prefix}Updated: {}",
+                self.modified
+                    .and_then(format_system_time)
+                    .unwrap_or_else(unavailable)
+            ),
+        ];
+        if !self.attributes.is_empty() {
+            lines.push(format!("Attributes: {}", self.attributes.join(", ")));
+        }
+        if let Some(target) = &self.target {
+            lines.push(format!("Target: {target}"));
+        }
+        lines
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -187,15 +276,10 @@ impl PagedTextPreview {
         }
         let identity = FileIdentity::from_file(&file, &metadata);
         let symlink_metadata = std::fs::symlink_metadata(path).ok();
-        let is_symlink = symlink_metadata
-            .as_ref()
-            .is_some_and(|meta| meta.file_type().is_symlink());
-        let attributes = metadata_attributes(symlink_metadata.as_ref().unwrap_or(&metadata));
-        let target = is_symlink.then(|| {
-            std::fs::read_link(path)
-                .map(|target| normalize_path_for_display(&target))
-                .unwrap_or_else(|_| "<unavailable>".to_string())
-        });
+        if canceled() {
+            return Err(PreviewPageError::Canceled);
+        }
+        let header = PreviewHeader::from_metadata(path, Some(&metadata), symlink_metadata.as_ref());
         // Keep the page budget at 64 KiB while probing at most the remainder of
         // one UTF-8 scalar beyond the encoding sample.
         let sample_size = metadata.len().min((INITIAL_BYTE_LIMIT + 3) as u64) as usize;
@@ -232,15 +316,7 @@ impl PagedTextPreview {
         file.seek(SeekFrom::Start(bom_len as u64))
             .map_err(classify_io_error)?;
         let mut document = Self {
-            header: PreviewHeader {
-                path: path.to_path_buf(),
-                size: metadata.len(),
-                created: metadata.created().ok(),
-                modified: metadata.modified().ok(),
-                is_symlink,
-                target,
-                attributes,
-            },
+            header,
             body: String::new(),
             lines: Vec::new(),
             cursor: PageCursor {
@@ -732,6 +808,29 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn file_information_marks_missing_birth_time_without_using_modified_time() {
+        let header = PreviewHeader {
+            path: PathBuf::from("sample"),
+            size: Some(0),
+            created: None,
+            modified: Some(UNIX_EPOCH),
+            is_symlink: false,
+            target: None,
+            attributes: vec![],
+        };
+        assert_eq!(
+            header.lines(),
+            vec![
+                "File: sample",
+                "Size: 0 B",
+                "Created: <unavailable>",
+                "Updated: 1970-01-01 00:00 UTC",
+            ]
+        );
+        assert!(PreviewHeader::read(Path::new("unused"), &|| true).is_none());
+    }
 
     fn fixture(name: &str, bytes: &[u8]) -> PathBuf {
         let nonce = SystemTime::now()
