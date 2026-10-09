@@ -269,6 +269,15 @@ impl PagedTextPreview {
         if should_skip_preview(path, false) {
             return Err(PreviewPageError::OnDemandSkipped);
         }
+        // An unresolved link can point at a FIFO/device. Never open a known
+        // non-regular target for body preview: open itself may block indefinitely.
+        let path_metadata = std::fs::metadata(path).map_err(classify_io_error)?;
+        if canceled() {
+            return Err(PreviewPageError::Canceled);
+        }
+        if !path_metadata.is_file() {
+            return Err(PreviewPageError::ReadFailed);
+        }
         let mut file = File::open(path).map_err(classify_io_error)?;
         let metadata = file.metadata().map_err(classify_io_error)?;
         if metadata.len() == 0 {

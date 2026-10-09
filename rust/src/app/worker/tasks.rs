@@ -277,7 +277,17 @@ pub(in crate::app) fn spawn_preview_worker(
     thread::JoinHandle<()>,
 ) {
     spawn_preview_worker_core(shutdown, Some(freshness), |request, canceled| {
-        if request.is_dir {
+        if canceled() {
+            return None;
+        }
+        // A link's target may have become resolvable since kind discovery.
+        let is_dir = request.is_dir
+            || (request.document.is_none()
+                && std::fs::metadata(&request.path).is_ok_and(|metadata| metadata.is_dir()));
+        if canceled() {
+            return None;
+        }
+        if is_dir {
             return build_preview_text_with_kind_cancellable(&request.path, true, canceled)
                 .map(PreviewBuild::text);
         }

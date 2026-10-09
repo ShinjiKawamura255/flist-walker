@@ -1761,3 +1761,51 @@ fn initial_error_reload_button_dispatches_and_rapid_selection_keeps_latest_infor
     assert!(!app.shell.runtime.preview.contains("changed binary"));
     fs::remove_dir_all(root).expect("cleanup root");
 }
+
+#[cfg(unix)]
+#[test]
+fn unresolved_directory_and_fifo_links_do_not_open_nonregular_bodies() {
+    use std::ffi::CString;
+    use std::os::unix::fs::symlink;
+    let root = test_root("preview-nonregular-links");
+    fs::create_dir_all(root.join("folder")).expect("create folder");
+    fs::write(root.join("folder/child.txt"), "child").expect("child fixture");
+    let fifo = root.join("pipe");
+    let fifo_name = CString::new(fifo.as_os_str().as_encoded_bytes()).expect("fifo path");
+    assert_eq!(
+        unsafe { libc::mkfifo(fifo_name.as_ptr(), 0o600) },
+        0,
+        "create FIFO"
+    );
+    let directory_link = root.join("directory-link");
+    let fifo_link = root.join("fifo-link");
+    symlink("folder", &directory_link).expect("directory link");
+    symlink("pipe", &fifo_link).expect("fifo link");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.shell.runtime.committed_for_test_mut().results =
+        vec![(fifo_link.clone(), 0.0), (directory_link.clone(), 0.0)];
+    for path in [&fifo_link, &directory_link] {
+        app.set_entry_kind(path, EntryKind::link_unknown());
+    }
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_view.error,
+        Some(PreviewPageError::ReadFailed)
+    );
+    assert!(app.shell.runtime.preview.contains("Target: pipe"));
+    assert!(app
+        .shell
+        .runtime
+        .preview
+        .contains("Target Size: <unavailable>"));
+    app.shell.runtime.committed_for_test_mut().current_row = Some(1);
+    app.request_preview_for_current();
+    settle_preview(&mut app);
+    assert!(app.shell.runtime.preview.contains("Directory:"));
+    assert!(app.shell.runtime.preview.contains("Target: folder"));
+    assert!(app.shell.runtime.preview.contains("child.txt"));
+    fs::remove_dir_all(root).expect("cleanup root");
+}
