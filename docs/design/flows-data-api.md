@@ -81,7 +81,7 @@
 - `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
 
 ## DES-026 段階的プレビューの所有権と色分け
-- `PreviewHeader` は本文を必要としない共通整形を所有する。初回本文失敗後に既存preview workerが `symlink_metadata`、リンク対象のmetadata、`read_link` のみをcancel確認間で取得し、共通情報を既存 `PreviewResponse.preview` に載せる。前面・背景の同じrequest/tab/path照合後だけ理由と一緒に反映し、初回失敗の文字列をcacheしない。追加失敗では旧文書の本文・情報を維持する。リンクの対象情報が取得不能でもリンク情報は残し、link自体のsize/日時で代用しない。on-demandの本文判定・skipを維持する。
+- `PreviewHeader` は本文を必要としない共通整形を所有する。初回本文失敗後に既存preview workerが `symlink_metadata`、リンク対象のmetadata、`read_link` のみをcancel確認間で取得し、共通情報を既存 `PreviewResponse.preview` に載せる。前面・背景の同じrequest/tab/path照合後だけ理由と一緒に反映し、初回失敗の文字列をcacheしない。追加失敗では旧文書の本文・情報を維持する。リンクの対象情報が取得不能でもリンク情報は残し、link自体のsize/日時で代用しない。on-demandの本文判定・skipを維持する。workerは未解決リンクのdirectory対象を既存のdirectory previewへ渡し、readerはbody open前にregular fileを確認してFIFO/device等を開かない。
 - `ui_model::paged_preview` は確定済み本文、行範囲、固定復号方式、raw offset、最大4 KiBの先読みbuffer、最初の64 KiB試料のUTF-8境界を確定する最大3 byteの先読み、行途中状態、取得可能なファイルID・size・mtimeを文書として所有する。追加ページは旧文書を複製したworker内の暫定文書へ構築し、復号・binary・identity確認後だけ新しい `Arc` を公開する。失敗ページの本文とcursorは採用しない。
 - `PreviewWorkerBus` は全タブ共通で実行中1件と最新待機1件を所有し、より新しいrequest IDをatomic freshnessとしてworkerへ伝える。UI dispatchは待機要求を置き換え、前の待機要求のroutingを解放する。terminal受信後に次の待機要求を送る。応答channel切断または送信失敗ではinflight・最新待機・routing・busyを終端し、既存の確定本文を残して利用不能を表示する。UI threadはファイルI/Oを行わない。
 - active文書はcommitted tab payloadへ格納し、background応答はrequest-tab routingと選択pathを照合する。既存のinactive/closed heavy snapshot LRUは文書容量もweightへ算入する。選択変更、再読込、tab restoreでは旧requestの本文を採用しない。
