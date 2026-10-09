@@ -27,7 +27,7 @@ use crate::search::{rank_search_results_cancellable, SearchPrefixCache, SearchRu
 use crate::search_catalog::{load_search_catalog, search_catalog_file_path, update_search_catalog};
 use crate::ui_model::{
     build_preview_text_with_kind_cancellable, normalize_path_for_display, PagedTextPreview,
-    PreviewPageError,
+    PreviewHeader, PreviewPageError,
 };
 use crate::walker_runtime::resolve_entry_kind;
 use std::collections::HashMap;
@@ -296,7 +296,13 @@ pub(in crate::app) fn spawn_preview_worker(
             }),
             Err(PreviewPageError::Canceled) => None,
             Err(error) => Some(PreviewBuild {
-                preview: String::new(),
+                preview: if is_more {
+                    String::new()
+                } else {
+                    PreviewHeader::read(&request.path, canceled)?
+                        .lines()
+                        .join("\n")
+                },
                 document: None,
                 page_error: Some(error),
                 is_more,

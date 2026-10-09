@@ -6,10 +6,7 @@ use super::paged_preview_flow::{PagedPreviewView, PreviewAction};
 use super::{
     render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode, ResultSortScope,
 };
-use crate::ui_model::{
-    format_file_size, format_system_time, normalize_path_for_display, PagedTextPreview,
-    PreviewPageState, SyntaxTokenKind,
-};
+use crate::ui_model::{PagedTextPreview, PreviewPageState, SyntaxTokenKind};
 use eframe::egui;
 #[cfg(test)]
 use std::cell::RefCell;
@@ -359,33 +356,8 @@ fn render_paged_preview(
     let busy = view.busy;
     let error = view.error;
     let color_enabled = view.color_enabled;
-    ui.label(format!(
-        "File: {}",
-        normalize_path_for_display(&document.header.path)
-    ));
-    let prefix = if document.header.is_symlink {
-        "Target "
-    } else {
-        ""
-    };
-    ui.label(format!(
-        "{prefix}Size: {}",
-        format_file_size(document.header.size)
-    ));
-    if let Some(created) = document.header.created.and_then(format_system_time) {
-        ui.label(format!("{prefix}Created: {created}"));
-    }
-    if let Some(modified) = document.header.modified.and_then(format_system_time) {
-        ui.label(format!("{prefix}Updated: {modified}"));
-    }
-    if !document.header.attributes.is_empty() {
-        ui.label(format!(
-            "Attributes: {}",
-            document.header.attributes.join(", ")
-        ));
-    }
-    if let Some(target) = &document.header.target {
-        ui.label(format!("Target: {target}"));
+    for line in document.header.lines() {
+        ui.label(line);
     }
     ui.separator();
     let controls_height = 110.0 + if error.is_some() { 22.0 } else { 0.0 };
@@ -538,6 +510,11 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                                     );
                                 });
                         } else {
+                            if app.initial_preview_reload_available()
+                                && ui.button("Reload").clicked()
+                            {
+                                preview_action = Some(PreviewAction::Reload);
+                            }
                             egui::ScrollArea::both()
                                 .auto_shrink([false, false])
                                 .show(ui, |ui| {

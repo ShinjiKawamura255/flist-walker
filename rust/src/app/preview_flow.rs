@@ -145,7 +145,8 @@ impl FlistWalkerApp {
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 };
-                let Some(is_dir) = kind.is_dir else {
+                // A dangling/inaccessible link still has useful link metadata.
+                let Some(is_dir) = kind.is_dir.or_else(|| kind.is_link().then_some(false)) else {
                     self.clear_paged_preview();
                     if kind.needs_resolution() {
                         self.shell

@@ -5,6 +5,7 @@ mod paged_preview;
 mod preview;
 mod syntax_preview;
 
+pub(crate) use paged_preview::PreviewHeader;
 pub use paged_preview::{PagedTextPreview, PreviewPageError, PreviewPageState};
 pub use syntax_preview::{SyntaxHighlight, SyntaxLanguage, SyntaxSpan, SyntaxTokenKind};
 

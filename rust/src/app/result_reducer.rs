@@ -563,10 +563,11 @@ pub(super) fn apply_background_preview_response(
                 tab.result_state.committed.preview_page_error = None;
             } else if let Some(error) = response.page_error {
                 if !response.is_more {
-                    tab.result_state.committed.preview = format!(
-                        "<preview {}>",
-                        super::paged_preview_flow::page_error_label(error)
-                    );
+                    tab.result_state.committed.preview =
+                        super::paged_preview_flow::initial_preview_error_text(
+                            &response.preview,
+                            error,
+                        );
                     tab.result_state.committed.preview_document = None;
                 }
                 tab.result_state.committed.preview_page_error = Some(error);

@@ -111,6 +111,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn apply_preview_action(&mut self, action: PreviewAction) {
+        if action == PreviewAction::Reload && self.initial_preview_reload_available() {
+            self.reload_paged_preview();
+            return;
+        }
         let Some(document) = self.paged_preview_for_current() else {
             return;
         };
@@ -128,6 +132,15 @@ impl FlistWalkerApp {
                 self.paged_preview_view.color_enabled = !self.paged_preview_view.color_enabled
             }
         }
+    }
+
+    pub(super) fn initial_preview_reload_available(&self) -> bool {
+        self.shell.ui.show_preview()
+            && !self.shell.runtime.preview_stale
+            && self.shell.runtime.preview_document.is_none()
+            && self.shell.runtime.preview_page_error.is_some()
+            && !self.shell.worker_bus.preview.in_progress
+            && self.shell.runtime.current_row.is_some()
     }
 
     pub(super) fn enforce_preview_payload_budget(
@@ -335,7 +348,7 @@ impl FlistWalkerApp {
                 if !response.is_more {
                     self.shell
                         .runtime
-                        .set_preview(format!("<preview {}>", page_error_label(error)));
+                        .set_preview(initial_preview_error_text(&response.preview, error));
                 }
                 self.shell.runtime.set_preview_page_error(Some(error));
             }
@@ -358,6 +371,14 @@ impl FlistWalkerApp {
         }
         let document = self.shell.runtime.preview_document.as_ref()?;
         (document.header.path == path).then_some(document)
+    }
+}
+
+pub(super) fn initial_preview_error_text(header: &str, error: PreviewPageError) -> String {
+    if header.is_empty() {
+        format!("<preview {}>", page_error_label(error))
+    } else {
+        format!("{header}\n\n<preview {}>", page_error_label(error))
     }
 }
 
