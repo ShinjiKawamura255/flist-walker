@@ -214,7 +214,7 @@ fn tc_168_disconnected_admission_never_claims_a_generation() {
     let sender = PersistenceSender {
         tx,
         state: Arc::new(Mutex::new(AdmissionState::default())),
-        progress: Arc::new(TestWorkerProgress::new()),
+        progress: Arc::new(TestWorkerProgress::new(None)),
     };
     assert!(sender
         .enqueue(UiStatePatch::default(), vec!["retry".into()])
@@ -267,7 +267,7 @@ fn tc_168_settings_flush_and_shutdown_preserve_admission_barriers() {
     let sender = PersistenceSender {
         tx,
         state: Arc::clone(&state),
-        progress: Arc::new(TestWorkerProgress::new()),
+        progress: Arc::new(TestWorkerProgress::new(None)),
     };
     sender
         .enqueue(
@@ -317,7 +317,7 @@ fn tc_168_settings_flush_and_shutdown_preserve_admission_barriers() {
             false,
             Duration::from_millis(10),
             worker_state,
-            Arc::new(TestWorkerProgress::new()),
+            Arc::new(TestWorkerProgress::new(None)),
         )
     });
     let settings = settings_rx.recv_timeout(Duration::from_secs(2)).unwrap();
@@ -349,7 +349,7 @@ fn tc_168_control_channel_is_bounded_and_full_is_explicit() {
     let sender = PersistenceSender {
         tx,
         state: Arc::new(Mutex::new(AdmissionState::default())),
-        progress: Arc::new(TestWorkerProgress::new()),
+        progress: Arc::new(TestWorkerProgress::new(None)),
     };
     for _ in 0..UI_STATE_COMMAND_CAPACITY {
         let (reply, _) = mpsc::channel();
@@ -616,25 +616,40 @@ fn tc_167_persistence_merges_two_writers_and_preserves_unknown_json_fields() {
 fn tc_167_persistence_keeps_ordered_a_b_a_deltas_as_b_a() {
     let base = temp_dir("history-burst");
     let path = base.join("ui-state.json");
-    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
+    let writer = AsyncHistoryPersistence::new_with_diagnostic(
         path.clone(),
         false,
         Duration::from_millis(50),
+        "history-burst",
     );
 
     writer.enqueue_patch_for_test(UiStatePatch::default(), vec!["A".into()]);
     writer.enqueue_patch_for_test(UiStatePatch::default(), vec!["B".into()]);
     writer.enqueue_patch_for_test(UiStatePatch::default(), vec!["A".into()]);
-    writer
-        .flush(Duration::from_secs(1))
-        .expect("flush history burst");
+    let flushed = writer.flush(Duration::from_secs(1));
+    emit_flush_diagnostic(
+        &writer.sender.progress,
+        &writer.sender.state,
+        "flush-return",
+        direct_writer_finished(&writer),
+        None,
+    );
+    flushed.expect("flush history burst");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");
     assert_eq!(written["query_history"], json!(["B", "A"]));
-    writer
-        .shutdown(Duration::from_secs(1))
-        .expect("shutdown writer");
+    let progress = Arc::clone(&writer.sender.progress);
+    let state = Arc::clone(&writer.sender.state);
+    let joined = writer.shutdown(Duration::from_secs(1));
+    emit_flush_diagnostic(
+        &progress,
+        &state,
+        "shutdown-return",
+        None,
+        joined.as_ref().ok().map(|_| true),
+    );
+    joined.expect("shutdown writer");
     let _ = fs::remove_dir_all(&base);
 }
 
@@ -642,7 +657,12 @@ fn tc_167_persistence_keeps_ordered_a_b_a_deltas_as_b_a() {
 fn tc_167_persistence_deduplicates_and_caps_history_at_100() {
     let base = temp_dir("history-cap");
     let path = base.join("ui-state.json");
-    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    let fixture = HistorySemanticFixture::new_with_diagnostic(
+        path.clone(),
+        false,
+        Duration::from_millis(50),
+        "history-cap",
+    );
     let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
@@ -744,7 +764,12 @@ fn tc_167_persistence_disabled_history_is_a_load_and_save_noop() {
         json!({"query_history": ["old"], "unknown": true}).to_string(),
     )
     .expect("seed state");
-    let fixture = HistorySemanticFixture::new(path.clone(), true, Duration::from_millis(50));
+    let fixture = HistorySemanticFixture::new_with_diagnostic(
+        path.clone(),
+        true,
+        Duration::from_millis(50),
+        "history-disabled",
+    );
     let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
@@ -1417,6 +1442,22 @@ struct HistorySemanticFixture {
 
 impl HistorySemanticFixture {
     fn new(path: PathBuf, history_disabled: bool, lock_timeout: Duration) -> Self {
+        Self::new_inner(path, history_disabled, lock_timeout, None)
+    }
+    fn new_with_diagnostic(
+        path: PathBuf,
+        history_disabled: bool,
+        lock_timeout: Duration,
+        label: &'static str,
+    ) -> Self {
+        Self::new_inner(path, history_disabled, lock_timeout, Some(label))
+    }
+    fn new_inner(
+        path: PathBuf,
+        history_disabled: bool,
+        lock_timeout: Duration,
+        diagnostic: Option<&'static str>,
+    ) -> Self {
         let gate = WriteGate::new(path.clone());
         let mut registry = ui_state_persistence_registry()
             .lock()
@@ -1425,11 +1466,19 @@ impl HistorySemanticFixture {
             drop(registry);
             panic!("semantic fixture path already has a writer owner");
         }
-        let mut writer = AsyncHistoryPersistence::new_with_lock_timeout(
-            path.clone(),
-            history_disabled,
-            lock_timeout,
-        );
+        let mut writer = match diagnostic {
+            Some(label) => AsyncHistoryPersistence::new_with_diagnostic(
+                path.clone(),
+                history_disabled,
+                lock_timeout,
+                label,
+            ),
+            None => AsyncHistoryPersistence::new_with_lock_timeout(
+                path.clone(),
+                history_disabled,
+                lock_timeout,
+            ),
+        };
         // This fresh, private mutex has no other user. Recover its contents even
         // if poisoned, and transfer ownership without a fallible take/unwrap.
         let handle = std::mem::replace(&mut writer.handle, Mutex::new(None))
@@ -1455,14 +1504,29 @@ impl HistorySemanticFixture {
 
     fn flush_after_entry(&self) -> Result<(), String> {
         // Establish actual pre-I/O entry outside the unchanged flush deadline.
+        if let Some(trace) = &self.writer.sender.progress.diagnostic {
+            trace.record("test-gate-wait-enter", None);
+        }
         self.gate.wait_entered();
+        if let Some(trace) = &self.writer.sender.progress.diagnostic {
+            trace.record("test-gate-wait-return", None);
+        }
         self.gate.release();
-        self.writer.flush(Duration::from_secs(1))
+        if let Some(trace) = &self.writer.sender.progress.diagnostic {
+            trace.record("test-gate-release", None);
+        }
+        let flushed = self.writer.flush(Duration::from_secs(1));
+        self.emit_diagnostic("flush-return", None);
+        flushed
     }
 
     fn finish(&self, timeout: Duration) -> Result<(), String> {
         self.gate.release();
-        finish_ui_state_persistence_for_test(&self.path, timeout)?;
+        let finished = finish_ui_state_persistence_for_test(&self.path, timeout);
+        if finished.is_err() {
+            self.emit_diagnostic("finish-error", None);
+        }
+        finished?;
         let owned = self
             .ownership
             .try_lock()
@@ -1470,7 +1534,23 @@ impl HistorySemanticFixture {
         if owned.handle.is_some() || !owned.completed.as_ref().is_some_and(Result::is_ok) {
             return Err("semantic writer lacks its own physical join evidence".into());
         }
+        drop(owned);
+        self.emit_diagnostic("finish-return", Some(true));
         Ok(())
+    }
+    fn emit_diagnostic(&self, checkpoint: &'static str, physical_join: Option<bool>) {
+        let finished = self
+            .ownership
+            .try_lock()
+            .ok()
+            .and_then(|worker| worker.handle.as_ref().map(thread::JoinHandle::is_finished));
+        emit_flush_diagnostic(
+            &self.writer.sender.progress,
+            &self.writer.sender.state,
+            checkpoint,
+            finished,
+            physical_join,
+        );
     }
 }
 
@@ -1793,4 +1873,114 @@ fn timed_out_test_shutdown_retains_writer_ownership_until_physical_return() {
         .senders
         .contains_key(&path));
     fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_167_flush_diagnostic_distinguishes_real_receive_timeout_and_disconnect() {
+    let base = temp_dir("diagnostic-timeout-control");
+    let path = base.join("state.json");
+    let gate = WriteGate::new(path.clone());
+    let writer = AsyncHistoryPersistence::new_with_diagnostic(
+        path,
+        false,
+        Duration::from_millis(50),
+        "control-timeout",
+    );
+    writer.enqueue_patch_for_test(UiStatePatch::default(), Vec::new());
+    gate.wait_entered();
+    let timeout = writer.flush(Duration::from_millis(5));
+    let snapshot = writer
+        .sender
+        .progress
+        .diagnostic
+        .as_ref()
+        .unwrap()
+        .snapshot();
+    gate.release();
+    writer.flush(Duration::from_secs(1)).unwrap();
+    writer.shutdown(Duration::from_secs(1)).unwrap();
+    drop(gate);
+    fs::remove_dir_all(base).unwrap();
+    assert_eq!(timeout.unwrap_err(), "UI-state persistence flush timed out");
+    assert_eq!(snapshot["last_receive"]["outcome"], "Timeout");
+    assert!(snapshot["last_receive"]["elapsed_ns"].as_u64().is_some());
+    assert!(
+        snapshot["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["event"] == "flush-recv-Timeout"),
+        "{snapshot}"
+    );
+    let (tx, rx) = mpsc::sync_channel(1);
+    let trace = Arc::new(FlushDiagnostic::new("control-disconnected"));
+    let sender = PersistenceSender {
+        tx,
+        state: Arc::new(Mutex::new(AdmissionState::default())),
+        progress: Arc::new(TestWorkerProgress::new(Some(trace.clone()))),
+    };
+    let responder = thread::spawn(move || match rx.recv().unwrap() {
+        UiStatePersistenceCommand::Flush(reply) => drop(reply),
+        _ => panic!("expected flush"),
+    });
+    let disconnected = flush_sender(&sender, Duration::from_secs(1));
+    responder.join().unwrap();
+    assert_eq!(
+        disconnected.unwrap_err(),
+        "UI-state persistence flush timed out"
+    );
+    let snapshot = trace.snapshot();
+    assert!(
+        snapshot["events"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|e| e["event"] == "flush-recv-Disconnected"),
+        "{snapshot}"
+    );
+}
+
+fn direct_writer_finished(writer: &AsyncHistoryPersistence) -> Option<bool> {
+    writer
+        .handle
+        .try_lock()
+        .ok()
+        .and_then(|handle| handle.as_ref().map(thread::JoinHandle::is_finished))
+}
+fn emit_flush_diagnostic(
+    progress: &TestWorkerProgress,
+    state: &Mutex<AdmissionState>,
+    checkpoint: &'static str,
+    physical_finished: Option<bool>,
+    physical_join: Option<bool>,
+) {
+    let Some(trace) = &progress.diagnostic else {
+        return;
+    };
+    // Use actual stderr rather than libtest's println capture; successful CI must retain receipts.
+    // Emission is after the operation, outside its receive/flush deadline.
+    use std::io::Write;
+    let status = state.try_lock().ok().map(|s| json!({"accepted_generation":s.status.accepted_generation,"persisted_generation":s.status.persisted_generation,"outstanding":s.outstanding,"last_error_present":s.status.last_error.is_some(),"startup_protected":s.status.startup_protected}));
+    let record = json!({"status":status,"checkpoint":checkpoint,"process_id":std::process::id(),"phase":progress.phase(),"physical_finished":physical_finished,"physical_join":physical_join,"available_parallelism":thread::available_parallelism().ok().map(|n|n.get()),"rust_test_threads_env":env::var("RUST_TEST_THREADS").ok(),"trace":trace.snapshot()});
+    let line = format!("TC167_FLUSH_DIAGNOSTIC {record}\n");
+    let _ = std::io::stderr().lock().write_all(line.as_bytes());
+}
+
+#[test]
+fn tc_167_flush_diagnostic_is_bounded_and_opt_in() {
+    let trace = FlushDiagnostic::new("control-overflow");
+    for _ in 0..200 {
+        trace.record("control-event", None);
+    }
+    trace.begin_receive();
+    trace.finish_receive(&Err(mpsc::RecvTimeoutError::Timeout));
+    let snapshot = trace.snapshot();
+    assert_eq!(snapshot["last_receive"]["outcome"], "Timeout");
+    assert_eq!(snapshot["events"].as_array().unwrap().len(), 96);
+    assert_eq!(snapshot["dropped"], 104);
+    assert_eq!(snapshot["complete_snapshot"], false);
+    let base = temp_dir("diagnostic-off-control");
+    let writer = AsyncHistoryPersistence::new(base.join("state.json"), false);
+    assert!(writer.sender.progress.diagnostic.is_none());
+    writer.shutdown(Duration::from_secs(1)).unwrap();
 }
