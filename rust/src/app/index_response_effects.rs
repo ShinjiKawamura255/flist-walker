@@ -168,6 +168,17 @@ impl<'a> IndexResponseApplicationOwner<'a> {
     }
 
     fn apply_active(&mut self, response: IndexResponse) -> IndexResponseApplicationEffect {
+        #[cfg(test)]
+        if let Some(tab) = self.app.current_tab_id() {
+            if let Some(probe) = self.app.activation_observer.as_mut() {
+                probe
+                    .generations
+                    .insert(tab, IndexCoordinator::response_request_id(&response));
+                if let IndexResponse::Started { source, .. } = &response {
+                    probe.sources.insert(tab, format!("{source:?}"));
+                }
+            }
+        }
         match response {
             IndexResponse::Started { source, .. } => {
                 self.app.shell.indexing.build.index.source = source;

@@ -174,6 +174,8 @@ pub(super) struct IndexCoordinator {
     #[cfg(test)]
     pub(super) perf_observe_history: bool,
     #[cfg(test)]
+    pub(super) activation_observe_requests: bool,
+    #[cfg(test)]
     pub(super) perf_allocations: Vec<IndexPerfAllocation>,
     #[cfg(test)]
     pub(super) perf_preemptions: Vec<IndexPerfPreemption>,
@@ -401,6 +403,8 @@ impl IndexCoordinator {
             #[cfg(test)]
             perf_observe_history: false,
             #[cfg(test)]
+            activation_observe_requests: false,
+            #[cfg(test)]
             perf_allocations: Vec::new(),
             #[cfg(test)]
             perf_preemptions: Vec::new(),
@@ -594,11 +598,15 @@ impl IndexCoordinator {
                     "index allocation observer overflow"
                 );
                 mailbox.enable_perf_observation();
+                if self.activation_observe_requests {
+                    mailbox.enable_activation_observation();
+                }
                 let observation = mailbox.perf_handle();
-                observation
-                    .lock()
-                    .expect("index observation")
-                    .allocation_observed = true;
+                {
+                    let mut o = observation.lock().expect("index observation");
+                    o.allocation_observed = true;
+                    o.activation_enabled = self.activation_observe_requests;
+                }
                 super::index_mailbox::register_perf_request(
                     Arc::as_ptr(&self.latest_request_ids) as usize,
                     request_id,
