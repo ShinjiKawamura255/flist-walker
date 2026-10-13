@@ -294,7 +294,7 @@ jobs:
         run: ./scripts/prepare-release-macos.sh "${{ needs.release-context.outputs.tag }}" "${{ matrix.target }}"
 
       - name: Upload packaged assets
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.upload_paths }}
@@ -381,7 +381,7 @@ jobs:
             --manifest release-bundle/SHA256SUMS
 
       - name: Upload validated candidate bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: validated-release-bundle-${{ needs.release-context.outputs.tag }}-${{ github.sha }}
           path: release-bundle
