@@ -55,6 +55,7 @@
 - なし。
 
 ## Security
+- 自動更新のTLS依存 `rustls` を 0.23.46 へ更新し、RUSTSEC-2026-0346・0347・0348・0349 を解消した。
 - query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を案内する。
 - 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
 - macOS 配布物は未 notarized。
