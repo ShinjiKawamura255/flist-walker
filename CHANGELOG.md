@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.30.2] - 2026-10-14
+### Added
+- なし。
+
+### Changed
+- worker 生存、tab 復帰の結果保持と順序、activation 証跡の欠落を検出する回帰テストを強化した。
+- release 文書の公開リンク案内を整理し、配布 CI の artifact upload を更新した。
+
+### Fixed
+- `--color auto` などの有効な色指定を含む alias でも `fw --update` / `fw --check-update` を実行できるようにした。更新時は有効な色指定を無視し、不正な色値や検索・action との併用は引き続き拒否する。
+- GUI preview で binary・空ファイル・本文の読込失敗・削除済みファイル・リンク切れでも、取得可能なファイル情報と失敗理由を表示し、Reload で再取得できるようにした。
+- 未解決リンクの target を本文 open 前に確認し、directory は folder preview へ振り分け、既知の FIFO/device 等の非通常ファイルを本文として開いて待ち続ける問題を防止した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は未 notarized。
+- v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降は通常の自動更新を利用できる。
+- 大規模な候補集合では query 準備中の index 取り込みを一時停止する。v0.30.0 の50万候補検証の query dispatch 中央値339〜498 ms、最大536 msは元版の観測値であり、本版の再測定値ではない。
+
 ## [0.30.1] - 2026-10-07
 ### Added
 - なし。
@@ -2176,7 +2203,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...HEAD
+[0.30.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.1
 [0.30.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...v0.30.0
 [0.29.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.28.0...v0.29.0
