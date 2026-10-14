@@ -63,6 +63,13 @@
 - `THIRD_PARTY_NOTICES.txt` records the resolved versions. Archive, standalone sidecar, app-bundle and self-update notice routes remain unchanged; actual release bundle validation is a separate publication gate.
 - Latest audit and candidate-specific validation evidence belong in the v0.30.0 release packet; this dependency review does not claim future HEAD or publication PASS.
 
+## rustls 0.23.46 security update (2026-10-14)
+
+- `ureq 2.12.1` transitive TLS dependency `rustls` moves from 0.23.45 to 0.23.46, fixing RUSTSEC-2026-0346, RUSTSEC-2026-0347, RUSTSEC-2026-0348 and RUSTSEC-2026-0349. [Upstream release](https://github.com/rustls/rustls/releases/tag/v/0.23.46) and official RustSec records identify 0.23.46 as patched.
+- The exact lockfile delta is the rustls version/checksum only. Four packaged target metadata graphs retain their package sets, dependency edges, features and license expressions after normalizing that version: Windows GNU292, Linux328, macOS x86_64 304 and macOS arm64 303 packages. rustls MSRV remains1.71 and its license remains `Apache-2.0 OR ISC OR MIT`; all three license files exist in the resolved package.
+- `THIRD_PARTY_NOTICES.txt` records0.23.46. Archive, standalone sidecar, macOS app-bundle and self-update notice paths remain unchanged; each new release bundle must contain the current notice.
+- Fresh `cargo audit` loaded1314 advisories and scanned452 locked dependencies with exit0 and no vulnerability/warning output. Existing build-time quick-xml exceptions are unchanged; no new ignore is added. Current release-specific CI/artifact evidence is tracked in the v0.30.2 packet.
+
 ## rustls 0.23.45 security update (2026-09-16)
 
 - Transitive TLS dependency `rustls` moves from 0.23.38 to 0.23.45 through `ureq 2.12.1`, and `rustls-webpki` moves from 0.103.13 to 0.103.15, resolving RUSTSEC-2026-0285.

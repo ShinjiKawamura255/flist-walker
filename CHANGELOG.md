@@ -44,7 +44,7 @@
 - なし。
 
 ### Security
-- なし。
+- 自動更新のTLS依存 `rustls` を 0.23.46 へ更新し、RUSTSEC-2026-0346・0347・0348・0349 を解消した。
 
 ### Known issues
 - macOS 配布物は未 notarized。
