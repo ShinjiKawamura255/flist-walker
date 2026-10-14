@@ -1,0 +1,23 @@
+{
+  "version": "0.30.2",
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run_id": 38601532026,
+  "attempt": 1,
+  "artifact": {
+    "id": 11917285569,
+    "name": "validated-release-bundle-v0.30.2-c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/38601532026/artifacts/11917285569"
+  },
+  "manifest_sha256": "2c68092d4b2944454926d2388941d60ab3708d7370e142a58264c44cdde154b5",
+  "signature_sha256": "5b56b71f02297c59f91df02b4464cd13dc6770fb9d7382b5cd26c66cf0728388",
+  "windows": {
+    "universal": {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+      "sha256": "308e39539adf1af31d7d006ffa4d9d38d8110829dc271024d1a00fdab19d3969"
+    },
+    "fw": {
+      "filename": "fw-0.30.2-windows-x86_64.exe",
+      "sha256": "23eaabc9b4f6cd24d39681b6003959f273a203b65136bbdcabfca75c59ff4bfa"
+    }
+  }
+}

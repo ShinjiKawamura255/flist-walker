@@ -1,0 +1,43 @@
+{
+  "original_acl_restored_before_deletion": true,
+  "process_id": 35724,
+  "at": "2026-10-15T01:36:31.0630527+09:00",
+  "cleanup_root": "task-owned gui-owned",
+  "isolated_profile_files": [
+    "profile\\flistwalker\\.flistwalker_config.json",
+    "profile\\flistwalker\\.flistwalker_config.json.lock",
+    "profile\\flistwalker\\.flistwalker_roots.txt.lock",
+    "profile\\flistwalker\\.flistwalker_ui_state.json",
+    "profile\\flistwalker\\.flistwalker_ui_state.json.lock"
+  ],
+  "final_fixture": [
+    {
+      "sha256": "90DE46F3E4F0C94B7D701CC80FB0CC0F16D0EED3F2EF5C836A69E3E030F39A3E",
+      "name": "00-normal.txt",
+      "bytes": 51
+    },
+    {
+      "sha256": "40AFF2E9D2D8922E47AFD4648E6967497158785FBD1DA870E7110266BF944880",
+      "name": "01-binary.bin",
+      "bytes": 256
+    },
+    {
+      "sha256": "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855",
+      "name": "02-empty.txt",
+      "bytes": 0
+    },
+    {
+      "sha256": "749CD08A0F8D63A4D491B4B1F30416FF9D37F11D1FD4B0D66913DBE604874C98",
+      "name": "03-denied.txt",
+      "bytes": 78
+    },
+    {
+      "sha256": "407BDCDD826DEC84CB81D67FE847FFD309B8F98FAAA561C845F408038997234D",
+      "name": "04-paged601.txt",
+      "bytes": 15626
+    }
+  ],
+  "removed": true,
+  "normal_close": "Alt+F4",
+  "process_remaining": false
+}

@@ -1,0 +1,763 @@
+{
+  "result": "PASS",
+  "checks": [
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "always",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "never",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color=auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color=auto"
+      ],
+      "exit_code": 0,
+      "stdout": "Update checks are disabled.",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color",
+        "invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--color=invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "query"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--root",
+        "<owned-test-root>\\fixture"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--interactive"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--exec",
+        "never-launched-owned-marker",
+        "{}"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--check-update",
+        "--update"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color",
+        "invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color=invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "query"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--root",
+        "<owned-test-root>\\fixture"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--interactive"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--exec",
+        "never-launched-owned-marker",
+        "{}"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--update"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--check-update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "--update"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "always",
+        "--update"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color",
+        "never",
+        "--update"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--color=auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color=auto"
+      ],
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Automatic updates are disabled.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color",
+        "invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--color=invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "query"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--root",
+        "<owned-test-root>\\fixture"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--interactive"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--exec",
+        "never-launched-owned-marker",
+        "{}"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--update",
+        "--check-update"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: FlistWalker-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color",
+        "invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color=invalid"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: invalid value 'invalid' for '--color [<COLOR>]'\n  [possible values: auto, always, never]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "query"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--root",
+        "<owned-test-root>\\fixture"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--interactive"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--exec",
+        "never-launched-owned-marker",
+        "{}"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--check-update"
+      ],
+      "exit_code": 2,
+      "stdout": "",
+      "stderr": "error: the argument '--update' cannot be used with one or more of the other specified arguments\n\nUsage: fw-0.30.2-windows-x86_64.exe [OPTIONS] [QUERY]\n\nFor more information, try '--help'.",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--",
+        "--update"
+      ],
+      "exit_code": 0,
+      "stdout": "--update.txt\n--check-update.txt",
+      "stderr": "",
+      "pass": false,
+      "pass_reviewed": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "--check-update.txt",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--dry-run",
+        "--exec",
+        "never-launched-owned-marker",
+        "--update",
+        "{}"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Dry run: 2 paths in 1 batches",
+      "pass": false,
+      "pass_reviewed": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--cli",
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--dry-run",
+        "-x",
+        "never-launched-owned-marker",
+        "--check-update",
+        "{}"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Dry run: 2 paths in 1 batches",
+      "pass": false,
+      "pass_reviewed": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--",
+        "--update"
+      ],
+      "exit_code": 0,
+      "stdout": "--update.txt\n--check-update.txt",
+      "stderr": "",
+      "pass": false,
+      "pass_reviewed": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "stdout": "--check-update.txt",
+      "stderr": "",
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--dry-run",
+        "--exec",
+        "never-launched-owned-marker",
+        "--update",
+        "{}"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Dry run: 2 paths in 1 batches",
+      "pass": false,
+      "pass_reviewed": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--root",
+        "<owned-test-root>\\fixture",
+        "--source",
+        "walker",
+        "--no-ignore",
+        "--color",
+        "auto",
+        "--dry-run",
+        "-x",
+        "never-launched-owned-marker",
+        "--check-update",
+        "{}"
+      ],
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "Dry run: 2 paths in 1 batches",
+      "pass": false,
+      "pass_reviewed": true
+    }
+  ],
+  "cleanup": "TemporaryDirectory exited",
+  "oracle_correction": "Initial local expectation incorrectly excluded a valid fuzzy subsequence match and expected hyphenated dry-run wording. Adjudicated saved outputs without rerunning binaries; original evidence retained."
+}

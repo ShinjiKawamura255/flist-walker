@@ -1,0 +1,172 @@
+{
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run_id": 38601532026,
+  "attempt": 1,
+  "artifact": {
+    "id": 11917285569,
+    "name": "validated-release-bundle-v0.30.2-c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+    "digest": "sha256:60542ac787c6267b2f956777c94c3a137712ba72f34e07bb9fd1ece8d2b5c35b"
+  },
+  "assets": [
+    {
+      "filename": "FlistWalker-0.30.2-linux-x86_64",
+      "sha256": "5f3ed8235385a19650c7a20d304acdbbe0b0d9fb1e350f7831c3f5d8a12d06f4",
+      "size": 19320736
+    },
+    {
+      "filename": "FlistWalker-0.30.2-linux-x86_64.LICENSE.txt",
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "size": 1071
+    },
+    {
+      "filename": "FlistWalker-0.30.2-linux-x86_64.README.txt",
+      "sha256": "b17a888a2872a53eff469f9d06c452d64c9f10b3a2db2b9da4ad4a71b3842745",
+      "size": 6871
+    },
+    {
+      "filename": "FlistWalker-0.30.2-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "size": 5121
+    },
+    {
+      "filename": "FlistWalker-0.30.2-linux-x86_64.tar.gz",
+      "sha256": "08dc0e72f760349dd722cae92b5d16551757b278fec1d544fc255b5cc629e3c6",
+      "size": 8395814
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64",
+      "sha256": "d78ba0d29209d0190f58e55f89e731611001958d63ca46408b272c712828c507",
+      "size": 13418176
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64-app.zip",
+      "sha256": "2d9ed5833cafb129d0c3ade03c5658074c0d7ca55c9641544587c332596dd0a1",
+      "size": 6715649
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64.LICENSE.txt",
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "size": 1071
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64.README.txt",
+      "sha256": "8defec5312d1814f3a4346a7f473c2c636d455eb22e1ac3952bdbd15026becad",
+      "size": 6798
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "size": 5121
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-arm64.tar.gz",
+      "sha256": "f099dbfa69ab77df078c3364e75e69d3dbd6abcde879d592162f9019e834dcd4",
+      "size": 6616789
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64",
+      "sha256": "7ce7e889789618e3b4ab01a41e1f5bd2a8bc288424d68d2f9a089f5675537459",
+      "size": 15674696
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64-app.zip",
+      "sha256": "9e5bd2d3e6754a427ef98f5893aeb2f5b6c43d3a999c14998e6f06bb7f6ac845",
+      "size": 7443813
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64.LICENSE.txt",
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "size": 1071
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64.README.txt",
+      "sha256": "7313416a2e9df740ff6e13246bfdaa86f557ce7f296feb5b087f173ea3bdcb6e",
+      "size": 6802
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "size": 5121
+    },
+    {
+      "filename": "FlistWalker-0.30.2-macos-x86_64.tar.gz",
+      "sha256": "495d750b9149f7da3a2788a7a62fd9ea9be750082c506d7964da45c201e2ce0b",
+      "size": 7344365
+    },
+    {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.LICENSE.txt",
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "size": 1071
+    },
+    {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.README.txt",
+      "sha256": "f500235c23548091bc15cbd8c35131756a66c8da922ca94a18270a29c0d1fb18",
+      "size": 7152
+    },
+    {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "size": 5121
+    },
+    {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+      "sha256": "308e39539adf1af31d7d006ffa4d9d38d8110829dc271024d1a00fdab19d3969",
+      "size": 16337408
+    },
+    {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.zip",
+      "sha256": "e0b173a5e9e5b98913b57fbdf817af7fc066af6bfe30704a1330018f0573f7b6",
+      "size": 7476661
+    },
+    {
+      "filename": "SHA256SUMS",
+      "sha256": "2c68092d4b2944454926d2388941d60ab3708d7370e142a58264c44cdde154b5",
+      "size": 2754
+    },
+    {
+      "filename": "SHA256SUMS.sig",
+      "sha256": "5b56b71f02297c59f91df02b4464cd13dc6770fb9d7382b5cd26c66cf0728388",
+      "size": 64
+    },
+    {
+      "filename": "fw-0.30.2-linux-x86_64",
+      "sha256": "fd9daea8f5e9cadd0257ea82006729da34c889adce0ba227f7a2dc803f69793a",
+      "size": 6580544
+    },
+    {
+      "filename": "fw-0.30.2-macos-arm64",
+      "sha256": "0f46c34b36092d9954eddc91005e59b1ffc0a846081a93366228c4115d889707",
+      "size": 5048640
+    },
+    {
+      "filename": "fw-0.30.2-macos-x86_64",
+      "sha256": "ce7b62551fb5a2ab09f7c30804c322c502d27b936fb4174f5eab02f1b2804a1c",
+      "size": 5834424
+    },
+    {
+      "filename": "fw-0.30.2-windows-x86_64.exe",
+      "sha256": "23eaabc9b4f6cd24d39681b6003959f273a203b65136bbdcabfca75c59ff4bfa",
+      "size": 6145536
+    }
+  ],
+  "architecture": {
+    "FlistWalker-0.30.2-windows-x86_64.exe": "PE32+ executable (GUI) x86-64 (stripped to external PDB), for MS Windows",
+    "fw-0.30.2-windows-x86_64.exe": "PE32+ executable (console) x86-64 (stripped to external PDB), for MS Windows",
+    "FlistWalker-0.30.2-linux-x86_64": "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=2de41aaf9f760be315becfbec05dfab0a6360a42, stripped",
+    "fw-0.30.2-linux-x86_64": "ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, for GNU/Linux 3.2.0, BuildID[sha1]=7241226b2291eff6570c28d15fb3287099fa8a68, stripped",
+    "FlistWalker-0.30.2-macos-x86_64": "Mach-O 64-bit executable x86_64",
+    "fw-0.30.2-macos-x86_64": "Mach-O 64-bit executable x86_64",
+    "FlistWalker-0.30.2-macos-arm64": "Mach-O 64-bit executable arm64",
+    "fw-0.30.2-macos-arm64": "Mach-O 64-bit executable arm64"
+  },
+  "result": "PASS",
+  "checks": [
+    "28 exact assets",
+    "26 strict manifest entries/all digests",
+    "signature accepted by actual shipped N-1 public key",
+    "same public key embedded in all8 binaries",
+    "sidecar/archive notice/license/member bytes",
+    "mac app versions/metadata/executable modes",
+    "mac arm64 universal/fw version probes"
+  ]
+}

@@ -1,0 +1,240 @@
+{
+  "status": "ACCEPTED EXACT TAGGED RUN CONDITIONAL MINOR EXTERNAL ACTION EXCEPTION",
+  "policy": "docs/RELEASE.md#external-action-warning-disposition",
+  "version": "v0.30.2",
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run_id": 38601532026,
+  "attempt": 1,
+  "event": "push",
+  "actual_emissions": [
+    {
+      "job": "Assemble Release Bundle",
+      "line": "2026-10-14T17:39:16.2256155Z (node:2468) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    },
+    {
+      "job": "Create Draft Release",
+      "line": "2026-10-14T17:41:17.4779751Z (node:1978) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "actual_count": 2,
+  "product_rust_test_clippy_audit_warning_count": 0,
+  "warning_error_annotations": 0,
+  "informational_notices": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "official_actions": {
+    "checked_at_utc": "2026-10-14T17:39:58.627271+00:00",
+    "run_id": 38601532026,
+    "attempt": 1,
+    "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+    "actions": [
+      {
+        "repository": "actions/download-artifact",
+        "latest_stable": "v8.0.2",
+        "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "published_at": "2026-10-07T10:09:51Z",
+        "commit_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "runtime": "node24",
+        "minimum_runner": "2.327.1",
+        "immutable_files_identical_to_retained_verified_source": {
+          "action.yml": {
+            "blob_sha": "8b8c65029ccad20750a29fecb438eca5a607fc57",
+            "size": 2635
+          },
+          "dist/index.js": {
+            "blob_sha": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+            "size": 4432922
+          }
+        }
+      },
+      {
+        "repository": "actions/upload-artifact",
+        "latest_stable": "v7.0.2",
+        "release_url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "published_at": "2026-10-07T10:08:14Z",
+        "commit_sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "runtime": "node24",
+        "minimum_runner": "2.327.1",
+        "immutable_files_identical_to_retained_verified_source": {
+          "action.yml": {
+            "blob_sha": "7cb4d1e81db55320b41217e1a78a1a46e3d2baef",
+            "size": 3603
+          },
+          "dist/upload/index.js": {
+            "blob_sha": "7b3f92ae681d6eeca5f5e5e4cf892ad0dfb254ea",
+            "size": 4452820
+          }
+        }
+      }
+    ],
+    "result": "PASS current official highest stable versions, immutable SHA and source identity; actual run/warning/output checks pending"
+  },
+  "actual_runners": {
+    "Resolve Release Context": [
+      "2.337.0"
+    ],
+    "Release Cargo Audit": [
+      "2.337.0"
+    ],
+    "Release Preflight (windows-native)": [
+      "2.337.0"
+    ],
+    "Release Preflight (macos-native)": [
+      "2.337.0"
+    ],
+    "Release Preflight (linux-native)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (macos-arm64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (windows-x86_64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (macos-x86_64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (linux-x86_64)": [
+      "2.337.0"
+    ],
+    "Assemble Release Bundle": [
+      "2.337.0"
+    ],
+    "Create Draft Release": [
+      "2.337.0"
+    ]
+  },
+  "actual_download_steps": [
+    {
+      "job": "Assemble Release Bundle",
+      "inputs": {
+        "pattern": "release-*",
+        "path": "release-assets"
+      },
+      "resolved_defaults": {
+        "merge-multiple": false,
+        "digest-mismatch": "error",
+        "skip-decompress": false
+      },
+      "producer_count": 4
+    },
+    {
+      "job": "Create Draft Release",
+      "inputs": {
+        "name": "validated-release-bundle-v0.30.2-c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+        "path": "release-bundle"
+      },
+      "resolved_defaults": {
+        "merge-multiple": false,
+        "digest-mismatch": "error",
+        "skip-decompress": false
+      },
+      "producer_count": 1
+    }
+  ],
+  "artifact_digest_proof": [
+    {
+      "id": 11917285569,
+      "name": "validated-release-bundle-v0.30.2-c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "digest": "sha256:60542ac787c6267b2f956777c94c3a137712ba72f34e07bb9fd1ece8d2b5c35b",
+      "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "upload_job_log": [
+        "116005226062.log"
+      ]
+    },
+    {
+      "id": 11917071871,
+      "name": "release-macos-x86_64",
+      "digest": "sha256:fd7c87d1f17d3b5796388672ff82703a942d35e0cdc596e9c6ecb3942aa61803",
+      "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "upload_job_log": [
+        "115986369420.log"
+      ]
+    },
+    {
+      "id": 11914306763,
+      "name": "release-linux-x86_64",
+      "digest": "sha256:6affa6c00cfc035809f796e3e090f5b719b13a877d67f68521ae98d6287ff60e",
+      "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "upload_job_log": [
+        "115986369520.log"
+      ]
+    },
+    {
+      "id": 11914283007,
+      "name": "release-macos-arm64",
+      "digest": "sha256:b0c03ae1c9bf2ab67199f83f1922d0ee24abcf5e76d9e39b12b2368216a0cff8",
+      "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "upload_job_log": [
+        "115986369297.log"
+      ]
+    },
+    {
+      "id": 11913639638,
+      "name": "release-windows-x86_64",
+      "digest": "sha256:00497c53db66f327a9329b64321fbf0c10ef4807e400819e3940cb8387aaa5c7",
+      "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+      "upload_job_log": [
+        "115986369336.log"
+      ]
+    }
+  ],
+  "classification": "Minor only for these two exact ZIP-extraction empty-string Buffer/fixed4-byte fully initialized constructor callsites; no general DEP0005 allowlist",
+  "cause_source": "Retained complete unmodified official download-artifactv8.0.2 dist source and diagnosis in docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; current immutable fullSHA/sourceblob reverified",
+  "observation_inference_boundary": "Hosted logs verify two actual emissions in separate download Action processes with exact pins/inputs. Retained full Action loopback diagnosis establishes constructor arguments/control flow; no hosted stack/HTTPS/authentication/four-way trace is claimed. Selector/cardinality differs between these two existing source workflow steps; both invoke the same verified ZIP extraction path.",
+  "count_explanation": "Candidate mode skips draft download; tag mode executes assembly and single validated-bundle draft download. One emission in each process explains two, rather than inheriting candidate exception or allowing an unexplained increase.",
+  "fresh_artifact_checks": [
+    "28 exact assets",
+    "26 strict manifest entries/all digests",
+    "signature accepted by actual shipped N-1 public key",
+    "same public key embedded in all8 binaries",
+    "sidecar/archive notice/license/member bytes",
+    "mac app versions/metadata/executable modes",
+    "mac arm64 universal/fw version probes",
+    "Real0.30.1 compatibility with actual26-entry tagged manifest PASS",
+    "Tagged Windows PE/import/resources PASS; bundle2exe byte-identical to independently inspected producer",
+    "Draft ID413006487 all28 unique asset ID/name/size/digest match validated bytes",
+    "All11 jobs completeSUCCESS with full logs/annotations",
+    "Current native PASS/REUSE/two-axis human v0.30.2-only DEVIATION and TC193 PASS reconciled"
+  ],
+  "native_reuse": "Candidate native/CLI/TC193 identity preserved; new Windows differences only timestamp/checksum and semantically identical VERSIONINFO order, independently reviewed; no source/compiler/profile/feature/entrypoint change",
+  "candidate_exception_inherited": false,
+  "owner": "main release operator",
+  "follow_up": "Maintainer reevaluates latest official version/runtime/source/input/callsite/emissions and artifact gates on each future run. New warning/callsite/input/unknown count/security/integrity/function impact stops; no suppression or unchanged rerun.",
+  "pending": "Draft body/prepublication review, public readback and independent final closure",
+  "independent_review": {
+    "reviewer": "release_final_review",
+    "decision": "Tagged artifacts/warning to draft-body editing interim GO; candidate exception not inherited",
+    "findings": {
+      "blocking": 0,
+      "major": 0,
+      "minor": 1
+    },
+    "minor_disposition": "Corrected metadata input name skip-extract to actual skip-decompress; actual false input unchanged, no behavior/safety change; fixed"
+  }
+}

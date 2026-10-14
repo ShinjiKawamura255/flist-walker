@@ -1,0 +1,37 @@
+{
+  "original_source": "2c8ef6ab0dde5902339d96dc9eb838be47ecd8f9",
+  "original_binary_sha256": "b4fa15193195f8b674f9dde08971c2f4b7a094a00101b5087e85ab8bf3f22623",
+  "original_date": "2026-10-10",
+  "os": "macOS27.0.1 build26A434 arm64",
+  "compiler": "Rust1.98.1",
+  "original_profile": "debug/local residual addendum",
+  "comparison_head": "bce5540f5121defa6b81941feb4a1f2a45cac25f",
+  "source_files_changed": [
+    "rust/src/cli/args.rs"
+  ],
+  "cargo_delta": "root version and rustls version/checksum only; features/other packages equal",
+  "native_scope": "GSM003 selected metadata/selection/tabs and GSM012 metadata/error/Reload/text selection/More/scroll/Color/hide-show",
+  "original_native_result": "PASS for selected scope",
+  "original_liveness_result": "PASS at least5m51s, responsive, normal close",
+  "not_run_preserved": [
+    "native clipboard",
+    "Windows/Linux native",
+    "real cloud placeholders",
+    "missing birth time regular file",
+    "full GSM matrix/IME/DPI"
+  ],
+  "original_warnings": "egui widget rect WARN18 ERROR/panic0; unknown cause, selected flow no defect observed",
+  "original_first_session": "Rejected isolation failure; existing UI state mtime changed, content delta unknown. PASS belongs to subsequent formal isolated session only.",
+  "source_report_sha256": "e80f9eab1892cb00f3b16021fa77f74d3939619cb1e15d4a99f81c746a85fb66",
+  "retained_evidence_sha256": {
+    "20261010-preview-native-preflight.json": "232fe1fdb3de9bce67a6a459e435f1280807b58b3910bdfe8f9dd93199329dc8",
+    "20261010-preview-native-postflight.json": "7ebb6b3130fd671453deff0c5d14c3435b1fe56b8b2c6b781be97ce6024adb0c",
+    "20261010-preview-native-host.log": "622950aeb46905ab320e5faec985ba34a5d4db6619ef2745defbbd7eb0ed1ba7",
+    "20261010-preview-native-screenshots.json": "6607b98a19ed0bfa2b081f1598177678373b81b49f524e53ec7ccaa6020d1565"
+  },
+  "release_disposition": "REUSE accepted for original selected change-time native PASS; independent boundary review GO. No claim that candidate/tagged executable was native-tested.",
+  "no_impact_reason": "All GUI, preview worker/reducer, index/search, input/launch, build.rs and macOS packaging source unchanged from original tested source to final C54; only Rust source difference is CLI update-flag/color normalization, which does not affect the tested ordinary GUI invocation. Cargo root version and compatible rustls patch version/checksum only; GUI features/dependencies/defaults/persistent formats unchanged. Original updater disabled; rustls affects ureq transport. Original local compiler1.98.1/debug and distribution1.97.1/release difference is an independently reviewed working-build/distribution boundary, not a release compiler/profile change; selected preview has no changed debug/cfg contract. New artifact checks verified current identities/signatures/metadata independently.",
+  "candidate_compiler": "Rust1.97.1 pinned in release-tagged.yml; differs from original local1.98.1",
+  "final_source": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "merged_tree_reconciliation": "Reviewed BCE tracked tree exactly equal to protected C54; intermediate changes reconciled. Current candidate build/compiler/dependency/bundle metadata confirmed by actual distribution validation."
+}

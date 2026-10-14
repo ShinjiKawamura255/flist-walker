@@ -1,0 +1,501 @@
+{
+  "version": "0.30.2",
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run_id": 38584767783,
+  "attempt": 1,
+  "artifact": {
+    "id": 11906773075,
+    "name": "validated-release-bundle-v0.30.2-c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/38584767783/artifacts/11906773075"
+  },
+  "result": "PASS",
+  "alias_checks": [
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--check-update",
+        "--color"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--check-update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "always",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--check-update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "never",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--check-update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color=auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--check-update",
+        "--color=auto"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--update",
+        "--color"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "always",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color",
+        "never",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--color=auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "universal",
+      "argv": [
+        "--update",
+        "--color=auto"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "always",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "never",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color=auto",
+        "--check-update"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--check-update",
+        "--color=auto"
+      ],
+      "exit_code": 0,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color",
+        "auto"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "always",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color",
+        "always"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color",
+        "never",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color",
+        "never"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--color=auto",
+        "--update"
+      ],
+      "exit_code": 1,
+      "pass": true
+    },
+    {
+      "role": "fw",
+      "argv": [
+        "--update",
+        "--color=auto"
+      ],
+      "exit_code": 1,
+      "pass": true
+    }
+  ],
+  "environment": {
+    "system": "Windows",
+    "release": "11",
+    "version": "10.0.26300",
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "cpu_count": 32
+  },
+  "binaries": {
+    "universal": {
+      "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+      "sha256": "94b765d5d8191a16ee95a460df92e2125b9713abe4cbb21a9e9031d30d26fc3e",
+      "version_output": "flistwalker 0.30.2"
+    },
+    "fw": {
+      "filename": "fw-0.30.2-windows-x86_64.exe",
+      "sha256": "8b0c3be9325d21bd02efd6a9a98a122412ea44d15ead35ff986c34264d9e3237",
+      "version_output": "fw 0.30.2"
+    }
+  },
+  "tc193": {
+    "warmup_per_variant": 5,
+    "samples_per_variant": 25,
+    "fixture_files": 200,
+    "raw_ms": {
+      "universal": [
+        83.4642,
+        76.1551,
+        82.667,
+        92.734,
+        90.0142,
+        91.2898,
+        84.3397,
+        75.8262,
+        89.0093,
+        92.9978,
+        77.9439,
+        78.235,
+        84.7691,
+        75.8096,
+        85.6993,
+        77.8172,
+        79.5864,
+        76.5741,
+        81.9066,
+        77.6518,
+        83.6754,
+        77.2351,
+        85.2111,
+        76.597,
+        82.3507
+      ],
+      "fw": [
+        34.378,
+        35.9932,
+        36.738,
+        37.9954,
+        39.2946,
+        34.6577,
+        35.9195,
+        35.1124,
+        34.8003,
+        37.2224,
+        36.3398,
+        36.2932,
+        33.4473,
+        34.6211,
+        34.9352,
+        35.6136,
+        36.2155,
+        35.2142,
+        34.6437,
+        35.2861,
+        36.0038,
+        35.1478,
+        33.313,
+        35.5895,
+        34.1621
+      ]
+    },
+    "median_ms": {
+      "universal": 82.3507,
+      "fw": 35.2861
+    },
+    "ratio_fw_over_universal": 0.4284857323617164,
+    "required_max_ratio": 0.7,
+    "pass": true,
+    "stdout_paths": 200,
+    "stderr_empty": true,
+    "argv_common": [
+      "--root",
+      "<owned-test-root>\\shallow200",
+      "--source",
+      "walker",
+      "--type",
+      "file",
+      "--no-ignore",
+      "--color",
+      "never",
+      "--limit",
+      "200"
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "observed_at": "2026-10-15T01:23:50.4076413+09:00",
+  "cpu": {
+    "Name": "AMD Ryzen 9 5950X 16-Core Processor            ",
+    "NumberOfLogicalProcessors": 32,
+    "LoadPercentage": 20
+  }
+}

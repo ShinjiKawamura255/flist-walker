@@ -1,0 +1,277 @@
+{
+  "result": "PASS",
+  "version": "v0.30.2",
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "tag_object": "0dc84c2710e714ec38bbe69e78515f6efcc599ed",
+  "release_id": 413006487,
+  "release_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.2",
+  "published_at": "2026-10-14T18:02:22Z",
+  "publication_date_asia_tokyo": "2026-10-15",
+  "draft": false,
+  "prerelease": false,
+  "latest_feed_matches": true,
+  "body_sha256": "6e3972c9bf83dfc7a4238eb75d6cce13311e803614f3783dfad0cd10ce3ca400",
+  "actual_public_download_count": 28,
+  "assets": [
+    {
+      "id": 641146906,
+      "name": "FlistWalker-0.30.2-linux-x86_64",
+      "size": 19320736,
+      "sha256": "5f3ed8235385a19650c7a20d304acdbbe0b0d9fb1e350f7831c3f5d8a12d06f4",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-linux-x86_64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146909,
+      "name": "FlistWalker-0.30.2-linux-x86_64.LICENSE.txt",
+      "size": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-linux-x86_64.LICENSE.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146913,
+      "name": "FlistWalker-0.30.2-linux-x86_64.README.txt",
+      "size": 6871,
+      "sha256": "b17a888a2872a53eff469f9d06c452d64c9f10b3a2db2b9da4ad4a71b3842745",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-linux-x86_64.README.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146908,
+      "name": "FlistWalker-0.30.2-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5121,
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146910,
+      "name": "FlistWalker-0.30.2-linux-x86_64.tar.gz",
+      "size": 8395814,
+      "sha256": "08dc0e72f760349dd722cae92b5d16551757b278fec1d544fc255b5cc629e3c6",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-linux-x86_64.tar.gz",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146926,
+      "name": "FlistWalker-0.30.2-macos-arm64",
+      "size": 13418176,
+      "sha256": "d78ba0d29209d0190f58e55f89e731611001958d63ca46408b272c712828c507",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147002,
+      "name": "FlistWalker-0.30.2-macos-arm64-app.zip",
+      "size": 6715649,
+      "sha256": "2d9ed5833cafb129d0c3ade03c5658074c0d7ca55c9641544587c332596dd0a1",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64-app.zip",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147001,
+      "name": "FlistWalker-0.30.2-macos-arm64.LICENSE.txt",
+      "size": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64.LICENSE.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146998,
+      "name": "FlistWalker-0.30.2-macos-arm64.README.txt",
+      "size": 6798,
+      "sha256": "8defec5312d1814f3a4346a7f473c2c636d455eb22e1ac3952bdbd15026becad",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64.README.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641146999,
+      "name": "FlistWalker-0.30.2-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "size": 5121,
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147025,
+      "name": "FlistWalker-0.30.2-macos-arm64.tar.gz",
+      "size": 6616789,
+      "sha256": "f099dbfa69ab77df078c3364e75e69d3dbd6abcde879d592162f9019e834dcd4",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-arm64.tar.gz",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147041,
+      "name": "FlistWalker-0.30.2-macos-x86_64",
+      "size": 15674696,
+      "sha256": "7ce7e889789618e3b4ab01a41e1f5bd2a8bc288424d68d2f9a089f5675537459",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147057,
+      "name": "FlistWalker-0.30.2-macos-x86_64-app.zip",
+      "size": 7443813,
+      "sha256": "9e5bd2d3e6754a427ef98f5893aeb2f5b6c43d3a999c14998e6f06bb7f6ac845",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64-app.zip",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147056,
+      "name": "FlistWalker-0.30.2-macos-x86_64.LICENSE.txt",
+      "size": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64.LICENSE.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147067,
+      "name": "FlistWalker-0.30.2-macos-x86_64.README.txt",
+      "size": 6802,
+      "sha256": "7313416a2e9df740ff6e13246bfdaa86f557ce7f296feb5b087f173ea3bdcb6e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64.README.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147071,
+      "name": "FlistWalker-0.30.2-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5121,
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147076,
+      "name": "FlistWalker-0.30.2-macos-x86_64.tar.gz",
+      "size": 7344365,
+      "sha256": "495d750b9149f7da3a2788a7a62fd9ea9be750082c506d7964da45c201e2ce0b",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-macos-x86_64.tar.gz",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147100,
+      "name": "FlistWalker-0.30.2-windows-x86_64.LICENSE.txt",
+      "size": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-windows-x86_64.LICENSE.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147105,
+      "name": "FlistWalker-0.30.2-windows-x86_64.README.txt",
+      "size": 7152,
+      "sha256": "f500235c23548091bc15cbd8c35131756a66c8da922ca94a18270a29c0d1fb18",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-windows-x86_64.README.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147109,
+      "name": "FlistWalker-0.30.2-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5121,
+      "sha256": "ebc23553c93a6b3d21b25b74459ca48983db7b39aa14fcfed86cb5399b4dde75",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147131,
+      "name": "FlistWalker-0.30.2-windows-x86_64.exe",
+      "size": 16337408,
+      "sha256": "308e39539adf1af31d7d006ffa4d9d38d8110829dc271024d1a00fdab19d3969",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-windows-x86_64.exe",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147140,
+      "name": "FlistWalker-0.30.2-windows-x86_64.zip",
+      "size": 7476661,
+      "sha256": "e0b173a5e9e5b98913b57fbdf817af7fc066af6bfe30704a1330018f0573f7b6",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/FlistWalker-0.30.2-windows-x86_64.zip",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147137,
+      "name": "SHA256SUMS",
+      "size": 2754,
+      "sha256": "2c68092d4b2944454926d2388941d60ab3708d7370e142a58264c44cdde154b5",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/SHA256SUMS",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147141,
+      "name": "SHA256SUMS.sig",
+      "size": 64,
+      "sha256": "5b56b71f02297c59f91df02b4464cd13dc6770fb9d7382b5cd26c66cf0728388",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/SHA256SUMS.sig",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147142,
+      "name": "fw-0.30.2-linux-x86_64",
+      "size": 6580544,
+      "sha256": "fd9daea8f5e9cadd0257ea82006729da34c889adce0ba227f7a2dc803f69793a",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/fw-0.30.2-linux-x86_64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147162,
+      "name": "fw-0.30.2-macos-arm64",
+      "size": 5048640,
+      "sha256": "0f46c34b36092d9954eddc91005e59b1ffc0a846081a93366228c4115d889707",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/fw-0.30.2-macos-arm64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147181,
+      "name": "fw-0.30.2-macos-x86_64",
+      "size": 5834424,
+      "sha256": "ce7b62551fb5a2ab09f7c30804c322c502d27b936fb4174f5eab02f1b2804a1c",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/fw-0.30.2-macos-x86_64",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    },
+    {
+      "id": 641147186,
+      "name": "fw-0.30.2-windows-x86_64.exe",
+      "size": 6145536,
+      "sha256": "23eaabc9b4f6cd24d39681b6003959f273a203b65136bbdcabfca75c59ff4bfa",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.30.2/fw-0.30.2-windows-x86_64.exe",
+      "public_download": "PASS",
+      "identical_to_verified_tagged_asset": true
+    }
+  ],
+  "checks": [
+    "Fixed public release and all28 download URLs",
+    "Every public byte/hash/size equal to independently verified tagged output",
+    "Actual public manifest signature verified with shipped previous public key",
+    "Actual public26-entry manifest accepted for prior public0.30.1",
+    "Latest feed/release/tag/source/body/date/asset metadata readback"
+  ],
+  "checked_at_utc": "2026-10-14T18:02:39.990029+00:00"
+}
