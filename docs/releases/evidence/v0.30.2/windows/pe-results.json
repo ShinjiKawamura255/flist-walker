@@ -1,0 +1,74 @@
+[
+  {
+    "subsystem": 2,
+    "asInvoker": true,
+    "architecture": "x86-64",
+    "result": "PASS",
+    "imports": [
+      "GDI32.dll",
+      "ole32.dll",
+      "OPENGL32.dll",
+      "dwmapi.dll",
+      "imm32.dll",
+      "ntdll.dll",
+      "psapi.dll",
+      "uxtheme.dll",
+      "ws2_32.dll",
+      "kernel32.dll",
+      "kernel32.dll",
+      "bcryptprimitives.dll",
+      "advapi32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "combase.dll",
+      "kernel32.dll",
+      "ntdll.dll",
+      "ole32.dll",
+      "shell32.dll",
+      "shlwapi.dll",
+      "userenv.dll",
+      "ADVAPI32.dll",
+      "bcrypt.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "ntdll.dll",
+      "USER32.dll"
+    ],
+    "resources": [
+      "RT_ICON=3",
+      "RT_GROUP_ICON=14",
+      "RT_MANIFEST=24"
+    ],
+    "role": "universal",
+    "forbidden_imports": []
+  },
+  {
+    "subsystem": 3,
+    "asInvoker": true,
+    "architecture": "x86-64",
+    "result": "PASS",
+    "imports": [
+      "ntdll.dll",
+      "ws2_32.dll",
+      "kernel32.dll",
+      "kernel32.dll",
+      "bcryptprimitives.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "kernel32.dll",
+      "ntdll.dll",
+      "shell32.dll",
+      "user32.dll",
+      "ADVAPI32.dll",
+      "bcrypt.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "ntdll.dll"
+    ],
+    "resources": [
+      "RT_ICON=3",
+      "RT_GROUP_ICON=14",
+      "RT_MANIFEST=24"
+    ],
+    "role": "fw",
+    "forbidden_imports": []
+  }
+]

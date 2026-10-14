@@ -1,0 +1,150 @@
+{
+  "status": "ACCEPTED EXACT CANDIDATE CONDITIONAL MINOR EXTERNAL ACTION EXCEPTION",
+  "policy": "docs/RELEASE.md#external-action-warning-disposition",
+  "version": "v0.30.2",
+  "source": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run": 38584767783,
+  "attempt": 1,
+  "mode": "candidate",
+  "actual_emissions": [
+    {
+      "job": "Assemble Release Bundle",
+      "line": "2026-10-14T15:31:00.9202389Z (node:2320) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "actual_count": 1,
+  "product_rust_test_clippy_audit_warning_count": 0,
+  "warning_error_annotations": 0,
+  "notices": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "official_actions": {
+    "checked_at_utc": "2026-10-14T14:28:19.350586+00:00",
+    "actions": [
+      {
+        "repository": "actions/download-artifact",
+        "stable": "v8.0.2",
+        "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "published_at": "2026-10-07T10:09:51Z",
+        "commit_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "files": {
+          "action.yml": {
+            "blob_sha": "8b8c65029ccad20750a29fecb438eca5a607fc57",
+            "size": 2635
+          },
+          "README.md": {
+            "blob_sha": "2e08793c965402b42ac99a7b42a1ed1fa8a9dc9c",
+            "size": 11492
+          },
+          "package.json": {
+            "blob_sha": "4dc240531f589c7883d48758f334314fe0421fb5",
+            "size": 1710
+          },
+          "dist/index.js": {
+            "blob_sha": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+            "size": 4432922
+          }
+        },
+        "latest_rechecked_at_utc": "2026-10-14T15:50:20.737872+00:00"
+      },
+      {
+        "repository": "actions/upload-artifact",
+        "stable": "v7.0.2",
+        "release_url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "published_at": "2026-10-07T10:08:14Z",
+        "commit_sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "files": {
+          "action.yml": {
+            "blob_sha": "7cb4d1e81db55320b41217e1a78a1a46e3d2baef",
+            "size": 3603
+          },
+          "README.md": {
+            "blob_sha": "b708eb322c6cbc798af63dc0314eb9f7fb112d95",
+            "size": 18601
+          },
+          "package.json": {
+            "blob_sha": "2c96bdb1cbafd4beb37cbc65d96de2eac1bee638",
+            "size": 1832
+          },
+          "dist/upload/index.js": {
+            "blob_sha": "7b3f92ae681d6eeca5f5e5e4cf892ad0dfb254ea",
+            "size": 4452820
+          }
+        },
+        "latest_rechecked_at_utc": "2026-10-14T15:50:21.201138+00:00"
+      }
+    ]
+  },
+  "actual_runners": {
+    "Resolve Release Context": "2.337.0",
+    "Release Preflight (linux-native)": "2.337.0",
+    "Build Release Assets (macos-x86_64)": "2.337.0",
+    "Build Release Assets (windows-x86_64)": "2.337.0",
+    "Release Preflight (windows-native)": "2.337.0",
+    "Assemble Release Bundle": "2.337.0",
+    "Build Release Assets (macos-arm64)": "2.337.0",
+    "Release Preflight (macos-native)": "2.337.0",
+    "Build Release Assets (linux-x86_64)": "2.337.0",
+    "Release Cargo Audit": "2.337.0"
+  },
+  "classification": "Specific download-artifact v8.0.2 ZIP extraction DEP0005 empty-string Buffer/fixed4-byte fully initialized callsite; minor conditional case only",
+  "causal_evidence": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+  "causal_reuse_boundary": "Official dist Gitblob e5fe23803e0378f1f365aa0d6326cd288f5b660c/4432922 bytes identical to retained full unmodified Action diagnosis. Source runtime Node24, actual runners2.337.0>=2.327.1; actual pin9000827ccba6bdab643e8b6fd33ac0654aef8333, patternrelease-*, merge-multiplefalse, digest-mismatcherror unchanged. All4 producer artifact digests match declared values. Changed payload/version values are verified by actual26 checksums, signature, archive/member bytes and inventory; no new extraction control/input shape. No prior run exception inherited.",
+  "observation_inference_boundary": "Hosted logs show exact emission/step/pin/normal inputs and intact output; same code/input bounds support source-level cause. No hosted stack/HTTPS/auth/four-way parallel trace is claimed from the retained loopback diagnostic.",
+  "fresh_artifact_checks": [
+    "28 exact assets",
+    "26 strict manifest entries/all digests",
+    "signature accepted by actual shipped N-1 public key",
+    "same public key embedded in all8 binaries",
+    "sidecar/archive notice/license/member bytes",
+    "mac app versions/metadata/executable modes",
+    "mac arm64 universal/fw version probes",
+    "Current Windows PE architecture/subsystem/icons/manifest/asInvoker/imports PASS",
+    "Real v0.30.1 candidate-manifest compatibility PASS",
+    "Current exact source CI38581739206 SUCCESS",
+    "10 candidate jobsSUCCESS; draftjobSKIPPED"
+  ],
+  "pending_release_gates": [
+    "Tagged run independent warning/artifact validation",
+    "Draft/body/publication readback and closure"
+  ],
+  "owner": "main release operator",
+  "follow_up": "Reassess official stable/runtime/emissions/actual artifacts/review independently for tagged run; any new code/message/callsite/input or unexplained count/security/integrity/function uncertainty stops",
+  "independent_review": {
+    "reviewer": "release_final_review",
+    "scope": "Final candidate warning applicability and native PASS/REUSE/DEVIATION acceptance",
+    "findings": {
+      "blocking": 0,
+      "major": 0,
+      "minor": 0
+    },
+    "decision": "Exact candidate38584767783/attempt1 minor warning exception and C54 annotated tag gate GO; future tagged run re-evaluated separately; final checkpoint open"
+  },
+  "native_gate": "Accepted PASS/REUSE/DEVIATION per windows/RETURN-REVIEW.json; two formal native NOT RUN retained with explicit human scope approval",
+  "current_state_readback": "2026-10-14T16:48:52Z: latestpublicv0.30.1, masterC54, same completed candidate/artifact not expired, no v0.30.2 tag/release, official action versions unchanged"
+}

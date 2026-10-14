@@ -1,0 +1,34 @@
+[
+  {
+    "target": "x86_64-pc-windows-gnu",
+    "packages": 292,
+    "only_version_change": "rustls 0.23.45 -> 0.23.46",
+    "features_licenses_edges_equal": true,
+    "rustls_msrv": "1.71",
+    "license": "Apache-2.0 OR ISC OR MIT"
+  },
+  {
+    "target": "x86_64-unknown-linux-gnu",
+    "packages": 328,
+    "only_version_change": "rustls 0.23.45 -> 0.23.46",
+    "features_licenses_edges_equal": true,
+    "rustls_msrv": "1.71",
+    "license": "Apache-2.0 OR ISC OR MIT"
+  },
+  {
+    "target": "x86_64-apple-darwin",
+    "packages": 304,
+    "only_version_change": "rustls 0.23.45 -> 0.23.46",
+    "features_licenses_edges_equal": true,
+    "rustls_msrv": "1.71",
+    "license": "Apache-2.0 OR ISC OR MIT"
+  },
+  {
+    "target": "aarch64-apple-darwin",
+    "packages": 303,
+    "only_version_change": "rustls 0.23.45 -> 0.23.46",
+    "features_licenses_edges_equal": true,
+    "rustls_msrv": "1.71",
+    "license": "Apache-2.0 OR ISC OR MIT"
+  }
+]

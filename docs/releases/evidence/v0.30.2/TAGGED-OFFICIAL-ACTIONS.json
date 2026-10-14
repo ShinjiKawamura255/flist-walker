@@ -1,0 +1,47 @@
+{
+  "checked_at_utc": "2026-10-14T17:39:58.627271+00:00",
+  "run_id": 38601532026,
+  "attempt": 1,
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "actions": [
+    {
+      "repository": "actions/download-artifact",
+      "latest_stable": "v8.0.2",
+      "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+      "published_at": "2026-10-07T10:09:51Z",
+      "commit_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "runtime": "node24",
+      "minimum_runner": "2.327.1",
+      "immutable_files_identical_to_retained_verified_source": {
+        "action.yml": {
+          "blob_sha": "8b8c65029ccad20750a29fecb438eca5a607fc57",
+          "size": 2635
+        },
+        "dist/index.js": {
+          "blob_sha": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+          "size": 4432922
+        }
+      }
+    },
+    {
+      "repository": "actions/upload-artifact",
+      "latest_stable": "v7.0.2",
+      "release_url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+      "published_at": "2026-10-07T10:08:14Z",
+      "commit_sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "runtime": "node24",
+      "minimum_runner": "2.327.1",
+      "immutable_files_identical_to_retained_verified_source": {
+        "action.yml": {
+          "blob_sha": "7cb4d1e81db55320b41217e1a78a1a46e3d2baef",
+          "size": 3603
+        },
+        "dist/upload/index.js": {
+          "blob_sha": "7b3f92ae681d6eeca5f5e5e4cf892ad0dfb254ea",
+          "size": 4452820
+        }
+      }
+    }
+  ],
+  "result": "PASS current official highest stable versions, immutable SHA and source identity; actual run/warning/output checks pending"
+}

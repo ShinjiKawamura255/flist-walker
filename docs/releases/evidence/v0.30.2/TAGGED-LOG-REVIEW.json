@@ -1,0 +1,79 @@
+{
+  "source_sha": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "run_id": 38601532026,
+  "attempt": 1,
+  "complete_full_logs": 11,
+  "warning_candidates": [
+    {
+      "job": "Assemble Release Bundle",
+      "line": "2026-10-14T17:39:16.2256155Z (node:2468) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    },
+    {
+      "job": "Create Draft Release",
+      "line": "2026-10-14T17:41:17.4779751Z (node:1978) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "runners": {
+    "Resolve Release Context": [
+      "2.337.0"
+    ],
+    "Release Cargo Audit": [
+      "2.337.0"
+    ],
+    "Release Preflight (windows-native)": [
+      "2.337.0"
+    ],
+    "Release Preflight (macos-native)": [
+      "2.337.0"
+    ],
+    "Release Preflight (linux-native)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (macos-arm64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (windows-x86_64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (macos-x86_64)": [
+      "2.337.0"
+    ],
+    "Build Release Assets (linux-x86_64)": [
+      "2.337.0"
+    ],
+    "Assemble Release Bundle": [
+      "2.337.0"
+    ],
+    "Create Draft Release": [
+      "2.337.0"
+    ]
+  },
+  "annotations": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/c54f0237c4c8b55cfd085dd1b97828b4859b897e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ]
+}

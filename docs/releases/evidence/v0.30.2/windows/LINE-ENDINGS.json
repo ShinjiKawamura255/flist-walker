@@ -1,0 +1,80 @@
+{
+  "result": "PASS",
+  "original_zip_sha256": "f88c6bcaccff539abce259ccb4ccf55b93d8927fece30d571220d6b8cd5ea0b3",
+  "reason": "staged git diff --check identified CRLF as trailing whitespace; original ZIP/files retained separately",
+  "files": [
+    {
+      "filename": "alias-supplement-reviewed.json",
+      "original_sha256": "c5e4bd0b9d7158f0aa6f4b362ed5f421ab88a4fff693066316514fb4b6e5e2d1",
+      "retained_lf_sha256": "e7358c9b27bd62d88d474373df4c6ff11086a2a345d915f26d7b49fc69eba53a",
+      "crlf_count": 763,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "cleanup.json",
+      "original_sha256": "10fe4863386f1829054ffd799be361ee31f0a6df3f09dbef6d380a7523848eb8",
+      "retained_lf_sha256": "de7c52b9000c809d3e7607d8e42214a247530dbbb7537b4f37e11bc808132215",
+      "crlf_count": 43,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "identity-checks.json",
+      "original_sha256": "ec6c904ae66a1a46566076a7c11f56f02f5003cc86fc3d77ce8dc545279d9d00",
+      "retained_lf_sha256": "2d212281af5dc31e57615a35db8ffebfc31f36623982511dae919bd43164874a",
+      "crlf_count": 22,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "load-after.json",
+      "original_sha256": "d39228406bb3c782c63804a1d0594a2b806e17848bbf388d1db770db51b09a8b",
+      "retained_lf_sha256": "e1b85168bbda20ea175f683ca643b3903170035ce886687796160e85299895c6",
+      "crlf_count": 8,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "load-before.json",
+      "original_sha256": "8886ddcf7b7f3c8a397e5d527393bf6feca45ffc84bb7f9d31432fef8aede72c",
+      "retained_lf_sha256": "3bd74dd88ed5fbebba2b6ada799b390a0fad1f0280397a90a5649eca9f2d8884",
+      "crlf_count": 14,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "pe-results.json",
+      "original_sha256": "abe231b906abb5ffad7fca42e33fefab9b57a40ad1f483ca6119a3e996acfd0f",
+      "retained_lf_sha256": "5d9c0e61270c51fc98788cac995f869bc47cbb15bdddfde859ff508de266333c",
+      "crlf_count": 74,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "tc193-fixture-inventory.json",
+      "original_sha256": "c785a3b65b8cfea3dbbf7523f7853e59e45d93e9894de11642ccc761d97690a3",
+      "retained_lf_sha256": "cce7abd44d3c989ff2f8d5124518e4d188a0081fe7b7fa4bdfdfbd23ac6547de",
+      "crlf_count": 1002,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "tc193-raw.tsv",
+      "original_sha256": "842fbf950579d32723e60dc442245d422bb54552831798fab531a41330ced938",
+      "retained_lf_sha256": "6dd50fe6d5972abb25da58bb7ca64563b00c2e8a065247fc77fe464209abf3b5",
+      "crlf_count": 61,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    },
+    {
+      "filename": "windows-verification.json",
+      "original_sha256": "7bc0cdf7ba524997b757f9748c5710fe448d587a5cb60a4e587cd33bc46b8fcb",
+      "retained_lf_sha256": "ef6c173f83593ad208156dfaf31217aa7caf26d9a8eb51f259cb95951d485c6f",
+      "crlf_count": 501,
+      "transformation": "CRLF to LF only",
+      "parsed_values_identical": true
+    }
+  ],
+  "no_result_or_numeric_value_change": true
+}

@@ -1,0 +1,69 @@
+{
+  "universal": {
+    "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+    "architecture": "x86_64 PE32+",
+    "subsystem": 2,
+    "resource_types": [
+      3,
+      14,
+      16,
+      24
+    ],
+    "icon_and_group_icon_and_manifest": true,
+    "asInvoker": true,
+    "version_info_contains": "0.30.2",
+    "imports": [
+      "ADVAPI32.dll",
+      "advapi32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "bcrypt.dll",
+      "bcryptprimitives.dll",
+      "combase.dll",
+      "dwmapi.dll",
+      "GDI32.dll",
+      "imm32.dll",
+      "kernel32.dll",
+      "KERNEL32.dll",
+      "msvcrt.dll",
+      "ntdll.dll",
+      "ole32.dll",
+      "OPENGL32.dll",
+      "psapi.dll",
+      "shell32.dll",
+      "shlwapi.dll",
+      "USER32.dll",
+      "userenv.dll",
+      "uxtheme.dll",
+      "ws2_32.dll"
+    ],
+    "result": "PASS"
+  },
+  "fw": {
+    "filename": "fw-0.30.2-windows-x86_64.exe",
+    "architecture": "x86_64 PE32+",
+    "subsystem": 3,
+    "resource_types": [
+      3,
+      14,
+      16,
+      24
+    ],
+    "icon_and_group_icon_and_manifest": true,
+    "asInvoker": true,
+    "version_info_contains": "0.30.2",
+    "imports": [
+      "ADVAPI32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "bcrypt.dll",
+      "bcryptprimitives.dll",
+      "KERNEL32.dll",
+      "kernel32.dll",
+      "msvcrt.dll",
+      "ntdll.dll",
+      "shell32.dll",
+      "user32.dll",
+      "ws2_32.dll"
+    ],
+    "result": "PASS"
+  }
+}

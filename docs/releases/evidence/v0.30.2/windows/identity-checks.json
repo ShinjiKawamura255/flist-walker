@@ -1,0 +1,22 @@
+[
+  {
+    "result": "PASS",
+    "name": "SHA256SUMS",
+    "sha256": "988f1cd72229890515347f3b2306e89723fffc364209e4cfd45549584679c6f7"
+  },
+  {
+    "result": "PASS",
+    "name": "SHA256SUMS.sig",
+    "sha256": "23567d4505d6b3f8e7be8f865fe7b80c6b611d57602aa786a3f68003378b5096"
+  },
+  {
+    "result": "PASS",
+    "name": "FlistWalker-0.30.2-windows-x86_64.exe",
+    "sha256": "94b765d5d8191a16ee95a460df92e2125b9713abe4cbb21a9e9031d30d26fc3e"
+  },
+  {
+    "result": "PASS",
+    "name": "fw-0.30.2-windows-x86_64.exe",
+    "sha256": "8b0c3be9325d21bd02efd6a9a98a122412ea44d15ead35ff986c34264d9e3237"
+  }
+]

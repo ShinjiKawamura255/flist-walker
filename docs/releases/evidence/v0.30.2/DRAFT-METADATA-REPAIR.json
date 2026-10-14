@@ -1,0 +1,16 @@
+{
+  "result": "PASS after exact-ID metadata repair",
+  "release_id": 413006487,
+  "original_tag": "v0.30.2",
+  "failed_patch": "name/body only; omitted tag_name and target_commitish",
+  "observed_tag_after_failed_patch": "untagged-73c98ef1b717cc579e64",
+  "body_and_all28_asset_id_name_size_digest_equal_during_failure": true,
+  "repair": "PATCH same release ID with explicit tag_name=v0.30.2 and target_commitish=C54, name and exact body",
+  "restored_tag": "v0.30.2",
+  "target_commitish": "c54f0237c4c8b55cfd085dd1b97828b4859b897e",
+  "annotated_public_tag_object_unchanged": "0dc84c2710e714ec38bbe69e78515f6efcc599ed",
+  "draft": true,
+  "no_publication_during_failure": true,
+  "all_asset_metadata_equal_after_repair": true,
+  "permanent_guard": "Document explicit tag_name/verified target_commitish for every draft or publish PATCH and positive tag/source/body/asset readback in RELEASE procedure; include exact fields on publish."
+}

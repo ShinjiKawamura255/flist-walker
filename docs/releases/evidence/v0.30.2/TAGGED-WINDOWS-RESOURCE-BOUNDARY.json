@@ -1,0 +1,324 @@
+{
+  "universal": {
+    "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+    "result": "PASS",
+    "candidate_sha256": "94b765d5d8191a16ee95a460df92e2125b9713abe4cbb21a9e9031d30d26fc3e",
+    "tagged_sha256": "308e39539adf1af31d7d006ffa4d9d38d8110829dc271024d1a00fdab19d3969",
+    "all_differences_limited_to": "COFF timestamp, PE checksum, VERSIONINFO StringFileInfo child ordering",
+    "resource_values_equal": true,
+    "all_other_resource_payloads_byte_identical": true,
+    "runtime_code_data_import_layout_bytes_identical": true,
+    "resources": [
+      {
+        "path": [
+          3,
+          1,
+          1033
+        ],
+        "sha256": "a3841274f249b27ccb19a2239a494c5f1bab3f4a5e0ab48627a460303fb5b2f1",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          2,
+          1033
+        ],
+        "sha256": "96ab661c7e9946ac3a3805cb347d8028e028c2e0507ac17ae4d2d9485c0a5bb7",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          3,
+          1033
+        ],
+        "sha256": "80b2d4562489ad0bc725e07d5d11961313f7d570cf34732ddf0769148f7dc4b3",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          4,
+          1033
+        ],
+        "sha256": "3831958cb310c7bb1e21f662c3c38e11521720584f43fa15c16079f4ccb14816",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          5,
+          1033
+        ],
+        "sha256": "6020eaab4d8ebdc1b1d190b8e3f98e7c168985ba562928d6bfbbe94f0c32c783",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          6,
+          1033
+        ],
+        "sha256": "604abe403ef10ed6d43d2d6ca50857cce589558ee14b4f3d96f93801f901c71f",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          7,
+          1033
+        ],
+        "sha256": "635debc8412a3520a664515ea0cb8869782b5a9f75c983342bd3f845af7329ca",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          14,
+          1,
+          1033
+        ],
+        "sha256": "994589b9494d6b3c4d1fc270639bdc99a519890756a5ceaefd71fe65c5efc5e4",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          16,
+          1,
+          1033
+        ],
+        "kind": "VERSIONINFO",
+        "same_semantics": true,
+        "parsed_value": {
+          "key": "VS_VERSION_INFO",
+          "kind": 0,
+          "value_hex": "bd04effe000001001e000000000002001e000000000002003f000000000000000400040001000000000000000000000000000000",
+          "children": {
+            "StringFileInfo": {
+              "key": "StringFileInfo",
+              "kind": 1,
+              "value_hex": "",
+              "children": {
+                "000004b0": {
+                  "key": "000004b0",
+                  "kind": 1,
+                  "value_hex": "",
+                  "children": {
+                    "ProductName": {
+                      "key": "ProductName",
+                      "kind": 1,
+                      "value_hex": "66006c006900730074002d00770061006c006b00650072000000",
+                      "children": {}
+                    },
+                    "FileVersion": {
+                      "key": "FileVersion",
+                      "kind": 1,
+                      "value_hex": "30002e00330030002e0032000000",
+                      "children": {}
+                    },
+                    "FileDescription": {
+                      "key": "FileDescription",
+                      "kind": 1,
+                      "value_hex": "66006c006900730074002d00770061006c006b00650072000000",
+                      "children": {}
+                    },
+                    "ProductVersion": {
+                      "key": "ProductVersion",
+                      "kind": 1,
+                      "value_hex": "30002e00330030002e0032000000",
+                      "children": {}
+                    }
+                  }
+                }
+              }
+            },
+            "VarFileInfo": {
+              "key": "VarFileInfo",
+              "kind": 1,
+              "value_hex": "",
+              "children": {
+                "Translation": {
+                  "key": "Translation",
+                  "kind": 0,
+                  "value_hex": "0000b004",
+                  "children": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": [
+          24,
+          1,
+          1033
+        ],
+        "sha256": "15bcc7c2d06e85099c9c29b1189c6386ba63571ab333d081a51eaa22579b781e",
+        "byte_identical": true
+      }
+    ],
+    "reuse_boundary": "No source/toolchain/build-profile/feature/entrypoint/runtime contract change; build metadata ordering/timestamp differences do not invalidate original candidate native/TC193 results. New identity/resource checks independently executed."
+  },
+  "fw": {
+    "filename": "fw-0.30.2-windows-x86_64.exe",
+    "result": "PASS",
+    "candidate_sha256": "8b0c3be9325d21bd02efd6a9a98a122412ea44d15ead35ff986c34264d9e3237",
+    "tagged_sha256": "23eaabc9b4f6cd24d39681b6003959f273a203b65136bbdcabfca75c59ff4bfa",
+    "all_differences_limited_to": "COFF timestamp, PE checksum, VERSIONINFO StringFileInfo child ordering",
+    "resource_values_equal": true,
+    "all_other_resource_payloads_byte_identical": true,
+    "runtime_code_data_import_layout_bytes_identical": true,
+    "resources": [
+      {
+        "path": [
+          3,
+          1,
+          1033
+        ],
+        "sha256": "a3841274f249b27ccb19a2239a494c5f1bab3f4a5e0ab48627a460303fb5b2f1",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          2,
+          1033
+        ],
+        "sha256": "96ab661c7e9946ac3a3805cb347d8028e028c2e0507ac17ae4d2d9485c0a5bb7",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          3,
+          1033
+        ],
+        "sha256": "80b2d4562489ad0bc725e07d5d11961313f7d570cf34732ddf0769148f7dc4b3",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          4,
+          1033
+        ],
+        "sha256": "3831958cb310c7bb1e21f662c3c38e11521720584f43fa15c16079f4ccb14816",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          5,
+          1033
+        ],
+        "sha256": "6020eaab4d8ebdc1b1d190b8e3f98e7c168985ba562928d6bfbbe94f0c32c783",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          6,
+          1033
+        ],
+        "sha256": "604abe403ef10ed6d43d2d6ca50857cce589558ee14b4f3d96f93801f901c71f",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          3,
+          7,
+          1033
+        ],
+        "sha256": "635debc8412a3520a664515ea0cb8869782b5a9f75c983342bd3f845af7329ca",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          14,
+          1,
+          1033
+        ],
+        "sha256": "994589b9494d6b3c4d1fc270639bdc99a519890756a5ceaefd71fe65c5efc5e4",
+        "byte_identical": true
+      },
+      {
+        "path": [
+          16,
+          1,
+          1033
+        ],
+        "kind": "VERSIONINFO",
+        "same_semantics": true,
+        "parsed_value": {
+          "key": "VS_VERSION_INFO",
+          "kind": 0,
+          "value_hex": "bd04effe000001001e000000000002001e000000000002003f000000000000000400040001000000000000000000000000000000",
+          "children": {
+            "StringFileInfo": {
+              "key": "StringFileInfo",
+              "kind": 1,
+              "value_hex": "",
+              "children": {
+                "000004b0": {
+                  "key": "000004b0",
+                  "kind": 1,
+                  "value_hex": "",
+                  "children": {
+                    "ProductName": {
+                      "key": "ProductName",
+                      "kind": 1,
+                      "value_hex": "66006c006900730074002d00770061006c006b00650072000000",
+                      "children": {}
+                    },
+                    "FileVersion": {
+                      "key": "FileVersion",
+                      "kind": 1,
+                      "value_hex": "30002e00330030002e0032000000",
+                      "children": {}
+                    },
+                    "FileDescription": {
+                      "key": "FileDescription",
+                      "kind": 1,
+                      "value_hex": "66006c006900730074002d00770061006c006b00650072000000",
+                      "children": {}
+                    },
+                    "ProductVersion": {
+                      "key": "ProductVersion",
+                      "kind": 1,
+                      "value_hex": "30002e00330030002e0032000000",
+                      "children": {}
+                    }
+                  }
+                }
+              }
+            },
+            "VarFileInfo": {
+              "key": "VarFileInfo",
+              "kind": 1,
+              "value_hex": "",
+              "children": {
+                "Translation": {
+                  "key": "Translation",
+                  "kind": 0,
+                  "value_hex": "0000b004",
+                  "children": {}
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "path": [
+          24,
+          1,
+          1033
+        ],
+        "sha256": "15bcc7c2d06e85099c9c29b1189c6386ba63571ab333d081a51eaa22579b781e",
+        "byte_identical": true
+      }
+    ],
+    "reuse_boundary": "No source/toolchain/build-profile/feature/entrypoint/runtime contract change; build metadata ordering/timestamp differences do not invalidate original candidate native/TC193 results. New identity/resource checks independently executed."
+  }
+}

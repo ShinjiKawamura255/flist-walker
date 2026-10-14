@@ -1,0 +1,75 @@
+{
+  "universal": {
+    "filename": "FlistWalker-0.30.2-windows-x86_64.exe",
+    "sha256": "308e39539adf1af31d7d006ffa4d9d38d8110829dc271024d1a00fdab19d3969",
+    "architecture": "x86_64 PE32+",
+    "subsystem": 2,
+    "resource_types": [
+      3,
+      14,
+      16,
+      24
+    ],
+    "icon_and_group_icon_and_manifest": true,
+    "asInvoker": true,
+    "version_info_contains": "0.30.2",
+    "imports": [
+      "ADVAPI32.dll",
+      "GDI32.dll",
+      "KERNEL32.dll",
+      "OPENGL32.dll",
+      "USER32.dll",
+      "advapi32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "bcrypt.dll",
+      "bcryptprimitives.dll",
+      "combase.dll",
+      "dwmapi.dll",
+      "imm32.dll",
+      "kernel32.dll",
+      "msvcrt.dll",
+      "ntdll.dll",
+      "ole32.dll",
+      "psapi.dll",
+      "shell32.dll",
+      "shlwapi.dll",
+      "userenv.dll",
+      "uxtheme.dll",
+      "ws2_32.dll"
+    ],
+    "result": "PASS",
+    "candidate_binary_sha256": "94b765d5d8191a16ee95a460df92e2125b9713abe4cbb21a9e9031d30d26fc3e",
+    "candidate_equal_except_coff_timestamp": false
+  },
+  "fw": {
+    "filename": "fw-0.30.2-windows-x86_64.exe",
+    "sha256": "23eaabc9b4f6cd24d39681b6003959f273a203b65136bbdcabfca75c59ff4bfa",
+    "architecture": "x86_64 PE32+",
+    "subsystem": 3,
+    "resource_types": [
+      3,
+      14,
+      16,
+      24
+    ],
+    "icon_and_group_icon_and_manifest": true,
+    "asInvoker": true,
+    "version_info_contains": "0.30.2",
+    "imports": [
+      "ADVAPI32.dll",
+      "KERNEL32.dll",
+      "api-ms-win-core-synch-l1-2-0.dll",
+      "bcrypt.dll",
+      "bcryptprimitives.dll",
+      "kernel32.dll",
+      "msvcrt.dll",
+      "ntdll.dll",
+      "shell32.dll",
+      "user32.dll",
+      "ws2_32.dll"
+    ],
+    "result": "PASS",
+    "candidate_binary_sha256": "8b0c3be9325d21bd02efd6a9a98a122412ea44d15ead35ff986c34264d9e3237",
+    "candidate_equal_except_coff_timestamp": false
+  }
+}
