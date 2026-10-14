@@ -202,7 +202,7 @@
 - asset 選択は release asset 命名規則から current platform/arch と一致する standalone binary、対応する `*.README.txt` / `*.LICENSE.txt` / `*.THIRD_PARTY_NOTICES.txt`、`SHA256SUMS` / `SHA256SUMS.sig` を選択する。
 - update worker は check/download を担当し、GUI 側は dialog 表示と再起動要求だけを扱う。
 - TUI は専用の短命 update-check worker を起動し、candidate だけを channel で event loop へ渡す。event loop は candidate を永続的な英語 status notice に変換するだけで、download/apply を dispatch しない。check error と up-to-date は通常の TUI state を変更しない。
-- `--check-update` / `--update` は GUI/TUI dispatch より前の独立 CLI 分岐で処理する。引数正規化は、この2操作がある場合に限り alias 由来の `--cli` を除去し、それ以外の引数は clap の排他検証へ残す。`--update` の明示指定だけが `prepare_and_start_update` を headless restart mode で呼び、manual-only candidate は release URL を返して apply しない。
+- `--check-update` / `--update` は GUI/TUI dispatch より前の独立 CLI 分岐で処理する。引数正規化は、`--` および `--exec` / `-x` の command 引数より前にこの2操作がある場合に限り、alias 由来の `--cli` と有効な `--color`（値省略、空白区切り、`=` 区切り）を除去する。不正な色値とそれ以外の引数は clap の排他・値検証へ残し、query や外部 command tail を変更しない。`--update` の明示指定だけが `prepare_and_start_update` を headless restart mode で呼び、manual-only candidate は release URL を返して apply しない。
 - 起動時の update check 失敗は worker からエラー文字列つきで返し、GUI 側は通常操作を継続したまま軽量ダイアログで理由を表示する。利用者が「今後この種の起動時エラーを表示しない」を選んだ場合は UI state へ永続化し、次回以降の startup check failure dialog を抑止する。
 - 更新署名公開鍵はビルド時環境変数から埋め込み、未設定ビルドでは Windows/Linux でも update candidate を manual-only に落として自動更新不能を明示する。
 - restart 時は現在 executable path を置換対象とする。helperが起動する更新後processにはmode別の内部restart flagを渡し、公開CLI引数解析より先にterminal handoff recoveryを完了する。GUI modeはhelper終了とmarker/hash再検証後に内部flagを除いた既定引数で通常GUIを続行し、セッション復元を既存UI stateへ委譲する。Headless modeはdisplay serverへ接続せず回復後に終了する。更新後バイナリの起動失敗でrollbackした場合は、旧バイナリが新しい内部flagを解釈できない可能性があるため引数なしで再起動する。

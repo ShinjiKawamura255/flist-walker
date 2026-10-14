@@ -86,7 +86,7 @@
 ### Requirements
 - MUST: TUIの通常footerは狭幅でも`F1 Help`を先頭に表示し、操作一覧へ到達する手段を隠さない。
 - MUST: TUIの旧候補・検索結果・catalog snapshotの最終heavy payload解放はinput loop外で行う。bounded retirementの空きを待つのはproducerだけとし、UIに公開する前にworker側の保持guardを確立する。
-- MUST: `--check-update` と `--update` は `--cli` を必要としない独立した CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。Windows の公開入口は `fw --check-update` / `fw --update`、Linux/macOS は `fw` または universal とする。ただし共有 parser は `flistwalker --cli` を含む alias との互換性のため、この2操作と同時指定された `--cli` だけは意味を持たない互換フラグとして受理する。
+- MUST: `--check-update` と `--update` は `--cli` を必要としない独立した CLI 操作とし、query、検索、FileList、action、GUI/TUI 起動と組み合わせてはならない。Windows の公開入口は `fw --check-update` / `fw --update`、Linux/macOS は `fw` または universal とする。ただし共有 parser は `flistwalker --cli` を含む alias との互換性のため、この2操作と同時指定された `--cli` と有効な `--color[=auto|always|never]` は意味を持たない互換オプションとして受理する（順序は問わず、`--color` の値省略も許可）。不正な色値およびその他のオプション・明示 query との併用は引数エラーとする。`--` 以降の query や `--exec` / `-x` の command 引数に含まれる更新フラグは更新指示として扱わない。
 - MUST: `--check-update` は更新を適用せず、最新版、更新候補、更新確認無効、または失敗を英語で報告する。更新候補がある場合は実行 variant の command 名（Windows は `fw --update`）で手動実行を案内する。
 - MUST: `--update` は利用者による明示的な更新承認として扱う。Windows/Linux の自動更新対応 bundle だけを既存の検証・transaction 経路へ渡し、manual-only platform では release URL を英語で表示して非ゼロ終了する。CLI から開始した更新の適用確認は X11 / Wayland を要求しない内部ヘッドレス再起動で完了し、GUI を起動してはならない。
 - MUST: `--cli` 指定時は GUI を起動せず標準出力に結果を表示する。

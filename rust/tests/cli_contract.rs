@@ -435,6 +435,58 @@ fn tc_169_update_commands_are_headless_and_documented_in_english() {
 }
 
 #[test]
+fn tc_169_update_commands_accept_color_preferences_from_aliases() {
+    for update_flag in ["--check-update", "--update"] {
+        for color in [
+            vec!["--color"],
+            vec!["--color", "auto"],
+            vec!["--color", "always"],
+            vec!["--color", "never"],
+            vec!["--color=auto"],
+        ] {
+            for update_first in [false, true] {
+                for mut command in [
+                    cli_command("update-color-alias-universal"),
+                    fw_command_with_settings("update-color-alias-fw"),
+                ] {
+                    command.env("FLISTWALKER_DISABLE_SELF_UPDATE", "1");
+                    command.env_remove("DISPLAY").env_remove("WAYLAND_DISPLAY");
+                    if update_first {
+                        command.arg(update_flag);
+                    }
+                    command.args(&color);
+                    if !update_first {
+                        command.arg(update_flag);
+                    }
+                    let output = command
+                        .output()
+                        .expect("run update with alias color preferences");
+                    if update_flag == "--update" {
+                        assert_eq!(output.status.code(), Some(1));
+                        assert!(output.stdout.is_empty());
+                        assert_eq!(
+                            String::from_utf8_lossy(&output.stderr).trim(),
+                            "Automatic updates are disabled."
+                        );
+                    } else {
+                        assert!(
+                            output.status.success(),
+                            "{}",
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                        assert!(output.stderr.is_empty());
+                        assert_eq!(
+                            String::from_utf8_lossy(&output.stdout).trim(),
+                            "Update checks are disabled."
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn cli_outputs_at_most_limit_lines_for_empty_query() {
     let root = test_root("limit");
     fs::create_dir_all(&root).expect("create root");

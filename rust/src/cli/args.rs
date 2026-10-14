@@ -442,16 +442,61 @@ fn parse_args_from(arguments: Vec<OsString>, command_name: &'static str) -> Args
 
 fn normalize_update_args(arguments: impl IntoIterator<Item = OsString>) -> Vec<OsString> {
     let arguments = arguments.into_iter().collect::<Vec<_>>();
+    // QUERY after `--` and the external command tail belong to the caller.
+    let is_passthrough = |argument: &OsString| {
+        argument.to_str().is_some_and(|value| {
+            value == "--"
+                || value == "--exec"
+                || value.starts_with("--exec=")
+                || value.starts_with("-x")
+        })
+    };
     let is_update_command = arguments
         .iter()
+        .skip(1)
+        .take_while(|argument| !is_passthrough(argument))
         .any(|argument| argument == "--check-update" || argument == "--update");
     if !is_update_command {
         return arguments;
     }
-    arguments
-        .into_iter()
-        .filter(|argument| argument != "--cli")
-        .collect()
+    let mut arguments = arguments.into_iter();
+    let mut normalized = vec![arguments.next().expect("update command has a program name")];
+    let mut arguments = arguments.peekable();
+    while let Some(argument) = arguments.next() {
+        if is_passthrough(&argument) {
+            normalized.push(argument);
+            normalized.extend(arguments);
+            break;
+        }
+        if argument == "--cli" {
+            continue;
+        }
+        if argument == "--color" {
+            match arguments.peek() {
+                Some(value)
+                    if value
+                        .to_str()
+                        .is_some_and(|value| CliColorMode::from_str(value, false).is_ok()) =>
+                {
+                    arguments.next();
+                    continue;
+                }
+                None => continue,
+                Some(value) if value.to_str().is_some_and(|value| value.starts_with('-')) => {
+                    continue
+                }
+                _ => {} // Leave invalid values for clap to reject.
+            }
+        } else if argument
+            .to_str()
+            .and_then(|value| value.strip_prefix("--color="))
+            .is_some_and(|value| CliColorMode::from_str(value, false).is_ok())
+        {
+            continue;
+        }
+        normalized.push(argument);
+    }
+    normalized
 }
 
 pub(super) fn parse_exec_template(
@@ -616,6 +661,127 @@ mod tests {
             [OsString::from("flistwalker"), OsString::from("--update")]
         );
         Args::try_parse_from(normalized).expect("parse update command after alias normalization");
+    }
+
+    #[test]
+    fn tc_169_color_alias_is_inert_for_update_commands() {
+        for command in ["--update", "--check-update"] {
+            for color in [
+                vec!["--color"],
+                vec!["--color", "auto"],
+                vec!["--color", "always"],
+                vec!["--color", "never"],
+                vec!["--color=auto"],
+            ] {
+                for update_first in [false, true] {
+                    let mut arguments = vec!["flistwalker", "--cli"];
+                    if update_first {
+                        arguments.push(command);
+                    }
+                    arguments.extend(&color);
+                    if !update_first {
+                        arguments.push(command);
+                    }
+                    let args = Args::try_parse_from(normalize_update_args(
+                        arguments.into_iter().map(OsString::from),
+                    ))
+                    .expect("parse update with alias color preferences");
+                    assert!(args.requests_update_command());
+                    assert_eq!(args.update_requested(), command == "--update");
+                    assert!(!args.cli);
+                    assert!(args.color.is_none());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tc_169_update_normalization_preserves_errors_and_argument_boundaries() {
+        for arguments in [
+            vec!["flistwalker", "--cli", "--color", "invalid", "--update"],
+            vec!["flistwalker", "--cli", "--color=invalid", "--update"],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--update",
+                "query",
+            ],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--update",
+                "--root",
+                ".",
+            ],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--update",
+                "--interactive",
+            ],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--update",
+                "--exec",
+                "echo",
+                "{}",
+            ],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--update",
+                "--check-update",
+            ],
+        ] {
+            Args::try_parse_from(normalize_update_args(
+                arguments.into_iter().map(OsString::from),
+            ))
+            .expect_err("update compatibility must not hide invalid arguments or conflicts");
+        }
+        for arguments in [
+            vec!["flistwalker", "--cli", "--color", "auto", "query"],
+            vec!["flistwalker", "--cli", "--color", "auto", "--", "--update"],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "--exec",
+                "echo",
+                "--update",
+                "{}",
+            ],
+            vec![
+                "flistwalker",
+                "--cli",
+                "--color",
+                "auto",
+                "-x",
+                "echo",
+                "--check-update",
+                "{}",
+            ],
+        ] {
+            let original: Vec<OsString> = arguments.into_iter().map(OsString::from).collect();
+            let normalized = normalize_update_args(original.clone());
+            assert_eq!(normalized, original);
+            let args =
+                Args::try_parse_from(normalized).expect("parse ordinary search or command tail");
+            assert!(!args.requests_update_command());
+            assert!(args.cli);
+            assert_eq!(args.color, Some(CliColorMode::Auto));
+        }
     }
 
     #[test]
