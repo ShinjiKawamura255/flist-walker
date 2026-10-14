@@ -22,6 +22,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| [v0.30.2 preparation](evidence/v0.30.2/PREPARATION.md) | Whole-release classification, verified predecessor capability and proposed notes; not yet published |
 | `evidence/v0.30.1/` | Whole48-commit classification, predecessor/native reuse, latest Action diagnosis, per-run artifact/warning decisions and publication readback |
 | `evidence/v0.30.0/` | Preparation and whole-release classification, native repair/reuse, published body, actual public downloads and closure validation |
 | `evidence/v0.29.0/` | Published release body, exact validation readback, and review/deviation notes |
