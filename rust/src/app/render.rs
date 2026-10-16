@@ -179,7 +179,9 @@ impl FlistWalkerApp {
     ) -> [egui::Rect; 3] {
         let button_size = egui::vec2(Self::MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH, button_height);
         let top = row_rect.top().round();
-        let left = row_rect.left().round();
+        let left =
+            (row_rect.right() - 3.0 * Self::MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH - 2.0 * spacing_x)
+                .round();
         let step = (Self::MANAGE_ROOT_LIST_ACTION_BUTTON_WIDTH + spacing_x).round();
         [
             egui::Rect::from_min_size(egui::pos2(left, top), button_size),

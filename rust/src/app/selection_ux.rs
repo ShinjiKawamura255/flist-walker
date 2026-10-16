@@ -175,7 +175,7 @@ impl FlistWalkerApp {
                 }
                 ui.label(format!("{} shown · up to {PAGE_SIZE} per page", page.len()));
             });
-            let close_button = ui.button("Close");
+            let close_button = super::render_dialogs::right_actions(ui, |ui| ui.button("Close"));
             if close_button.clicked() {
                 close = true;
             }

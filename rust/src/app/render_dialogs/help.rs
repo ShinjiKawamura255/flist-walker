@@ -147,10 +147,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 }
             });
         ui.add_space(8.0);
-        if ui.button("Close").clicked() {
-            app.queue_render_command(crate::app::render::RenderCommand::HelpDialog(
-                RenderHelpDialogCommand::Close,
-            ));
-        }
+        super::right_actions(ui, |ui| {
+            if ui.button("Close").clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::HelpDialog(
+                    RenderHelpDialogCommand::Close,
+                ));
+            }
+        });
     });
 }
