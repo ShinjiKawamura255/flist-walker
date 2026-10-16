@@ -360,12 +360,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         }
                     });
                     ui.separator();
-                    ui.horizontal(|ui| {
-                        if ui.button("Apply").clicked() {
-                            apply_depth = true;
-                        }
+                    crate::app::render_dialogs::right_actions(ui, |ui| {
                         if ui.button("Cancel").clicked() {
                             cancel_depth = true;
+                        }
+                        if ui.button("Apply").clicked() {
+                            apply_depth = true;
                         }
                     });
                 });

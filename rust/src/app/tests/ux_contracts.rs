@@ -443,3 +443,28 @@ fn ux_contract_pinned_clear_highlight_does_not_reflow_results_on_hover() {
         );
     }
 }
+
+#[test]
+fn ux_contract_editor_commit_buttons_follow_windows_order() {
+    for named_root in [false, true] {
+        let scope = test_settings_scope("editor-button-order");
+        let mut app = scope.app(test_root("editor-button-order-root"), 30, String::new());
+        app.shell.features.presets.picker.open = true;
+        if named_root {
+            app.open_named_root_manager();
+            app.start_add_named_root();
+        } else {
+            app.start_add_preset();
+        }
+        let mut gui = Gui::default();
+        gui.idle(&mut app);
+        let output = gui.idle(&mut app);
+        let save = text_rect(&output, |text| text == "Save");
+        let cancel = text_rect(&output, |text| text == "Cancel");
+        assert!(
+            save.right() < cancel.left(),
+            "Save precedes Cancel; named_root={named_root}"
+        );
+        assert!((save.center().y - cancel.center().y).abs() < 1.0);
+    }
+}

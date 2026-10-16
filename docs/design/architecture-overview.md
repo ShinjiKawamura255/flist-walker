@@ -44,6 +44,7 @@
 - 実装: `rust/src/main.rs`, `rust/src/cli.rs`, `rust/src/cli/args.rs`, `rust/src/cli/batch.rs`, `rust/src/cli_tui.rs`, `rust/src/cli_tui/`, `rust/src/gui_launch.rs`, `rust/src/launch_path.rs`, `rust/src/command_exec.rs`, `rust/src/actions.rs`, `rust/src/indexer/mod.rs`, `rust/src/indexer/walker.rs`, `rust/src/walker_runtime/`
 
 - DES-009 GUI Adapter (egui/eframe)
+- ダイアログの最下段は `render_dialogs::right_actions` で一行の高さに制限して右寄せし、確定→取消の表示順に揃える。保存 root 管理の固定幅確定行も右端を基準に配置する。項目内編集やページ移動の補助操作は内容側に残す。
 - 履歴/preset/Named Root一覧はegui scope内の選択identity変化だけで最小scrollを要求する。tab barは右端固定の設定ボタンと横ScrollAreaを分離し、追加ボタンはScrollArea内の末尾タブ直後に置く。active identityの変更だけで追従し、末尾タブの場合は追加ボタンを含む矩形を可視化する。
 - 新規タブの継承結果はindex/search完了イベントを生じないため、`create_new_tab`が既存の表示結果kind queueとpreview requestを起動する。default walkへの再indexが必要な場合はその世代の確立後に行い、既存のbounded worker・tab ID/epoch/request IDによる応答制御を使う。
 - 終了キー: `gui_launch.rs` は app creator で egui の `quit_shortcuts` を空にする。macOS は winit の標準メニュー生成後に `gui_launch/macos_menu.rs` が `terminate:` action の key equivalent だけを解除し、メニュー項目と他のキー割り当てを保持する。native close と updater の Close request は既存経路へ渡す。

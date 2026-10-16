@@ -710,6 +710,32 @@ fn regression_narrow_settings_title_and_footer_stay_inside_client_area() {
                     "Open settings JSON",
                 ]
             };
+            if state < 3 {
+                let rect = |label| {
+                    output
+                        .shapes
+                        .iter()
+                        .find_map(|shape| text_rect(&shape.shape, label))
+                        .unwrap()
+                };
+                let save = rect("Save");
+                let cancel = rect("Cancel");
+                let reset = rect("Reset displayed settings to defaults");
+                assert!(save.right() < cancel.left(), "Save precedes Cancel");
+                assert!((save.center().y - cancel.center().y).abs() < 1.0);
+                assert!(
+                    reset.right() + 24.0 < save.left(),
+                    "separate draft actions from commit actions"
+                );
+                assert!(
+                    rect("Open settings JSON").bottom() < save.top(),
+                    "JSON actions precede footer"
+                );
+                assert!(
+                    cancel.right() > rect("Settings").left() + 400.0,
+                    "commit actions are right aligned"
+                );
+            }
             for label in labels {
                 let rect = output
                     .shapes

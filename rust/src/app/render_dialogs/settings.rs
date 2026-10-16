@@ -17,7 +17,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     if !app.settings_dialog.is_open() {
         return;
     }
-    let can_open_json = !app.shell.worker_bus.config_open.in_progress();
+    let can_open_json =
+        !app.settings_dialog.is_busy() && !app.shell.worker_bus.config_open.in_progress();
     let emacs_enabled = app.shell.runtime.emacs_keybindings_enabled;
     let ime_composition_active = app.shell.ui.ime_composition_active;
     let mut action = None;
@@ -36,20 +37,28 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             SettingsView::Loading => {
                 ui.spinner();
                 ui.label("Loading settings...");
-                if ui.button("Cancel").clicked() {
-                    action = Some(Action::Close);
-                }
+                super::right_actions(ui, |ui| {
+                    if ui.button("Cancel").clicked() {
+                        action = Some(Action::Close);
+                    }
+                });
             }
             SettingsView::Reloading { .. } => {
                 ui.spinner();
                 ui.label("Reloading settings...");
-                if ui.button("Close settings and discard draft").clicked() {
-                    action = Some(Action::Close);
-                }
+                super::right_actions(ui, |ui| {
+                    if ui.button("Close settings and discard draft").clicked() {
+                        action = Some(Action::Close);
+                    }
+                });
             }
             SettingsView::Saving { .. } => {
                 ui.spinner();
                 ui.label("Saving settings...");
+                super::right_actions(ui, |ui| {
+                    ui.add_enabled(false, egui::Button::new("Cancel"));
+                    ui.add_enabled(false, egui::Button::new("Save"));
+                });
             }
             SettingsView::Failed(error) => {
                 egui::ScrollArea::vertical().max_height(body_height).show(ui, |ui| {
@@ -120,23 +129,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     }
                 });
                 ui.add_space(8.0);
-                ui.horizontal(|ui| {
-                    if ui.button("Save").clicked() {
-                        action = Some(Action::Save);
-                    }
-                    if ui.button("Cancel").clicked() {
-                        action = Some(Action::Close);
-                    }
-                    if ui.button("Reset displayed settings to defaults").clicked() {
-                        *draft = EditableSettings::default();
-                        *limit_text = draft.walker_max_entries.to_string();
-                        *error = None;
-                        *confirm_reload = false;
-                    }
-                });
                 let dirty = draft != &baseline.values
                     || limit_text.trim() != baseline.values.walker_max_entries.to_string();
                 ui.horizontal_wrapped(|ui| {
+                    if ui.add_enabled(can_open_json, egui::Button::new("Open settings JSON")).clicked() {
+                        action = Some(Action::OpenJson);
+                    }
                     let label = if dirty && *confirm_reload {
                         "Discard changes and reload JSON"
                     } else {
@@ -145,13 +143,30 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     if ui.button(label).clicked() {
                         action = Some(Action::Reload);
                     }
-                    if dirty && *confirm_reload {
-                        ui.label("This discards unsaved settings in this dialog.");
+                });
+                if dirty && *confirm_reload {
+                    ui.label("This discards unsaved settings in this dialog.");
+                }
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button("Reset displayed settings to defaults").clicked() {
+                        *draft = EditableSettings::default();
+                        *limit_text = draft.walker_max_entries.to_string();
+                        *error = None;
+                        *confirm_reload = false;
                     }
+                    super::right_actions(ui, |ui| {
+                        if ui.button("Cancel").clicked() {
+                            action = Some(Action::Close);
+                        }
+                        if ui.button(egui::RichText::new("Save").strong()).clicked() {
+                            action = Some(Action::Save);
+                        }
+                    });
                 });
             }
         }
-        if !app.settings_dialog.is_busy() {
+        if matches!(app.settings_dialog.view, SettingsView::Failed(_)) {
             ui.add_space(8.0);
             if ui
                 .add_enabled(can_open_json, egui::Button::new("Open settings JSON"))
@@ -159,11 +174,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             {
                 action = Some(Action::OpenJson);
             }
-            if matches!(app.settings_dialog.view, SettingsView::Failed(_))
-                && ui.button("Close").clicked()
-            {
-                action = Some(Action::Close);
-            }
+            ui.separator();
+            super::right_actions(ui, |ui| {
+                if ui.button("Close").clicked() {
+                    action = Some(Action::Close);
+                }
+            });
         }
     });
     match action {

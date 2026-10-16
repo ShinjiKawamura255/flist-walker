@@ -80,7 +80,7 @@ pub(in crate::app) fn sort_label(value: PresetSortMode) -> &'static str {
 fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.heading("Presets");
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        super::right_actions(ui, |ui| {
             if ui
                 .add_enabled(
                     !app.shell.worker_bus.catalog.in_progress,
@@ -213,7 +213,7 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.add_space(6.0);
     ui.label(PRESET_PICKER_FOOTER_HINT);
     ui.add_space(4.0);
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+    super::right_actions(ui, |ui| {
         if ui.button("Close").clicked() {
             app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                 RenderPresetPickerCommand::Close,
@@ -464,15 +464,15 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         } else {
             format!("{primary}+Enter to save · Esc to discard draft")
         });
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::SaveEdit,
-                ));
-            }
+        super::right_actions(ui, |ui| {
             if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelEdit,
+                ));
+            }
+            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::SaveEdit,
                 ));
             }
         });
@@ -538,18 +538,18 @@ fn render_preset_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui::Ui
         } else {
             "Esc to cancel"
         });
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        super::right_actions(ui, |ui| {
+            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::CancelDelete,
+                ));
+            }
             if ui
                 .add_enabled(!busy, egui::Button::new("Delete preset"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::ConfirmDelete,
-                ));
-            }
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::CancelDelete,
                 ));
             }
         });
@@ -648,15 +648,15 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         } else {
             format!("{primary}+Enter to save · Esc to cancel")
         });
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::SaveNamedRoot,
-                ));
-            }
+        super::right_actions(ui, |ui| {
             if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelNamedRootEdit,
+                ));
+            }
+            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::SaveNamedRoot,
                 ));
             }
         });
@@ -715,18 +715,18 @@ fn render_named_root_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui
         } else {
             "This removes only the named root entry."
         });
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        super::right_actions(ui, |ui| {
+            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
+                    RenderPresetPickerCommand::CancelDeleteNamedRoot,
+                ));
+            }
             if ui
                 .add_enabled(!busy, egui::Button::new("Delete root"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::ConfirmDeleteNamedRoot,
-                ));
-            }
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
-                app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
-                    RenderPresetPickerCommand::CancelDeleteNamedRoot,
                 ));
             }
         });
@@ -817,7 +817,7 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     let has_selection = manager.selected_index.is_some();
     ui.horizontal(|ui| {
         ui.label("Up/Down to select · F2 to edit · Delete to remove · Esc to go back");
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        super::right_actions(ui, |ui| {
             if ui.add_enabled(!busy, egui::Button::new("Back")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CloseNamedRoots,

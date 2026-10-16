@@ -43,3 +43,18 @@ pub(super) fn render_preset_picker_dialog(app: &mut FlistWalkerApp, ctx: &egui::
 pub(super) fn render_manage_root_list_dialog(app: &mut FlistWalkerApp, ctx: &egui::Context) {
     root_list::render(app, ctx);
 }
+
+/// Footer actions are anchored to the right. Add the dismiss button first, then
+/// affirmative actions, so their visible order is affirmative → dismiss.
+pub(in crate::app) fn right_actions<R>(
+    ui: &mut egui::Ui,
+    actions: impl FnOnce(&mut egui::Ui) -> R,
+) -> R {
+    // Bound the row height before centering its controls. A bare RTL layout
+    // would center them in all remaining space of a resizable Window.
+    ui.horizontal(|ui| {
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), actions)
+            .inner
+    })
+    .inner
+}

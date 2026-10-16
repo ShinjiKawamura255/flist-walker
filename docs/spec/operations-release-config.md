@@ -238,6 +238,8 @@
 - partial install は自動 rollback せず、導入済み package ID/package 名を表示して再実行可能な状態を保つ。
 ## SP-024 GUI settings editor
 
+- 設定画面の最下段は左に表示項目の既定値リセット、右に Save → Cancel を置く。Open settings JSON と Reload JSON は一段上にまとめ、未保存草稿の破棄確認はその近くへ表示する。保存中は確定・取消を無効化する。
+
 - 設定モーダルが読み込む raw JSON と保存前に生成する JSON は各64 KiB以下とする。64 KiBを超える入力または保存結果は理由を表示して拒否し、既存bytesを変更しない。失敗画面からも従来の JSON open を使えるようにする。この制限は起動時の runtime config 読込には適用しない。
 - GUI の歯車は設定モーダルを開く。起動・履歴、キー操作、検索の群に、`restore_tabs_enabled`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`walker_max_entries`、`filelist_auto_check_enabled` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
 - 7項目はすべて次回起動から反映する。保存成功時はモーダルを閉じ、次回起動から反映する旨をフッターの省略表示より前に見える位置へ通知する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。

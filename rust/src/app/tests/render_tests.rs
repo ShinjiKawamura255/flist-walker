@@ -609,6 +609,10 @@ fn manage_root_list_action_button_rects_share_same_axis() {
         assert_eq!(rect.bottom(), 490.0);
         assert_eq!(rect.height(), 22.0);
     }
+    assert!(
+        (rects[2].right() - row.right()).abs() <= 1.0,
+        "Cancel anchors to the right edge"
+    );
     assert_eq!(rects[1].left() - rects[0].left(), 80.0);
     assert_eq!(rects[2].left() - rects[1].left(), 80.0);
 }
@@ -2276,4 +2280,21 @@ fn regression_long_root_text_does_not_cover_controls_at_minimum_width() {
         );
     }
     fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn dialog_footer_does_not_consume_unused_window_height() {
+    let ctx = egui::Context::default();
+    for _ in 0..3 {
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+            egui::Window::new("Footer sizing")
+                .default_size(egui::vec2(400.0, 300.0))
+                .show(ui.ctx(), |ui| {
+                    let body = ui.label("Confirmation message").rect;
+                    let button = render_dialogs::right_actions(ui, |ui| ui.button("Close")).rect;
+                    assert!(button.top() - body.bottom() < 12.0,
+                        "footer must follow content without stretching vertically: {body:?} {button:?}");
+                });
+        });
+    }
 }

@@ -68,17 +68,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     "{} already exists. Overwrite it?",
                     normalize_path_for_display(&existing_path)
                 ));
-                ui.horizontal(|ui| {
-                    if app
-                        .dialog_button(
-                            ui,
-                            "Overwrite",
-                            app.shell.features.filelist.workflow.active_dialog_button == 0,
-                        )
-                        .clicked()
-                    {
-                        overwrite = true;
-                    }
+                super::right_actions(ui, |ui| {
                     if app
                         .dialog_button(
                             ui,
@@ -88,6 +78,16 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         .clicked()
                     {
                         cancel_overwrite = true;
+                    }
+                    if app
+                        .dialog_button(
+                            ui,
+                            "Overwrite",
+                            app.shell.features.filelist.workflow.active_dialog_button == 0,
+                        )
+                        .clicked()
+                    {
+                        overwrite = true;
                     }
                 });
             });
@@ -117,16 +117,16 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 let [line1, line2] = FlistWalkerApp::filelist_ancestor_dialog_lines();
                 ui.label(line1);
                 ui.label(line2);
-                ui.horizontal(|ui| {
+                super::right_actions(ui, |ui| {
                     if app
                         .dialog_button(
                             ui,
-                            "Continue",
-                            app.shell.features.filelist.workflow.active_dialog_button == 0,
+                            "Cancel",
+                            app.shell.features.filelist.workflow.active_dialog_button == 2,
                         )
                         .clicked()
                     {
-                        confirm_ancestor = true;
+                        cancel_ancestor = true;
                     }
                     if app
                         .dialog_button(
@@ -141,12 +141,12 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     if app
                         .dialog_button(
                             ui,
-                            "Cancel",
-                            app.shell.features.filelist.workflow.active_dialog_button == 2,
+                            "Continue",
+                            app.shell.features.filelist.workflow.active_dialog_button == 0,
                         )
                         .clicked()
                     {
-                        cancel_ancestor = true;
+                        confirm_ancestor = true;
                     }
                 });
             });
@@ -175,17 +175,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             .show(ctx, |ui| {
                 ui.label(line1);
                 ui.label(line2);
-                ui.horizontal(|ui| {
-                    if app
-                        .dialog_button(
-                            ui,
-                            "Continue",
-                            app.shell.features.filelist.workflow.active_dialog_button == 0,
-                        )
-                        .clicked()
-                    {
-                        confirm_walker = true;
-                    }
+                super::right_actions(ui, |ui| {
                     if app
                         .dialog_button(
                             ui,
@@ -195,6 +185,16 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         .clicked()
                     {
                         cancel_walker = true;
+                    }
+                    if app
+                        .dialog_button(
+                            ui,
+                            "Continue",
+                            app.shell.features.filelist.workflow.active_dialog_button == 0,
+                        )
+                        .clicked()
+                    {
+                        confirm_walker = true;
                     }
                 });
             });
