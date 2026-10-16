@@ -235,12 +235,26 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
             .expect("fill reclaimer");
     }
 
-    // Observe driver ingress separately from the production tenure/retry clock.
-    // This test-only origin is not a runtime latency collector.
-    let origin_clock = Instant::now();
-    let initial_origin = (1, target_tab_id, 0);
-    let mut intent = super::activation_contract::ActivationIntent::new(1, target_tab_id, 0);
+    // Opt-in real ingress hook: this controlled fixture checks origin continuity,
+    // not timed GUI performance. Empty oracle deliberately captures no model.
+    app.activation_observer = Some(crate::app::activation_observer::Probe::new(
+        Instant::now(),
+        root.clone(),
+        Default::default(),
+    ));
     app.switch_to_tab_index(target_index);
+    let original = app
+        .activation_observer
+        .as_ref()
+        .unwrap()
+        .intents
+        .last()
+        .unwrap();
+    let initial_origin = (original.id, original.target, original.t0_ns);
+    let metadata_done = serde_json::to_value(original).unwrap()["ingress_metadata_done_ns"]
+        .as_u64()
+        .expect("switch t0 needs metadata completion witness");
+    assert!(original.t0_ns.is_some_and(|t0| t0 <= metadata_done));
 
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
     assert_eq!(
@@ -260,9 +274,23 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
     assert!(mailbox.has_terminal_response());
     assert!(index_rx.try_recv().is_err());
 
-    assert!(intent.retry(target_tab_id, origin_clock.elapsed().as_nanos() as u64));
     app.poll_index_response();
-    assert_eq!(intent.origin(), Some(initial_origin));
+    let observed = app
+        .activation_observer
+        .as_ref()
+        .unwrap()
+        .intents
+        .last()
+        .unwrap();
+    assert_eq!(
+        (observed.id, observed.target, observed.t0_ns),
+        initial_origin
+    );
+    assert_eq!(
+        serde_json::to_value(observed).unwrap()["ingress_metadata_done_ns"].as_u64(),
+        Some(metadata_done),
+        "retry must retain the first metadata witness too"
+    );
     assert_eq!(app.current_tab_id(), Some(active_tab_id));
     assert_eq!(
         app.shell.tabs.pending_activation_tab_id,
@@ -281,11 +309,31 @@ fn tc_207_superseded_warm_reactivation_rolls_back_until_reclaimer_capacity() {
             app.shell.tabs.pending_activation_tab_id,
             Some(target_tab_id)
         );
-        assert!(intent.retry(target_tab_id, origin_clock.elapsed().as_nanos() as u64));
         app.poll_index_response();
         thread::yield_now();
     }
-    assert_eq!(intent.origin(), Some(initial_origin));
+    let observed = app
+        .activation_observer
+        .as_ref()
+        .unwrap()
+        .intents
+        .last()
+        .unwrap();
+    assert_eq!(
+        (observed.id, observed.target, observed.t0_ns),
+        initial_origin
+    );
+    assert_eq!(
+        serde_json::to_value(observed).unwrap()["ingress_metadata_done_ns"].as_u64(),
+        Some(metadata_done),
+        "retry must retain the first metadata witness too"
+    );
+    assert!(
+        observed.attempts >= 2,
+        "production retries actually reached ingress hook"
+    );
+    assert!(observed.first_retry_ns >= observed.t0_ns);
+    assert!(observed.first_retry_ns.is_some());
     let replacement = index_rx.try_recv().expect("one fresh generation");
     assert_eq!(replacement.tab_id, target_tab_id);
     assert_ne!(replacement.request_id, request_id);

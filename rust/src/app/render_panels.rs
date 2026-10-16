@@ -758,6 +758,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
             render_result_row(app, ui, rect, &path, is_current, prefer_relative);
             #[cfg(test)]
+            app.observe_activation_drawn_row(i, &path);
+            #[cfg(test)]
             let test_interaction = record_rendered_result_row(i, rect);
             #[cfg(test)]
             let test_clicked =

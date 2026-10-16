@@ -1292,6 +1292,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index_at(&mut self, next_index: usize, now: Instant) {
+        // Test-only real receipt clock precedes all observer target/state preparation.
+        // Do not substitute `now`: callers can inject it for lifecycle policy tests.
+        #[cfg(test)]
+        let activation_entered = self.activation_observer.as_ref().map(|_| Instant::now());
+        #[cfg(test)]
+        if let Some(entered) = activation_entered {
+            self.observe_activation_ingress(next_index, entered);
+        }
         if next_index >= self.shell.tabs.len() {
             return;
         }
@@ -1362,6 +1370,8 @@ impl FlistWalkerApp {
         }
         self.activate_background_tab_after_transition(results_compacted, preview_reload_pending);
         self.enforce_tab_resource_budget();
+        #[cfg(test)]
+        self.observe_activation_model();
     }
 
     pub(super) fn set_tab_accent(&mut self, index: usize, accent: Option<TabAccentColor>) {
@@ -1377,6 +1387,10 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn create_new_tab(&mut self) {
+        #[cfg(test)]
+        if let Some(probe) = self.activation_observer.as_mut() {
+            probe.cancel_pending(self.shell.tabs.pending_activation_tab_id);
+        }
         self.shell.tabs.pending_activation_tab_id = None;
         let active_tab_id = self.current_tab_id();
         if !self
@@ -1475,6 +1489,10 @@ impl FlistWalkerApp {
         let closing_active = index == self.shell.tabs.active_tab_index();
         let closing_tab_id = self.shell.tabs.get(index).map(|tab| tab.id);
         if closing_active || self.shell.tabs.pending_activation_tab_id == closing_tab_id {
+            #[cfg(test)]
+            if let Some(probe) = self.activation_observer.as_mut() {
+                probe.cancel_pending(self.shell.tabs.pending_activation_tab_id);
+            }
             self.shell.tabs.pending_activation_tab_id = None;
         }
         let pending_root = if closing_active {

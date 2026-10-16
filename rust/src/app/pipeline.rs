@@ -642,7 +642,34 @@ impl FlistWalkerApp {
             } else {
                 None
             };
-            match self.shell.indexing.tx.try_send(req) {
+            #[cfg(test)]
+            let activation_send = if self.shell.indexing.activation_observe_requests {
+                self.shell
+                    .indexing
+                    .perf_allocations
+                    .iter()
+                    .find(|a| a.id == req_id)
+                    .map(|a| (Arc::clone(&a.observation), Instant::now()))
+            } else {
+                None
+            };
+            let send_result = self.shell.indexing.tx.try_send(req);
+            #[cfg(test)]
+            if let Some((handle, begin)) = activation_send {
+                let returned = Instant::now();
+                let outcome = match &send_result {
+                    Ok(()) => "accepted",
+                    Err(std::sync::mpsc::TrySendError::Full(_)) => "full",
+                    Err(std::sync::mpsc::TrySendError::Disconnected(_)) => "disconnected",
+                };
+                let mut o = handle.lock().expect("index observation");
+                assert!(
+                    o.activation_send_windows.len() < 64,
+                    "activation send observer overflow"
+                );
+                o.activation_send_windows.push((begin, returned, outcome));
+            }
+            match send_result {
                 Ok(()) => {
                     #[cfg(test)]
                     if let Some(allocation) = self

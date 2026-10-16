@@ -109,6 +109,8 @@ pub(super) fn apply_results_with_selection_policy(
         }
     }
     app.refresh_status_line();
+    #[cfg(test)]
+    app.observe_activation_model();
 }
 
 pub(super) fn clear_unrestored_evicted_selection(app: &mut FlistWalkerApp) {

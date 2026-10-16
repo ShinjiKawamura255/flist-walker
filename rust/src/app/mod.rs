@@ -14,6 +14,8 @@ use eframe::egui;
 use std::path::PathBuf;
 use std::sync::mpsc::{Receiver, Sender};
 
+#[cfg(test)]
+mod activation_observer;
 mod active_filter;
 mod bootstrap;
 mod cache;
@@ -205,6 +207,8 @@ pub struct FlistWalkerApp {
     deferred_more_intent: Option<(u64, PathBuf)>,
     #[cfg(test)]
     test_settings_paths: Option<TestSettingsPaths>,
+    #[cfg(test)]
+    activation_observer: Option<activation_observer::Probe>,
 }
 
 #[cfg(test)]

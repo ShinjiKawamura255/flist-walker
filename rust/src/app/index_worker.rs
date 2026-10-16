@@ -947,6 +947,17 @@ fn spawn_index_worker_with(
                 if _processing_return.0.is_none() && mailbox.perf_enabled() {
                     _processing_return.0 = Some(mailbox.perf_handle());
                 }
+                #[cfg(test)]
+                let activation_enabled = mailbox.activation_enabled();
+                #[cfg(test)]
+                if activation_enabled {
+                    if let Some(handle) = &_processing_return.0 {
+                        handle
+                            .lock()
+                            .expect("index observation")
+                            .activation_dequeued = Some(std::time::Instant::now());
+                    }
+                }
                 let tx_res_worker = MailboxResponseSink {
                     request_id: req.request_id,
                     root: req.root.clone(),
@@ -1052,6 +1063,15 @@ fn spawn_index_worker_with(
                     continue;
                 }
 
+                #[cfg(test)]
+                if activation_enabled {
+                    if let Some(handle) = &_processing_return.0 {
+                        handle
+                            .lock()
+                            .expect("index observation")
+                            .activation_worker_started = Some(std::time::Instant::now());
+                    }
+                }
                 let root = resolve_root_worker(&req.root);
                 let tx_res_worker =
                     root_projection::RootProjectionSink::new(&tx_res_worker, &root, &req.root);

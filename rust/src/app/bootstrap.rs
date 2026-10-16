@@ -169,6 +169,26 @@ impl FlistWalkerApp {
         follow_links: bool,
     ) -> Self {
         let launch = Self::load_launch_settings();
+        Self::build_from_launch_with_settings(
+            root,
+            limit,
+            query,
+            root_explicit,
+            max_depth,
+            follow_links,
+            launch,
+        )
+    }
+
+    fn build_from_launch_with_settings(
+        root: PathBuf,
+        limit: usize,
+        query: String,
+        root_explicit: bool,
+        max_depth: crate::indexer::MaxDepth,
+        follow_links: bool,
+        launch: LaunchSettings,
+    ) -> Self {
         let restore_tabs_enabled = Self::restore_tabs_enabled();
         let saved_last_root = launch.last_root.clone().map(normalize_windows_path_buf);
         let saved_default = launch.default_root.clone().map(normalize_windows_path_buf);
@@ -203,6 +223,42 @@ impl FlistWalkerApp {
         );
         app.request_startup_update_check();
         app
+    }
+
+    /// Owned B0 entrypoint: disk config/session loading is inside the caller's clock.
+    /// No font/window, CLI parse, executable loader, config seeding/migration or native display.
+    #[cfg(test)]
+    pub(super) fn build_activation_probe(
+        root: PathBuf,
+        settings_base: &Path,
+        probe: Option<super::activation_observer::Probe>,
+    ) -> Self {
+        let config_path = crate::runtime_config::runtime_config_file_path_in(settings_base);
+        let config = crate::runtime_config::load_runtime_config_from_path(&config_path)
+            .expect("owned pre-existing runtime configuration");
+        // This ignored leaf runs alone in its owned fresh process, before app workers.
+        // Match main's existing-config load path, including its environment projection.
+        assert!(
+            std::env::args().any(|a| a == "--exact"),
+            "B0 is an owned exact leaf only"
+        );
+        config.apply_to_process_env();
+        let mut launch =
+            Self::load_launch_settings_from_path(&Self::ui_state_file_path_in(settings_base));
+        launch.test_settings_paths = Some(super::TestSettingsPaths {
+            ui_state: Self::ui_state_file_path_in(settings_base),
+            saved_roots: Self::saved_roots_file_path_in(settings_base),
+        });
+        launch.activation_observer = probe;
+        Self::build_from_launch_with_settings(
+            root,
+            128,
+            String::new(),
+            false,
+            crate::indexer::MaxDepth::unlimited(),
+            false,
+            launch,
+        )
     }
 
     pub(super) fn restore_session_allowed(
@@ -494,7 +550,14 @@ impl FlistWalkerApp {
             },
             #[cfg(test)]
             test_settings_paths: launch.test_settings_paths.clone(),
+            #[cfg(test)]
+            activation_observer: launch.activation_observer,
         };
+        #[cfg(test)]
+        if app.activation_observer.is_some() {
+            app.shell.indexing.perf_observe_history = true;
+            app.shell.indexing.activation_observe_requests = true;
+        }
         app.shell
             .runtime
             .install_preview_retirement(preview_retirement);
@@ -508,6 +571,14 @@ impl FlistWalkerApp {
         } else {
             app.initialize_tabs();
             app.request_index_refresh();
+        }
+        #[cfg(test)]
+        if let Some(probe) = app.activation_observer.as_mut() {
+            probe.intents[0].target = app
+                .shell
+                .tabs
+                .get(app.shell.tabs.active_tab_index())
+                .map(|t| t.id);
         }
         app
     }

@@ -51,7 +51,12 @@ pub(super) struct IndexPerfObservation {
     pub(super) mailbox_closed: bool,
     pub(super) mailbox_closed_at: Option<std::time::Instant>,
     pub(super) allocation_observed: bool,
+    pub(super) activation_enabled: bool,
     pub(super) admitted_at: Option<std::time::Instant>,
+    // Admission return is not enqueue commit. A worker may start inside this window.
+    pub(super) activation_send_windows: Vec<(std::time::Instant, std::time::Instant, &'static str)>,
+    pub(super) activation_dequeued: Option<std::time::Instant>,
+    pub(super) activation_worker_started: Option<std::time::Instant>,
     pub(super) admitted_root: Option<std::path::PathBuf>,
     pub(super) started_root: Option<std::path::PathBuf>,
     pub(super) skipped_closed_before_start: bool,
@@ -90,6 +95,8 @@ pub(super) struct IndexResponseMailbox {
     #[cfg(test)]
     perf_enabled: std::sync::atomic::AtomicBool,
     #[cfg(test)]
+    activation_enabled: std::sync::atomic::AtomicBool,
+    #[cfg(test)]
     perf_state: std::sync::OnceLock<IndexPerfHandle>,
 }
 
@@ -105,6 +112,8 @@ impl IndexResponseMailbox {
             #[cfg(test)]
             perf_enabled: std::sync::atomic::AtomicBool::new(false),
             #[cfg(test)]
+            activation_enabled: std::sync::atomic::AtomicBool::new(false),
+            #[cfg(test)]
             perf_state: std::sync::OnceLock::new(),
         }
     }
@@ -115,6 +124,16 @@ impl IndexResponseMailbox {
             .get_or_init(|| std::sync::Arc::new(Mutex::new(IndexPerfObservation::default())));
         self.perf_enabled
             .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    #[cfg(test)]
+    pub(super) fn enable_activation_observation(&self) {
+        self.activation_enabled
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    #[cfg(test)]
+    pub(super) fn activation_enabled(&self) -> bool {
+        self.activation_enabled
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
     #[cfg(test)]
     pub(super) fn perf_enabled(&self) -> bool {
