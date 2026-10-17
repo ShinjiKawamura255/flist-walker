@@ -72,8 +72,19 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
-        self.assertEqual(gate.REFERENCE, "9640bef9884525ea641087d09122541877f40f29")
-        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v7")
+        self.assertEqual(gate.REFERENCE, "9ddbb572bba30d57becd7abf867a20698fa09bc8")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v8")
+
+    def test_v7_receipt_cannot_admit_the_repaired_background_allocation_driver(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            root = write_fixture(folder)
+            collector.load_run(folder, "f1")
+            root["comparison"]["protocol"] = "same-job-RCR-f1-matched-21-observer-v7"
+            (folder / "receipt.json").unlink()
+            collector.write_json(folder / "receipt.json", root)
+            with self.assertRaises(contract.ValidationError):
+                gate.load_comparison(folder, "f1")
 
     def test_cli_rejects_numeric_slowdown_despite_valid_candidate_admission(self):
         with tempfile.TemporaryDirectory() as name:
