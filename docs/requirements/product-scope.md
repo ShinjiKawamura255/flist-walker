@@ -55,7 +55,7 @@
 - AC-022: macOS では更新検知時に自動更新非対応が案内され、誤って自己置換しない。
 - AC-023: 利用者が更新ダイアログで「次のバージョンが出るまで表示しない」を選ぶと、その target version は次回起動以降も再表示されず、より新しい version が見つかった場合のみ再びダイアログが表示される。
 - AC-024: 実行中 binary と同じフォルダの ignore list ファイルに列挙した項目は、`!old !~` 相当の非 fuzzy 除外として検索候補から外れ、GUI の Use Ignore List チェックボックスで有効/無効を切り替えられる。
-- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `emacs_keybindings_enabled` / `tab_pin_moves_to_next_row` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
+- AC-025: runtime config file が存在しない初回起動では、Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` に、現在の `FLISTWALKER_*` 環境変数を反映した config file が自動生成される。自動生成された config file は、一般利用者向けの `walker_max_entries` / `history_persist_disabled` / `restore_tabs_enabled` / `restore_queries_enabled` / `theme` / `emacs_keybindings_enabled` / `tab_pin_moves_to_next_row` を既定値で保持し、詳細項目は設定済み環境変数だけを保持する。runtime config file が既に存在する場合は、その内容が runtime settings として反映され、環境変数の変更だけでは runtime settings が変化しない。
 - AC-027: UI state、saved roots、window trace などの永続化ファイルは、Windows では `%LocalAppData%\flistwalker\` に、Linux/macOS では `~/.flistwalker/` に保存される。
 - AC-028: Windows の旧バージョンで実行ファイル横または home directory にあった runtime config / UI state / saved roots / window trace、Linux/macOS の旧バージョンで home directory 直下にあった同名ファイルは、新しい保存先に同名ファイルが無い場合だけ自動移行される。runtime config の移行と初回 seed は current path の sidecar lock 取得後に current を再確認し、協調する並行起動が先に作成した current を上書きしない。cross-filesystem fallback が失敗しても partial current を残さず legacy を保持する。
 - AC-026: `flistwalker.ignore.txt.example` が存在しない状態で起動しても、ツールは sample を実行バイナリの隣へ自動生成し、`flistwalker.ignore.txt` へのリネーム案内を提供する。
@@ -76,7 +76,7 @@
 
 - AC-043: FR-042 のリンク追跡を有効にすると、Root 内外のリンク先の子ファイル・フォルダが各リンク経由のパスで検索でき、祖先へ戻る循環は打ち切られる。無効時は従来の候補集合、Depth・件数上限・取消を維持する。
 - AC-044: FR-043 のリンク Root について Walker と FileList の逐次・置換応答で相対表示を維持し、入力 Root 自体や Root 外の独立した絶対パスを変更しない。
-- AC-045: 歯車から設定画面を開き、7項目を編集・保存すると JSON の対象キーだけが更新され、現在のタブ・履歴・キー操作は変わらず次回起動に反映される。キャンセル、無効な上限値、外部編集との競合では保存せず、JSON を開く操作と明示的な再読み込みを利用できる。
+- AC-045: 歯車から設定画面を開き、9項目を編集・保存すると JSON の対象キーだけが更新され、現在のタブ・履歴・テーマ・キー操作は変わらず次回起動に反映される。クエリ復元の子項目はタブ復元OFFで値を保持したまま無効化され、OFFなら次回の全復元タブのqueryが空になる。テーマはシステム追従・ダーク・ライトを選択できる。キャンセル、無効な上限値、外部編集との競合では保存せず、JSON を開く操作と明示的な再読み込みを利用できる。
 - AC-046: 100行を超えるテキストの GUI プレビューは最初の100行を表示し、`Load more` で最大500行ずつ追加する。表示済み本文のコピーに行番号や装飾は含まれず、読込失敗・ファイル変更では既存本文が残る。C/C++/HTML を含む対応形式は色分けされ、画面内の切替でプレーン表示に戻せる。TUI は従来の20行表示を維持する。 binary/empty/本文権限エラー/削除/リンク切れでも取得可能な共通情報を表示し、取得不能は unavailable とする。再読込は情報も更新し、別request/tab/pathの情報を混入させず、on-demand本文skipを維持する。
 - AC-047: PINを残して別の結果行をdouble clickするとその行だけを開き、EnterではPINを一括操作する。PIN一覧で非表示項目を個別解除でき、選択件数とClear Selectedの強調が残選択数に追従する。
 - AC-048: GUIで日時・サイズ順を選ぶと表示上限外も含めた全一致から上位を表示する。`neme:`を入力すると任意修正候補を示し、検索完了後の0件では条件を個別変更できる。Escは変更した条件を保持し、Undoは直近の条件変更だけを取り消す。

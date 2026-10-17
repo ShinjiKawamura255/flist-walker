@@ -536,7 +536,9 @@ fn seeds_default_user_config_values_when_missing() {
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 7);
+    assert_eq!(saved["restore_queries_enabled"], true);
+    assert_eq!(saved["theme"], "system");
+    assert_eq!(saved.len(), 9);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -792,7 +794,9 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
             .and_then(|value| value.as_bool()),
         Some(false)
     );
-    assert_eq!(saved.len(), 7);
+    assert_eq!(saved["restore_queries_enabled"], true);
+    assert_eq!(saved["theme"], "system");
+    assert_eq!(saved.len(), 9);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -1114,4 +1118,43 @@ fn startup_normalization_keeps_successful_concurrent_settings_save() {
     assert_eq!(json["future_option"], "keep");
     assert!(json.get("walker_threads").is_none());
     fs::remove_dir_all(base).expect("cleanup fixture");
+}
+
+#[test]
+fn restore_queries_and_theme_defaults_preserve_existing_behavior() {
+    let _guard = locked_env();
+    let config: RuntimeConfig = serde_json::from_str("{}").expect("legacy config");
+    assert!(config.restore_queries_enabled);
+    assert_eq!(config.theme, ThemeMode::System);
+    let (_, seed) = RuntimeConfig::seed_from_current_env();
+    let seed = serde_json::to_value(seed).expect("seed JSON");
+    assert_eq!(seed["restore_queries_enabled"], true);
+    assert_eq!(seed["theme"], "system");
+}
+
+#[test]
+fn restore_queries_and_all_theme_modes_round_trip_preserving_unknown_settings() {
+    let dir = test_home("query-theme-settings");
+    fs::create_dir_all(&dir).expect("fixture directory");
+    let path = dir.join(RUNTIME_CONFIG_FILE_NAME);
+    fs::write(&path, r#"{"unknown":{"keep":true}}"#).expect("legacy config");
+    let legacy = load_runtime_config_from_path(&path).expect("normalize legacy config");
+    assert!(legacy.restore_queries_enabled);
+    assert_eq!(legacy.theme, ThemeMode::System);
+    let normalized: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(normalized["restore_queries_enabled"], true);
+    assert_eq!(normalized["theme"], "system");
+    for theme in [ThemeMode::System, ThemeMode::Dark, ThemeMode::Light] {
+        let baseline = read_editable_settings(&path).expect("load settings");
+        let mut draft = baseline.values.clone();
+        draft.restore_queries_enabled = false;
+        draft.theme = theme;
+        save_editable_settings(&path, &baseline, &draft).expect("save settings");
+        let config = load_runtime_config_from_path(&path).expect("startup config");
+        assert!(!config.restore_queries_enabled);
+        assert_eq!(config.theme, theme);
+        let json: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(json["unknown"]["keep"], true);
+    }
+    fs::remove_dir_all(dir).expect("cleanup");
 }

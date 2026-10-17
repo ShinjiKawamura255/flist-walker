@@ -92,7 +92,8 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 
 ## Session Restore
 
-- Set `restore_tabs_enabled` to `true` in the runtime config file to restore the previous tab state on the next launch.
+- Set `restore_tabs_enabled` to `true` in the runtime config file to restore the previous tab state on the next launch. Under Restore previous tabs in Settings, turn off Restore search queries (`restore_queries_enabled`, default `true`) to reopen tabs with empty search boxes.
+- Settings also offers System, Dark and Light themes (`theme`: `system` / `dark` / `light`, default `system`). Saved changes apply on the next launch.
 - Restored fields include `root`, `query`, `Use FileList`, `Regex`, `Files`, `Folders`, and the active tab.
 - If you explicitly pass `--root` or a startup query, those values take precedence over restore.
 - When this feature is enabled, `Set as default` is disabled because the startup root is determined by tab restore.
@@ -121,6 +122,8 @@ Example:
   "walker_max_entries": 500000,
   "history_persist_disabled": false,
   "restore_tabs_enabled": false,
+  "restore_queries_enabled": true,
+  "theme": "system",
   "emacs_keybindings_enabled": true,
   "ctrl_w_deletes_word_in_query": false,
   "tab_pin_moves_to_next_row": false,

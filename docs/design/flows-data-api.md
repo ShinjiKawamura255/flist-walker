@@ -78,8 +78,9 @@
 
 - 設定描画は JSON 操作と最下段のリセット／確定操作を分離する。DES-009 の共通フッターに Save → Cancel を表示し、表示項目の既定値リセットは同じ行の左側へ置く。
 
+- 起動時の `bootstrap` は実効configの `restore_queries_enabled` を復元intentのsanitizeに渡す。`gui_launch` は初回描画前に `render_theme` で `ThemeMode` を egui の System/Dark/Light preference に対応付け、OS追従はeguiへ委ねる。
 - `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。Walker 上限の単一行入力は現在の process の Emacs 設定で共有 text-editing adapter を使い、次回起動用の草稿値をその場で適用しない。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
-- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、7つの利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
+- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、9つの利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
 - `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
 
 ## DES-026 段階的プレビューの所有権と色分け

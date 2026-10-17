@@ -137,6 +137,7 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 ### runtime config
 
+- 「Restore previous tabs」の子設定「Restore search queries」（`restore_queries_enabled`、既定オン）をオフにすると、検索欄を空にしてタブを復元します。テーマは「System / Dark / Light」（`theme`: `system` / `dark` / `light`、既定 `system`）から選べます。いずれも保存後、次回起動から反映します。
 - GUI ではタブバーの歯車から主な設定を編集できます。保存した変更は次回起動から反映され、キャンセルでは JSON を変更しません。設定画面から従来どおり JSON を開け、外部で編集した後は明示的に再読み込みできます。
 - runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` とその関連ファイルに保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
@@ -157,6 +158,8 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
   "walker_max_entries": 500000,
   "history_persist_disabled": false,
   "restore_tabs_enabled": false,
+  "restore_queries_enabled": true,
+  "theme": "system",
   "emacs_keybindings_enabled": true
 }
 ```

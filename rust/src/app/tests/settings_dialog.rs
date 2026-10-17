@@ -332,7 +332,7 @@ fn gui_settings_limit_uses_runtime_emacs_shortcuts_and_shared_kill_buffer() {
 }
 
 #[test]
-fn tc_216_gui_settings_seven_fields_round_trip_to_next_launch() {
+fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
     let scope = test_settings_scope("gui-settings-six-fields");
     let path = scope.runtime_config_path();
     fs::write(&path, r#"{"future_key":"retained"}"#).expect("seed config");
@@ -342,6 +342,8 @@ fn tc_216_gui_settings_seven_fields_round_trip_to_next_launch() {
     settle_settings_dialog(&mut app);
     let expected = crate::runtime_config::EditableSettings {
         restore_tabs_enabled: true,
+        restore_queries_enabled: false,
+        theme: crate::runtime_config::ThemeMode::Dark,
         history_persist_disabled: true,
         emacs_keybindings_enabled: false,
         ctrl_w_deletes_word_in_query: true,
@@ -370,6 +372,11 @@ fn tc_216_gui_settings_seven_fields_round_trip_to_next_launch() {
         next_launch.restore_tabs_enabled,
         expected.restore_tabs_enabled
     );
+    assert_eq!(
+        next_launch.restore_queries_enabled,
+        expected.restore_queries_enabled
+    );
+    assert_eq!(next_launch.theme, expected.theme);
     assert_eq!(
         next_launch.history_persist_disabled,
         expected.history_persist_disabled
@@ -828,4 +835,108 @@ fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() 
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(scope.runtime_config_path()).unwrap()).unwrap();
     assert_eq!(saved["walker_max_entries"], 1234);
+}
+
+#[test]
+fn settings_query_restore_subsetting_and_theme_controls_follow_pointer_input() {
+    use crate::runtime_config::ThemeMode;
+    let scope = test_settings_scope("settings-query-theme-controls");
+    let path = scope.runtime_config_path();
+    let original = r#"{"restore_tabs_enabled":false}"#;
+    fs::write(&path, original).unwrap();
+    let mut app = scope.app(test_root("settings-query-theme-root"), 30, String::new());
+    app.open_settings_dialog();
+    settle_settings_dialog(&mut app);
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1200.0, 1200.0));
+    fn text_target(shape: &egui::Shape, label: &str) -> Option<egui::Pos2> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => {
+                Some(text.pos + egui::vec2(8.0, text.galley.size().y / 2.0))
+            }
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_target(shape, label)),
+            _ => None,
+        }
+    }
+    let click = |app: &mut FlistWalkerApp, label: &str| {
+        for _ in 0..2 {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+        }
+        let output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                ..Default::default()
+            },
+            |ui| app.run_ui_frame(ui),
+        );
+        let target = output
+            .shapes
+            .iter()
+            .find_map(|shape| text_target(&shape.shape, label))
+            .unwrap_or_else(|| panic!("missing settings control: {label}"));
+        for pressed in [true, false] {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(screen),
+                    events: vec![
+                        egui::Event::PointerMoved(target),
+                        egui::Event::PointerButton {
+                            pos: target,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ],
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+        }
+    };
+    click(&mut app, "Restore search queries");
+    let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+        panic!("editing")
+    };
+    assert!(
+        draft.restore_queries_enabled,
+        "disabled child ignores pointer input"
+    );
+    click(&mut app, "Restore previous tabs");
+    click(&mut app, "Restore search queries");
+    click(&mut app, "Restore previous tabs");
+    let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+        panic!("editing")
+    };
+    assert!(!draft.restore_tabs_enabled);
+    assert!(
+        !draft.restore_queries_enabled,
+        "child preference retained when parent is disabled"
+    );
+    for (label, expected) in [
+        ("Dark", ThemeMode::Dark),
+        ("Light", ThemeMode::Light),
+        ("System", ThemeMode::System),
+    ] {
+        click(&mut app, label);
+        let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+            panic!("editing")
+        };
+        assert_eq!(draft.theme, expected);
+    }
+    click(&mut app, "Reset displayed settings to defaults");
+    let SettingsView::Editing { draft, .. } = &app.settings_dialog.view else {
+        panic!("editing")
+    };
+    assert!(draft.restore_queries_enabled);
+    assert_eq!(draft.theme, ThemeMode::System);
+    click(&mut app, "Dark");
+    click(&mut app, "Cancel");
+    assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
+    assert_eq!(fs::read_to_string(&path).unwrap(), original);
 }

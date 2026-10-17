@@ -89,7 +89,7 @@
 - MUST: Root 変更時は旧 Root 向けに保留中の FileList 上書き確認、祖先追記確認、Walker 利用確認、deferred-after-index を破棄する。
 - MUST: Root 変更時は query 履歴の参照位置のみリセットし、履歴本体は保持する。
 - MUST: IME のスペース/変換確定フォールバック挿入はクエリ末尾固定ではなくカーソル位置へ挿入し、カーソル位置を挿入後位置へ更新する。
-- SHOULD: runtime config の `restore_tabs_enabled` が `true` のときのみ、前回終了時のタブ状態（root/query/filter active tab）を起動時に復元できる。
+- SHOULD: runtime config の `restore_tabs_enabled` が `true` のときのみ、前回終了時のタブ状態（root/filter active tab と、クエリ復元が有効な場合の query）を起動時に復元できる。
 - SHOULD: 保存済み `last_root` / `default_root` / tab root は native window 初期表示前に存在確認しない。存在しない root は初回 index refresh の失敗/空結果として UI 上で扱い、切断済みドライブや遅いパスで window 表示を遅延させない。
 - MUST: GUI起動時のwindow復元はWindows/macOS/Linuxで実monitor矩形を使い、画面間の隙間や切断済み画面の保存位置を有効な画面内へ補正する。保存scaleを使って座標系を変換し、有効な負座標は維持する。保存位置なし、または旧形式でscale不明でも、monitor列挙とposition操作が可能なら現在の実monitor（取得不能なら列挙先頭）内へ明示配置し、OS/WM既定位置へ委ねてはならない。monitor列挙不可またはposition操作不可の場合だけ保存位置を適用せずWM配置へ委ね、有限で上限付きのサイズを復元する。
 - SHOULD: タブは任意の accent color を持てる。
