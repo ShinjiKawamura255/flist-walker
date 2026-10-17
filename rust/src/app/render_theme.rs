@@ -9,17 +9,33 @@ pub(super) fn selected_fill(dark_mode: bool) -> egui::Color32 {
     }
 }
 
-pub(super) fn entry_kind_color(kind: EntryDisplayKind) -> egui::Color32 {
-    match kind {
-        EntryDisplayKind::Dir => egui::Color32::from_rgb(52, 211, 153),
-        EntryDisplayKind::File => egui::Color32::from_rgb(96, 165, 250),
-        EntryDisplayKind::Link => egui::Color32::from_rgb(250, 204, 21),
-        EntryDisplayKind::Other => egui::Color32::from_rgb(156, 163, 175),
+pub(super) fn entry_kind_color(kind: EntryDisplayKind, dark_mode: bool) -> egui::Color32 {
+    match (kind, dark_mode) {
+        (EntryDisplayKind::Dir, true) => egui::Color32::from_rgb(52, 211, 153),
+        (EntryDisplayKind::File, true) => egui::Color32::from_rgb(96, 165, 250),
+        (EntryDisplayKind::Link, true) => egui::Color32::from_rgb(250, 204, 21),
+        (EntryDisplayKind::Other, true) => egui::Color32::from_rgb(156, 163, 175),
+        (EntryDisplayKind::Dir, false) => egui::Color32::from_rgb(22, 101, 52),
+        (EntryDisplayKind::File, false) => egui::Color32::from_rgb(29, 78, 151),
+        (EntryDisplayKind::Link, false) => egui::Color32::from_rgb(133, 77, 14),
+        (EntryDisplayKind::Other, false) => egui::Color32::from_rgb(75, 85, 99),
     }
 }
 
-pub(super) fn highlight_text_color() -> egui::Color32 {
-    egui::Color32::from_rgb(245, 158, 11)
+pub(super) fn highlight_text_color(dark_mode: bool) -> egui::Color32 {
+    if dark_mode {
+        egui::Color32::from_rgb(245, 158, 11)
+    } else {
+        egui::Color32::from_rgb(146, 64, 14)
+    }
+}
+
+pub(super) fn current_row_marker_color(dark_mode: bool) -> egui::Color32 {
+    if dark_mode {
+        egui::Color32::LIGHT_BLUE
+    } else {
+        egui::Color32::from_rgb(29, 78, 151)
+    }
 }
 
 impl super::FlistWalkerApp {

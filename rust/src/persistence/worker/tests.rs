@@ -642,7 +642,8 @@ fn tc_167_persistence_keeps_ordered_a_b_a_deltas_as_b_a() {
 fn tc_167_persistence_deduplicates_and_caps_history_at_100() {
     let base = temp_dir("history-cap");
     let path = base.join("ui-state.json");
-    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    let fixture =
+        HistorySemanticFixture::after_generation(path.clone(), false, Duration::from_millis(50), 2);
     let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
@@ -1415,9 +1416,146 @@ struct HistorySemanticFixture {
     ownership: Arc<Mutex<TestWorkerOwnership>>,
 }
 
+#[test]
+fn tc_167_semantic_history_readiness_requires_a_successfully_published_write() {
+    let base = temp_dir("semantic-published-readiness");
+    let path = base.join("state.json");
+    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    fixture
+        .writer
+        .enqueue_patch_for_test(UiStatePatch::default(), vec!["saved".into()]);
+    fixture.gate.wait_entered();
+    let status = ui_state_persistence_status(&path);
+    let published = fs::read_to_string(&path).ok();
+    // Even RED must release and physically join this exact writer before cleanup.
+    fixture.finish(Duration::from_secs(2)).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert_eq!(status.accepted_generation, 1);
+    assert_eq!(
+        status.persisted_generation, 1,
+        "semantic readiness must include real I/O, not just worker entry"
+    );
+    assert!(status.last_error.is_none());
+    let written: Value = serde_json::from_str(&published.expect("published file")).unwrap();
+    assert_eq!(written["query_history"], json!(["saved"]));
+}
+
+#[test]
+fn tc_167_semantic_history_readiness_waits_for_the_last_of_separate_writes() {
+    let base = temp_dir("semantic-last-generation");
+    let path = base.join("state.json");
+    let fixture =
+        HistorySemanticFixture::after_generation(path.clone(), false, Duration::from_millis(50), 2);
+    fixture
+        .writer
+        .enqueue_patch_for_test(UiStatePatch::default(), vec!["first".into()]);
+    // Force two actual writes instead of allowing Enqueue coalescing to hide an
+    // early-generation gate. Use the same bounded readiness budget as WriteGate.
+    let deadline = Instant::now() + Duration::from_secs(2);
+    while ui_state_persistence_status(&path).persisted_generation != 1 {
+        assert!(
+            Instant::now() < deadline,
+            "first generation did not publish"
+        );
+        thread::sleep(Duration::from_millis(1));
+    }
+    assert!(
+        !fixture.gate.inner.state.lock().unwrap().entered,
+        "an earlier generation is not readiness"
+    );
+    fixture
+        .writer
+        .enqueue_patch_for_test(UiStatePatch::default(), vec!["second".into()]);
+    fixture.flush_after_entry().unwrap();
+    let status = ui_state_persistence_status(&path);
+    let written: Value = serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    fixture.finish(Duration::from_secs(2)).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert_eq!(status.persisted_generation, 2);
+    assert_eq!(written["query_history"], json!(["first", "second"]));
+}
+
+#[test]
+fn flush_failure_diagnostic_distinguishes_a_pending_write_timeout() {
+    let base = temp_dir("flush-timeout-diagnostic");
+    let path = base.join("state.json");
+    let fixture = HistorySemanticFixture::with_gate(
+        path.clone(),
+        false,
+        Duration::from_millis(50),
+        WriteGate::new(path.clone()),
+    );
+    fixture
+        .writer
+        .enqueue_patch_for_test(UiStatePatch::default(), vec!["pending".into()]);
+    fixture.gate.wait_entered();
+    let result = fixture.writer.flush(Duration::from_millis(1));
+    let diagnostic = fixture
+        .writer
+        .sender
+        .progress
+        .last_wait_failure
+        .lock()
+        .unwrap()
+        .clone();
+    fixture.finish(Duration::from_secs(2)).unwrap();
+    fs::remove_dir_all(base).unwrap();
+    assert!(result.is_err());
+    let diagnostic = diagnostic.expect("flush failures need owned-worker observations");
+    assert_eq!(diagnostic["stage"], "flush-reply-timeout");
+    assert_eq!(diagnostic["accepted_generation"], 1);
+    assert_eq!(diagnostic["persisted_generation"], 0);
+}
+
+#[test]
+fn flush_failure_diagnostic_distinguishes_reply_disconnection() {
+    let (tx, rx) = mpsc::sync_channel(1);
+    let sender = PersistenceSender {
+        tx,
+        state: Arc::new(Mutex::new(AdmissionState::default())),
+        progress: Arc::new(TestWorkerProgress::new()),
+    };
+    let worker = thread::spawn(move || {
+        assert!(matches!(
+            rx.recv().unwrap(),
+            UiStatePersistenceCommand::Flush(_)
+        ));
+        // Receiving then dropping the reply sender is a disconnection, not a timeout.
+    });
+    let result = flush_sender(&sender, Duration::from_secs(1));
+    worker.join().unwrap();
+    assert!(result.is_err());
+    let diagnostic = sender
+        .progress
+        .last_wait_failure
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("disconnection diagnostic");
+    assert_eq!(diagnostic["stage"], "flush-reply-disconnected");
+}
+
 impl HistorySemanticFixture {
     fn new(path: PathBuf, history_disabled: bool, lock_timeout: Duration) -> Self {
-        let gate = WriteGate::new(path.clone());
+        Self::after_generation(path, history_disabled, lock_timeout, 1)
+    }
+
+    fn after_generation(
+        path: PathBuf,
+        history_disabled: bool,
+        lock_timeout: Duration,
+        generation: u64,
+    ) -> Self {
+        let gate = WriteGate::after_generation(path.clone(), generation);
+        Self::with_gate(path, history_disabled, lock_timeout, gate)
+    }
+
+    fn with_gate(
+        path: PathBuf,
+        history_disabled: bool,
+        lock_timeout: Duration,
+        gate: WriteGate,
+    ) -> Self {
         let mut registry = ui_state_persistence_registry()
             .lock()
             .expect("semantic fixture registry available before writer startup");
@@ -1454,8 +1592,13 @@ impl HistorySemanticFixture {
     }
 
     fn flush_after_entry(&self) -> Result<(), String> {
-        // Establish actual pre-I/O entry outside the unchanged flush deadline.
+        // The semantic oracle needs the final successful write, not a cold-I/O
+        // speed promise. Preserve the 2s readiness and 1s Flush reply deadlines.
         self.gate.wait_entered();
+        let status = ui_state_persistence_status(&self.path);
+        assert_eq!(status.persisted_generation, status.accepted_generation);
+        assert!(status.last_error.is_none());
+        assert!(self.path.is_file());
         self.gate.release();
         self.writer.flush(Duration::from_secs(1))
     }
@@ -1508,7 +1651,9 @@ fn tc_167_semantic_history_fixture_rejects_missing_write_entry() {
             .downcast_ref::<String>()
             .map(String::as_str)
             .or_else(|| panic.downcast_ref::<&str>().copied())
-            .is_some_and(|message| message.contains("writer never reached its pre-I/O barrier"))
+            .is_some_and(|message| {
+                message.contains("writer never reached its result-published barrier")
+            })
     });
     assert!(untouched, "no-write control changed its seed");
     assert!(
@@ -1525,7 +1670,12 @@ fn tc_167_semantic_history_fixture_retains_owner_and_root_on_cleanup_timeout() {
     let lock = acquire_sidecar_lock(&path, Duration::from_millis(10)).unwrap();
     // Only this controlled negative has a longer held-lock wait. Normal
     // semantic fixtures retain their original 50ms lock timeout.
-    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_secs(5));
+    let fixture = HistorySemanticFixture::with_gate(
+        path.clone(),
+        false,
+        Duration::from_secs(5),
+        WriteGate::new(path.clone()),
+    );
     fixture.writer.enqueue_patch_for_test(
         UiStatePatch::from_json(json!({"show_preview": false})),
         vec![],
@@ -1560,7 +1710,12 @@ fn tc_167_semantic_history_fixture_joins_on_unwind_and_retains_root() {
     let base = temp_dir("semantic-cleanup-unwind");
     fs::create_dir_all(&base).unwrap();
     let path = base.join("state.json");
-    let fixture = HistorySemanticFixture::new(path.clone(), false, Duration::from_millis(50));
+    let fixture = HistorySemanticFixture::with_gate(
+        path.clone(),
+        false,
+        Duration::from_millis(50),
+        WriteGate::new(path.clone()),
+    );
     let ownership = Arc::clone(&fixture.ownership);
     fixture.writer.enqueue_patch_for_test(
         UiStatePatch::from_json(json!({"show_preview": false})),
@@ -1601,6 +1756,7 @@ pub(super) struct WriteGateInner {
     state: Mutex<WriteGateState>,
     changed: std::sync::Condvar,
     after_write: bool,
+    minimum_generation: u64,
 }
 static WRITE_GATES: OnceLock<
     Mutex<std::collections::HashMap<PathBuf, std::sync::Weak<WriteGateInner>>>,
@@ -1611,16 +1767,21 @@ pub(crate) struct WriteGate {
 }
 impl WriteGate {
     pub(crate) fn new(path: PathBuf) -> Self {
-        Self::at_position(path, false)
+        Self::at_position(path, false, 0)
     }
     pub(crate) fn after_write(path: PathBuf) -> Self {
-        Self::at_position(path, true)
+        Self::at_position(path, true, 0)
     }
-    fn at_position(path: PathBuf, after_write: bool) -> Self {
+    fn after_generation(path: PathBuf, generation: u64) -> Self {
+        assert!(generation > 0);
+        Self::at_position(path, true, generation)
+    }
+    fn at_position(path: PathBuf, after_write: bool, minimum_generation: u64) -> Self {
         let inner = Arc::new(WriteGateInner {
             state: Mutex::new(WriteGateState::default()),
             changed: std::sync::Condvar::new(),
             after_write,
+            minimum_generation,
         });
         let mut gates = WRITE_GATES.get_or_init(Default::default).lock().unwrap();
         assert!(gates.insert(path.clone(), Arc::downgrade(&inner)).is_none());
@@ -1677,8 +1838,19 @@ pub(super) fn pause_before_write(path: &Path) -> Option<Arc<WriteGateInner>> {
     }
     None
 }
-pub(super) fn pause_after_write(gate: Option<Arc<WriteGateInner>>) {
+pub(super) fn pause_after_write(
+    gate: Option<Arc<WriteGateInner>>,
+    admission: &Mutex<AdmissionState>,
+) {
     if let Some(gate) = gate {
+        if gate.minimum_generation > 0 {
+            let state = admission.lock().unwrap();
+            if state.status.persisted_generation < gate.minimum_generation
+                || state.status.last_error.is_some()
+            {
+                return;
+            }
+        }
         pause_at_write_gate(&gate);
     }
 }
@@ -1719,7 +1891,7 @@ fn assert_shutdown_timeout_observes_owned_phase(after_write: bool) {
         )
     };
     let failure = finish_ui_state_persistence_for_test(&path, Duration::from_millis(1));
-    let diagnostic = progress.last_timeout.lock().unwrap().clone();
+    let diagnostic = progress.last_wait_failure.lock().unwrap().clone();
     let retained = ui_state_persistence_registry()
         .lock()
         .unwrap()

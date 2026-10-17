@@ -1362,15 +1362,15 @@ fn render_theme_selected_fill_preserves_light_and_dark_rgb_contract() {
 #[test]
 fn render_theme_entry_kind_colors_preserve_rgb_contract() {
     assert_eq!(
-        render_theme::entry_kind_color(EntryDisplayKind::Dir),
+        render_theme::entry_kind_color(EntryDisplayKind::Dir, true),
         egui::Color32::from_rgb(52, 211, 153)
     );
     assert_eq!(
-        render_theme::entry_kind_color(EntryDisplayKind::File),
+        render_theme::entry_kind_color(EntryDisplayKind::File, true),
         egui::Color32::from_rgb(96, 165, 250)
     );
     assert_eq!(
-        render_theme::entry_kind_color(EntryDisplayKind::Link),
+        render_theme::entry_kind_color(EntryDisplayKind::Link, true),
         egui::Color32::from_rgb(250, 204, 21)
     );
 }
@@ -1378,7 +1378,7 @@ fn render_theme_entry_kind_colors_preserve_rgb_contract() {
 #[test]
 fn render_theme_highlight_color_preserves_rgb_contract() {
     assert_eq!(
-        render_theme::highlight_text_color(),
+        render_theme::highlight_text_color(true),
         egui::Color32::from_rgb(245, 158, 11)
     );
 }
