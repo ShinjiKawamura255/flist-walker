@@ -315,6 +315,13 @@ def control_log(group="f1"):
                 supported_cells=[{"case":c,"source":s} for c,s in cells], selected_source_cells=len(cells),
                 unsupported_cells=[], coverage_kind="selected-subset", pairs=pairs, expected_rows=2*pairs*len(cells),
                 tabchain_input_policy=contract.FULL_POLICY, stable_edit_input_policy=contract.STABLE_EDIT_INPUT_POLICY)
+    # A Rust unit test checks this witness against actual Default serialization.
+    # Only this explicitly synthetic projection is modernized; historical raw
+    # measurements keep their original metadata and admission outcome.
+    settings = json.loads((ROOT / "rust/tests/fixtures/indexing-runtime-defaults.json").read_text())
+    settings["search_threads"] = min(meta["environment_identity"]["logical_cpus"], 32)
+    settings["window_trace_path"] = "/synthetic/settings/" + settings["window_trace_path"]
+    meta["runtime_settings"] = settings
     output = ["running 1 test", "INDEX_PERF_META " + json.dumps(meta)]
     for case, source in cells:
         for condition in [False, True]:
@@ -368,6 +375,24 @@ def mutate_record(text, marker, change):
 
 
 class IndexingContractTests(unittest.TestCase):
+    def test_serialized_runtime_defaults_and_strict_drift_rejection(self):
+        text = control_log("matched")
+        self.assertEqual(len(contract.validate_log(text, "matched")["rows"]), 126)
+        changes = [
+            lambda s: s.pop("theme"),
+            lambda s: s.pop("restore_queries_enabled"),
+            lambda s: s.update(theme="dark"),
+            lambda s: s.update(theme="light"),
+            lambda s: s.update(theme=None),
+            lambda s: s.update(restore_queries_enabled=False),
+            lambda s: s.update(restore_queries_enabled=1),
+            lambda s: s.update(unknown_setting=True),
+        ]
+        for change in changes:
+            invalid = mutate_record(text, "INDEX_PERF_META", lambda r: change(r["runtime_settings"]))
+            with self.subTest(change=change), self.assertRaises(contract.ValidationError):
+                contract.validate_log(invalid, "matched")
+
     def test_stable_edit_actual_checkpoints_and_overlap_remain_mandatory(self):
         text = control_log("stable")
         original = next(json.loads(line.partition(" ")[2]) for line in text.splitlines()
