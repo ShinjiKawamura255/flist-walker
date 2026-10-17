@@ -4,6 +4,7 @@ This directory contains completed maintenance and closure records. These documen
 
 | Record | Contents |
 | --- | --- |
+| [WarmReclaim v8 native reference](warm-reclaim-v8-2026-10-18/native-reference.md) | Deferred allocation and fixture-isolation repair, native evidence and observation limits; performance acceptance remains separate |
 | [Hosted indexing observations 2026-10-05](indexing-perf-hosted-2026-10-05.md) | Five exact-source sessions, strict hardware/image cohorts, all raw pairs, retained failures and observation-only limits |
 | [Indexing contention comparison 2026-10-04](indexing-perf-expanded-2026-10-04.md) | Current45-cell guards and actual v27–v30 comparison, non-search regression evidence, preserved failures and calibration limits |
 | [Indexing performance baseline 2026-10-03](indexing-perf-baseline-2026-10-03.md) | Frozen tag/current measurements, exact test adapters and eligibility limitations |
