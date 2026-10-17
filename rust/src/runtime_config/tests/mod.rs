@@ -38,6 +38,37 @@ fn test_home(name: &str) -> PathBuf {
 }
 
 #[test]
+fn indexing_perf_defaults_match_serialized_runtime_config() {
+    let mut actual = {
+        let _guard = locked_env();
+        let _restore = EnvRestore::capture(&["HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA"]);
+        let home = test_home("indexing-default-contract");
+        for key in ["HOME", "USERPROFILE", "LOCALAPPDATA", "APPDATA"] {
+            env::set_var(key, &home);
+        }
+        serde_json::to_value(RuntimeConfig::default()).expect("serialize runtime defaults")
+    };
+    let cpus = std::thread::available_parallelism()
+        .map(|count| count.get())
+        .unwrap_or(1);
+    assert_eq!(actual["search_threads"], cpus.clamp(1, 32));
+    // Only these two values vary by host; all serialized keys and other values
+    // must match the same witness consumed by Python's validator controls.
+    actual["search_threads"] = serde_json::Value::Null;
+    let basename = Path::new(actual["window_trace_path"].as_str().expect("trace path"))
+        .file_name()
+        .expect("default trace filename")
+        .to_string_lossy()
+        .into_owned();
+    actual["window_trace_path"] = serde_json::Value::String(basename);
+    let expected: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../tests/fixtures/indexing-runtime-defaults.json"
+    ))
+    .expect("shared serialized-default witness");
+    assert_eq!(actual, expected);
+}
+
+#[test]
 fn filelist_auto_check_defaults_on_for_old_config_and_saved_file_is_authoritative() {
     let _guard = locked_env();
     let _restore = EnvRestore::capture(&[FILELIST_AUTO_CHECK_ENABLED_ENV]);

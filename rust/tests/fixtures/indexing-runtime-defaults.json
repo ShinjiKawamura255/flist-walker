@@ -1,0 +1,21 @@
+{
+  "ctrl_w_deletes_word_in_query": false,
+  "disable_self_update": false,
+  "emacs_keybindings_enabled": true,
+  "filelist_auto_check_enabled": true,
+  "force_update_check_failure": "",
+  "history_persist_disabled": false,
+  "restore_queries_enabled": true,
+  "restore_tabs_enabled": false,
+  "search_parallel_threshold": 25000,
+  "search_threads": null,
+  "tab_pin_moves_to_next_row": false,
+  "theme": "system",
+  "update_allow_downgrade": false,
+  "update_allow_same_version": false,
+  "update_feed_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+  "walker_max_entries": 500000,
+  "window_trace_enabled": false,
+  "window_trace_path": ".flistwalker_window_trace.log",
+  "window_trace_verbose": false
+}
