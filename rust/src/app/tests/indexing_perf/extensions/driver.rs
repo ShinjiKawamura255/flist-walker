@@ -153,6 +153,37 @@ fn refresh_allocation(
         record_planned_new(driver, plans, tab, 1);
     }
 }
+fn background_refresh_allocation(
+    driver: &Driver,
+    plans: &mut Vec<PlannedRequest>,
+    deferred: &mut HashMap<u64, usize>,
+    tab: u64,
+) {
+    if driver
+        .app
+        .shell
+        .indexing
+        .perf_allocations
+        .iter()
+        .any(|a| !plans.iter().any(|p| p.id == a.id))
+    {
+        record_planned_new(driver, plans, tab, 1);
+        return;
+    }
+    assert_ne!(driver.app.current_tab_id(), Some(tab));
+    assert!(
+        driver
+            .app
+            .shell
+            .tabs
+            .iter()
+            .any(|t| { t.id == tab && t.index_state.refresh_after_pending_finish.is_some() }),
+        "missing immediate or planned deferred background refresh"
+    );
+    // Reclaimer Full defers allocation, and repeated refreshes coalesce into
+    // the same production flag. Completion still requires one real request.
+    deferred.insert(tab, 1);
+}
 fn capture_deferred(
     driver: &Driver,
     plans: &mut Vec<PlannedRequest>,
@@ -171,6 +202,114 @@ fn capture_deferred(
         assert_eq!(deferred.remove(&tab), Some(1), "unplanned frame allocation");
         record_planned_new(driver, plans, tab, 1);
     }
+}
+
+#[test]
+fn tc_229_background_refresh_allocation_waits_for_bounded_reclaimer() {
+    assert_background_refresh_allocation(true);
+}
+
+#[test]
+fn tc_229_background_refresh_allocation_records_immediate_request() {
+    assert_background_refresh_allocation(false);
+}
+
+#[test]
+#[should_panic(expected = "missing immediate or planned deferred background refresh")]
+fn tc_229_background_refresh_allocation_rejects_missing_deferred_flag() {
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.create_new_tab();
+    settle_setup(&mut driver);
+    let tab = driver.app.shell.tabs.get(0).unwrap().id;
+    background_refresh_allocation(&driver, &mut Vec::new(), &mut HashMap::new(), tab);
+}
+
+fn assert_background_refresh_allocation(reclaimer_full: bool) {
+    use crate::app::tab_resources::{RetiredIndexBuildResources, TAB_RESOURCE_RECLAIMER_CAPACITY};
+    let fixture = ExtendedFixture::new(8, super::fixture::Shape::FlatFiles);
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.create_new_tab();
+    settle_setup(&mut driver);
+    let tab = driver.app.shell.tabs.get(0).unwrap().id;
+    {
+        let background = driver.app.shell.tabs.get_mut(0).unwrap();
+        background.root = fixture.root.clone();
+        background.use_filelist = true;
+        // Retained empty capacity still needs off-thread reclamation.
+        background.index_state.build.pending_entries = VecDeque::with_capacity(1);
+    }
+    driver.app.shell.indexing.perf_observe_requests = true;
+    driver.app.shell.indexing.perf_observe_history = true;
+    if reclaimer_full {
+        driver.app.shell.tabs.pause_resource_reclaimer();
+        for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+            let resources =
+                RetiredIndexBuildResources::from_incremental_filter(vec![Entry::unknown(
+                    fixture.root.join("retired.txt"),
+                )]);
+            assert!(driver
+                .app
+                .shell
+                .tabs
+                .try_retire_index_build_resources(resources)
+                .is_ok());
+        }
+    }
+    let mut plans = Vec::new();
+    let mut deferred = HashMap::new();
+    driver.app.request_background_index_refresh_for_tab(0);
+    background_refresh_allocation(&driver, &mut plans, &mut deferred, tab);
+    if reclaimer_full {
+        assert!(driver.app.shell.indexing.perf_allocations.is_empty());
+        let background = driver.app.shell.tabs.get(0).unwrap();
+        assert!(background.index_state.build_reclaim_pending);
+        assert!(background
+            .index_state
+            .refresh_after_pending_finish
+            .is_some());
+        assert_eq!(deferred.get(&tab), Some(&1));
+        // A second click does not authorize a second eventual request.
+        driver.app.request_background_index_refresh_for_tab(0);
+        background_refresh_allocation(&driver, &mut plans, &mut deferred, tab);
+        assert!(plans.is_empty());
+        assert_eq!(deferred.len(), 1);
+        driver.app.shell.tabs.resume_resource_reclaimer();
+    } else {
+        assert_eq!(plans.len(), 1);
+        assert!(deferred.is_empty());
+    }
+    let start = Instant::now();
+    loop {
+        driver.paced_frame();
+        capture_deferred(&driver, &mut plans, &mut deferred);
+        if !all_index_debt(&driver) && !result_debt(&driver) && deferred.is_empty() {
+            break;
+        }
+        assert!(start.elapsed() < Duration::from_secs(5));
+    }
+    assert_eq!(plans.len(), 1);
+    assert_eq!(plans[0].tab, tab);
+    assert_eq!(driver.app.shell.indexing.perf_allocations.len(), 1);
+    let observation = driver.app.shell.indexing.perf_allocations[0]
+        .observation
+        .lock()
+        .unwrap();
+    assert_eq!(observation.terminal_kind, Some("finished"));
+    assert_eq!(
+        driver
+            .app
+            .shell
+            .tabs
+            .get(0)
+            .unwrap()
+            .result_state
+            .committed
+            .all_entries
+            .len(),
+        8
+    );
 }
 #[derive(Debug, PartialEq)]
 enum SwitchAdmission {
@@ -1672,7 +1811,7 @@ pub(super) fn run(
         )
     {
         driver.app.request_background_index_refresh_for_tab(1);
-        record_planned_new(&driver, &mut plans, tabs[1], 1);
+        background_refresh_allocation(&driver, &mut plans, &mut deferred_allocations, tabs[1]);
         collect_requests(&driver, &mut ledger);
     }
     let mut events = Vec::<serde_json::Value>::new();
