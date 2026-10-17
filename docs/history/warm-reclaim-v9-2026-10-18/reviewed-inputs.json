@@ -1,0 +1,138 @@
+{
+  "base": "5c4c9eee9af50a7d1a9ced5d1e285481d5904cc5",
+  "head": "63fc68aa72b873d1c8181f3d3f6cf37cfc94d9c5",
+  "review_includes_permanent_worktree_evidence": true,
+  "scope": "all task code changes plus actual completed v9 evidence/current documentation; temporary controls excluded from permanent inputs",
+  "recorded_at_utc": "2026-10-17T21:24:18.693313+00:00",
+  "self_and_later_review_outcome_not_included": true,
+  "files": {
+    "docs/CI_OPERATIONS.md": {
+      "sha256": "4f0c6a0bb20276f2b232bf8f3d056baebeaafef4044594589d7257c4fbd00710",
+      "size": 31037
+    },
+    "docs/CURRENT_STATUS.md": {
+      "sha256": "4092cb9137d4cb33d15537c20a51bc2c9cb6ac0d00b1a0b51d6f609b3bf0e295",
+      "size": 6606
+    },
+    "docs/INDEX.md": {
+      "sha256": "93a542d0b1ff021699ffb4d7cdc939ac251c458db4432186db45924a45b9874e",
+      "size": 9940
+    },
+    "docs/design/architecture-overview.md": {
+      "sha256": "9e9e57c996c9b9ede966dcfc41f1e8d286080bd530ae8d565c8b6764fe8d2b17",
+      "size": 58482
+    },
+    "docs/history/INDEX.md": {
+      "sha256": "a6327dd254af9061b6d8a8c0db3995d616940ec54485b04a78e16605ef9f11a6",
+      "size": 2631
+    },
+    "docs/history/warm-reclaim-v8-2026-10-18/native-reference-admission.json": {
+      "sha256": "b7d736b59f371b563ec534b2e317c9a0b8a0fdce952d87ea2465bc908236383d",
+      "size": 59955
+    },
+    "docs/history/warm-reclaim-v8-2026-10-18/native-reference.md": {
+      "sha256": "771596714e712332eb896da186cf00f06251e2d322aabfdd547f406994967841",
+      "size": 3608
+    },
+    "docs/history/warm-reclaim-v8-2026-10-18/rejected-v8-evidence-manifest.json": {
+      "sha256": "19c498113bc1cb5c3f033615bf63f56b52151c7ad5d1aedf4b5f6d38467c2693",
+      "size": 14420
+    },
+    "docs/history/warm-reclaim-v8-2026-10-18/rejected-v8-session1-originals.tar.gz": {
+      "sha256": "0273ae8090e41122d9d985e46746dab9124def534219f50dd28b87bccfd080f5",
+      "size": 2592671
+    },
+    "docs/history/warm-reclaim-v8-2026-10-18/rejected-v8-session1.md": {
+      "sha256": "4d550268fbccb49ede15c26aa76e9e07c50950246a50187498f19a2f43142e80",
+      "size": 3138
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/accepted-v9-evidence-manifest.json": {
+      "sha256": "562c2fd15da4bf7b53600822270c4f1b90109fd365c6fc794cec2254a0eb7c4e",
+      "size": 92199
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/accepted-v9-original-artifacts.tar.gz": {
+      "sha256": "ccb9d47ca1387f82b1a64781910757938abbffe2444fbc21e0a0dcfe2538ac07",
+      "size": 23113550
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/accepted-v9-recount.json": {
+      "sha256": "67f9edd3a1e874c39982f2f4237d3dabf2681957d71da3e13fc32cedcf7cc7f1",
+      "size": 6762
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/measurement-diagnosis.md": {
+      "sha256": "f2c0657dd15026cc1de7b73cf1bf04a7b1919a67ef941ac9cc8e4e9bfbe5af48",
+      "size": 13003
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/native-reference-admission.json": {
+      "sha256": "5006b17d6e03393c67efeba154d151033d1a9cf3529824cef3ff6b20fa393d54",
+      "size": 59836
+    },
+    "docs/history/warm-reclaim-v9-2026-10-18/native-reference.md": {
+      "sha256": "bab06c0c20bfd44b3d796feead2838005fd9f2e7261931f374bfc390b81b370c",
+      "size": 2110
+    },
+    "docs/spec/gui-behavior.md": {
+      "sha256": "95ee09e292cb0127b074a6eff3bc90d8a9922ea5996d51256ff486918d1f3c84",
+      "size": 61264
+    },
+    "docs/testplan/indexing-contention.md": {
+      "sha256": "0b5fb37aca096f125d26a51ce8a9c10b94d4f5c05f6e4c5eaf5088d2ae03ebf2",
+      "size": 50043
+    },
+    "docs/testplan/test-cases.md": {
+      "sha256": "fdbb65df0afeb9b1edf1f1d77d3e25d4ecf1f88bca7407dc39cc0bf2d5b78902",
+      "size": 99343
+    },
+    "rust/src/app/render_panels.rs": {
+      "sha256": "10a66069bcbd34caaedd22f9e45a6e94210a3f2642d183bb26ed97cf52ad381a",
+      "size": 44713
+    },
+    "rust/src/app/render_theme.rs": {
+      "sha256": "ebdfd6f1ec6daa1fbf82cc5a63e4986b5a97478d6828145d22a7d91a2875552b",
+      "size": 2001
+    },
+    "rust/src/app/tests/indexing_perf/extensions/driver.rs": {
+      "sha256": "c51ab75fbe5822bb9c6179a356c88973c4113380971256439bf14fa814a09b9f",
+      "size": 186209
+    },
+    "rust/src/app/tests/render_tests.rs": {
+      "sha256": "8c0725caa73a56b6db28cc1fc242e41013a154fa8d913bd9e9bd3dd1254278ff",
+      "size": 87281
+    },
+    "rust/src/app/tests/support.rs": {
+      "sha256": "53c886ba5fb58e2dccea7be05f2a4af5ade7df315a3d368880a46dfc7cd833be",
+      "size": 12258
+    },
+    "rust/src/persistence/worker.rs": {
+      "sha256": "c09c5bce00b75b0fc1fbf41b34d6f28e2f47ddd2b0847307c479701ffda009bf",
+      "size": 29411
+    },
+    "rust/src/persistence/worker/tests.rs": {
+      "sha256": "1bd1a62c231c3c82e7e6d464ef1d77b0662164f61e176715d11bfc09eb260c3f",
+      "size": 71284
+    },
+    "rust/src/runtime_config/tests/mod.rs": {
+      "sha256": "38830484c759eb4a502d4b37cf3633c77712866f410d2c08ad91b6050c45417d",
+      "size": 45772
+    },
+    "rust/tests/fixtures/indexing-runtime-defaults.json": {
+      "sha256": "c303bd7f864a6ac596e2a034c34397046c040d44ca5f00759568790bd2b26e42",
+      "size": 743
+    },
+    "scripts/indexing_perf_contract.py": {
+      "sha256": "f3dac71e2d9f843ed1ee65068ff8ed6e89240114619912e46dd71b3f29ed71b3",
+      "size": 42273
+    },
+    "scripts/indexing_perf_gate.py": {
+      "sha256": "5b5224612f351463fdd74abcdca2ce9c8743ff9f24e7d9d5701d9391ad17f580",
+      "size": 15945
+    },
+    "scripts/tests/test_indexing_perf.py": {
+      "sha256": "7b00b35222d64b905a8e9adf604fc1b9d89bfb1894beb8639092590578585a36",
+      "size": 40228
+    },
+    "scripts/tests/test_indexing_perf_gate.py": {
+      "sha256": "30ac9df8d8ec914c26bace62d0a5d0b557e515885262b9d392717c0c2c5076d6",
+      "size": 36383
+    }
+  }
+}

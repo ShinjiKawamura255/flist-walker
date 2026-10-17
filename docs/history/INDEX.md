@@ -4,7 +4,7 @@ This directory contains completed maintenance and closure records. These documen
 
 | Record | Contents |
 | --- | --- |
-| [WarmReclaim v9 native reference](warm-reclaim-v9-2026-10-18/native-reference.md) | Strict current runtime-default admission, shared Rust/Python schema guard and new native reference; performance admission is separate |
+| [WarmReclaim v9 source-bound measurements](warm-reclaim-v9-2026-10-18/measurement-diagnosis.md) | Deferred-refresh/test-isolation/schema repairs; native source admission and prospective3+2 whole sessions with original data, source-CLI replays and unchanged active policy |
 | [WarmReclaim v8 reference/rejection](warm-reclaim-v8-2026-10-18/rejected-v8-session1.md) | Deferred allocation and fixture-isolation native repair; retained runtime-schema rejection and shared Rust/Python default guard |
 | [Hosted indexing observations 2026-10-05](indexing-perf-hosted-2026-10-05.md) | Five exact-source sessions, strict hardware/image cohorts, all raw pairs, retained failures and observation-only limits |
 | [Indexing contention comparison 2026-10-04](indexing-perf-expanded-2026-10-04.md) | Current45-cell guards and actual v27–v30 comparison, non-search regression evidence, preserved failures and calibration limits |
