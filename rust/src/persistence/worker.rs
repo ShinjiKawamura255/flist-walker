@@ -53,7 +53,7 @@ struct PersistenceSender {
 struct TestWorkerProgress {
     started: std::time::Instant,
     phase: std::sync::atomic::AtomicU8,
-    last_timeout: Mutex<Option<Value>>,
+    last_wait_failure: Mutex<Option<Value>>,
 }
 
 #[cfg(test)]
@@ -62,7 +62,7 @@ impl TestWorkerProgress {
         Self {
             started: std::time::Instant::now(),
             phase: std::sync::atomic::AtomicU8::new(0),
-            last_timeout: Mutex::new(None),
+            last_wait_failure: Mutex::new(None),
         }
     }
     fn set_phase(&self, phase: u8) {
@@ -85,7 +85,7 @@ impl TestWorkerProgress {
 /// Observational only: atomics/status may advance between reads. Never wait for
 /// diagnostic locks, and never replace is_finished/join with a phase label.
 #[cfg(test)]
-fn record_test_worker_timeout(
+fn record_test_worker_wait_failure(
     sender: Option<&PersistenceSender>,
     started: std::time::Instant,
     registry_elapsed: Duration,
@@ -94,7 +94,7 @@ fn record_test_worker_timeout(
     shutdown_sent: Option<bool>,
 ) {
     let Some(sender) = sender else {
-        eprintln!("TEST_WRITER_TIMEOUT sender_missing=true stage={stage}");
+        eprintln!("TEST_WRITER_WAIT_FAILURE sender_missing=true stage={stage}");
         return;
     };
     let status = sender.state.try_lock().ok().map(|state| {
@@ -120,8 +120,8 @@ fn record_test_worker_timeout(
         "outstanding": status.map(|status| status.2),
         "last_error_present": status.map(|status| status.3),
     });
-    eprintln!("TEST_WRITER_TIMEOUT {diagnostic}");
-    if let Ok(mut last) = sender.progress.last_timeout.try_lock() {
+    eprintln!("TEST_WRITER_WAIT_FAILURE {diagnostic}");
+    if let Ok(mut last) = sender.progress.last_wait_failure.try_lock() {
         *last = Some(diagnostic);
     }
 }
@@ -520,10 +520,26 @@ pub(crate) fn enqueue_settings_commit(
     Ok(response_rx)
 }
 fn flush_sender(sender: &PersistenceSender, timeout: Duration) -> Result<(), String> {
+    #[cfg(test)]
+    let started = std::time::Instant::now();
     let (tx, rx) = mpsc::channel();
     sender.send_control(UiStatePersistenceCommand::Flush(tx))?;
-    rx.recv_timeout(timeout)
-        .map_err(|_| "UI-state persistence flush timed out".to_string())?
+    let response = rx.recv_timeout(timeout);
+    #[cfg(test)]
+    if let Err(error) = response.as_ref() {
+        record_test_worker_wait_failure(
+            Some(sender),
+            started,
+            Duration::ZERO,
+            Duration::ZERO,
+            match error {
+                mpsc::RecvTimeoutError::Timeout => "flush-reply-timeout",
+                mpsc::RecvTimeoutError::Disconnected => "flush-reply-disconnected",
+            },
+            None,
+        );
+    }
+    response.map_err(|_| "UI-state persistence flush timed out".to_string())?
 }
 pub(crate) fn flush_ui_state_persistence(path: &Path, timeout: Duration) -> Result<(), String> {
     let registry = ui_state_persistence_registry()
@@ -575,7 +591,7 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             }
             Err(std::sync::TryLockError::WouldBlock) => {
                 if std::time::Instant::now() >= deadline {
-                    record_test_worker_timeout(
+                    record_test_worker_wait_failure(
                         sender.as_ref(),
                         started,
                         registry_elapsed,
@@ -615,7 +631,7 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             .is_some_and(thread::JoinHandle::is_finished)
         {
             if std::time::Instant::now() >= deadline {
-                record_test_worker_timeout(
+                record_test_worker_wait_failure(
                     sender.as_ref(),
                     started,
                     registry_elapsed,
@@ -769,7 +785,7 @@ fn run_ui_state_persistence_worker(
         #[cfg(test)]
         progress.set_phase(4);
         #[cfg(test)]
-        tests::pause_after_write(after_write_gate);
+        tests::pause_after_write(after_write_gate, &state);
         if let Some(reply) = flush_reply {
             let _ = reply.send(result.clone());
         }

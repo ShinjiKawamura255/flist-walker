@@ -1000,6 +1000,7 @@ fn build_result_row_job(
     is_pinned: bool,
     kind: Option<EntryKind>,
 ) -> egui::text::LayoutJob {
+    let dark_mode = ui.visuals().dark_mode;
     let marker_current = if is_current { "▶" } else { "·" };
     let marker_pin = if is_pinned { "◆" } else { "·" };
     let mut job = egui::text::LayoutJob::default();
@@ -1008,7 +1009,7 @@ fn build_result_row_job(
         0.0,
         egui::TextFormat {
             color: if is_current {
-                egui::Color32::LIGHT_BLUE
+                render_theme::current_row_marker_color(dark_mode)
             } else {
                 ui.visuals().weak_text_color()
             },
@@ -1016,18 +1017,22 @@ fn build_result_row_job(
         },
     );
     let (kind_label, kind_color) = match kind.map(|k| k.display) {
-        Some(display_kind @ EntryDisplayKind::Dir) => {
-            ("DIR ", render_theme::entry_kind_color(display_kind))
-        }
-        Some(display_kind @ EntryDisplayKind::File) => {
-            ("FILE", render_theme::entry_kind_color(display_kind))
-        }
-        Some(display_kind @ EntryDisplayKind::Link) => {
-            ("LINK", render_theme::entry_kind_color(display_kind))
-        }
-        Some(display_kind @ EntryDisplayKind::Other) => {
-            ("OTHR", render_theme::entry_kind_color(display_kind))
-        }
+        Some(display_kind @ EntryDisplayKind::Dir) => (
+            "DIR ",
+            render_theme::entry_kind_color(display_kind, dark_mode),
+        ),
+        Some(display_kind @ EntryDisplayKind::File) => (
+            "FILE",
+            render_theme::entry_kind_color(display_kind, dark_mode),
+        ),
+        Some(display_kind @ EntryDisplayKind::Link) => (
+            "LINK",
+            render_theme::entry_kind_color(display_kind, dark_mode),
+        ),
+        Some(display_kind @ EntryDisplayKind::Other) => (
+            "OTHR",
+            render_theme::entry_kind_color(display_kind, dark_mode),
+        ),
         None => ("....", ui.visuals().weak_text_color()),
     };
     job.append(
@@ -1042,7 +1047,7 @@ fn build_result_row_job(
 
     for (idx, ch) in display.chars().enumerate() {
         let color = if FlistWalkerApp::is_highlighted_position(positions, idx) {
-            render_theme::highlight_text_color()
+            render_theme::highlight_text_color(dark_mode)
         } else {
             ui.visuals().text_color()
         };
@@ -1067,6 +1072,57 @@ pub(super) fn render_central_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) 
 #[cfg(test)]
 mod preview_render_tests {
     use super::*;
+
+    #[test]
+    fn result_row_colors_stay_readable_on_normal_and_selected_backgrounds() {
+        fn luminance(color: egui::Color32) -> f64 {
+            let linear = [color.r(), color.g(), color.b()].map(|channel| {
+                let value = f64::from(channel) / 255.0;
+                if value <= 0.04045 {
+                    value / 12.92
+                } else {
+                    ((value + 0.055) / 1.055).powf(2.4)
+                }
+            });
+            linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+        }
+        for dark in [false, true] {
+            let ctx = egui::Context::default();
+            ctx.set_visuals(if dark {
+                egui::Visuals::dark()
+            } else {
+                egui::Visuals::light()
+            });
+            let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+                for current in [false, true] {
+                    let background = if current {
+                        render_theme::selected_fill(dark)
+                    } else {
+                        ui.visuals().panel_fill
+                    };
+                    for kind in [EntryKind::dir(), EntryKind::file(), EntryKind::link(false), EntryKind::other()] {
+                        let job = build_result_row_job(ui, "alpha.txt", &[0, 1, 2, 3, 4], current, true, Some(kind));
+                        for (index, section) in job.sections.iter().enumerate() {
+                            let text = &job.text[section.byte_range.start.0..section.byte_range.end.0];
+                            if text.trim().is_empty() || (index == 0 && !current) {
+                                continue;
+                            }
+                            let foreground = section.format.color;
+                            // egui owns ordinary path text; this guard covers the
+                            // explicit kind, match and current-row colors we own.
+                            if index >= 3 && foreground == ui.visuals().text_color() {
+                                continue;
+                            }
+                            let a = luminance(foreground);
+                            let b = luminance(background);
+                            let ratio = (a.max(b) + 0.05) / (a.min(b) + 0.05);
+                            assert!(ratio >= 4.5, "dark={dark} current={current} kind={kind:?} text={text:?} color={foreground:?} background={background:?} contrast={ratio:.2}");
+                        }
+                    }
+                }
+            });
+        }
+    }
     use std::fs;
 
     #[test]
