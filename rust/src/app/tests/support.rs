@@ -1,13 +1,41 @@
 use super::{egui, FlistWalkerApp, PathBuf};
 use std::fs;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub(crate) fn test_root(name: &str) -> PathBuf {
+    static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("clock")
         .as_nanos();
-    std::env::temp_dir().join(format!("fff-rs-app-{name}-{nonce}"))
+    // Wall-clock resolution alone does not distinguish concurrent fixtures.
+    let sequence = NEXT_ROOT.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!(
+        "fff-rs-app-{name}-{nonce}-{:010}-{sequence:016x}",
+        std::process::id()
+    ))
+}
+
+#[test]
+fn test_roots_are_unique_for_concurrent_same_name_fixtures() {
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(8));
+    let threads = (0..8)
+        .map(|_| {
+            let barrier = barrier.clone();
+            std::thread::spawn(move || {
+                barrier.wait();
+                (0..128)
+                    .map(|_| test_root("concurrent"))
+                    .collect::<Vec<_>>()
+            })
+        })
+        .collect::<Vec<_>>();
+    let roots = threads
+        .into_iter()
+        .flat_map(|t| t.join().unwrap())
+        .collect::<std::collections::HashSet<_>>();
+    assert_eq!(roots.len(), 8 * 128);
 }
 
 pub(crate) struct TestSettingsScope {
