@@ -209,6 +209,7 @@ pub(crate) fn run(
                     );
                 }
             }
+            FlistWalkerApp::configure_theme(&cc.egui_ctx);
             configure_quit_shortcuts(&cc.egui_ctx);
             // winit creates the macOS menu before invoking the app creator.
             #[cfg(target_os = "macos")]

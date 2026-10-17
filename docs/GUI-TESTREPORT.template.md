@@ -56,11 +56,11 @@ This is the case inventory, not a mandatory full run. Mark selected subflows in 
 | GSM-006 | NOT RUN — run deterministic wrapper | NOT RUN — fixture source/dialog interaction | NOT RUN — supporting only | FileList/dialogs |
 | GSM-007 | NOT RUN — run deterministic wrapper | NOT RUN — separately record cross-process SavedTabState restore and in-process closed-tab/Recent-Inactive behavior | NOT RUN — supporting only | Do not expect sort/PIN/selection/results/preview/lifecycle/heavy snapshots from cross-process SavedTabState |
 | GSM-008 | NOT RUN — run deterministic wrapper | NOT RUN — help, configured Ctrl+W focus/IME behavior, preset picker/editor, Named Root manager, and local/forced dialogs only | NOT RUN — supporting only | Help/keyboard configuration/picker/editor/manager/dialog cancel/failure |
-| GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — light/dark visual pass | NOT RUN — supporting only | Theme/contrast |
+| GSM-009 | NOT RUN — run deterministic wrapper | NOT RUN — System/Dark/Light save/restart, OS follow/fixed behavior and contrast | NOT RUN — supporting only | Theme/contrast |
 | GSM-010 | NOT RUN — run deterministic wrapper/perf gates | NOT RUN — responsiveness during native input | NOT RUN — run isolated headful smoke | Responsiveness |
 | GSM-011 | NOT RUN — run deterministic wrapper and TC-180 | NOT RUN — limited-to-Unlimited Apply, popup/editor checkbox alignment, preset reset, and tab-local interaction | NOT RUN — supporting only | Maximum depth and presets |
 | GSM-012 | NOT RUN — run paged-preview group | NOT RUN — selection/copy/focus/scroll, Japanese/long line, CSV/TSV column colors in both themes, pointer Color toggle, and documented keyboard Color route | NOT RUN — supporting only | Record pointer and keyboard Color activation separately; absence of a reachable keyboard route is FAIL |
-| GSM-013 | NOT RUN — run settings-dialog group | NOT RUN — isolated save/restart and owned JSON editor | NOT RUN — supporting only | Settings dialog and JSON route |
+| GSM-013 | NOT RUN — run settings-dialog group | NOT RUN — isolated save/restart, query-restore child disabled/value retention, all-tab empty queries and owned JSON editor | NOT RUN — supporting only | Settings dialog and JSON route |
 
 ## Native Residuals
 | Case | Status | Reason | Evidence | Reproduction |

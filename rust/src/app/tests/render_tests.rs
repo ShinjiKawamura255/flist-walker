@@ -2298,3 +2298,32 @@ fn dialog_footer_does_not_consume_unused_window_height() {
         });
     }
 }
+
+#[test]
+fn saved_theme_preference_overrides_system_and_system_mode_tracks_os() {
+    use crate::runtime_config::ThemeMode;
+    for (mode, preference) in [
+        (ThemeMode::System, egui::ThemePreference::System),
+        (ThemeMode::Dark, egui::ThemePreference::Dark),
+        (ThemeMode::Light, egui::ThemePreference::Light),
+    ] {
+        let ctx = egui::Context::default();
+        render_theme::apply_theme(&ctx, mode);
+        assert_eq!(ctx.options(|options| options.theme_preference), preference);
+        for system_theme in [egui::Theme::Light, egui::Theme::Dark] {
+            let _ = ctx.run_ui(
+                egui::RawInput {
+                    system_theme: Some(system_theme),
+                    ..Default::default()
+                },
+                |_| {},
+            );
+            let expected = match mode {
+                ThemeMode::System => system_theme,
+                ThemeMode::Dark => egui::Theme::Dark,
+                ThemeMode::Light => egui::Theme::Light,
+            };
+            assert_eq!(ctx.theme(), expected);
+        }
+    }
+}

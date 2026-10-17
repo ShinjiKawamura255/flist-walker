@@ -180,7 +180,11 @@ impl FlistWalkerApp {
             follow_links,
         );
         let restore_session = if restore_session_allowed {
-            Self::sanitize_saved_tabs(&launch.restore_tabs, launch.restore_active_tab)
+            Self::sanitize_saved_tabs(
+                &launch.restore_tabs,
+                launch.restore_active_tab,
+                current_runtime_config().restore_queries_enabled,
+            )
         } else {
             None
         };

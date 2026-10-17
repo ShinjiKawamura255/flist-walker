@@ -264,6 +264,7 @@ impl FlistWalkerApp {
     pub(super) fn sanitize_saved_tabs(
         tabs: &[SavedTabState],
         active_tab: Option<usize>,
+        restore_queries_enabled: bool,
     ) -> Option<(Vec<SavedTabState>, usize)> {
         let history_persist_disabled = Self::history_persist_disabled();
         let sanitized: Vec<SavedTabState> = tabs
@@ -282,7 +283,11 @@ impl FlistWalkerApp {
                     include_dirs: tab.include_dirs,
                     max_depth: tab.max_depth,
                     follow_links: tab.follow_links,
-                    query: tab.query.clone(),
+                    query: if restore_queries_enabled {
+                        tab.query.clone()
+                    } else {
+                        String::new()
+                    },
                     query_history: if history_persist_disabled {
                         Vec::new()
                     } else {

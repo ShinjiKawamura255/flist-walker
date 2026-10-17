@@ -1,7 +1,7 @@
 use crate::app::render::{EmacsSinglelineOptions, RenderCommand};
 use crate::app::settings_dialog::SettingsView;
 use crate::app::FlistWalkerApp;
-use crate::runtime_config::EditableSettings;
+use crate::runtime_config::{EditableSettings, ThemeMode};
 use eframe::egui;
 
 #[derive(Clone, Copy)]
@@ -78,6 +78,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 egui::ScrollArea::vertical().max_height(body_height).show(ui, |ui| {
                     ui.heading("Startup and history");
                     ui.checkbox(&mut draft.restore_tabs_enabled, "Restore previous tabs");
+                    ui.indent("restore-tabs-subsettings", |ui| {
+                        ui.add_enabled_ui(draft.restore_tabs_enabled, |ui| {
+                            ui.checkbox(&mut draft.restore_queries_enabled, "Restore search queries");
+                        });
+                    });
                     ui.label("Explicit startup options take priority over restored tabs.");
                     let mut persist_history = !draft.history_persist_disabled;
                     if ui
@@ -87,6 +92,14 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         draft.history_persist_disabled = !persist_history;
                     }
                     ui.label("Turning this off does not delete existing history. Restored tab queries are stored separately.");
+                    ui.add_space(10.0);
+                    ui.heading("Appearance");
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label("Theme");
+                        ui.radio_value(&mut draft.theme, ThemeMode::System, "System");
+                        ui.radio_value(&mut draft.theme, ThemeMode::Dark, "Dark");
+                        ui.radio_value(&mut draft.theme, ThemeMode::Light, "Light");
+                    });
                     ui.add_space(10.0);
                     ui.heading("Keyboard");
                     ui.checkbox(&mut draft.emacs_keybindings_enabled, "Use Emacs-style shortcuts");

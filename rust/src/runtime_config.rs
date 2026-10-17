@@ -40,6 +40,15 @@ const UPDATE_ALLOW_DOWNGRADE_ENV: &str = "FLISTWALKER_UPDATE_ALLOW_DOWNGRADE";
 const DISABLE_SELF_UPDATE_ENV: &str = "FLISTWALKER_DISABLE_SELF_UPDATE";
 const FORCE_UPDATE_CHECK_FAILURE_ENV: &str = "FLISTWALKER_FORCE_UPDATE_CHECK_FAILURE";
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ThemeMode {
+    #[default]
+    System,
+    Dark,
+    Light,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct RuntimeConfig {
@@ -52,6 +61,8 @@ pub struct RuntimeConfig {
     pub window_trace_path: String,
     pub history_persist_disabled: bool,
     pub restore_tabs_enabled: bool,
+    pub restore_queries_enabled: bool,
+    pub theme: ThemeMode,
     pub emacs_keybindings_enabled: bool,
     pub ctrl_w_deletes_word_in_query: bool,
     pub tab_pin_moves_to_next_row: bool,
@@ -69,6 +80,8 @@ pub struct RuntimeConfig {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableSettings {
     pub restore_tabs_enabled: bool,
+    pub restore_queries_enabled: bool,
+    pub theme: ThemeMode,
     pub history_persist_disabled: bool,
     pub emacs_keybindings_enabled: bool,
     pub ctrl_w_deletes_word_in_query: bool,
@@ -81,6 +94,8 @@ impl From<&RuntimeConfig> for EditableSettings {
     fn from(config: &RuntimeConfig) -> Self {
         Self {
             restore_tabs_enabled: config.restore_tabs_enabled,
+            restore_queries_enabled: config.restore_queries_enabled,
+            theme: config.theme,
             history_persist_disabled: config.history_persist_disabled,
             emacs_keybindings_enabled: config.emacs_keybindings_enabled,
             ctrl_w_deletes_word_in_query: config.ctrl_w_deletes_word_in_query,
@@ -163,6 +178,11 @@ fn save_editable_settings_with_writer(
         "restore_tabs_enabled".into(),
         serde_json::json!(draft.restore_tabs_enabled),
     );
+    object.insert(
+        "restore_queries_enabled".into(),
+        serde_json::json!(draft.restore_queries_enabled),
+    );
+    object.insert("theme".into(), serde_json::json!(draft.theme));
     object.insert(
         "history_persist_disabled".into(),
         serde_json::json!(draft.history_persist_disabled),
@@ -276,6 +296,10 @@ struct RuntimeConfigSeed {
     #[serde(skip_serializing_if = "Option::is_none")]
     restore_tabs_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    restore_queries_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    theme: Option<ThemeMode>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     emacs_keybindings_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     ctrl_w_deletes_word_in_query: Option<bool>,
@@ -323,6 +347,8 @@ impl Default for RuntimeConfig {
             window_trace_path: default_window_trace_path(),
             history_persist_disabled: false,
             restore_tabs_enabled: false,
+            restore_queries_enabled: true,
+            theme: ThemeMode::System,
             emacs_keybindings_enabled: true,
             ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
@@ -766,6 +792,8 @@ impl RuntimeConfig {
                 .unwrap_or_else(default_window_trace_path),
             history_persist_disabled,
             restore_tabs_enabled,
+            restore_queries_enabled: true,
+            theme: ThemeMode::System,
             emacs_keybindings_enabled: true,
             ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
@@ -794,6 +822,8 @@ impl RuntimeConfig {
             window_trace_path: window_trace_path.map(|_| config.window_trace_path.clone()),
             history_persist_disabled: Some(config.history_persist_disabled),
             restore_tabs_enabled: Some(config.restore_tabs_enabled),
+            restore_queries_enabled: Some(config.restore_queries_enabled),
+            theme: Some(config.theme),
             emacs_keybindings_enabled: Some(config.emacs_keybindings_enabled),
             ctrl_w_deletes_word_in_query: Some(config.ctrl_w_deletes_word_in_query),
             tab_pin_moves_to_next_row: Some(config.tab_pin_moves_to_next_row),
@@ -857,6 +887,12 @@ fn normalize_runtime_config_file_locked(path: &Path, text: &str, config: &Runtim
         "restore_tabs_enabled",
         serde_json::json!(config.restore_tabs_enabled),
     );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "restore_queries_enabled",
+        serde_json::json!(config.restore_queries_enabled),
+    );
+    changed |= insert_missing_runtime_config_value(root, "theme", serde_json::json!(config.theme));
     changed |= insert_missing_runtime_config_value(
         root,
         "emacs_keybindings_enabled",

@@ -51,7 +51,7 @@ fn sanitize_saved_tabs_keeps_missing_roots_lazy_and_clamps_active_tab() {
     ];
 
     let (sanitized, active) =
-        FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(99)).expect("sanitized tabs");
+        FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(99), true).expect("sanitized tabs");
     assert_eq!(sanitized.len(), 2);
     assert_eq!(active, 1);
     assert_eq!(sanitized[0].query, "ok");
@@ -1015,4 +1015,42 @@ fn follow_links_saved_tabs_default_false_and_round_trip() {
         crate::indexer::MaxDepth::unlimited(),
         true,
     ));
+}
+
+#[test]
+fn restore_queries_opt_out_clears_every_tab_query_but_keeps_tab_intent_and_history() {
+    let tabs = vec![
+        SavedTabState {
+            root: test_root("query-restore-first")
+                .to_string_lossy()
+                .into_owned(),
+            query: "first query".into(),
+            query_history: vec!["previous query".into()],
+            ..SavedTabState::default()
+        },
+        SavedTabState {
+            root: test_root("query-restore-second")
+                .to_string_lossy()
+                .into_owned(),
+            query: "second query".into(),
+            use_regex: true,
+            tab_accent: Some(TabAccentColor::Teal),
+            ..SavedTabState::default()
+        },
+    ];
+    let (restored, active) = FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(1), false).unwrap();
+    assert_eq!(active, 1);
+    assert_eq!(restored.len(), 2);
+    assert!(restored.iter().all(|tab| tab.query.is_empty()));
+    assert_eq!(restored[0].root, tabs[0].root);
+    assert!(restored[1].use_regex);
+    assert_eq!(restored[1].tab_accent, tabs[1].tab_accent);
+    let (with_queries, _) = FlistWalkerApp::sanitize_saved_tabs(&tabs, Some(1), true).unwrap();
+    assert_eq!(with_queries[0].query, "first query");
+    assert_eq!(with_queries[1].query, "second query");
+    assert_eq!(restored[0].query_history, with_queries[0].query_history);
+    assert_eq!(
+        tabs[0].query, "first query",
+        "persisted intent is unchanged"
+    );
 }
