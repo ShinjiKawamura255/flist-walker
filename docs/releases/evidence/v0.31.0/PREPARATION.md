@@ -102,3 +102,7 @@ The earlier macOS native PASS observations retain their original identity; propo
 | Tags/releases/master readback | PASS scope boundary | [FINAL-STATE.json](FINAL-STATE.json): master still3194f03, latestpublic0.30.2, v0.31.0 tag/release absent; no settings/installed app/OS appearance changes |
 
 Next repair is the macOS build compiler selection and explicit tool-install selectors in normal CI, through the approved PR/trusted-policy route. Preserve this original candidate and warning record. A replacement candidate must carry its own source/run/artifact and fresh verification; it must not relabel these results. Independent review and the selected native/performance gates remain open. Windows preparation does not authorize launching a native session or changing OS appearance.
+
+## Follow-up repair boundary
+
+The original packet above describes run39087986481, not a rebuilt candidate. Independent review of original evidence117e9f0 confirmed the artifact/signature/N-1 results and identified one minor helper defect: a timed-out process lost its partial output. [Repair validation](REPAIR-VALIDATION.md) records the helper correction, macOS compiler-selection correction and regression checks. Windows handoff revision r2 includes the repaired helper with the original Windows candidate bytes. [Original archive identity](windows/HANDOFF-ARCHIVE.json) remains unchanged; [r2 identity](windows/HANDOFF-ARCHIVE-r2.json) is separate. The candidate remains BLOCKED; original compiler/warning observations are never relabeled by the source repair.

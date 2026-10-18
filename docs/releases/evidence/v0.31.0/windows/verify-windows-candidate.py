@@ -93,23 +93,32 @@ def main():
             report["fixture"] = [{"name": path.name, "size": path.stat().st_size,
                                   "sha256": sha256(path)} for path in sorted(fixture.iterdir())]
 
+            def record(role, arguments, elapsed, exit_code, stdout, stderr, **details):
+                # Record after the timer ends, including a timed-out child's partial output.
+                raw.write(json.dumps({"role": role,
+                    "argv": [part.replace(str(root), "<owned-test-root>") for part in arguments],
+                    "elapsed_ms": elapsed, "exit_code": exit_code,
+                    "stdout": stdout.decode("utf-8", errors="replace"),
+                    "stderr": stderr.decode("utf-8", errors="replace"),
+                    "stdout_sha256": hashlib.sha256(stdout).hexdigest(), **details}) + "\n")
+
             def run(role, arguments):
                 if time.monotonic() - started > 600:
                     raise TimeoutError("Verification exceeded its bounded ten-minute deadline")
                 before = time.perf_counter_ns()
-                completed = subprocess.run(
-                    [str(binaries[role]), *arguments], env=env, cwd=str(root),
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
-                    shell=False, creationflags=subprocess.CREATE_NO_WINDOW,
-                )
+                try:
+                    completed = subprocess.run(
+                        [str(binaries[role]), *arguments], env=env, cwd=str(root),
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+                        shell=False, creationflags=subprocess.CREATE_NO_WINDOW,
+                    )
+                except subprocess.TimeoutExpired as error:
+                    elapsed = (time.perf_counter_ns() - before) / 1_000_000
+                    record(role, arguments, elapsed, None, error.stdout or b"", error.stderr or b"",
+                           timed_out=True, timeout_seconds=error.timeout)
+                    raise
                 elapsed = (time.perf_counter_ns() - before) / 1_000_000
-                # Capture after the timer ends; preserve every warmup and partial failure.
-                raw.write(json.dumps({"role": role,
-                    "argv": [part.replace(str(root), "<owned-test-root>") for part in arguments],
-                    "elapsed_ms": elapsed, "exit_code": completed.returncode,
-                    "stdout": completed.stdout.decode("utf-8", errors="replace"),
-                    "stderr": completed.stderr.decode("utf-8", errors="replace"),
-                    "stdout_sha256": hashlib.sha256(completed.stdout).hexdigest()}) + "\n")
+                record(role, arguments, elapsed, completed.returncode, completed.stdout, completed.stderr)
                 return completed, elapsed
 
             for role in binaries:

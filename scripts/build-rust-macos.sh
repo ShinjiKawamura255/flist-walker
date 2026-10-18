@@ -30,14 +30,18 @@ if [[ -f "${HOME}/.cargo/env" ]]; then
 fi
 export PATH="${HOME}/.cargo/bin:${PATH}"
 
-if command -v rustup >/dev/null 2>&1; then
-  CARGO_CMD=(rustup run stable cargo)
-elif command -v cargo >/dev/null 2>&1; then
-  CARGO_CMD=(cargo)
-else
-  echo "cargo が見つかりません。Rust toolchain をインストールしてください。" >&2
+TOOLCHAIN="$(sed -nE 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"([0-9]+\.[0-9]+\.[0-9]+)"[[:space:]]*$/\1/p' "${RUST_DIR}/rust-toolchain.toml")"
+if [[ ! "${TOOLCHAIN}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "rust/rust-toolchain.toml に固定Rust版 X.Y.Z が必要です。" >&2
   exit 1
 fi
+if ! command -v rustup >/dev/null 2>&1; then
+  echo "rustup が見つかりません。固定Rust版 ${TOOLCHAIN} をインストールしてください。" >&2
+  exit 1
+fi
+# An explicit selector also prevents an inherited RUSTUP_TOOLCHAIN=stable from
+# overriding the repository pin. A missing pinned toolchain must fail closed.
+CARGO_CMD=(rustup run "${TOOLCHAIN}" cargo)
 
 BUILD_ARGS=(build --release)
 if [[ -n "${TARGET}" ]]; then
