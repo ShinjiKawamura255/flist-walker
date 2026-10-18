@@ -5,14 +5,26 @@ import os
 import gdb
 
 
+def emit(value):
+    if os.environ.get("COVERAGE_DIAGNOSTIC_CORE"):
+        print(json.dumps({"coverage_diagnostic_output": value}), flush=True)
+    else:
+        print(value, flush=True)
+
+
 def dump_stacks(identity):
-    print("coverage_diagnostic_stop=" + json.dumps(identity), flush=True)
+    emit("coverage_diagnostic_stop=" + json.dumps(identity))
     for command in ("info program", "info threads", "thread apply all bt 48",
                     "info registers", "x/12i $pc", "info sharedlibrary"):
         try:
-            gdb.execute(command)
+            output = gdb.execute(command, to_string=True)
+            if output:
+                if "PRIVATE_ARGUMENT_PROBE" in output:
+                    emit("coverage_diagnostic_private_output_rejected=" + command)
+                else:
+                    emit(output.rstrip("\n"))
         except gdb.error:
-            print("coverage_diagnostic_unavailable=" + command, flush=True)
+            emit("coverage_diagnostic_unavailable=" + command)
 
 
 def on_stop(event):

@@ -44,17 +44,28 @@ def report_cores(directory, smoke=False):
                  "--init-eval-command=set auto-load off", "--command",
                  str(ROOT / "scripts/coverage-diagnostic-gdb.py"), "--args", str(binary)],
                  env=env, capture_output=True, text=True, check=False)
-        # Do not print GDB stderr or the discarded core header, which can contain argv.
-        if "PRIVATE_ARGUMENT_PROBE" in result.stdout:
+        # Only our GDB Python protocol is printable. GDB can emit an unsolicited
+        # core header containing argv outside execute(to_string=True).
+        outputs = []
+        for line in result.stdout.splitlines():
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict) and isinstance(row.get("coverage_diagnostic_output"), str):
+                outputs.append(row["coverage_diagnostic_output"])
+        safe_output = "\n".join(outputs) + "\n"
+        if "PRIVATE_ARGUMENT_PROBE" in safe_output:
             raise RuntimeError("Core diagnostic exposed an argument value; output withheld")
-        print(result.stdout, end="", flush=True)
+        print(safe_output, end="", flush=True)
         if core.stat().st_size >= LIMIT or "truncat" in result.stderr.lower():
             print("coverage_core_status=PARTIAL_CORE_LIMIT_OR_TRUNCATION", flush=True)
-        if result.returncode or '"signal_number":' not in result.stdout:
+        if result.returncode or '"signal_number":' not in safe_output:
             raise RuntimeError("Core stack extraction failed; raw core remains VM-local")
-        missing_backtrace = "coverage_diagnostic_unavailable=thread apply all bt 48" in result.stdout
-        if smoke and ('"signal_number": 11' not in result.stdout
-                      or "diagnostic_crash" not in result.stdout or missing_backtrace):
+        missing_backtrace = any(marker + "thread apply all bt 48" in safe_output for marker in
+                                ("coverage_diagnostic_unavailable=", "coverage_diagnostic_private_output_rejected="))
+        if smoke and ('"signal_number": 11' not in safe_output
+                      or "diagnostic_crash" not in safe_output or missing_backtrace):
             raise RuntimeError("Native core smoke did not recover the SIGSEGV fixture stack")
         if missing_backtrace:
             print("coverage_core_status=PARTIAL_BACKTRACE_UNAVAILABLE", flush=True)
