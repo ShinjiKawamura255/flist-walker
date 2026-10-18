@@ -20,7 +20,7 @@ SPEC.loader.exec_module(MODULE)
 
 
 class CoreReportTests(unittest.TestCase):
-    def test_mapped_core_is_reported_without_header_and_removed(self):
+    def check_mapped_core(self, safe, smoke=False, rejected=False):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             binary = root / "flist_walker-fixture"
@@ -29,15 +29,30 @@ class CoreReportTests(unittest.TestCase):
             core.write_bytes(b"synthetic core")
             index = root / "index-123.json"
             index.write_text(json.dumps({"binary": str(binary), "sha256": hashlib.sha256(binary.read_bytes()).hexdigest()}))
-            safe = 'coverage_diagnostic_stop={"signal_number": 11}\n#0 diagnostic_crash (...)\n'
             with patch.object(MODULE.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, safe, "")) as run, \
                  contextlib.redirect_stdout(io.StringIO()) as output:
-                self.assertEqual(MODULE.report_cores(root), 1)
+                if rejected:
+                    with self.assertRaises(RuntimeError):
+                        MODULE.report_cores(root, smoke=smoke)
+                else:
+                    self.assertEqual(MODULE.report_cores(root, smoke=smoke), 1)
             self.assertIn(safe, output.getvalue())
             self.assertEqual(run.call_args.kwargs["env"]["COVERAGE_DIAGNOSTIC_CORE"], str(core))
             self.assertIn("--init-eval-command=set auto-load off", run.call_args.args[0])
-            self.assertFalse(core.exists())
-            self.assertFalse(index.exists())
+            self.assertEqual(core.exists(), rejected)
+            self.assertEqual(index.exists(), rejected)
+
+    def test_mapped_core_is_reported_without_header_and_removed(self):
+        self.check_mapped_core('coverage_diagnostic_stop={"signal_number": 11}\n#0 diagnostic_crash (...)\n')
+
+    def test_smoke_requires_sigsegv_and_fixture_backtrace(self):
+        signal = 'coverage_diagnostic_stop={"signal_number": 11}\n'
+        frame = '#0 diagnostic_crash (...)\n'
+        self.check_mapped_core(signal + frame, smoke=True)
+        for output in (signal, frame, signal.replace('11', '6') + frame,
+                       signal + frame + 'coverage_diagnostic_unavailable=thread apply all bt 48\n'):
+            with self.subTest(output=output):
+                self.check_mapped_core(output, smoke=True, rejected=True)
 
     def test_unmapped_core_is_never_loaded_or_published(self):
         with tempfile.TemporaryDirectory() as temporary:

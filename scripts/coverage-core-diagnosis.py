@@ -52,6 +52,12 @@ def report_cores(directory, smoke=False):
             print("coverage_core_status=PARTIAL_CORE_LIMIT_OR_TRUNCATION", flush=True)
         if result.returncode or '"signal_number":' not in result.stdout:
             raise RuntimeError("Core stack extraction failed; raw core remains VM-local")
+        missing_backtrace = "coverage_diagnostic_unavailable=thread apply all bt 48" in result.stdout
+        if smoke and ('"signal_number": 11' not in result.stdout
+                      or "diagnostic_crash" not in result.stdout or missing_backtrace):
+            raise RuntimeError("Native core smoke did not recover the SIGSEGV fixture stack")
+        if missing_backtrace:
+            print("coverage_core_status=PARTIAL_BACKTRACE_UNAVAILABLE", flush=True)
         core.unlink()
         index.unlink()
         count += 1
