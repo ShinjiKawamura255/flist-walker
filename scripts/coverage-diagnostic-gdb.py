@@ -1,6 +1,7 @@
 """GDB-only fault reporting. No locals, argument values, environment dump or raw core."""
 import json
 import os
+import re
 
 import gdb
 
@@ -43,8 +44,19 @@ for command in ("set pagination off", "set confirm off", "set auto-load off",
 core = os.environ.get("COVERAGE_DIAGNOSTIC_CORE")
 if core:
     # GDB's default core header prints the original argv. Discard that header.
-    gdb.execute("core-file " + json.dumps(core), to_string=True)
-    dump_stacks({"signal_number": int(gdb.parse_and_eval("$_siginfo.si_signo")), "mode": "core"})
+    # Older GDB versions treat quotes as literal filename bytes. Our owned
+    # hosted-runner paths need no escaping; reject other characters explicitly.
+    if not re.fullmatch(r"/[A-Za-z0-9_./-]+", core):
+        emit("coverage_diagnostic_unavailable=unsupported_core_path")
+        raise SystemExit(2)
+    try:
+        gdb.execute("core-file " + core, to_string=True)
+        signo = int(gdb.parse_and_eval("$_siginfo.si_signo"))
+    except gdb.error as error:
+        category = "file_not_found" if "No such file" in str(error) else "core_load_or_siginfo"
+        emit("coverage_diagnostic_unavailable=" + category)
+        raise SystemExit(2)
+    dump_stacks({"signal_number": signo, "mode": "core"})
 else:
     gdb.events.stop.connect(on_stop)
     gdb.execute("run")

@@ -55,6 +55,8 @@ def report_cores(directory, smoke=False):
             if isinstance(row, dict) and isinstance(row.get("coverage_diagnostic_output"), str):
                 outputs.append(row["coverage_diagnostic_output"])
         safe_output = "\n".join(outputs) + "\n"
+        print("coverage_gdb_result=" + json.dumps({"exit": result.returncode,
+              "structured_records": len(outputs)}), flush=True)
         if "PRIVATE_ARGUMENT_PROBE" in safe_output:
             raise RuntimeError("Core diagnostic exposed an argument value; output withheld")
         print(safe_output, end="", flush=True)
