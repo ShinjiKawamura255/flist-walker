@@ -215,6 +215,28 @@ def test_regression_v0301_accepts_exact_v0302_inventory(
     assert result.returncode == 0, result.stderr
 
 
+def test_regression_v0302_accepts_exact_v0310_inventory(
+    script: Path, manifest: Path, digest: str
+) -> None:
+    names = release_inventory("0.31.0")
+    assert len(names) == 26
+    write_manifest(manifest, names, digest)
+
+    result = run(script, manifest, "0.30.2", "0.31.0")
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_regression_v0302_rejects_non_increasing_versions(
+    script: Path, manifest: Path, digest: str
+) -> None:
+    for candidate in ("0.30.2", "0.30.1"):
+        write_manifest(manifest, release_inventory(candidate), digest)
+        result = run(script, manifest, "0.30.2", candidate)
+        assert result.returncode == 2, (candidate, result.stderr)
+        assert "newer than previous" in result.stderr, result.stderr
+
+
 def test_regression_candidate_must_be_newer_than_previous_release(
     script: Path, manifest: Path, digest: str
 ) -> None:
@@ -255,6 +277,8 @@ def main() -> int:
         test_regression_v0290_accepts_exact_v0300_inventory(script, manifest, digest)
         test_regression_v0300_accepts_exact_v0301_inventory(script, manifest, digest)
         test_regression_v0301_accepts_exact_v0302_inventory(script, manifest, digest)
+        test_regression_v0302_accepts_exact_v0310_inventory(script, manifest, digest)
+        test_regression_v0302_rejects_non_increasing_versions(script, manifest, digest)
         test_regression_candidate_must_be_newer_than_previous_release(
             script, manifest, digest
         )
