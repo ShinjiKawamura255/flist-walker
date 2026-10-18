@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.31.0] - 2026-10-18
+### Added
+- Settings に検索クエリの復元設定を追加した。前回のタブを復元するとき、root・filter・active tab を保ったまま検索欄だけを空にできる。既存設定では従来どおりクエリを復元する。
+- Settings に System / Dark / Light のテーマ設定を追加した。保存した設定は次回起動時から適用する。
+
+### Changed
+- Settings と関連ダイアログの確定操作を右下へ揃え、確定操作、Cancel の順に並べた。JSON 操作と Reset は確定操作から分離した。
+- 履歴保存と Warm 更新の回帰テストを、実際の保存完了と延期された要求の状態に合わせて強化した。検証用一時ディレクトリの衝突防止と、実際の runtime settings との整合確認も追加した。
+
+### Fixed
+- Light テーマで検索一致文字、種別ラベル、現在行マーカーが薄くなる配色を修正し、通常行・選択行で読み取りやすくした。Dark テーマの既存色は維持する。
+- リリース前検証に公開済み v0.30.2 の updater capability と、v0.31.0 の exact checksum inventory に対する前版互換性回帰テストを登録した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- なし。
+
+### Known issues
+- macOS 配布物は未 notarized。
+- v0.24.3 利用者は同じ variant の binary と `SHA256SUMS` を手動で取得・検証して一度置き換える必要がある。v0.24.4 以降は通常の自動更新を利用できる。
+- 大規模な候補集合では query 準備中の index 取り込みを一時停止する。v0.30.0 の50万候補検証の query dispatch 中央値339〜498 ms、最大536 msは元版の観測値であり、本版の再測定値ではない。
+
 ## [0.30.2] - 2026-10-15
 ### Added
 - なし。
@@ -2203,7 +2230,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...HEAD
+[0.31.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...v0.31.0
 [0.30.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.1
 [0.30.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.29.0...v0.30.0
