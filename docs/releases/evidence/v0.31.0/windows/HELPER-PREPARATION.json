@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "platform": "macOS (preparation checks only)",
+  "helper_sha256": "e6b65f9217c6a6fda1ebb989eb0c435d94f8bb0482cf60eb318bcd9d3468c30f",
+  "tests": 4,
+  "checks": [
+    "60 observations including warmups, 25 samples per role, retained raw output, equal synthetic medians FAIL unchanged0.70 threshold",
+    "first invalid output preserved with previous raw rows and FAIL report",
+    "existing output/raw not overwritten",
+    "native Windows x86_64 guard refuses macOS timing",
+    "synthetic fw/universal0.5 succeeds with102 persisted observations; no actual Windows timing"
+  ],
+  "product_or_windows_execution": "NOT RUN",
+  "test_harness_sha256": "adfeb082097bac92c358ca438f2b37d4f8f65178db4c416a47943da35f44b2c2"
+}

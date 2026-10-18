@@ -1,0 +1,64 @@
+{
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39087986481,
+  "attempt": 1,
+  "scope": "OS signing is separate from SHA256SUMS Ed25519 verification",
+  "artifacts": [
+    {
+      "filename": "FlistWalker-0.31.0-macos-arm64",
+      "codesign_display_exit": 0,
+      "codesign_verify_exit": 0,
+      "details": [
+        "CodeDirectory v=20400 size=105176 flags=0x20002(adhoc,linker-signed) hashes=3283+0 location=embedded",
+        "Signature=adhoc",
+        "TeamIdentifier=not set"
+      ],
+      "developer_id_present": false,
+      "notarization": "NOT RUN; not part of candidate workflow"
+    },
+    {
+      "filename": "FlistWalker-0.31.0-macos-x86_64",
+      "codesign_display_exit": 1,
+      "codesign_verify_exit": 1,
+      "details": [],
+      "developer_id_present": false,
+      "notarization": "NOT RUN; not part of candidate workflow"
+    },
+    {
+      "filename": "FlistWalker-0.31.0-windows-x86_64.exe",
+      "authenticode_certificate_table": [
+        0,
+        0
+      ],
+      "authenticode_present": false
+    },
+    {
+      "filename": "fw-0.31.0-macos-arm64",
+      "codesign_display_exit": 0,
+      "codesign_verify_exit": 0,
+      "details": [
+        "CodeDirectory v=20400 size=39544 flags=0x20002(adhoc,linker-signed) hashes=1232+0 location=embedded",
+        "Signature=adhoc",
+        "TeamIdentifier=not set"
+      ],
+      "developer_id_present": false,
+      "notarization": "NOT RUN; not part of candidate workflow"
+    },
+    {
+      "filename": "fw-0.31.0-macos-x86_64",
+      "codesign_display_exit": 1,
+      "codesign_verify_exit": 1,
+      "details": [],
+      "developer_id_present": false,
+      "notarization": "NOT RUN; not part of candidate workflow"
+    },
+    {
+      "filename": "fw-0.31.0-windows-x86_64.exe",
+      "authenticode_certificate_table": [
+        0,
+        0
+      ],
+      "authenticode_present": false
+    }
+  ]
+}

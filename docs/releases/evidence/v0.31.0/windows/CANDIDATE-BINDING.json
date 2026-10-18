@@ -1,0 +1,28 @@
+{
+  "version": "0.31.0",
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39087986481,
+  "attempt": 1,
+  "artifact": {
+    "id": 12122471715,
+    "name": "validated-release-bundle-v0.31.0-3194f03c27f9a72f06a836dbd02e9141d8740a26",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39087986481/artifacts/12122471715",
+    "digest": "sha256:263226a5a005a09f80a0aaaf73a04c98374a1b02b8b254f49d1f22e194f9a03d",
+    "size_in_bytes": 85936185,
+    "created_at": "2026-10-18T02:28:42Z",
+    "expires_at": "2026-11-01T02:28:37Z"
+  },
+  "manifest_sha256": "45f6d090184944753e73cb1c02206cb62f5dde6dba2a28d1c3099ec37c46d5a0",
+  "signature_sha256": "78e67526ae18688a446a8f227e2135958cd81180de8cfc8a80f6bc521aa8df15",
+  "windows": {
+    "universal": {
+      "filename": "FlistWalker-0.31.0-windows-x86_64.exe",
+      "sha256": "1a3a03f7e957e531e698db885daa4c2ea6cd531b8f9ff6b7be7938120a943927"
+    },
+    "fw": {
+      "filename": "fw-0.31.0-windows-x86_64.exe",
+      "sha256": "ead8d99935cdf16df31a16ec1e79a14cbd7e010e5dbf17825362f25533b9f7cb"
+    }
+  },
+  "overall_release_readiness": "BLOCKED: macOS compiler pin/Rust warning, master CI warnings and native review gates remain"
+}
