@@ -11,5 +11,23 @@
     "synthetic fw/universal0.5 succeeds with102 persisted observations; no actual Windows timing"
   ],
   "product_or_windows_execution": "NOT RUN",
-  "test_harness_sha256": "adfeb082097bac92c358ca438f2b37d4f8f65178db4c416a47943da35f44b2c2"
+  "test_harness_sha256": "adfeb082097bac92c358ca438f2b37d4f8f65178db4c416a47943da35f44b2c2",
+  "initial_preparation_scope": "Original helper and 4 checks below describe the original ZIP retained in HANDOFF-ARCHIVE.json; the current helper is the r2 revision.",
+  "timeout_repair": {
+    "result": "PASS",
+    "platform": "macOS preparation mocks only; no Windows binary executed",
+    "helper_sha256": "454d230da5dcb1f805e0a12fdb6cc555be9a2c5e34b84798262d288a40926a3f",
+    "test_file": "scripts/tests/test_windows_candidate_helper.py",
+    "test_file_sha256": "05ac9f8a2758e6ccc4725ded76cee01217c7f956cde784fa82dac91324bfc8c5",
+    "tests": 5,
+    "checks": [
+      "TimeoutExpired with partial stdout/stderr preserves earlier42 rows plus timed-out row, argv/role/elapsed_ms/timeout_seconds/unknown exit; global FAIL remains",
+      "TimeoutExpired without partial output preserves an explicit timeout row and global FAIL",
+      "synthetic success retains102 observations,5warmup+25samples per role",
+      "equal medians FAIL the unchanged0.70 threshold",
+      "first bad output and existing output/raw preservation",
+      "non-Windows execution refused"
+    ],
+    "windows_native_and_tc193": "NOT RUN"
+  }
 }

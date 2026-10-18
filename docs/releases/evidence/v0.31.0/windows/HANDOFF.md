@@ -2,6 +2,8 @@
 
 状態: **準備のみ。Windows実画面・TC-193はNOT RUN。タグ・公開は行わない。**
 
+helper修正版の準備ZIPは `FlistWalker-v0.31.0-run39087986481-Windows-handoff-r2.zip`。元ZIPとそのhash記録は保全している。r2はtimeout時の部分stdout/stderr・経過時間・role/argv・timeout秒数をrawへ保存する。候補バイナリ8ファイルとsource/run/attemptは元のままであり、macOSビルド修正後の新候補ではない。
+
 候補にはmacOSビルドの固定Rust版不一致とmaster CIの未解決警告があり、公開可能とは判定されていない。Windowsの独立確認材料として保持する。後続の修正版候補へbindingや結果を自動転記せず、source/build/実バイナリを再照合する。
 
 対象はsource `3194f03c27f9a72f06a836dbd02e9141d8740a26`、[候補run39087986481](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39087986481)、attempt1。結果の正本は[候補パケット](../PREPARATION.md)。別ビルド、インストール済み実行ファイル、古い候補へ置き換えない。

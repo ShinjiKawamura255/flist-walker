@@ -263,6 +263,7 @@ warning抑制、`continue-on-error`、失敗の無視、digest/署名/N-1検証�
 - notarization 環境が未整備な当面の間は、macOS を publish 対象に含める場合でも notarization 完了を必須条件にしない。その代わり release note に未 notarized である旨を記載すること。
 
 ## Build / Release 環境変数の扱い
+- macOS build入口 `scripts/build-rust-macos.sh` は `rust/rust-toolchain.toml` の固定版 `X.Y.Z` を明示して `rustup run <version> cargo` を実行する。target省略時も同じ選択を行い、環境の `stable` 指定へ切り替えない。固定版が不正、rustupまたは当該toolchainが未導入の場合はビルドを停止する。
 - build/release secret:
   - `FLISTWALKER_UPDATE_SIGNING_KEY_HEX`
   - `FLISTWALKER_UPDATE_PUBLIC_KEY_HEX`

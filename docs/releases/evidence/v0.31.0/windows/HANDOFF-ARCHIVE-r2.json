@@ -1,0 +1,20 @@
+{
+  "filename": "FlistWalker-v0.31.0-run39087986481-Windows-handoff-r2.zip",
+  "revision": 2,
+  "sha256": "ef0d5ac723850c27fba63656b089378efea63c9bea35dd4f4ba32308a3ebaaa7",
+  "size": 17872683,
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39087986481,
+  "attempt": 1,
+  "artifact_id": 12122471715,
+  "helper_sha256": "454d230da5dcb1f805e0a12fdb6cc555be9a2c5e34b84798262d288a40926a3f",
+  "original_archive_sha256": "ba1656db21ab4ff621c899fc3315ae98bf0228ade0fe76de1dbdcc1db9537c83",
+  "members": 33,
+  "evidence_files": 24,
+  "scope": "Repaired preparation helper and current packet plus unchanged Windows8-file subset; not a rebuilt release candidate",
+  "archive_crc": "PASS",
+  "evidence_bytes": "PASS exact current packet (archive identity JSONs excluded to avoid self-reference)",
+  "candidate_bytes": "PASS all8 bytes identical to original ZIP/validated bundle",
+  "native_gui": "NOT RUN",
+  "tc193": "NOT RUN"
+}
