@@ -1,0 +1,80 @@
+{
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39086272030,
+  "attempt": 1,
+  "complete_full_logs": 10,
+  "warning_candidates": [
+    {
+      "job": "Clippy and Coverage",
+      "line": "2026-10-18T01:23:26.3008719Z warning: default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file"
+    },
+    {
+      "job": "Cargo Audit",
+      "line": "2026-10-18T01:23:24.5595078Z warning: default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file"
+    },
+    {
+      "job": "Windows GNU Updater E2E",
+      "line": "2026-10-18T01:27:24.7670150Z (node:2220) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "runners": {
+    "Detect Changes": [
+      "2.337.0"
+    ],
+    "CI Policy": [
+      "2.337.0"
+    ],
+    "Windows GNU Updater Build": [
+      "2.337.0"
+    ],
+    "Rust Test and Build (macos-native)": [
+      "2.337.0"
+    ],
+    "Rust Test and Build (linux-native)": [
+      "2.337.0"
+    ],
+    "Rust Test and Build (windows-native)": [
+      "2.337.0"
+    ],
+    "Clippy and Coverage": [
+      "2.337.0"
+    ],
+    "Cargo Audit": [
+      "2.337.0"
+    ],
+    "Windows GNU Updater E2E": [
+      "2.337.0"
+    ],
+    "CI Gate": [
+      "2.337.0"
+    ]
+  },
+  "annotations": [
+    {
+      "job": "Rust Test and Build (macos-native)",
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/3194f03c27f9a72f06a836dbd02e9141d8740a26/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "broad_scan": {
+    "total_candidates": 22,
+    "classification": {
+      "checkout hint": 7,
+      "test name": 4,
+      "clippy argument echo": 6,
+      "actual Rust warning": 2,
+      "Action input default, not an emission": 1,
+      "actual Action warning": 1,
+      "runtime diagnostic followup": 1
+    },
+    "unclassified": []
+  }
+}

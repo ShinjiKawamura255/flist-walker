@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.31.0 Candidate Packet](evidence/v0.31.0/PREPARATION.md) | Manual candidate verification and Windows native/TC-193 preparation; no tag or release publication |
 | [v0.30.2 Execution Packet](v0.30.2.md) | Published source, candidate/tagged/public assets, native deviations and Windows startup measurements |
 | [v0.30.1 Execution Packet](v0.30.1.md) | Published tag/source, separate candidate/tagged warning decisions, fresh assets/public readback and selected reuse |
 | [v0.30.0 Execution Packet](v0.30.0.md) | Published tag, assets, validation selection, GUI repairs, approved deviations and exact-run warnings |
@@ -23,6 +24,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.31.0/` | Candidate identity, distribution/signature/N-1/log verification and Windows handoff; native measurements remain separate |
 | `evidence/v0.30.2/` | Preparation, exact candidate/tagged bindings, Windows native and raw TC-193 results, scoped deviations, separate warning decisions and public readback |
 | `evidence/v0.30.1/` | Whole48-commit classification, predecessor/native reuse, latest Action diagnosis, per-run artifact/warning decisions and publication readback |
 | `evidence/v0.30.0/` | Preparation and whole-release classification, native repair/reuse, published body, actual public downloads and closure validation |

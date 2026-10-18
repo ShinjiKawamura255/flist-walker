@@ -1,0 +1,52 @@
+[
+  {
+    "id": 12122471715,
+    "name": "validated-release-bundle-v0.31.0-3194f03c27f9a72f06a836dbd02e9141d8740a26",
+    "digest": "sha256:263226a5a005a09f80a0aaaf73a04c98374a1b02b8b254f49d1f22e194f9a03d",
+    "actual_sha256": "263226a5a005a09f80a0aaaf73a04c98374a1b02b8b254f49d1f22e194f9a03d",
+    "size": 85936185,
+    "expires_at": "2026-11-01T02:28:37Z",
+    "zip_crc": "PASS",
+    "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26"
+  },
+  {
+    "id": 12122001082,
+    "name": "release-linux-x86_64",
+    "digest": "sha256:96e0d1598532cf4f824e4d0485d065a5bd9348e0829e64e3a45b102ca67c52a8",
+    "actual_sha256": "96e0d1598532cf4f824e4d0485d065a5bd9348e0829e64e3a45b102ca67c52a8",
+    "size": 19890289,
+    "expires_at": "2027-01-16T01:51:32Z",
+    "zip_crc": "PASS",
+    "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26"
+  },
+  {
+    "id": 12121824638,
+    "name": "release-macos-x86_64",
+    "digest": "sha256:eb67fc2a75e52caa32e54cf7ff286403dced67b7055330e6727c72e10529ba97",
+    "actual_sha256": "eb67fc2a75e52caa32e54cf7ff286403dced67b7055330e6727c72e10529ba97",
+    "size": 25054295,
+    "expires_at": "2027-01-16T01:51:32Z",
+    "zip_crc": "PASS",
+    "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26"
+  },
+  {
+    "id": 12121678275,
+    "name": "release-windows-x86_64",
+    "digest": "sha256:d8564297703191bf30e16464e16d9909a657a93c8558089dd10b3cc9f1cea583",
+    "actual_sha256": "d8564297703191bf30e16464e16d9909a657a93c8558089dd10b3cc9f1cea583",
+    "size": 18038808,
+    "expires_at": "2027-01-16T01:51:32Z",
+    "zip_crc": "PASS",
+    "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26"
+  },
+  {
+    "id": 12121299015,
+    "name": "release-macos-arm64",
+    "digest": "sha256:5c0da740c30a0553ece1cc7d0cb91b6434f7b595ec8a498998523d622cb46377",
+    "actual_sha256": "5c0da740c30a0553ece1cc7d0cb91b6434f7b595ec8a498998523d622cb46377",
+    "size": 22953506,
+    "expires_at": "2027-01-16T01:51:32Z",
+    "zip_crc": "PASS",
+    "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26"
+  }
+]

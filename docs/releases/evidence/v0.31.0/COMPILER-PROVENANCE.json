@@ -1,0 +1,163 @@
+{
+  "status": "FAIL required compiler pin",
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39087986481,
+  "attempt": 1,
+  "required": {
+    "version": "1.97.1",
+    "rustc_commit": "8bab26f4f68e0e26f0bb7960be334d5b520ea452",
+    "source": "docs/CI_OPERATIONS.md:61"
+  },
+  "completed_arm64_producer": [
+    {
+      "name": "FlistWalker-0.31.0-macos-arm64",
+      "sha256": "d176f08c1bbe7d17e3d5c70d586ca0ff3bccf2b6cdc0bdad258819ad02256714",
+      "rustc_commits": [
+        "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4"
+      ]
+    },
+    {
+      "name": "fw-0.31.0-macos-arm64",
+      "sha256": "28bd2fa71a28bdad4c0811fce788b6480951712167e44bb632e679fe94428eb3",
+      "rustc_commits": [
+        "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4"
+      ]
+    }
+  ],
+  "observed_official_commit": {
+    "commit": {
+      "committer": "2026-09-28T18:24:15Z",
+      "message": "Auto merge of #163440 - Mark-Simulacrum:stable-next, r=Mark-Simulacrum\n\n[stable] 1.99.0 release\n\nhttps://forge.rust-lang.org/release/process.html#stable-pr\r\n\r\nCherry-picks current state of relnotes (https://github.com/rust-lang/rust/pull/163435/), ultimately the main branch will have the authoritative copy unless we rebuild artifacts for some reason.\r\n\r\nr? me"
+    },
+    "html_url": "https://github.com/rust-lang/rust/commit/b940084d7eb6a299eb4bfeb8e34901bc051e7ac4",
+    "sha": "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4"
+  },
+  "official_current_stable_readback": {
+    "checked_at_utc": "2026-10-18T02:12:39.439424+00:00",
+    "url": "https://static.rust-lang.org/dist/channel-rust-stable.toml",
+    "date": "2026-10-15",
+    "version": "1.99.1 (58cf8f9c3 2026-10-13)",
+    "git_commit_hash": "58cf8f9c35b355199727627d07ae34a4e2846d67"
+  },
+  "candidate_final_bundle_comparison": "PASS all26 producer bytes equal final bundle; compiler policy FAIL for macOS",
+  "cause": "scripts/build-rust-macos.sh explicit rustup run stable cargo bypasses repository fixed toolchain",
+  "native_reuse": "not admitted while build boundary inconsistent",
+  "actual_candidate_binaries": [
+    {
+      "filename": "FlistWalker-0.31.0-linux-x86_64",
+      "sha256": "765e1c3a295fd81d9b30b24031ab75df87d93e4988cbf961c204050c7b4204dc",
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "matches_required_1_97_1": true,
+      "previous_public_rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "compiler_changed_since_public": false
+    },
+    {
+      "filename": "FlistWalker-0.31.0-macos-arm64",
+      "sha256": "d176f08c1bbe7d17e3d5c70d586ca0ff3bccf2b6cdc0bdad258819ad02256714",
+      "rustc_commits": [
+        "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4"
+      ],
+      "matches_required_1_97_1": false,
+      "previous_public_rustc_commits": [
+        "48a229ceaefd4985c50990b14116b6d856af0985"
+      ],
+      "compiler_changed_since_public": true
+    },
+    {
+      "filename": "FlistWalker-0.31.0-macos-x86_64",
+      "sha256": "6d2c07518c46ca371ea77528d06ac86c4f8bd76f9251311dfa892ab1e417b190",
+      "rustc_commits": [
+        "88d9e12ae178fab0fb5cc050a94da85685d449ea"
+      ],
+      "matches_required_1_97_1": false,
+      "previous_public_rustc_commits": [
+        "88d9e12ae178fab0fb5cc050a94da85685d449ea"
+      ],
+      "compiler_changed_since_public": false
+    },
+    {
+      "filename": "FlistWalker-0.31.0-windows-x86_64.exe",
+      "sha256": "1a3a03f7e957e531e698db885daa4c2ea6cd531b8f9ff6b7be7938120a943927",
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "matches_required_1_97_1": true,
+      "previous_public_rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "compiler_changed_since_public": false
+    },
+    {
+      "filename": "fw-0.31.0-linux-x86_64",
+      "sha256": "514d7558eaf0a0b0601d417849c80d41fd242005f9f65581cea6948fdd12734d",
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "matches_required_1_97_1": true,
+      "previous_public_rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "compiler_changed_since_public": false
+    },
+    {
+      "filename": "fw-0.31.0-macos-arm64",
+      "sha256": "28bd2fa71a28bdad4c0811fce788b6480951712167e44bb632e679fe94428eb3",
+      "rustc_commits": [
+        "b940084d7eb6a299eb4bfeb8e34901bc051e7ac4"
+      ],
+      "matches_required_1_97_1": false,
+      "previous_public_rustc_commits": [
+        "48a229ceaefd4985c50990b14116b6d856af0985"
+      ],
+      "compiler_changed_since_public": true
+    },
+    {
+      "filename": "fw-0.31.0-macos-x86_64",
+      "sha256": "d398bb843b318d63884c3804e5f746135cb57bbfd166b36619c7fde767d66a35",
+      "rustc_commits": [
+        "88d9e12ae178fab0fb5cc050a94da85685d449ea"
+      ],
+      "matches_required_1_97_1": false,
+      "previous_public_rustc_commits": [
+        "88d9e12ae178fab0fb5cc050a94da85685d449ea"
+      ],
+      "compiler_changed_since_public": false
+    },
+    {
+      "filename": "fw-0.31.0-windows-x86_64.exe",
+      "sha256": "ead8d99935cdf16df31a16ec1e79a14cbd7e010e5dbf17825362f25533b9f7cb",
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "matches_required_1_97_1": true,
+      "previous_public_rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "compiler_changed_since_public": false
+    }
+  ],
+  "policy_mismatches": [
+    "FlistWalker-0.31.0-macos-arm64",
+    "FlistWalker-0.31.0-macos-x86_64",
+    "fw-0.31.0-macos-arm64",
+    "fw-0.31.0-macos-x86_64"
+  ],
+  "observed_official_x86_commit": {
+    "commit": {
+      "committer": "2026-08-18T19:58:58Z",
+      "message": "Auto merge of #161313 - cuviper:stable-next, r=cuviper\n\n[stable] prepare Rust 1.98.0\n\nhttps://forge.rust-lang.org/release/process.html#stable-pr\r\n\r\nThis also includes:\r\n\r\n- Revert \"riscv: promote d, e, and f target_features to CfgStableToggleUnstable\" rust-lang/rust#161064\r\n- add relnotes 1.98.0 rust-lang/rust#161293 (and previous relnotes as well)\r\n\r\nr? me"
+    },
+    "html_url": "https://github.com/rust-lang/rust/commit/88d9e12ae178fab0fb5cc050a94da85685d449ea",
+    "sha": "88d9e12ae178fab0fb5cc050a94da85685d449ea"
+  },
+  "compiler_versions": {
+    "macos-arm64": "1.99.0",
+    "macos-x86_64": "1.98.0",
+    "linux-x86_64": "1.97.1",
+    "windows-x86_64": "1.97.1"
+  }
+}

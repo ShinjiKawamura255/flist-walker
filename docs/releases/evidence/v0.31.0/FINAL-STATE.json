@@ -1,0 +1,18 @@
+{
+  "checked_at_utc": "2026-10-18T02:35:13.708442+00:00",
+  "master_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "latest_public": {
+    "draft": false,
+    "prerelease": false,
+    "published_at": "2026-10-14T18:02:22Z",
+    "tag_name": "v0.30.2"
+  },
+  "candidate_run": 39087986481,
+  "attempt": 1,
+  "conclusion": "success",
+  "jobs_success": 10,
+  "draft_job": "skipped",
+  "tag_v0_31_0_exists": false,
+  "release_v0_31_0_exists": false,
+  "mutations": "One manual candidate dispatch; no tag/release/settings/GUI operation"
+}

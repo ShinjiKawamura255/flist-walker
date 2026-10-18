@@ -1,0 +1,12 @@
+{
+  "result": "PASS",
+  "previous_version": "0.30.2",
+  "candidate_version": "0.31.0",
+  "source_sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run_id": 39087986481,
+  "attempt": 1,
+  "manifest_sha256": "45f6d090184944753e73cb1c02206cb62f5dde6dba2a28d1c3099ec37c46d5a0",
+  "checker_sha256": "12d713829cd6c016801b78d3698562bd6e7d0bde9673d6e6ada6780d67312392",
+  "stdout": "N-1 manifest compatibility passed for v0.30.2",
+  "boundary": "Actual signed candidate manifest; shipped predecessor grammar and key verified separately; not a runtime GUI/rollback configuration claim"
+}

@@ -1,0 +1,29 @@
+{
+  "checked_at_utc": "2026-10-18T01:57:04.885244+00:00",
+  "actions": [
+    {
+      "repository": "actions/download-artifact",
+      "stable": "v8.0.2",
+      "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+      "published_at": "2026-10-07T10:09:51Z",
+      "commit_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "complete_distribution": {
+        "git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+        "size": 4432922,
+        "sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+        "provenance": "Official raw.githubusercontent.com exact commit, byte/Git-blob verified. Contents-API representation was not used because its bytes differed."
+      }
+    },
+    {
+      "repository": "actions/upload-artifact",
+      "stable": "v7.0.2",
+      "release_url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+      "published_at": "2026-10-07T10:08:14Z",
+      "commit_sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+    }
+  ],
+  "runtime": "node24",
+  "minimum_runner": "2.327.1",
+  "diagnostic_reuse": "Complete official bundle matches retained full unchanged Action diagnosis in docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; exact candidate emissions/inputs/runtime/artifact validation/review remain required.",
+  "runtime_support_source": "https://github.com/actions/runner/releases/tag/v2.327.1"
+}
