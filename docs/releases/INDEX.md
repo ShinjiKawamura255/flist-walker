@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.31.0 Linux Coverage Diagnosis](evidence/v0.31.0/LINUX-COVERAGE-DIAGNOSIS.md) | Unresolved SIGSEGV, exact diagnostic observations and merge hold |
 | [v0.31.0 Candidate Packet](evidence/v0.31.0/PREPARATION.md) | Manual candidate verification and Windows native/TC-193 preparation; no tag or release publication |
 | [v0.30.2 Execution Packet](v0.30.2.md) | Published source, candidate/tagged/public assets, native deviations and Windows startup measurements |
 | [v0.30.1 Execution Packet](v0.30.1.md) | Published tag/source, separate candidate/tagged warning decisions, fresh assets/public readback and selected reuse |

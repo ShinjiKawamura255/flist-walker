@@ -45,3 +45,13 @@ The original `FlistWalker-v0.31.0-run39087986481-Windows-handoff.zip` and [its i
 The repair diff selects VM-001/005/009. Product Rust, Cargo files/features/dependencies, workflow structure, updater trust/format, distribution asset names, archive/license/notice contents and native GUI behavior are unchanged. No new FR/SP/DES/TC contract or OSS notice update is needed; `docs/RELEASE.md` explains the existing compiler-pin contract at the corrected build entrypoint. Full product tests/clippy/coverage and Windows GNU updater E2E are supplied by the repair PR's fresh required CI; equivalent unchanged-Rust local runs are not duplicated. The merge decision requires final independent review and all applicable CI success.
 
 Windows native GUI/TC-193, macOS real OS-theme notification, replacement signed candidate generation/validation and release readiness remain **NOT RUN/open**. Actual Intel release compilation will be verified by a future protected-source candidate; explicit x86_64 forwarding is covered by the focused shell test here. Normal CI tool-install warnings and external Action warnings remain separate unresolved release work. This repair does not grant an exception, weaken a threshold, change CI settings, or create tags/releases.
+
+## Linux coverage investigation boundary
+
+The repair PR's original Linux coverage run failed with SIGSEGV. The
+[diagnosis record](LINUX-COVERAGE-DIAGNOSIS.md) preserves the failed run, one
+live-GDB non-reproduction, five non-ptrace coverage successes, synthetic core
+stack verification and diagnostic-tool failures. The actual failure stack is
+still NOT RUN and the cause remains unknown. Subsequent normal CI success does
+not resolve that blocker or authorize merge by itself. Temporary workflow/tools
+were restored/removed; the original repair behavior and its regression tests remain.
