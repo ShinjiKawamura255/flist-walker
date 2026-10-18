@@ -385,7 +385,7 @@ jobs:
           rustc -Vv
           cargo llvm-cov --version
           python3 -m unittest discover -s ../scripts/tests -p test_coverage_diagnostic_runner.py
-          cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75
+          python3 ../scripts/coverage-core-diagnosis.py -- cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
