@@ -19,6 +19,51 @@ SPEC.loader.exec_module(POLICY)
 
 
 class CiPolicyTests(unittest.TestCase):
+    def test_coverage_helpers_cannot_replace_or_remove_the_protected_gate(self) -> None:
+        helpers = {"scripts/linux_coverage_diagnostics.py", "scripts/linux_coverage_runner.py",
+                   "scripts/linux_coverage_gdb.py"}
+        with tempfile.TemporaryDirectory() as tmp:
+            proposed = Path(tmp)
+            for relative in POLICY.trusted_policy_paths(ROOT) | helpers:
+                destination = proposed / relative
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / relative, destination)
+            self.assertEqual([], POLICY.validate_trusted_policy_update(ROOT, proposed))
+            def guardian():
+                return subprocess.run([sys.executable, str(MODULE_PATH), "--guardian", str(proposed)],
+                                      capture_output=True, text=True, timeout=15)
+            self.assertEqual(guardian().returncode, 0)
+            for relative in sorted(helpers):
+                target = proposed / relative
+                original = target.read_bytes()
+                for mutation in ("exit0", "newlines", "removed"):
+                    with self.subTest(relative=relative, mutation=mutation):
+                        if mutation == "removed":
+                            target.unlink()
+                        elif mutation == "newlines":
+                            target.write_bytes(original.replace(b"\n", b"\r\n"))
+                        else:
+                            # The proposed helper is data; executing it would
+                            # write the sentinel and bypass the coverage gate.
+                            target.write_text(f"from pathlib import Path\nPath({str(proposed / 'EXECUTED')!r}).touch()\nraise SystemExit(0)\n")
+                        issues = POLICY.validate_trusted_policy_update(ROOT, proposed)
+                        self.assertTrue(any(relative in issue and "immutable" in issue for issue in issues), issues)
+                        result = guardian()
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn(relative, result.stdout + result.stderr)
+                        self.assertFalse((proposed / "EXECUTED").exists())
+                        target.write_bytes(original)
+
+    def test_guardian_materializes_every_coverage_helper_as_data(self) -> None:
+        text = (ROOT / ".github/workflows/ci-policy-guardian.yml").read_text()
+        self.assertEqual([], POLICY.validate_guardian_contract(text))
+        for name in ("linux_coverage_diagnostics.py", "linux_coverage_runner.py", "linux_coverage_gdb.py"):
+            with self.subTest(name=name):
+                token = f'or .path == "scripts/{name}"'
+                candidate = text.replace(token, "")
+                self.assertNotEqual(text, candidate)
+                self.assertTrue(any("coverage helper" in issue for issue in POLICY.validate_guardian_contract(candidate)))
+
     def test_linux_coverage_requires_collector_and_sanitized_failure_artifact(self) -> None:
         text = (ROOT / ".github/workflows/ci-cross-platform.yml").read_text()
         self.assertEqual([], POLICY.validate_ci_contract(text))

@@ -58,6 +58,9 @@ jobs:
                 or .path == "rust/.cargo/audit.toml"
                 or .path == "scripts/check_ci_policy.py"
                 or .path == "scripts/tests/test_check_ci_policy.py"
+                or .path == "scripts/linux_coverage_diagnostics.py"
+                or .path == "scripts/linux_coverage_runner.py"
+                or .path == "scripts/linux_coverage_gdb.py"
               )
             | [.path, .sha]
             | @tsv
