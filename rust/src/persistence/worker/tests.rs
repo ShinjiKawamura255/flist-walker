@@ -669,11 +669,9 @@ fn tc_167_persistence_deduplicates_and_caps_history_at_100() {
 fn tc_167_persistence_coalesces_patch_leaves_last_write_wins() {
     let base = temp_dir("patch-leaves");
     let path = base.join("ui-state.json");
-    let writer = AsyncHistoryPersistence::new_with_lock_timeout(
-        path.clone(),
-        false,
-        Duration::from_millis(50),
-    );
+    let fixture =
+        HistorySemanticFixture::after_generation(path.clone(), false, Duration::from_millis(50), 2);
+    let writer = &fixture.writer;
 
     writer.enqueue_patch_for_test(
         UiStatePatch::from_json(json!({"show_preview": false, "window": {"x": 0.0, "y": 0.0, "width": 800.0, "height": 500.0}})),
@@ -683,19 +681,17 @@ fn tc_167_persistence_coalesces_patch_leaves_last_write_wins() {
         UiStatePatch::from_json(json!({"show_preview": true, "window": {"height": 600.0}})),
         Vec::new(),
     );
-    writer
-        .flush(Duration::from_secs(1))
-        .expect("flush patch leaves");
+    fixture.flush_after_entry().expect("flush patch leaves");
 
     let written: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(&path).expect("read state")).expect("parse state");
     assert_eq!(written["show_preview"], true);
     assert_eq!(written["window"]["width"], 800.0);
     assert_eq!(written["window"]["height"], 600.0);
-    writer
-        .shutdown(Duration::from_secs(1))
-        .expect("shutdown writer");
-    let _ = fs::remove_dir_all(&base);
+    fixture
+        .finish(Duration::from_secs(2))
+        .expect("physically join semantic patch writer");
+    fs::remove_dir_all(&base).expect("remove joined semantic patch fixture");
 }
 
 #[test]
