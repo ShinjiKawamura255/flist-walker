@@ -54,4 +54,6 @@ live-GDB non-reproduction, five non-ptrace coverage successes, synthetic core
 stack verification and diagnostic-tool failures. The actual failure stack is
 still NOT RUN and the cause remains unknown. Subsequent normal CI success does
 not resolve that blocker or authorize merge by itself. Temporary workflow/tools
-were restored/removed; the original repair behavior and its regression tests remain.
+were restored/removed at a3342d0; subsequent Linux capture-path work follows
+CI_OPERATIONS and does not relabel the original failure. The original repair
+behavior and its regression tests remain.

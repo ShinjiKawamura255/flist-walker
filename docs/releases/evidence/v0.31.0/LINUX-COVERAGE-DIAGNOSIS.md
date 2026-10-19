@@ -72,10 +72,13 @@ This does not explain the original parent-process SIGSEGV.
 
 Independent read-only review confirmed the observations and recommends stopping
 the fixed campaign rather than adding speculative changes or repetitions.
-All temporary workflow changes and six diagnostic source/test/fixture files
-are removed from the final tree; their exact sources remain in the listed Git
-history. The workflow is restored byte-for-byte to base3194f03. Ordinary final
-CI/review results belong to PR190 and cannot retroactively resolve this failure.
+At `a3342d0def29279c00330ef1af7222f0368c9336`, all temporary workflow changes
+and six diagnostic source/test/fixture files were removed; their exact sources
+remain in the listed Git history. That workflow was restored byte-for-byte to
+base3194f03. Its normal CI/review results belong to PR190 and cannot
+retroactively resolve this failure. Subsequent capture-path work follows
+[the Linux diagnostic contract](../../../CI_OPERATIONS.md#linux-coverage-fault-evidence)
+and keeps this original failure unchanged.
 
 The remaining investigation needs an actual fault stack or a reproducible
 condition with a causal failing test. Environment mutation and background-worker
