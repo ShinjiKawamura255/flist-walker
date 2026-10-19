@@ -161,14 +161,14 @@ class CoreReportingTests(unittest.TestCase):
             DIAG.structured_output(json.dumps({"coverage_record": "PRIVATE_ARGUMENT_PROBE"}))
 
     def test_extractor_timeout_preserves_already_captured_fault_stack(self):
-        for interrupted in (False, True):
-            with self.subTest(interrupted=interrupted):
+        for interrupted, unreaped in ((False, False), (True, False), (False, True), (True, True)):
+            with self.subTest(interrupted=interrupted, unreaped=unreaped):
                 now = [0]
                 cancellation = DIAG.Cancellation()
                 class Process:
                     killed = False
                     def wait(self, timeout):
-                        if self.killed:
+                        if self.killed and not unreaped:
                             return -9
                         if interrupted:
                             cancellation.receive(signal.SIGTERM, None)
@@ -178,7 +178,7 @@ class CoreReportingTests(unittest.TestCase):
                     def kill(self):
                         self.killed = True
                     def poll(self):
-                        return -9 if self.killed else None
+                        return -9 if self.killed and not unreaped else None
                 process = Process()
                 def launch(command, **kwargs):
                     for line in ("coverage_identity_verified=true", "#0 actual_fault (...)"):
@@ -191,6 +191,7 @@ class CoreReportingTests(unittest.TestCase):
                 self.assertTrue(process.killed)
                 self.assertEqual(result["gdb_interrupted"], interrupted)
                 self.assertEqual(result["gdb_timeout"], not interrupted)
+                self.assertEqual(result["gdb_unreaped"], unreaped)
                 self.assertEqual(result["status"], "PARTIAL")
                 self.assertIn("actual_fault", result["stack"])
 
