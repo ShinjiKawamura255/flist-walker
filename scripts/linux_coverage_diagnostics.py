@@ -274,7 +274,7 @@ def extract_stack(identity, end, cancellation=None):
         def limit_output():
             resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_OUTPUT, MAX_OUTPUT))
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        timed_out, interrupted = False, False
+        timed_out, interrupted, unreaped = False, False, False
         code = None
         try:
             process = subprocess.Popen(["gdb", "--nx", "--batch", "--init-eval-command=set auto-load off",
@@ -287,8 +287,6 @@ def extract_stack(identity, end, cancellation=None):
                     interrupted = cancellation is not None and cancellation.signal is not None
                     timed_out = time.monotonic() >= gdb_end
                     if interrupted or timed_out:
-                        process.kill()
-                        code = process.wait(timeout=5)
                         break
                     try:
                         code = process.wait(timeout=max(0.001, min(1, gdb_end - time.monotonic())))
@@ -298,7 +296,12 @@ def extract_stack(identity, end, cancellation=None):
             finally:
                 if process.poll() is None:
                     process.kill()
-                    process.wait(timeout=5)
+                    try:
+                        code = process.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        # A stuck process must not discard records already on
+                        # disk. Report PARTIAL and let the disposable VM reap it.
+                        unreaped = True
         except OSError:
             # Keep structured output emitted before a process/pipe failure.
             pass
@@ -308,6 +311,7 @@ def extract_stack(identity, end, cancellation=None):
         errors.seek(0)
         diagnostic_errors = errors.read(MAX_OUTPUT + 1).lower()
     metadata = {"gdb_exit": code, "gdb_timeout": timed_out, "gdb_interrupted": interrupted,
+                "gdb_unreaped": unreaped,
                 "gdb_stderr_present": bool(diagnostic_errors),
                 "gdb_stderr_categories": [label for token, label in
                     ((b"traceback", "python_error"), (b"no such file", "file_not_found"),
@@ -315,7 +319,7 @@ def extract_stack(identity, end, cancellation=None):
                      (b"may not match", "binary_mismatch")) if token in diagnostic_errors]}
     if "coverage_identity_verified=true" not in text or not re.search(r"(?m)^#0\s", text):
         return dict(metadata, status="NOT_RUN", reason="gdb_stack_unavailable", diagnostic=text)
-    partial = (timed_out or interrupted or code != 0 or len(raw_output) >= MAX_OUTPUT
+    partial = (timed_out or interrupted or unreaped or code != 0 or len(raw_output) >= MAX_OUTPUT
                or identity["truncated"] or b"truncat" in diagnostic_errors or b"may not match" in diagnostic_errors
                or "coverage_threads_complete=true" not in text or any(marker in text for marker in
                    ("coverage_unavailable=", "Cannot access memory", "corrupt stack", "frame did not save the PC",
