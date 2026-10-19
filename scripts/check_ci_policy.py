@@ -23,6 +23,11 @@ REQUIRED_WORKFLOWS = {
     "release-tagged.yml",
 }
 REQUIRED_FILES = {".github/dependabot.yml"}
+COVERAGE_POLICY_FILES = {
+    "scripts/linux_coverage_diagnostics.py",
+    "scripts/linux_coverage_runner.py",
+    "scripts/linux_coverage_gdb.py",
+}
 ALLOWED_WRITE_PERMISSIONS = {
     "ci-canary.yml": {"issues"},
     "dependabot-auto-merge.yml": {"contents", "pull-requests"},
@@ -204,6 +209,9 @@ def trusted_policy_paths(root: Path) -> set[str]:
             "scripts/tests/test_check_ci_policy.py",
         }
     )
+    # These helpers own the original coverage invocation and sanitized output.
+    # Protect their bytes as well as the workflow that invokes them.
+    paths.update(COVERAGE_POLICY_FILES)
     return paths
 
 
@@ -236,9 +244,13 @@ def validate_trusted_policy_update(trusted_root: Path, proposed_root: Path) -> l
         if not trusted.is_file() or not proposed.is_file():
             violations.append(f"{relative}: immutable trusted policy file is missing")
             continue
-        trusted_text = normalize_trusted_policy(relative, trusted.read_text(encoding="utf-8"))
-        proposed_text = normalize_trusted_policy(relative, proposed.read_text(encoding="utf-8"))
-        if trusted_text != proposed_text:
+        if relative in COVERAGE_POLICY_FILES:
+            changed = trusted.read_bytes() != proposed.read_bytes()
+        else:
+            trusted_text = normalize_trusted_policy(relative, trusted.read_text(encoding="utf-8"))
+            proposed_text = normalize_trusted_policy(relative, proposed.read_text(encoding="utf-8"))
+            changed = trusted_text != proposed_text
+        if changed:
             violations.append(
                 f"{relative}: immutable trusted policy changed outside approved runner/action/tool pins"
             )
@@ -351,6 +363,8 @@ def validate_guardian_contract(text: str) -> list[str]:
         "trusted checker execution": 'python scripts/check_ci_policy.py --guardian "$PROPOSED_ROOT"',
         "immutable trusted policy": "--guardian",
     }
+    required_tokens.update({f"coverage helper data path {relative}": f'or .path == "{relative}"'
+                            for relative in sorted(COVERAGE_POLICY_FILES)})
     for label, token in required_tokens.items():
         if token not in text:
             violations.append(f"ci-policy-guardian.yml: missing {label}")
