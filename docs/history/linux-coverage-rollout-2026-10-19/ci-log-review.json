@@ -1,0 +1,133 @@
+{
+  "source": "1d93ed589dda141eceeefc6b0877e2be0c01f400",
+  "run": 39238474595,
+  "attempt": 1,
+  "jobs": [
+    {
+      "id": 118013328601,
+      "name": "CI Policy",
+      "conclusion": "success",
+      "log_sha256": "6333bb5e643f9088a2179edfab504d7253769132443f504b9dc5092bd17862e3",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013328938,
+      "name": "Detect Changes",
+      "conclusion": "success",
+      "log_sha256": "9de16362fc53e4b9a5e7450a5846e930965f3f237c383e444e7f5efb527b393c",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407154,
+      "name": "Cargo Audit",
+      "conclusion": "success",
+      "log_sha256": "477034947768df4ed53a53d958ac400f5d6e5064ca114f831238740edd587e09",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407175,
+      "name": "Clippy and Coverage",
+      "conclusion": "success",
+      "log_sha256": "95edf39755a0b28d3c9bb278dd2d53c9a9c3f0d6882671b718fa646261a8a25a",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407201,
+      "name": "Windows GNU Updater Build",
+      "conclusion": "success",
+      "log_sha256": "0faba4dab75e851f0ea72c493ba046f7fd671ea69da10904d0543a71cc3c01ee",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407235,
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success",
+      "log_sha256": "4bc532c5bb12c120b40887f94442022afc3f839cc8c919b3dab5e9eeee04609f",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407357,
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success",
+      "log_sha256": "93c0e26f54b41f8f460aa5ba49ce708f0614f43b99f3cfa637149c8cbaf777e7",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118013407365,
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success",
+      "log_sha256": "edd59206e77d944b0887b22f0bb418726b3255d640aa093eb989aea2dade1104",
+      "warning_emissions": 0
+    },
+    {
+      "id": 118015134046,
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "success",
+      "log_sha256": "ccb5021865b2ec56a28dde6ff55a8933b1a072d32cdfa4c3e5f80c5518980ea4",
+      "warning_emissions": 1
+    },
+    {
+      "id": 118018474209,
+      "name": "CI Gate",
+      "conclusion": "success",
+      "log_sha256": "a1578819f0b0ca8fa7f7ad155aa2f59900fc4313e4f1a6173f3e2bd5d0e8e45b",
+      "warning_emissions": 0
+    }
+  ],
+  "emissions": [
+    {
+      "job": "Windows GNU Updater E2E",
+      "line": "2026-10-19T10:40:25.1718820Z (node:8576) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "product_test_clippy_audit_warning_emissions": 0,
+  "external_action": {
+    "pin": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "fresh_official_latest": "v8.0.2",
+    "complete_bundle_bytes": 4432922,
+    "complete_bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "runtime": "node24",
+    "runner": "2.337.0",
+    "input": "single windows-gnu-updater-test-channel, default extraction, digest-mismatch=error",
+    "expected_and_actual_zip_digest": "c33f4b48e0b89a31951dc1b165ba9401b60882dd4151284d0e39a3901c19cb81",
+    "effect": "digest/extraction and Universal/Fw sandbox self-updates succeeded",
+    "retained_causal_reference": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+    "classification": "minor external extraction deprecation assessment; independent exact-run review pending",
+    "inference_boundary": "hosted message/step/pin/digest/function observed; unchanged full official bundle plus retained bounded full-Action source/arguments diagnosis support assessment; no hosted stack/argument/HTTPS equivalence claim",
+    "release_exception": "NOT GRANTED; PR CI is not a new release candidate",
+    "followup": "re-evaluate every new candidate/tagged run; new callsite/message/count/input/security/integrity/function uncertainty stops"
+  },
+  "annotations": {
+    "macos": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/1d93ed589dda141eceeefc6b0877e2be0c01f400/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "guardian": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/1d93ed589dda141eceeefc6b0877e2be0c01f400/.github",
+        "start_line": 12,
+        "start_column": null,
+        "end_line": 12,
+        "end_column": null,
+        "annotation_level": "failure",
+        "title": "",
+        "message": "Process completed with exit code 1.",
+        "raw_details": ""
+      }
+    ],
+    "ordinary_warning_error_count": 0,
+    "guardian_expected_failure_count": 1
+  },
+  "annotation_disposition": "One macOS arm64 capacity NOTICE, not warning/error; no effect on observed completed job. Guardian exit1 is intended4-path refusal, not ignored success."
+}
