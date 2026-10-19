@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import signal
 import struct
 import subprocess
 import sys
@@ -134,7 +135,7 @@ class CoreReportingTests(unittest.TestCase):
             (root / "cores/core-1-6").write_bytes(b"PRIVATE_UNKNOWN_CORE")
             core(root / "cores/core-2-11", program)
             core(root / "cores/core-3-11", program)
-            def extract(identity, deadline):
+            def extract(identity, deadline, *args):
                 if identity["pid"] == 2:
                     raise DIAG.DiagnosticError("extractor_failed")
                 return {"status": "CAPTURED", "stack": "#0 real_fault (...)\n"}
@@ -160,16 +161,38 @@ class CoreReportingTests(unittest.TestCase):
             DIAG.structured_output(json.dumps({"coverage_record": "PRIVATE_ARGUMENT_PROBE"}))
 
     def test_extractor_timeout_preserves_already_captured_fault_stack(self):
-        text = "coverage_identity_verified=true\n#0 actual_fault (...)\n"
-        def run(command, **kwargs):
-            for line in text.splitlines():
-                kwargs["stdout"].write((json.dumps({"coverage_record": line}) + "\n").encode())
-            raise subprocess.TimeoutExpired(command, 90)
-        with patch.object(DIAG.subprocess, "run", side_effect=run):
-            result = DIAG.extract_stack({"core": "/owned/core-123-11", "pid": 123, "signal": 11,
-                                        "snapshot": "/owned/binary", "truncated": False}, DIAG.deadline(30))
-        self.assertEqual(result["status"], "PARTIAL")
-        self.assertIn("actual_fault", result["stack"])
+        for interrupted in (False, True):
+            with self.subTest(interrupted=interrupted):
+                now = [0]
+                cancellation = DIAG.Cancellation()
+                class Process:
+                    killed = False
+                    def wait(self, timeout):
+                        if self.killed:
+                            return -9
+                        if interrupted:
+                            cancellation.receive(signal.SIGTERM, None)
+                        else:
+                            now[0] = 100
+                        raise subprocess.TimeoutExpired("gdb", timeout)
+                    def kill(self):
+                        self.killed = True
+                    def poll(self):
+                        return -9 if self.killed else None
+                process = Process()
+                def launch(command, **kwargs):
+                    for line in ("coverage_identity_verified=true", "#0 actual_fault (...)"):
+                        kwargs["stdout"].write((json.dumps({"coverage_record": line}) + "\n").encode())
+                    return process
+                with patch.object(DIAG.subprocess, "Popen", side_effect=launch), \
+                     patch.object(DIAG.time, "monotonic", side_effect=lambda: now[0]):
+                    result = DIAG.extract_stack({"core": "/owned/core-123-11", "pid": 123, "signal": 11,
+                                                "snapshot": "/owned/binary", "truncated": False}, 1000, cancellation)
+                self.assertTrue(process.killed)
+                self.assertEqual(result["gdb_interrupted"], interrupted)
+                self.assertEqual(result["gdb_timeout"], not interrupted)
+                self.assertEqual(result["status"], "PARTIAL")
+                self.assertIn("actual_fault", result["stack"])
 
     def test_symlink_core_is_unlinked_without_reading_its_target(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -184,7 +207,8 @@ class CoreReportingTests(unittest.TestCase):
 
 
 class ControllerTests(unittest.TestCase):
-    def exercise(self, code, restore_error=False, extractor_error=False, selftest_error=False, interrupted=False):
+    def exercise(self, code, restore_error=False, extractor_error=False, selftest_error=False, interrupted=False,
+                 analysis_signal=False, restore_signal=False):
         import resource
         with tempfile.TemporaryDirectory() as tmp:
             settings = {"pattern": "|original command with trailing spaces  ", "limits": (0, -1)}
@@ -198,20 +222,39 @@ class ControllerTests(unittest.TestCase):
                 calls.append((command, kwargs))
                 self.assertEqual(kwargs["timeout"], 15)
                 settings["pattern"] = command[-1].split("=", 1)[1]
+                if restore_signal and settings["pattern"] == initial["pattern"]:
+                    os.kill(os.getpid(), signal.SIGTERM)
                 return subprocess.CompletedProcess(command, 0)
             def selftest(*args):
                 if selftest_error:
                     raise DIAG.DiagnosticError("native_selftest_failed")
-            def execute(command, env, end):
+            def execute(command, env, end, *args):
                 self.assertEqual(command, DIAG.COMMAND)
                 self.assertIn("linux_coverage_runner.py", env["CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER"])
                 if interrupted:
-                    raise SystemExit(143)
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    return 143
+                if analysis_signal:
+                    root = Path(env["FLISTWALKER_COVERAGE_DIRECTORY"])
+                    program = binary(root / "fixture")
+                    DIAG.register_binary(program, root)
+                    core(root / "cores/core-1-11", program)
+                    core(root / "cores/core-2-11", program)
                 return code
-            def report(root, end, phase):
+            actual_report = DIAG.report_cores
+            def report(root, end, phase, *args, **kwargs):
                 if extractor_error and phase == "coverage":
                     raise RuntimeError("synthetic extractor error")
+                if analysis_signal:
+                    return actual_report(root, end, phase, *args, **kwargs)
                 return []
+            def extract(identity, end, *args):
+                if identity["pid"] == 2:
+                    journal = json.loads((Path(tmp) / "flistwalker-linux-coverage/report.json").read_text())
+                    self.assertIn("actual_fault", journal["cores"][0]["stack"])
+                    os.kill(os.getpid(), signal.SIGTERM)
+                    return {"status": "PARTIAL", "stack": "#0 second_fault (...)\n"}
+                return {"status": "CAPTURED", "stack": "#0 actual_fault (...)\n"}
             with patch.dict(DIAG.os.environ, GITHUB_ACTIONS="true", RUNNER_ENVIRONMENT="github-hosted", RUNNER_TEMP=tmp), \
                  patch("platform.system", return_value="Linux"), patch("platform.machine", return_value="x86_64"), \
                  patch.object(resource, "getrlimit", side_effect=lambda kind: settings["limits"]), \
@@ -222,6 +265,7 @@ class ControllerTests(unittest.TestCase):
                  patch.object(DIAG, "native_selftest", side_effect=selftest), \
                  patch.object(DIAG, "execute", side_effect=execute) as launch, \
                  patch.object(DIAG, "report_cores", side_effect=report), \
+                 patch.object(DIAG, "extract_stack", side_effect=extract), \
                  contextlib.redirect_stdout(io.StringIO()):
                 result = DIAG.main(DIAG.COMMAND)
                 saved = json.loads((Path(tmp) / "flistwalker-linux-coverage/report.json").read_text())
@@ -252,6 +296,20 @@ class ControllerTests(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIsNone(saved["coverage_exit"])
 
+    def test_signal_during_second_analysis_preserves_first_stack_and_original_exit(self):
+        code, saved = self.exercise(101, analysis_signal=True)
+        self.assertEqual(code, 101)
+        self.assertEqual(saved["coverage_exit"], 101)
+        self.assertIn("actual_fault", saved["cores"][0]["stack"])
+        self.assertIn("second_fault", saved["cores"][1]["stack"])
+        self.assertIn("interrupted", saved["errors"])
+
+    def test_signal_during_restore_finishes_both_restorations_and_readback(self):
+        code, saved = self.exercise(101, restore_signal=True)
+        self.assertEqual(code, 101)
+        self.assertEqual(saved["core_settings"], "RESTORED")
+        self.assertIn("interrupted", saved["errors"])
+
     def test_non_linux_or_changed_command_cannot_mutate_host(self):
         with patch.object(DIAG.subprocess, "run") as run, contextlib.redirect_stderr(io.StringIO()):
             self.assertEqual(DIAG.main(["cargo", "test"]), 2)
@@ -264,6 +322,7 @@ class GdbProtocolTests(unittest.TestCase):
         class Thread:
             def __init__(self, num):
                 self.num = num
+                self.ptid = (pid, pid + num - 1, 0)
             def switch(self):
                 pass
         threads = tuple(Thread(i + 1) for i in range(count))

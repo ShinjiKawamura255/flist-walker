@@ -31,6 +31,41 @@ class DiagnosticError(Exception):
     """Only fixed diagnostic codes, never raw exception/argument values."""
 
 
+class Cancellation:
+    def __init__(self):
+        self.signal = None
+
+    def receive(self, signo, frame):
+        # Never unwind an analysis/restore operation from a signal handler.
+        if self.signal is None:
+            self.signal = signo
+
+    def check(self):
+        if self.signal is not None:
+            raise DiagnosticError("interrupted")
+
+
+@contextlib.contextmanager
+def deferred_signals(cancellation):
+    previous = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
+    try:
+        for sig in previous:
+            signal.signal(sig, cancellation.receive)
+        yield
+    finally:
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
+def publish_report(publication, report):
+    temporary = publication / "report.new"
+    with temporary.open("w") as output:
+        json.dump(report, output, indent=2)
+        output.flush()
+        os.fsync(output.fileno())
+    temporary.replace(publication / "report.json")
+
+
 def deadline(seconds):
     return time.monotonic() + seconds
 
@@ -229,7 +264,7 @@ def structured_output(wire):
     return text
 
 
-def extract_stack(identity, end):
+def extract_stack(identity, end, cancellation=None):
     env = dict(os.environ, FLISTWALKER_COVERAGE_CORE=identity["core"],
                FLISTWALKER_COVERAGE_PID=str(identity["pid"]),
                FLISTWALKER_COVERAGE_SIGNAL=str(identity["signal"]))
@@ -239,21 +274,40 @@ def extract_stack(identity, end):
         def limit_output():
             resource.setrlimit(resource.RLIMIT_FSIZE, (MAX_OUTPUT, MAX_OUTPUT))
             resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-        timed_out = False
-        result = None
+        timed_out, interrupted = False, False
+        code = None
         try:
-            result = subprocess.run(["gdb", "--nx", "--batch", "--init-eval-command=set auto-load off",
+            process = subprocess.Popen(["gdb", "--nx", "--batch", "--init-eval-command=set auto-load off",
                                      "--command", str(ROOT / "scripts/linux_coverage_gdb.py"),
                                      "--args", identity["snapshot"]], env=env, stdout=output, stderr=errors,
-                                    timeout=remaining(end, 90), check=False, preexec_fn=limit_output)
-        except subprocess.TimeoutExpired:
-            timed_out = True
+                                    preexec_fn=limit_output)
+            gdb_end = min(end, deadline(90))
+            try:
+                while True:
+                    interrupted = cancellation is not None and cancellation.signal is not None
+                    timed_out = time.monotonic() >= gdb_end
+                    if interrupted or timed_out:
+                        process.kill()
+                        code = process.wait(timeout=5)
+                        break
+                    try:
+                        code = process.wait(timeout=max(0.001, min(1, gdb_end - time.monotonic())))
+                        break
+                    except subprocess.TimeoutExpired:
+                        pass
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=5)
+        except OSError:
+            # Keep structured output emitted before a process/pipe failure.
+            pass
         output.seek(0)
         raw_output = output.read(MAX_OUTPUT + 1)
         text = structured_output(raw_output.decode("ascii", "ignore"))
         errors.seek(0)
         diagnostic_errors = errors.read(MAX_OUTPUT + 1).lower()
-    metadata = {"gdb_exit": result.returncode if result is not None else None, "gdb_timeout": timed_out,
+    metadata = {"gdb_exit": code, "gdb_timeout": timed_out, "gdb_interrupted": interrupted,
                 "gdb_stderr_present": bool(diagnostic_errors),
                 "gdb_stderr_categories": [label for token, label in
                     ((b"traceback", "python_error"), (b"no such file", "file_not_found"),
@@ -261,7 +315,7 @@ def extract_stack(identity, end):
                      (b"may not match", "binary_mismatch")) if token in diagnostic_errors]}
     if "coverage_identity_verified=true" not in text or not re.search(r"(?m)^#0\s", text):
         return dict(metadata, status="NOT_RUN", reason="gdb_stack_unavailable", diagnostic=text)
-    partial = (timed_out or result is None or result.returncode != 0 or len(raw_output) >= MAX_OUTPUT
+    partial = (timed_out or interrupted or code != 0 or len(raw_output) >= MAX_OUTPUT
                or identity["truncated"] or b"truncat" in diagnostic_errors or b"may not match" in diagnostic_errors
                or "coverage_threads_complete=true" not in text or any(marker in text for marker in
                    ("coverage_unavailable=", "Cannot access memory", "corrupt stack", "frame did not save the PC",
@@ -270,8 +324,10 @@ def extract_stack(identity, end):
                 expected_abort=identity["signal"] == 6 and "abort_after_filelist_commit_if_requested" in text)
 
 
-def report_cores(root, end, phase):
-    observations = []
+def report_cores(root, end, phase, observations=None, publish=None, cancellation=None):
+    rows = []
+    if observations is None:
+        observations = []
     identities = registry(root)
     count = int((root / "analysis-count").read_text())
     files = []
@@ -290,22 +346,28 @@ def report_cores(root, end, phase):
                 raise DiagnosticError("core_count_limit")
             count += 1
             (root / "analysis-count").write_text(str(count))
+            if cancellation is not None:
+                cancellation.check()
             remaining(end, 90)
             identity = identify_core(core, identities)
             row.update(bytes=core.stat().st_size, sha256=identity["sha256"])
-            row.update(extract_stack(identity, end))
+            row.update(extract_stack(identity, end, cancellation))
         except Exception as error:
             row["reason"] = str(error) if isinstance(error, DiagnosticError) else "invalid_or_unavailable_core"
             row["failure_type"] = type(error).__name__
-        finally:
-            # This directory is created private for this command; unlink never
-            # follows an unknown/symlink core and raw bytes are never published.
-            try:
-                core.unlink()
-            except OSError:
-                row.update(status="NOT_RUN", reason="raw_cleanup_failed")
+        # Commit each result to the shared report before deleting its raw core,
+        # so a later core or cancellation cannot erase an acquired fault stack.
         observations.append(row)
-    return observations
+        rows.append(row)
+        if publish is not None:
+            publish()
+        try:
+            core.unlink()  # Unlink never follows an unknown/symlink core.
+        except OSError:
+            row.update(status="NOT_RUN", reason="raw_cleanup_failed")
+            if publish is not None:
+                publish()
+    return rows
 
 
 def result_code(primary, observations, errors):
@@ -352,10 +414,14 @@ def core_settings(root, errors, state):
             errors.append("core_settings_restore_failed_readback")
 
 
-def execute(command, env, end):
+def execute(command, env, end, cancellation=None):
     process = subprocess.Popen(command, env=env, shell=False, start_new_session=True)
     try:
         while True:
+            if process.poll() is not None:
+                return process.returncode
+            if cancellation is not None:
+                cancellation.check()
             try:
                 return process.wait(timeout=remaining(end, 1))
             except subprocess.TimeoutExpired:
@@ -377,22 +443,35 @@ def execute(command, env, end):
         process.wait(timeout=10)
         if isinstance(error, subprocess.TimeoutExpired):
             return 124
+        if cancellation is not None and cancellation.signal is not None:
+            return 128 + cancellation.signal
         raise
 
 
-def native_selftest(root, env, end, observations):
+def native_selftest(root, env, end, observations, publish=None, cancellation=None):
     fixture = root / "flist_walker-diagnostic-fixture"
-    subprocess.run(["cc", "-g", "-O0", str(ROOT / "scripts/tests/fixtures/linux_coverage_fault.c"),
+    subprocess.run(["cc", "-g", "-O0", "-pthread", str(ROOT / "scripts/tests/fixtures/linux_coverage_fault.c"),
                     "-o", str(fixture)], check=True, timeout=remaining(end, 30),
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     for mode, expected, signo, frame in (("pass", 0, None, None), ("fail", 7, None, None),
-            ("segv", -11, 11, "diagnostic_fault"), ("child-segv", 7, 11, "diagnostic_fault"),
+            ("segv", -11, 11, "diagnostic_fault"), ("worker-segv", -11, 11, "diagnostic_fault"),
+            ("child-segv", 7, 11, "diagnostic_fault"),
             ("child-abort", 0, 6, "diagnostic_abort")):
+        if cancellation is not None:
+            cancellation.check()
         process = subprocess.Popen([sys.executable, str(ROOT / "scripts/linux_coverage_runner.py"),
                                     str(fixture), mode, "PRIVATE_ARGUMENT_PROBE"], env=env,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         try:
-            code = process.wait(timeout=remaining(end, 30))
+            fixture_end = min(end, deadline(30))
+            while True:
+                if cancellation is not None:
+                    cancellation.check()
+                try:
+                    code = process.wait(timeout=remaining(fixture_end, 1))
+                    break
+                except subprocess.TimeoutExpired:
+                    pass
         except BaseException:
             try:
                 os.killpg(process.pid, signal.SIGKILL)
@@ -400,14 +479,20 @@ def native_selftest(root, env, end, observations):
                 pass
             process.wait(timeout=10)
             raise
-        rows = report_cores(root, end, "selftest-" + mode)
-        observations.extend(rows)
+        rows = report_cores(root, end, "selftest-" + mode, observations, publish, cancellation)
         valid = code == expected and len(rows) == int(signo is not None)
         if rows:
             row = rows[0]
             valid = (valid and row["status"] == "CAPTURED" and row.get("signal") == signo
                      and frame in row.get("stack", "")
                      and (row.get("pid") != process.pid if mode.startswith("child-") else row.get("pid") == process.pid))
+            if mode == "worker-segv":
+                stack = row.get("stack", "")
+                valid = (valid and "diagnostic_worker" in stack and "diagnostic_leader_wait" in stack
+                         and stack.index("diagnostic_worker") < stack.index("diagnostic_leader_wait")
+                         and "coverage_threads_complete=true" in stack
+                         and "coverage_fault_lwp=" in stack and "coverage_leader_lwp=" in stack
+                         and "coverage_fault_is_leader=false" in stack)
         if not valid:
             raise DiagnosticError("native_selftest_failed_" + mode)
         if rows and mode == "child-abort":
@@ -457,6 +542,16 @@ def main(arguments=None):
     publication = parent / "flistwalker-linux-coverage"
     publication.mkdir(mode=0o700)  # Preserve any previous report; never overwrite.
     root = prepare_directory(parent)
+    cancellation = Cancellation()
+    old_mask = os.umask(0o077)
+    try:
+        with deferred_signals(cancellation):
+            return collect(argv, publication, root, cancellation)
+    finally:
+        os.umask(old_mask)
+
+
+def collect(argv, publication, root, cancellation):
     observations, phases, errors = [], [], []
     settings = {"status": "NOT_CHANGED"}
     scope = "selftest"
@@ -465,37 +560,41 @@ def main(arguments=None):
     end = deadline(900)
     env = dict(os.environ, FLISTWALKER_COVERAGE_DIRECTORY=str(root),
                CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_RUNNER=sys.executable + " " + str(ROOT / "scripts/linux_coverage_runner.py"))
-    handlers = {sig: signal.getsignal(sig) for sig in (signal.SIGINT, signal.SIGTERM)}
-    old_mask = os.umask(0o077)
-    def interrupted(sig, frame):
-        raise SystemExit(128 + sig)
+    def publish(complete=False):
+        code = result_code(primary, [row for row in observations if not row["phase"].startswith("selftest-")], errors)
+        report = {"schema": 1, "complete": complete, "exit": code if complete else None,
+                  "coverage_exit": next((phase["exit"] for phase in phases if phase["phase"] == "coverage"), None),
+                  "phases": phases, "cores": observations, "errors": errors,
+                  "host": metadata, "executables": executables,
+                  "raw_core_upload": False, "core_limit_bytes": CORE_LIMIT, "core_settings": settings["status"]}
+        publish_report(publication, report)
     try:
-        for sig in handlers:
-            signal.signal(sig, interrupted)
+        publish()
         metadata = host_metadata()
+        cancellation.check()
         with core_settings(root, errors, settings):
-            native_selftest(root, env, end, observations)
+            native_selftest(root, env, end, observations, publish, cancellation)
             phases.append({"phase": "native-selftest", "status": "PASS"})
+            cancellation.check()
             scope = "coverage"
-            primary = execute(argv, env, end)
+            primary = execute(argv, env, end, cancellation)
             phases.append({"phase": "coverage", "exit": primary if primary >= 0 else 128 - primary})
-            rows = report_cores(root, end, "coverage")
-            observations.extend(rows)
+            publish()
+            rows = report_cores(root, end, "coverage", observations, publish, cancellation)
             if primary and not rows:
                 phases.append({"phase": "fault-stack", "status": "NOT_RUN", "reason": "no_core_generated"})
     except SystemExit as interrupted_exit:
-        primary = int(interrupted_exit.code)
-        errors.append("interrupted")
+        # Unexpected library exits must not overwrite a known coverage failure.
+        if not primary:
+            primary = int(interrupted_exit.code)
+        errors.append("unexpected_system_exit")
     except Exception as error:
         errors.append(str(error) if isinstance(error, DiagnosticError) else scope + "_" + type(error).__name__)
     finally:
-        for sig, handler in handlers.items():
-            signal.signal(sig, handler)
-        os.umask(old_mask)
-        # Include residual/unknown cores even after setup, native selftest or
-        # extractor failure. Do not let a single bad core hide another stack.
+        # The signal handler remains deferred through all restoration, residual
+        # collection, publication and raw cleanup. It never unwinds a journal.
         try:
-            observations.extend(report_cores(root, end, scope + "-residual"))
+            report_cores(root, end, scope + "-residual", observations, publish, cancellation)
         except Exception:
             errors.append("residual_collection_failed")
         try:
@@ -507,16 +606,14 @@ def main(arguments=None):
             shutil.rmtree(root)
         except OSError:
             errors.append("private_directory_cleanup_failed")
+    if cancellation.signal is not None:
+        if "interrupted" not in errors:
+            errors.append("interrupted")
+        if not primary:
+            primary = 128 + cancellation.signal
     actual = [row for row in observations if not row["phase"].startswith("selftest-")]
     code = result_code(primary, actual, errors)
-    report = {"schema": 1, "exit": code,
-              "coverage_exit": next((phase["exit"] for phase in phases if phase["phase"] == "coverage"), None),
-              "phases": phases, "cores": observations, "errors": errors,
-              "host": metadata, "executables": executables,
-              "raw_core_upload": False, "core_limit_bytes": CORE_LIMIT,
-              "core_settings": settings["status"]}
-    with (publication / "report.json").open("x") as output:
-        json.dump(report, output, indent=2)
+    publish(complete=True)
     print("linux_coverage_diagnostics=" + json.dumps({"exit": code, "phases": phases,
           "cores": [{k: v for k, v in row.items() if k != "stack"} for row in observations], "errors": errors}), flush=True)
     for row in observations:

@@ -52,11 +52,19 @@ def capture(command):
 # Publish the faulting thread first. A later timeout/output limit still leaves
 # its stack available; don't buffer every thread in one GDB command.
 fault = gdb.selected_thread()
+threads = gdb.selected_inferior().threads()
+leader = next((thread for thread in threads if thread.ptid[1] == pid), None)
+emit("coverage_fault_lwp=" + str(fault.ptid[1]))
+emit("coverage_fault_is_leader=" + str(fault.ptid[1] == pid).lower())
+if leader is not None:
+    emit("coverage_leader_lwp=" + str(leader.ptid[1]))
+else:
+    emit("coverage_unavailable=leader_thread_missing")
 emit("coverage_thread=" + str(fault.num))
 complete = capture("bt 48")
 capture("info registers")
 capture("x/12i $pc")
-threads = gdb.selected_inferior().threads()
+complete = complete and leader is not None
 if len(threads) > 256:
     emit("coverage_unavailable=thread_count_limit")
     complete = False
