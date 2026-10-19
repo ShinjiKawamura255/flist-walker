@@ -19,6 +19,27 @@ SPEC.loader.exec_module(POLICY)
 
 
 class CiPolicyTests(unittest.TestCase):
+    def test_linux_coverage_requires_collector_and_sanitized_failure_artifact(self) -> None:
+        text = (ROOT / ".github/workflows/ci-cross-platform.yml").read_text()
+        self.assertEqual([], POLICY.validate_ci_contract(text))
+        mutations = [
+            ("python3 ../scripts/linux_coverage_diagnostics.py -- ", ""),
+            ("--fail-under-lines 75", "--fail-under-lines 1"),
+            ("        id: coverage", "        id: renamed"),
+            ("      - name: Generate coverage report\n", "      - name: Generate coverage report\n        continue-on-error: true\n"),
+            ("      - name: Generate coverage report\n", "      - name: Generate coverage report\n        if: false\n"),
+            ("always() && steps.coverage.outcome != 'skipped'", "success()"),
+            ("path: ${{ runner.temp }}/flistwalker-linux-coverage/report.json", "path: ${{ runner.temp }}/**"),
+            ("retention-days: 14", "retention-days: 1"),
+            ("if-no-files-found: error", "if-no-files-found: ignore"),
+            ("      - name: Upload Linux fault diagnostics\n", "      - name: Upload Linux fault diagnostics\n        continue-on-error: true\n"),
+        ]
+        for old, new in mutations:
+            with self.subTest(mutation=old):
+                candidate = text.replace(old, new)
+                self.assertNotEqual(candidate, text)
+                self.assertTrue(any("coverage diagnostic" in issue for issue in POLICY.validate_ci_contract(candidate)))
+
     def test_indexing_weekly_contract_preserves_dispatch_and_evidence(self) -> None:
         text = (ROOT / ".github/workflows/perf-regression.yml").read_text()
         self.assertEqual([], POLICY.validate_indexing_perf_contract(text))

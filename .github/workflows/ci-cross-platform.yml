@@ -366,8 +366,23 @@ jobs:
       - name: Prepare coverage output directory
         run: mkdir -p target/llvm-cov
 
+      - name: Install Linux fault debugger
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-upgrade --no-install-recommends -y gdb
+
       - name: Generate coverage report
-        run: cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75
+        id: coverage
+        run: python3 ../scripts/linux_coverage_diagnostics.py -- cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75
+
+      - name: Upload Linux fault diagnostics
+        if: ${{ always() && steps.coverage.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-coverage-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/flistwalker-linux-coverage/report.json
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

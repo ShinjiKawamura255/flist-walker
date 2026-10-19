@@ -18,6 +18,20 @@ FlistWalker は AI agent と dependency automation による機械 PR を標準�
 - Dependabot PR は CI 成功後に `.github/workflows/dependabot-auto-merge.yml` が同じ rebase auto-merge を1回だけ登録する。
 - 失敗を再実行だけで消してはならない。runner/network/cache など外部一時障害と判断できる証跡がある場合に限り、run URL と判断を残して再実行する。
 
+### Linux coverage fault evidence
+
+The Linux coverage entrypoint is `python3 ../scripts/linux_coverage_diagnostics.py -- cargo llvm-cov --locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75`, from `rust/`. It runs the original coverage command once, with its original test parallelism and threshold. This is an observation path, not an automatic retry or a claim that the unresolved SIGSEGV has been repaired. Workflow/checker activation follows the controlled rollout below.
+
+- Collection is restricted to an owned GitHub-hosted Linux x86_64 VM. It temporarily changes only the core pattern and core resource limit, restores both in `finally`, and reads them back. Ordinary local/self-hosted invocations fail before changing host settings. Hard VM loss/SIGKILL cannot guarantee restoration or artifacts; the VM is disposable.
+- Before real coverage, native fixtures verify normal success, exit7, parent SIGSEGV, a directly executed child SIGSEGV, and an intentional child SIGABRT. They require the expected signal, frame, parent/child PID relation, private-argument non-disclosure and complete stack result. Failed pretests block coverage and remain failures.
+- The Cargo runner preserves argv and signals and records the first immutable binary identity. Direct `current_exe` children need no PID index: bounded ELF64LE x86_64 core parsing checks NT_FILE mappings and NT_AUXV AT_ENTRY against executable mappings and the recorded binary entry point. Original and private snapshot SHA256 identities must still match; changed/ambiguous identities are rejected.
+- Every attempted core is independent. Unknown/corrupt/partial cores do not stop another core's analysis. The faulting thread is printed first, then other threads. Known TC-165 child aborts are captured and cleaned even when coverage succeeds. SIGSEGV, unknown cores, incomplete stacks, budget failures or restoration errors cannot become PASS because the parent returned0. An original nonzero coverage status always takes precedence over diagnostic failures.
+- Limits are2GiB per core,4GiB of binary snapshots,8core analyses per invocation,900seconds for collection/analysis,90seconds and2MiB output per GDB process,256threads and48frames per thread. Shutdown/restoration have separate bounded calls so cleanup still runs after that budget expires. Raw core growth is monitored while coverage runs. Limits/truncation/missing stack pages are explicit PARTIAL/NOT RUN; full stack availability is not guaranteed when those bounds are exceeded. Partial fault stacks already emitted are retained after later extractor timeout/failure.
+- The public artifact is only `flistwalker-linux-coverage/report.json` under `runner.temp`, retained14days. It includes kernel/image/CPU/tool/source identities, executable digests, original exits, per-core statuses and sanitized stacks. GDB headers, raw stderr, frame argument values, locals, environment dumps, private snapshots and raw cores are not uploaded. Private raw files are deleted after analysis on both success and failure.
+- The artifact upload runs after every attempted coverage step, including failure. If coverage was skipped before invocation, the Actions step is NOT RUN and no stack is inferred. Missing attempted-run reports fail artifact publication. The existing LCOV artifact remains separate.
+
+The trusted checker rejects removal/bypass of the collector, changes to the original command/threshold, nonblocking conditions, and uploads outside the exact report file. Tool/source changes require their parser, failure-path and native Linux evidence; synthetic stack success and non-reproduction remain distinct from an actual product fault stack.
+
 ### Regression Guard: updater E2E variant completeness
 
 - Scenario: updater E2EをUniversal単独からUniversal/Fwへ拡張した後もtrusted checkerが旧single-artifact pathと単一payload markerを要求し、新workflowを拒否する一方でfw側の欠落を検出できない。

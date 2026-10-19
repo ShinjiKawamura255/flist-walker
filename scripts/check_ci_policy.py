@@ -405,6 +405,42 @@ def validate_dependabot_contract(text: str) -> list[str]:
     return violations
 
 
+def _validate_coverage_diagnostic_steps(job_block: str) -> list[str]:
+    violation = "ci-cross-platform.yml: coverage diagnostics must be blocking and publish only the sanitized report after every attempted run"
+    coverage = _named_step_blocks(job_block, "Generate coverage report")
+    uploads = _named_step_blocks(job_block, "Upload Linux fault diagnostics")
+    debugger = _named_step_blocks(job_block, "Install Linux fault debugger")
+    if any(len(steps) != 1 for steps in (coverage, uploads, debugger)):
+        return [violation]
+    step, upload, install = coverage[0], uploads[0], debugger[0]
+    command = ("        run: python3 ../scripts/linux_coverage_diagnostics.py -- cargo llvm-cov "
+               "--locked --workspace --lcov --output-path target/llvm-cov/lcov.info --fail-under-lines 75")
+    if (re.findall(r"(?m)^        ([A-Za-z0-9_-]+):", step) != ["id", "run"]
+            or step.splitlines().count("        id: coverage") != 1
+            or step.splitlines().count(command) != 1
+            or re.search(r"(?m)^    continue-on-error:", job_block)):
+        return [violation]
+    required = (
+        "        if: ${{ always() && steps.coverage.outcome != 'skipped' }}",
+        "          name: linux-coverage-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}",
+        "          path: ${{ runner.temp }}/flistwalker-linux-coverage/report.json",
+        "          retention-days: 14",
+        "          if-no-files-found: error",
+    )
+    if (any(upload.splitlines().count(line) != 1 for line in required)
+            or re.findall(r"(?m)^        ([A-Za-z0-9_-]+):", upload) != ["if", "uses", "with"]
+            or re.findall(r"(?m)^          ([A-Za-z0-9_-]+):", upload) != ["name", "path", "retention-days", "if-no-files-found"]
+            or len(re.findall(r"(?m)^        uses: actions/upload-artifact@[0-9a-f]{40}(?:\s+#.*)?$", upload)) != 1):
+        return [violation]
+    expected_install = ("      - name: Install Linux fault debugger\n"
+                        "        run: |\n"
+                        "          sudo apt-get update\n"
+                        "          sudo apt-get install --no-upgrade --no-install-recommends -y gdb")
+    if install.strip() != expected_install.strip():
+        return [violation]
+    return []
+
+
 def validate_ci_contract(text: str) -> list[str]:
     violations: list[str] = []
     required_tokens = {
@@ -467,6 +503,7 @@ def validate_ci_contract(text: str) -> list[str]:
         if re.search(rf"\b{family}-[0-9][A-Za-z0-9.-]*\b", text) is None:
             violations.append(f"ci-cross-platform.yml: missing {family} runner generation")
     blocks = dict(_job_blocks(text))
+    violations.extend(_validate_coverage_diagnostic_steps(blocks.get("lint-and-coverage", "")))
     violations.extend(
         _validate_blocking_clippy_step(
             text,
