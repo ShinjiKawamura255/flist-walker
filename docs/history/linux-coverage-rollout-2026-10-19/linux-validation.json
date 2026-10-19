@@ -1,0 +1,85 @@
+{
+  "source": "1d93ed589dda141eceeefc6b0877e2be0c01f400",
+  "base": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+  "run": 39238474595,
+  "job": 118013407175,
+  "actual_checkout": "1e5627f7ccf541af3f04a5d3969a8d75a59b7cb2",
+  "complete": true,
+  "exit": 0,
+  "coverage_exit": 0,
+  "errors": [],
+  "core_settings": "RESTORED",
+  "original_sigsegv_disposition": "OPEN; no recurrence or actual original-failure stack",
+  "report_bytes": 27484,
+  "report_sha256": "1f44fddca5b98683c18df055de04579bb3b444c01569f423f8794aa06f0b6d6a",
+  "lcov": {
+    "hit": 43547,
+    "found": 50918,
+    "percent": 85.52378333791586,
+    "minimum_percent": 75,
+    "sha256": "17f3f910cdbcb7090078ae24415aa8ab976c4cbf8d1dd2bce7c0d440adbe993d"
+  },
+  "core_observations": [
+    {
+      "phase": "selftest-segv",
+      "status": "CAPTURED",
+      "pid": 7441,
+      "signal": 11,
+      "expected_abort": false,
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false
+    },
+    {
+      "phase": "selftest-worker-segv",
+      "status": "CAPTURED",
+      "pid": 7448,
+      "signal": 11,
+      "expected_abort": false,
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false
+    },
+    {
+      "phase": "selftest-child-segv",
+      "status": "CAPTURED",
+      "pid": 7457,
+      "signal": 11,
+      "expected_abort": false,
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false
+    },
+    {
+      "phase": "selftest-child-abort",
+      "status": "CAPTURED",
+      "pid": 7465,
+      "signal": 6,
+      "expected_abort": true,
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false
+    },
+    {
+      "phase": "coverage",
+      "status": "CAPTURED",
+      "pid": 47467,
+      "signal": 6,
+      "expected_abort": true,
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false
+    }
+  ],
+  "library": {
+    "name": "flist_walker-4824d42ce23be74e",
+    "sha256": "f9843217db5e2e9c9a10d74839ce1505c407e4df9a392cdebba1d7623c28e5cb",
+    "bytes": 415967448
+  },
+  "review": "Independent read-only source/report/log review: no findings; synthetic and TC165 evidence only"
+}
