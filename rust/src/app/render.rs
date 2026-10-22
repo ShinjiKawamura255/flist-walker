@@ -1,6 +1,25 @@
 use super::{render_dialogs, render_panels, render_theme, FlistWalkerApp, TabAccentColor};
 use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
+use std::borrow::Cow;
+
+pub(super) fn single_line_display_text(text: &str) -> Cow<'_, str> {
+    if !text.contains(['\r', '\n', '\u{85}', '\u{2028}', '\u{2029}']) {
+        return Cow::Borrowed(text);
+    }
+    let mut escaped = String::with_capacity(text.len());
+    for character in text.chars() {
+        match character {
+            '\r' => escaped.push_str("\\r"),
+            '\n' => escaped.push_str("\\n"),
+            '\u{85}' => escaped.push_str("\\u{85}"),
+            '\u{2028}' => escaped.push_str("\\u{2028}"),
+            '\u{2029}' => escaped.push_str("\\u{2029}"),
+            _ => escaped.push(character),
+        }
+    }
+    Cow::Owned(escaped)
+}
 
 pub(super) fn single_line_text_bounds(galley: &egui::Galley) -> egui::Rect {
     // Platform fonts can draw accents/descenders outside their nominal line box.
@@ -196,23 +215,35 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn selectable_row(ui: &mut egui::Ui, selected: bool, label: &str) -> egui::Response {
-        let galley = egui::WidgetText::from(label).into_galley(
-            ui,
-            Some(egui::TextWrapMode::Extend),
-            f32::INFINITY,
-            egui::TextStyle::Button,
-        );
-        let bounds = single_line_text_bounds(&galley);
+        let font_id = egui::FontSelection::Default
+            .resolve_with_fallback(ui.style(), egui::TextStyle::Button.into());
+        let line_height = ui.fonts_mut(|fonts| fonts.row_height(&font_id));
         let padding = ui.spacing().button_padding;
+        // A font-based row height stays stable as rows enter/leave the viewport.
+        // Offscreen labels must not populate the text layout cache.
         let desired_size = egui::vec2(
             ui.available_width(),
             ui.spacing()
                 .interact_size
                 .y
-                .max(bounds.height() + 2.0 * padding.y),
+                .max(line_height + 2.0 * padding.y),
         );
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
         if ui.is_rect_visible(rect) {
+            let label = single_line_display_text(label);
+            let galley = egui::WidgetText::from(label.as_ref()).into_galley(
+                ui,
+                Some(egui::TextWrapMode::Extend),
+                f32::INFINITY,
+                egui::TextStyle::Button,
+            );
+            // Center the visible ink, including accents and font-specific offsets,
+            // rather than centering a nominal line box that may exclude them.
+            let bounds = if galley.mesh_bounds.is_positive() {
+                galley.mesh_bounds
+            } else {
+                galley.rect
+            };
             let visuals = ui.style().interact_selectable(&response, selected);
             if selected || response.hovered() || response.has_focus() {
                 ui.painter().rect(

@@ -127,9 +127,10 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                             .get(i)
                                             .map(|tab| app.tab_title(tab, i))
                                             .unwrap_or_else(|| format!("Tab {}", i + 1));
+                                        let title = super::render::single_line_display_text(&title);
                                         let title_response = ui.add(
                                             egui::Button::new(
-                                                egui::RichText::new(title).strong().color(
+                                                egui::RichText::new(title.as_ref()).strong().color(
                                                     if let Some(palette) = accent_palette {
                                                         if is_active {
                                                             palette.foreground
