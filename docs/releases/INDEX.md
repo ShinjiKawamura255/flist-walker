@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.31.0 Regenerated Candidate39810727499](evidence/v0.31.0/regenerated-39810727499/REPORT.md) | Source d1bf330; fresh audit failed on two TLS dependencies, so distribution/signature/actual N-1 remain unverified; updated Windows preparation |
 | [v0.31.0 Linux Coverage Diagnosis](evidence/v0.31.0/LINUX-COVERAGE-DIAGNOSIS.md) | Unresolved SIGSEGV, exact diagnostic observations and merge hold |
 | [v0.31.0 Candidate Packet](evidence/v0.31.0/PREPARATION.md) | Manual candidate verification and Windows native/TC-193 preparation; no tag or release publication |
 | [v0.30.2 Execution Packet](v0.30.2.md) | Published source, candidate/tagged/public assets, native deviations and Windows startup measurements |

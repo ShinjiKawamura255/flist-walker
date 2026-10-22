@@ -1,0 +1,96 @@
+{
+  "updates": {
+    "rustls-webpki": [
+      "0.103.15",
+      "0.103.16"
+    ],
+    "webpki-roots": [
+      "1.0.7",
+      "1.0.10"
+    ]
+  },
+  "targets": [
+    {
+      "target": "x86_64-pc-windows-gnu",
+      "resolved_packages": 292,
+      "package_set_dependency_edges_features_licenses": "unchanged after normalizing the two updated versions",
+      "before_normalized_resolve_sha256": "99327504d8ec1f8c37db91b63335a506181196e1a674d87e814e2b119be2a37b",
+      "after_normalized_resolve_sha256": "99327504d8ec1f8c37db91b63335a506181196e1a674d87e814e2b119be2a37b"
+    },
+    {
+      "target": "x86_64-unknown-linux-gnu",
+      "resolved_packages": 328,
+      "package_set_dependency_edges_features_licenses": "unchanged after normalizing the two updated versions",
+      "before_normalized_resolve_sha256": "69f60674b95dc39699d6c9a5aaecb2631b5c468708747e98795ee786568fab21",
+      "after_normalized_resolve_sha256": "69f60674b95dc39699d6c9a5aaecb2631b5c468708747e98795ee786568fab21"
+    },
+    {
+      "target": "x86_64-apple-darwin",
+      "resolved_packages": 304,
+      "package_set_dependency_edges_features_licenses": "unchanged after normalizing the two updated versions",
+      "before_normalized_resolve_sha256": "2bae3d3565a83aab960ef108d1812353f26f169de0170588cb12cc89cc147f4f",
+      "after_normalized_resolve_sha256": "2bae3d3565a83aab960ef108d1812353f26f169de0170588cb12cc89cc147f4f"
+    },
+    {
+      "target": "aarch64-apple-darwin",
+      "resolved_packages": 303,
+      "package_set_dependency_edges_features_licenses": "unchanged after normalizing the two updated versions",
+      "before_normalized_resolve_sha256": "4611ac9a884ebd5a663da568f2f1b6e2f3a43702ed3339556a20689040513b3e",
+      "after_normalized_resolve_sha256": "4611ac9a884ebd5a663da568f2f1b6e2f3a43702ed3339556a20689040513b3e"
+    }
+  ],
+  "packages": [
+    {
+      "name": "rustls-webpki",
+      "version": "0.103.15",
+      "license": "ISC",
+      "rust_version": "1.71",
+      "license_files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a"
+        }
+      ]
+    },
+    {
+      "name": "rustls-webpki",
+      "version": "0.103.16",
+      "license": "ISC",
+      "rust_version": "1.71",
+      "license_files": [
+        {
+          "name": "LICENSE",
+          "sha256": "5b698ca13897be3afdb7174256fa1574f8c6892b8bea1a66dd6469d3fe27885a"
+        }
+      ]
+    },
+    {
+      "name": "webpki-roots",
+      "version": "1.0.7",
+      "license": "CDLA-Permissive-2.0",
+      "rust_version": "1.64",
+      "license_files": [
+        {
+          "name": "LICENSE",
+          "sha256": "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8"
+        }
+      ]
+    },
+    {
+      "name": "webpki-roots",
+      "version": "1.0.10",
+      "license": "CDLA-Permissive-2.0",
+      "rust_version": "1.71",
+      "license_files": [
+        {
+          "name": "LICENSE",
+          "sha256": "e271993808fec50ab29350b39539cdec611a9103f827e0aa26d61da70e2d33f8"
+        }
+      ]
+    }
+  ],
+  "msrv_change": {
+    "webpki-roots": "1.64 -> 1.71; compatible with pinned Rust 1.97.1",
+    "rustls-webpki": "1.71 unchanged"
+  }
+}

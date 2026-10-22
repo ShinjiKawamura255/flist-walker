@@ -1,0 +1,1206 @@
+{
+  "source_sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+  "master": {
+    "run_id": 39808717920,
+    "attempt": 1,
+    "source_sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+    "event": "push",
+    "branch": "master",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-22T15:51:20Z",
+    "updated_at": "2026-10-22T16:03:26Z",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920",
+    "jobs": [
+      {
+        "id": 119928825536,
+        "name": "CI Policy",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:24Z",
+        "completed_at": "2026-10-22T15:54:18Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928825536",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Validate repository tooling",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "d5093930501deebd41edec3e2ac2273b9ee48b9d8d1947b1c98b60825c58a7c1",
+        "log_lines": 182,
+        "scan_hits": [],
+        "rustc_versions": [],
+        "annotations": []
+      },
+      {
+        "id": 119928825755,
+        "name": "Detect Changes",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:24Z",
+        "completed_at": "2026-10-22T15:51:32Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928825755",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Classify changes fail closed",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "4844dd4d22a5756cb47f33bcaae52bdcfa0eab22874d3d27e858a3003a369476",
+        "log_lines": 329,
+        "scan_hits": [],
+        "rustc_versions": [],
+        "annotations": []
+      },
+      {
+        "id": 119928925619,
+        "name": "Windows GNU Updater Build",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:35Z",
+        "completed_at": "2026-10-22T15:55:03Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928925619",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust with target",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Install mingw-w64",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Build updater test channel",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Upload Windows GNU test-channel artifact",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 15,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 16,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "ebb5757b4febab663321e793714388814f03d5624c650c52645b5e7fbc30251b",
+        "log_lines": 887,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119928925692,
+        "name": "Rust Test and Build (macos-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:36Z",
+        "completed_at": "2026-10-22T16:03:18Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928925692",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run platform clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Run lightweight perf gate",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 9,
+            "name": "Build release",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 18,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "51cd93c446b73a43a27a58d5df2a36ab2724b9d8d8f205bd37c008bd34f3c56c",
+        "log_lines": 3025,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": [
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/d1bf330fd599cc04a333fc903c64dec77fd50aee/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "notice",
+            "title": "",
+            "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+            "raw_details": ""
+          }
+        ]
+      },
+      {
+        "id": 119928925832,
+        "name": "Rust Test and Build (windows-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:35Z",
+        "completed_at": "2026-10-22T16:01:45Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928925832",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run platform clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Run lightweight perf gate",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 9,
+            "name": "Build release",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 18,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "117930d9a7be9fcf03441d634c04f3ed172f751815ef38d34229c8573a6fc99c",
+        "log_lines": 2983,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119928925868,
+        "name": "Rust Test and Build (linux-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:35Z",
+        "completed_at": "2026-10-22T15:59:33Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928925868",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run platform clippy",
+            "status": "completed",
+            "conclusion": "skipped"
+          },
+          {
+            "number": 8,
+            "name": "Run lightweight perf gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Build release",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 17,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 18,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 19,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "f3bc20c096dbe601931166e3b567a6f39cc18ada3eeb6c4ee9e52c5e08e30253",
+        "log_lines": 2828,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119928926163,
+        "name": "Clippy and Coverage",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:51:35Z",
+        "completed_at": "2026-10-22T15:58:11Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928926163",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust with clippy and llvm tools",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Install cargo-llvm-cov",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run cargo fmt",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Run cargo clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Prepare coverage output directory",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 10,
+            "name": "Install Linux fault debugger",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 11,
+            "name": "Generate coverage report",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 12,
+            "name": "Upload Linux fault diagnostics",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Upload coverage artifact",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 25,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 26,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 27,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "c94f982775fe37e8bdf8da095a6371eb7ae0c570c0ab4e5ec610f017289df5cd",
+        "log_lines": 3386,
+        "scan_hits": [
+          "2026-10-22T15:51:55.3479256Z warning: default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file"
+        ],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119928928878,
+        "name": "Cargo Audit",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T15:51:32Z",
+        "completed_at": "2026-10-22T15:51:32Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119928928878",
+        "steps": [],
+        "annotations": []
+      },
+      {
+        "id": 119930874929,
+        "name": "Windows GNU Updater E2E",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T15:55:06Z",
+        "completed_at": "2026-10-22T16:03:02Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119930874929",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust for manifest signer",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Download Windows GNU test-channel artifact",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Execute sandbox self-update",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 12,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "3c2fb9b82ea0327493aa8ee020cc4389eb7f8fe0789c0e98792fdd337261035e",
+        "log_lines": 506,
+        "scan_hits": [
+          "2026-10-22T15:55:32.2907982Z (node:4868) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+        ],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119935435716,
+        "name": "CI Gate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T16:03:21Z",
+        "completed_at": "2026-10-22T16:03:25Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39808717920/job/119935435716",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Verify required results",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "bde8cf8eb409f510e02ec08a6e568f99bfeb2c4bb11d1307a3ba614d644a3098",
+        "log_lines": 79,
+        "scan_hits": [],
+        "rustc_versions": [],
+        "annotations": []
+      }
+    ]
+  },
+  "candidate": {
+    "run_id": 39810727499,
+    "attempt": 1,
+    "source_sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+    "event": "workflow_dispatch",
+    "branch": "master",
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-10-22T16:04:10Z",
+    "updated_at": "2026-10-22T16:14:14Z",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499",
+    "jobs": [
+      {
+        "id": 119935935963,
+        "name": "Resolve Release Context",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T16:04:14Z",
+        "completed_at": "2026-10-22T16:04:25Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119935935963",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Resolve and validate version",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 8,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 9,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "89d42e991310192a0ee0d4481af76352377227355b1221442dcfcf500135c325",
+        "log_lines": 199,
+        "scan_hits": [],
+        "rustc_versions": [],
+        "annotations": []
+      },
+      {
+        "id": 119936063927,
+        "name": "Release Cargo Audit",
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-10-22T16:04:29Z",
+        "completed_at": "2026-10-22T16:08:12Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119936063927",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Install cargo-audit",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run cargo audit",
+            "status": "completed",
+            "conclusion": "failure"
+          },
+          {
+            "number": 12,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "e91154cca1c21ceec279d5ba13e17c4277837457efdb0b00ea2709a0a717f9d1",
+        "log_lines": 1052,
+        "scan_hits": [
+          "2026-10-22T16:08:09.6645359Z error: 2 vulnerabilities found!",
+          "2026-10-22T16:08:09.6648911Z ID:        RUSTSEC-2026-0382",
+          "2026-10-22T16:08:09.6649653Z URL:       https://rustsec.org/advisories/RUSTSEC-2026-0382",
+          "2026-10-22T16:08:09.6655031Z ID:        RUSTSEC-2026-0381",
+          "2026-10-22T16:08:09.6656064Z URL:       https://rustsec.org/advisories/RUSTSEC-2026-0381",
+          "2026-10-22T16:08:09.6783074Z ##[error]Process completed with exit code 1."
+        ],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": [
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/d1bf330fd599cc04a333fc903c64dec77fd50aee/.github",
+            "start_line": 35,
+            "start_column": null,
+            "end_line": 35,
+            "end_column": null,
+            "annotation_level": "failure",
+            "title": "",
+            "message": "Process completed with exit code 1.",
+            "raw_details": ""
+          }
+        ]
+      },
+      {
+        "id": 119936063995,
+        "name": "Release Preflight (macos-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T16:04:44Z",
+        "completed_at": "2026-10-22T16:11:08Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119936063995",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 14,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 15,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "d6ea7817cfdd8a49fcbae44ed444310763fb3fb8dd2b6d9cc9ba53618a37a204",
+        "log_lines": 2705,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": [
+          {
+            "path": ".github",
+            "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/d1bf330fd599cc04a333fc903c64dec77fd50aee/.github",
+            "start_line": 1,
+            "start_column": null,
+            "end_line": 1,
+            "end_column": null,
+            "annotation_level": "notice",
+            "title": "",
+            "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+            "raw_details": ""
+          }
+        ]
+      },
+      {
+        "id": 119936064068,
+        "name": "Release Preflight (linux-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T16:04:28Z",
+        "completed_at": "2026-10-22T16:08:52Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119936064068",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 14,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 15,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "87d7334fdbc21d2a4153445124ef8bad5d332beb5f720f68cee991df3d6dca9f",
+        "log_lines": 2756,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119936064100,
+        "name": "Release Preflight (windows-native)",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-10-22T16:04:29Z",
+        "completed_at": "2026-10-22T16:14:13Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119936064100",
+        "steps": [
+          {
+            "number": 1,
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 2,
+            "name": "Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 3,
+            "name": "Record runner image",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 4,
+            "name": "Install Rust",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 5,
+            "name": "Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 6,
+            "name": "Run tests",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 7,
+            "name": "Run clippy",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 13,
+            "name": "Post Cache Cargo downloads",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 14,
+            "name": "Post Checkout",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "number": 15,
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ],
+        "log_sha256": "eff66867f13afe9543bed0f39963dddba632e58e237392fe0320d30955372b90",
+        "log_lines": 2727,
+        "scan_hits": [],
+        "rustc_versions": [
+          "rustc 1.97.1 (8bab26f4f 2026-07-14)"
+        ],
+        "annotations": []
+      },
+      {
+        "id": 119941384901,
+        "name": "Build Release Assets (${{ matrix.label }})",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T16:14:13Z",
+        "completed_at": "2026-10-22T16:14:13Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119941384901",
+        "steps": [],
+        "annotations": []
+      },
+      {
+        "id": 119941385110,
+        "name": "Assemble Release Bundle",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T16:14:14Z",
+        "completed_at": "2026-10-22T16:14:13Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119941385110",
+        "steps": [],
+        "annotations": []
+      },
+      {
+        "id": 119941386015,
+        "name": "Create Draft Release",
+        "status": "completed",
+        "conclusion": "skipped",
+        "started_at": "2026-10-22T16:14:14Z",
+        "completed_at": "2026-10-22T16:14:13Z",
+        "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39810727499/job/119941386015",
+        "steps": [],
+        "annotations": []
+      }
+    ]
+  },
+  "candidate_artifact_count": 0,
+  "warning_decision": "BLOCKED; no external Action exception granted",
+  "classifications": [
+    {
+      "run_id": 39810727499,
+      "kind": "audit/security failure",
+      "count": 2,
+      "advisories": [
+        "RUSTSEC-2026-0382",
+        "RUSTSEC-2026-0381"
+      ],
+      "disposition": "BLOCKER; update affected resolved dependencies and validate via protected PR before a new candidate"
+    },
+    {
+      "run_id": 39808717920,
+      "job": "Clippy and Coverage",
+      "step": "Install cargo-llvm-cov",
+      "timestamp": "2026-10-22T15:51:55.3479256Z",
+      "kind": "Rust toolchain warning",
+      "count": 1,
+      "message": "default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file",
+      "source": ".github/workflows/ci-cross-platform.yml:358",
+      "disposition": "UNRESOLVED; not eligible for external Action exception. Explicit compiler selection requires separately authorized immutable CI rollout. Audit install was skipped, not proved repaired."
+    },
+    {
+      "run_id": 39808717920,
+      "job": "Windows GNU Updater E2E",
+      "step": "Download Windows GNU test-channel artifact",
+      "timestamp": "2026-10-22T15:55:32.2907982Z",
+      "kind": "external Action warning",
+      "count": 1,
+      "code": "DEP0005",
+      "official_latest_stable": "v8.0.2",
+      "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+      "resolved_full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+      "runtime": "node24",
+      "readback_date_jst": "2026-10-23",
+      "disposition": "UNRESOLVED; no exception granted. Pin matches latest official stable and runtime metadata, but this alone does not establish harmlessness. Full bundle/callsite/input/impact diagnosis and all release gates plus independent review are required for an exception."
+    },
+    {
+      "run_ids": [
+        39808717920,
+        39810727499
+      ],
+      "kind": "macOS runner capacity notice",
+      "count_per_run": 1,
+      "annotation_level": "notice",
+      "disposition": "Informational capacity notice, not warning/failure; macOS jobs completed successfully"
+    }
+  ],
+  "interpretation": "scan_hits includes audit ID/URL lines and error summary; these are one failed audit with two findings, not six independent vulnerabilities. All annotations retained. Checkout hints, test names and -D warnings are scan noise. No actual candidate product/Rust compile or clippy warnings found in completed preflights; build logs do not exist."
+}

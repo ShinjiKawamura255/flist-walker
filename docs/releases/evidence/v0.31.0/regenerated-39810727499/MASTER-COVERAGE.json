@@ -1,0 +1,98 @@
+{
+  "run_id": 39808717920,
+  "source_sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+  "artifact_id": 12439720992,
+  "artifact_zip_sha256": "cebfbf772308846daeb1f8c0daf3c3c7c8689009385f352f1fcd04977454a372",
+  "report_sha256": "60e92fbf37ceb61ad8e34fff0eaefa364412e92e80120a6dae518cdec91a014d",
+  "complete": true,
+  "exit": 0,
+  "coverage_exit": 0,
+  "phases": [
+    {
+      "phase": "native-selftest",
+      "status": "PASS"
+    },
+    {
+      "phase": "coverage",
+      "exit": 0
+    }
+  ],
+  "cores": [
+    {
+      "phase": "selftest-segv",
+      "status": "CAPTURED",
+      "pid": 7319,
+      "signal": 11,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-worker-segv",
+      "status": "CAPTURED",
+      "pid": 7326,
+      "signal": 11,
+      "bytes": 17231872,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-child-segv",
+      "status": "CAPTURED",
+      "pid": 7335,
+      "signal": 11,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-child-abort",
+      "status": "CAPTURED",
+      "pid": 7343,
+      "signal": 6,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "expected_abort": true
+    },
+    {
+      "phase": "coverage",
+      "status": "CAPTURED",
+      "pid": 47705,
+      "signal": 6,
+      "bytes": 5849088,
+      "sha256": "5b7b3ad1931f3a815c759d7af470458b558a5609e90cacf64a9683fec99cacae",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "expected_abort": true
+    }
+  ],
+  "interpretation": "SIGSEGVs belong to synthetic native-selftest fixtures; the coverage-phase signal6 is expected_abort=true. No real signal11 fault in this successful coverage execution. Original historical SIGSEGV cause remains unknown."
+}

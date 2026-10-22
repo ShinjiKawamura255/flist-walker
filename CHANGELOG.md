@@ -44,7 +44,7 @@
 - なし。
 
 ### Security
-- なし。
+- TLS証明書検証の依存を `rustls-webpki 0.103.16` / `webpki-roots 1.0.10` へ更新し、信頼失効したemSign中間証明書を受け入れる問題（[RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382)、[RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381)）へ対応した。
 
 ### Known issues
 - macOS 配布物は未 notarized。

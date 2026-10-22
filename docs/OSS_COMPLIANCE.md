@@ -56,6 +56,13 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## rustls-webpki / webpki-roots security update (2026-10-23)
+
+- Through `ureq 2.12.1` / `rustls 0.23.46`, `rustls-webpki` moves from0.103.15 to0.103.16 and the1.x `webpki-roots` parent from1.0.7 to1.0.10. These address [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382) (reject distrusted emSign intermediate keys) and [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381) (remove the affected emSign root). The0.26.11 compatibility package remains and re-exports the patched1.0.10 roots; no audit ignore is added.
+- The lockfile changes only these two versions/checksums and the0.26.11 package's reference to its1.x parent. Four packaged target metadata graphs retain package sets, edges, enabled features and license expressions after normalizing the two versions: Windows GNU292, Linux328, macOS x86_64 304, macOS arm64 303 packages. `rustls-webpki` remainsISC with MSRV1.71; `webpki-roots` remainsCDLA-Permissive-2.0 with MSRV increasing1.64→1.71, below the pinned Rust1.97.1. Both resolved LICENSE files are byte-identical to their predecessors. [Metadata comparison](releases/evidence/v0.31.0/regenerated-39810727499/TLS-METADATA-COMPARISON.json) retains normalized graph and license-file hashes.
+- `THIRD_PARTY_NOTICES.txt` records the new resolved versions. No new package/license family or distribution obligation enters the graphs. Existing archive, standalone sidecar, macOS app-bundle and variant-specific self-update notice paths remain unchanged. Their source paths were reviewed; a new actual release bundle still requires its own content/signature/N-1 validation.
+- Fresh audit reproduced both failures before the update, then loaded1349 advisories/scanned452 dependencies and returned exit0, zero vulnerabilities and no warnings after it. The two existing build-time quick-xml exceptions remain unchanged. [Repair evidence](releases/evidence/v0.31.0/regenerated-39810727499/TLS-SECURITY-UPDATE.md) separates this source repair from the failed candidate, native checks and publication authority.
+
 ## semver 1.0.28 / serde_json 1.0.151 dependency review (2026-10-01)
 
 - Since v0.29.0, `semver` moves from 1.0.27 to 1.0.28 and `serde_json` from 1.0.149 to 1.0.151. Both retain `MIT OR Apache-2.0`; resolved registry packages include LICENSE-MIT and LICENSE-APACHE. No package name is added or removed in the release lockfile range.
