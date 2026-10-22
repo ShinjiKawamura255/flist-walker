@@ -2,6 +2,11 @@ use super::{render_dialogs, render_panels, render_theme, FlistWalkerApp, TabAcce
 use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
 
+pub(super) fn single_line_text_bounds(galley: &egui::Galley) -> egui::Rect {
+    // Platform fonts can draw accents/descenders outside their nominal line box.
+    galley.rect.union(galley.mesh_bounds)
+}
+
 // Render command surface. Render.rs stays focused on drawing and input
 // collection while FlistWalkerApp dispatches the resulting commands.
 #[derive(Clone, Copy)]
@@ -191,7 +196,21 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn selectable_row(ui: &mut egui::Ui, selected: bool, label: &str) -> egui::Response {
-        let desired_size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
+        let galley = egui::WidgetText::from(label).into_galley(
+            ui,
+            Some(egui::TextWrapMode::Extend),
+            f32::INFINITY,
+            egui::TextStyle::Button,
+        );
+        let bounds = single_line_text_bounds(&galley);
+        let padding = ui.spacing().button_padding;
+        let desired_size = egui::vec2(
+            ui.available_width(),
+            ui.spacing()
+                .interact_size
+                .y
+                .max(bounds.height() + 2.0 * padding.y),
+        );
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
         if ui.is_rect_visible(rect) {
             let visuals = ui.style().interact_selectable(&response, selected);
@@ -204,13 +223,16 @@ impl FlistWalkerApp {
                     egui::StrokeKind::Inside,
                 );
             }
-            ui.painter().with_clip_rect(rect).text(
-                egui::pos2(rect.left() + ui.spacing().button_padding.x, rect.center().y),
-                egui::Align2::LEFT_CENTER,
-                label,
-                egui::TextStyle::Button.resolve(ui.style()),
-                visuals.text_color(),
-            );
+            ui.painter()
+                .with_clip_rect(rect.intersect(ui.clip_rect()))
+                .galley(
+                    egui::pos2(
+                        rect.left() + padding.x - bounds.left(),
+                        rect.center().y - bounds.center().y,
+                    ),
+                    galley,
+                    visuals.text_color(),
+                );
         }
         if response.hovered() {
             ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);

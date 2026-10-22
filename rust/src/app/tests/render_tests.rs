@@ -1,5 +1,8 @@
 use super::*;
 
+#[path = "text_geometry.rs"]
+mod text_geometry;
+
 #[test]
 fn query_search_hints_tooltip_uses_english_application_copy() {
     for tooltip in [
