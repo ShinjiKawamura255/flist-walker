@@ -1,0 +1,18 @@
+{
+  "version": "0.30.2",
+  "result": "PASS",
+  "scope": "Fresh public predecessor only; no new candidate artifact exists",
+  "provenance": "Official GitHub public release, fresh gh release download; binary not executed",
+  "manifest_sha256": "2c68092d4b2944454926d2388941d60ab3708d7370e142a58264c44cdde154b5",
+  "signature_sha256": "5b56b71f02297c59f91df02b4464cd13dc6770fb9d7382b5cd26c66cf0728388",
+  "binary": {
+    "filename": "fw-0.30.2-macos-arm64",
+    "sha256": "0f46c34b36092d9954eddc91005e59b1ffc0a846081a93366228c4115d889707"
+  },
+  "verification_key_hex": "6733c5e70dd31e1bd2e2f8eac7356e88b169f1355d0cbfac5e0cf9d1ac2a12e6",
+  "checks": [
+    "Binary digest matches actual predecessor manifest",
+    "Raw 64-byte Ed25519 signature verifies under the unique key extracted from predecessor binary",
+    "One-bit modified manifest is rejected"
+  ]
+}

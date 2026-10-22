@@ -1,0 +1,56 @@
+{
+  "base_sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+  "command": "cd rust && cargo audit --json",
+  "before_exit": 1,
+  "after_exit": 0,
+  "existing_audit_ignores_unchanged": [
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195"
+  ],
+  "before": {
+    "report_sha256": "1ad3cd92f4bd9ff17c646e78c17847d6fd69757e453dfec2c22fb43fcab7a2e1",
+    "database": {
+      "advisory-count": 1349,
+      "last-commit": "640bf5a9f06e66d8721e8772766531fe77c8630d",
+      "last-updated": "2026-10-22T12:49:47+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 452
+    },
+    "vulnerabilities_count": 2,
+    "findings": [
+      {
+        "package": "rustls-webpki",
+        "version": "0.103.15",
+        "advisory": "RUSTSEC-2026-0382",
+        "patched_versions": [
+          ">=0.103.16, <0.104.0-alpha.1",
+          ">=0.104.0-alpha.8"
+        ]
+      },
+      {
+        "package": "webpki-roots",
+        "version": "1.0.7",
+        "advisory": "RUSTSEC-2026-0381",
+        "patched_versions": [
+          ">=1.0.10"
+        ]
+      }
+    ],
+    "warnings": {}
+  },
+  "after": {
+    "report_sha256": "f24d9bf2e2cf1b3017c497497b0487e8e47b59678d33d513e37e6300fd91fc39",
+    "database": {
+      "advisory-count": 1349,
+      "last-commit": "640bf5a9f06e66d8721e8772766531fe77c8630d",
+      "last-updated": "2026-10-22T12:49:47+02:00"
+    },
+    "lockfile": {
+      "dependency-count": 452
+    },
+    "vulnerabilities_count": 0,
+    "findings": [],
+    "warnings": {}
+  }
+}
