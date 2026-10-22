@@ -106,6 +106,7 @@
 - Trace: FR-046/047 → SP-010/SP-013 → DES-027 → TC-223/224/225/226.
 
 ## DES-028 Snapshot freshnessとbounded FileList checker
+- Source表示はcommitted freshnessを優先する。未取得時だけactive index要求の進行状態とbuild sourceを参照し、Started前の `Detecting…` からFileList/Walkerの `Indexing…` へ切り替える。worker完了後もfinalization中は処理中表示を維持し、取得時刻は成功commitまで公開しない。描画でfilesystem I/Oは行わない。
 - `TabCommittedPayload::freshness`が小さな取得情報を所有し、active/inactive移動に追従する。index workerのrequest mailboxに開始時fingerprintと完了時比較を記録し、成功したcommitだけが取得情報を公開する。root FileListの取得metadata pathは要求されたlexical rootへ投影し、resolved root aliasの違いで監視を拒否しない。UI threadはmetadataを読まない。
 - `FreshnessMonitor`は1本のworkerとbounded request/result channelを所有する。tab/root/snapshot request ID/source path/check IDで照合し、focus・active・index settlementを確認して応答を採用する。Changedは次の取得まで保持し、通常のUnavailableは再試行できる。timeoutはそのsnapshotを停止し、物理pendingを完了まで保持する。shutdownは既存WorkerRuntimeへ登録する。
 - 変更通知のrefreshはPreserveSortと既存selected-path復元intentを利用し、query/filter/PINは維持する。取得情報はsession保存schemaに含めない。追加依存はない。

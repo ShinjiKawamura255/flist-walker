@@ -229,6 +229,7 @@
 
 ## SP-026 Snapshotの取得情報とroot FileListの変更確認
 ### Requirements
+- MUST: 成功したsnapshotがない初回index要求では、受付からsnapshot公開までSource欄に `Indexing…` を表示する。source確定前は `Detecting…`、workerのStarted応答後は選択されたFileList名またはWalkerを表示し、取得成功前のLoaded/Indexedや取得時刻は表示しない。未取得かつindex要求がない場合は `None · Not loaded` とする。
 - MUST: 成功して公開したindex snapshotにsource、root、request generation、取得時刻を保持する。FileListは Loaded、Walkerは Indexed と相対経過時間を表示し、tooltipでpathとUTC取得時刻を示す。取得情報は独立した幅制約付きrowへ配置し、長い更新・失敗表示も折り返して表示する。更新中・失敗時は直前の取得情報を維持し、起動間の永続化は行わない。
 - MUST: 読込に選ばれたroot直下のFileListについて、取得時のfile ID・size・mtimeをworkerで記録し、foregroundのactive tabで約5秒間隔に比較する。child FileList、未選択の新規FileList、tree内の増減は監視対象としない。最新性の保証とは表現しない。
 - MUST: 変更・置換・削除は変更通知を一度表示して保持する。確認失敗は確認不能と表示する。通知はmodalを開かず、Refresh Indexからだけ更新する。通知からの更新ではquery・filters・sortを保持し、同じpathが残る場合は選択を復元する。

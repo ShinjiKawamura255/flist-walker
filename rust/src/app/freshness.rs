@@ -203,6 +203,20 @@ impl FlistWalkerApp {
 
     pub(super) fn freshness_source_text(&self) -> String {
         let Some(snapshot) = self.shell.runtime.freshness.as_ref() else {
+            if self.shell.indexing.in_progress
+                || self.shell.indexing.pending_request_id.is_some()
+                || self.shell.indexing.pending_finish.is_some()
+            {
+                let source = match &self.shell.indexing.build.index.source {
+                    IndexSource::FileList(path) => format!(
+                        "FileList ({})",
+                        path.file_name().unwrap_or_default().to_string_lossy()
+                    ),
+                    IndexSource::Walker => "Walker".into(),
+                    IndexSource::None => "Detecting…".into(),
+                };
+                return format!("Source: {source} · Indexing…");
+            }
             return "Source: None · Not loaded".into();
         };
         let age = age_label(snapshot.acquired_at.elapsed().unwrap_or_default());

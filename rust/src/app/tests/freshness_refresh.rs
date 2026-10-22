@@ -181,6 +181,69 @@ fn freshness_background_success_keeps_distinct_filelist_root_source_time_and_gen
 }
 
 #[test]
+fn freshness_initial_indexing_source_is_visible_at_compact_widths() {
+    for width in [640.0, 1000.0] {
+        for (source, expected) in [
+            (IndexSource::None, "Source: Detecting… · Indexing…"),
+            (IndexSource::Walker, "Source: Walker · Indexing…"),
+            (
+                IndexSource::FileList(PathBuf::from("fixture/FileList.txt")),
+                "Source: FileList (FileList.txt) · Indexing…",
+            ),
+        ] {
+            let scope = test_settings_scope("freshness-initial-source-visible");
+            let mut app = scope.app(
+                test_root("freshness-initial-source-visible"),
+                50,
+                String::new(),
+            );
+            reset_index_request_state_for_test(&mut app);
+            app.shell.indexing.begin_active_refresh(42, false);
+            app.shell.indexing.build.index.source = source;
+            let ctx = egui::Context::default();
+            let mut output = None;
+            for _ in 0..3 {
+                output = Some(ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 700.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| app.run_ui_frame(ui),
+                ));
+            }
+            let output = output.unwrap();
+            let label = output
+                .shapes
+                .iter()
+                .find_map(|shape| {
+                    if let egui::epaint::Shape::Text(text) = &shape.shape {
+                        if text.galley.job.text == expected {
+                            return Some((
+                                egui::Rect::from_min_size(text.pos, text.galley.size()),
+                                shape.clip_rect,
+                            ));
+                        }
+                    }
+                    None
+                })
+                .expect("initial indexing source must be painted");
+            assert!(
+                label.1.contains_rect(label.0),
+                "source clipped at {width}: {label:?}"
+            );
+            assert!(
+                label.0.right() <= width,
+                "source extends past window: {label:?}"
+            );
+            assert!(app.shell.runtime.freshness.is_none());
+        }
+    }
+}
+
+#[test]
 fn freshness_source_is_visible_and_hoverable_at_compact_widths() {
     use crate::app::freshness::{FileListChange, FileObservation, SnapshotFreshness};
     for width in [640.0, 1000.0] {
