@@ -8,6 +8,7 @@
 - MUST: Root自体がsymlink/junctionでも、相対表示のResultsは要求されたRootを基準とする。workerの実体Root解決で表示を絶対pathへ変えてはならない。Walker/FileListのBatch/ReplaceAllとも同じ投影を使い、query/highlight/ignoreと候補pathを揃える。Root外の独立した絶対FileList行はそのまま保持し、表示中にcanonicalize等のfilesystem I/Oを行ってはならない。
 - MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
 - MUST: Source（FileList/Walker）と Root を画面表示する。
+- MUST: Root 欄と Root 由来のタブ見出しは改行（CR/LF/NEL/Unicode line・paragraph separator）を表示時にエスケープして単一行を保ち、検索欄や後続操作を画面外へ押し出してはならない。実際の Root path、検索・操作・保存値は表示用エスケープで変更しない。保存 Root・preset・Named Root の共通一覧行はフォントに応じた安定した行高を使い、不可視ラベルの文字レイアウトを計算してはならない。
 - MUST: フッター右端に現在 version を常時表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
 - MUST: ハイライトは search と同じ query interpretation を用い、検索結果と表示が一致するようにする。

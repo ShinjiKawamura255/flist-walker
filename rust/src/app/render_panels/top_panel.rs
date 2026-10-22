@@ -1,4 +1,4 @@
-use crate::app::render::single_line_text_bounds;
+use crate::app::render::{single_line_display_text, single_line_text_bounds};
 use crate::app::search_assist::FilterValue;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::text_editing::char_count;
@@ -169,7 +169,8 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         ui.separator();
         ui.horizontal(|ui| {
             let selected_text = app.root_display_text();
-            let galley = egui::WidgetText::from(selected_text).into_galley(
+            let selected_text = single_line_display_text(&selected_text);
+            let galley = egui::WidgetText::from(selected_text.as_ref()).into_galley(
                 ui,
                 Some(egui::TextWrapMode::Extend),
                 f32::INFINITY,
