@@ -76,3 +76,5 @@
 - FR-048 -> SP-026 -> DES-028 -> TC-227
 
 TC-233 sustained-slowdown controls directly exercise NFR-006 / SP-007, SP-010 / DES-006, DES-009: all68 candidate median predicates,68 MAX diagnostics, reference median-drift admission, retained isolated-tail excess and rejection of old-protocol calibration reuse.
+
+- FR-049, NFR-008, NFR-015 -> SP-027 -> DES-029 -> TC-235, TC-236

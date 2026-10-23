@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime};
 pub(super) mod worker;
 pub(super) use worker::FreshnessMonitor;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(super) struct FileFingerprint {
     size: u64,
     modified: SystemTime,
@@ -17,7 +17,7 @@ pub(super) struct FileFingerprint {
     identity: (u32, u64),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub(super) enum FileObservation {
     Present(FileFingerprint),
     Missing,

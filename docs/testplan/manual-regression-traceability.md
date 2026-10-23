@@ -363,3 +363,14 @@ GUI-adjacent structural refactoring ã¯ [GUI-TESTPLAN.md](../GUI-TESTPLAN.md) ã
 - TC-219, TC-220, TC-221, TC-222 -> SP-025 -> DES-026 -> FR-045, NFR-008
 
 - TC-227 -> SP-026 -> DES-028 -> FR-048
+
+## Index recovery platform evidence (TC-235 / TC-236)
+
+Use a staged executable with isolated settings and a disposable share. Only disconnect a share/session for which the test operator has explicit authority; do not stop a production file server for this test.
+
+1. Keep two share-backed tabs and a local fixture tab open. Make the disposable share unavailable, activate its tabs, then select the local tab and refresh. Check that input/tab switching remains responsive and local indexing completes.
+2. Stop the current tab during loading, then refresh it. Repeat with Stop All Indexing: switching tabs, changing filters and opening a new tab must not silently resume indexing. Explicit Refresh resumes only its target tab.
+3. Restore share access and explicitly refresh its tab. Verify query/filters, the last committed snapshot during retry, successful replacement on completion, and absence of late results from canceled generations. Check phase/wait and failure notices.
+4. Repeat stop/refresh while observing owned child processes. Confirm normal terminated children are reaped; running plus termination-pending children stay within the four-process budget. Kernel-level refusal to terminate is recorded as a bounded failure, not successful recovery.
+
+Record OS/build identity, executed flow, observed result and remaining gaps separately from headless coordinator, protocol and renderer tests. Real share outage/recovery and physical native input are independent evidence axes.

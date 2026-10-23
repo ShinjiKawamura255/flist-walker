@@ -449,10 +449,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(message).color(ui.visuals().warn_fg_color))
                     .on_hover_text("Only the loaded root FileList is checked. Refresh is manual.");
-                if ui.add_enabled(
-                    !app.shell.indexing.in_progress && app.shell.indexing.pending_finish.is_none(),
-                    egui::Button::new("Refresh Index"),
-                ).clicked() {
+                if ui.button("Refresh Index").clicked() {
                     app.refresh_changed_filelist();
                 }
             });

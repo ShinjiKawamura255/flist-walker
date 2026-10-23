@@ -37,6 +37,8 @@ pub(super) enum RenderTopActionCommand {
     ClearPinned,
     CreateFileList,
     RefreshIndex,
+    StopIndexing,
+    StopAllIndexing,
     OpenPresetPicker,
     OpenHelp,
 }
@@ -431,6 +433,8 @@ impl FlistWalkerApp {
             "Clear Selected",
             create_label,
             "Refresh Index",
+            "Stop Indexing",
+            "Stop All Indexing",
             "Presets...",
             "Help",
         ]
@@ -447,6 +451,8 @@ impl FlistWalkerApp {
                 Some(RenderTopActionCommand::CreateFileList)
             }
             "Refresh Index" => Some(RenderTopActionCommand::RefreshIndex),
+            "Stop Indexing" => Some(RenderTopActionCommand::StopIndexing),
+            "Stop All Indexing" => Some(RenderTopActionCommand::StopAllIndexing),
             "Presets..." => Some(RenderTopActionCommand::OpenPresetPicker),
             "Help" => Some(RenderTopActionCommand::OpenHelp),
             _ => None,
@@ -651,7 +657,13 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
                     self.shell.tabs.mark_active_tab_meaningfully_engaged();
-                    self.request_index_refresh();
+                    self.restart_current_index();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::StopIndexing) => {
+                    self.stop_current_indexing();
+                }
+                RenderCommand::TopAction(RenderTopActionCommand::StopAllIndexing) => {
+                    self.stop_all_indexing();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::OpenPresetPicker) => {
                     self.open_preset_picker(ctx);

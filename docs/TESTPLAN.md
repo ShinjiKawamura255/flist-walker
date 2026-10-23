@@ -122,3 +122,5 @@ For documentation-only restructuring, apply VM-001:
 - TC-219, TC-220, TC-221, TC-222 -> SP-025 -> DES-026 -> FR-045, NFR-008
 
 - TC-227 -> SP-026 -> DES-028 -> FR-048
+
+- TC-235, TC-236 -> SP-027 -> DES-029 -> FR-049, NFR-008, NFR-015

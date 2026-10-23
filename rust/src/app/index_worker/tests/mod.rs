@@ -2473,3 +2473,42 @@ fn visit_std_walker_entries(root: &Path, on_entry: &mut impl FnMut(&Path, FileTy
         }
     }
 }
+
+#[test]
+fn tc_235_process_sink_keeps_child_freshness_without_parent_probe() {
+    use crate::app::freshness::{FileObservation, SnapshotFreshness};
+    let mailbox = Arc::new(IndexResponseMailbox::new());
+    let root = PathBuf::from("child-observation-only");
+    let source = IndexSource::FileList(PathBuf::from("resolved/physical/FileList.txt"));
+    mailbox.set_snapshot(SnapshotFreshness::acquired(
+        230,
+        root.clone(),
+        source.clone(),
+        FileObservation::Unavailable,
+        FileObservation::Unavailable,
+    ));
+    let sink = MailboxResponseSink {
+        request_id: 230,
+        tab_id: 1,
+        root,
+        mailbox: Arc::clone(&mailbox),
+        shutdown: Arc::new(AtomicBool::new(false)),
+        latest_request_ids: Arc::new(Mutex::new(HashMap::from([(1, 230)]))),
+    };
+    sink.publish(
+        IndexResponse::Started {
+            request_id: 230,
+            source,
+        },
+        false,
+    )
+    .unwrap();
+    assert_eq!(
+        mailbox.snapshot().unwrap().baseline,
+        FileObservation::Unavailable
+    );
+    assert_eq!(
+        mailbox.snapshot().unwrap().source,
+        IndexSource::FileList(PathBuf::from("child-observation-only/FileList.txt"))
+    );
+}

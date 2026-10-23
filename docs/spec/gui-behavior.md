@@ -239,3 +239,13 @@
 ### Edge / Error
 - 初回fingerprintを取得できない場合、後続の成功だけで未変更とは判定しない。同一ID・size・mtimeを保つ書換えの完全検知は保証しない。
 - 更新中は監視応答を適用せず、成功した次のsnapshotから新しい基準を使う。失敗は旧取得時刻を保つ。
+
+## SP-027: 障害インデクシングの隔離と復旧
+- Related: FR-049, NFR-008, NFR-015; AC-050.
+- MUST: GUI の read-only indexing は、root 解決、FileList 検出・読込、Walker、取得時点の FileList 情報確認を含め、停止・再生成できる独立実行単位へ隔離する。停止した要求の I/O 応答を正常タブの開始条件にしてはならない。
+- MUST: 明示的な `Refresh Index` は対象タブの旧要求を無効化して新世代を再試行する。旧世代の遅延 data/terminal は新世代の表示、snapshot 確定、後続処理を変更してはならない。FileList 変更通知からの更新は既存の sort/選択保持契約を維持する。
+- MUST: `Stop Indexing` は現在タブ、`Stop All Indexing` は全タブの要求と遅延更新を無効化する。停止対象は明示更新まで自動再開せず、全停止後に作成するタブも停止対象とする。明示更新はそのタブだけを再開する。通常 scheduler の自動 preempt 規則と、利用者の明示全停止を区別する。
+- MUST: 停止・再試行時も直前の確定 snapshot を保持する。途中結果を完了済みへ昇格しない。停止は index 待ちの Create File List intent を取消すが、開始済み書込み transaction の cancel/rollback/settlement 契約を変更しない。
+- MUST: root が存在しない、directory でない、または Walker の root を開けない場合は空の成功 snapshot にせず失敗とする。FileList の読込失敗も失敗とし、配下の個別アクセス不能項目をスキップする従来契約は維持する。ファイルアクセス失敗後の自動再試行を抑止し、停止・失敗・実行待ちを区別して明示更新へ案内する。phase と経過時間を表示でき、出力が無いことだけを理由に遅い正常処理を強制終了してはならない。
+- MUST: 停止要求の反映と物理終了確認を分離し、親の UI と supervisor を blocking read/wait/join や親側の対象 filesystem probe で停止させない。回収未完了の子も物理資源上限へ算入する。OS が終了・起動を完了できない場合は無期限の更新中表示や無制限な再生成ではなく、理由付き失敗へ収束する。サーバ停止中の読取り成功や任意回数の OS 回収不能からの再試行成功は保証しない。
+- Verification: DES-029 / TC-235, TC-236。本番の子プロセス経路、停止した2要求からの正常タブ復帰、同一タブ再試行、全停止後の再始動防止、回収不能上限、非Unicodeパス、遅延応答を検証する。Windows/Linux/macOS の実共有フォルダ切断・復帰は platform evidence を別途記録する。

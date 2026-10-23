@@ -111,3 +111,10 @@
 - `FreshnessMonitor`は1本のworkerとbounded request/result channelを所有する。tab/root/snapshot request ID/source path/check IDで照合し、focus・active・index settlementを確認して応答を採用する。Changedは次の取得まで保持し、通常のUnavailableは再試行できる。timeoutはそのsnapshotを停止し、物理pendingを完了まで保持する。shutdownは既存WorkerRuntimeへ登録する。
 - 変更通知のrefreshはPreserveSortと既存selected-path復元intentを利用し、query/filter/PINは維持する。取得情報はsession保存schemaに含めない。追加依存はない。
 - Trace: FR-048 → SP-026 → DES-028 → TC-227. rollbackは監視・設定と取得情報接続を独立して戻せる。
+
+## DES-029 Index process supervision and recovery controls
+- `index_worker` の既存 source/stream algorithm を自己 executable の内部子 entrypoint で共有する。公開 CLI/TUI、FileList root-only/encoding/hierarchy、Walker 上限、root projection は維持する。内部 entrypoint は tracing/updater/bootstrap より前に分岐し、stdout を versioned IPC 専用とする。有効設定の snapshot と native root 引数を引き継ぎ、Unix bytes / Windows UTF-16 の path を損失なく転送する。
+- 親の固定 supervisor 2件が request-scoped mailbox へ順序付き応答を渡す。子 stdout は pollable に読み、frame byte/entry/identity/order を検証する。取得時点の FileList observation も子から転送し、親 sink はファイルへ再アクセスしない。mailbox Full 時も latest/shutdown を確認し、受信の背圧を filesystem 停滞と同一視しない。
+- physical lease は spawn 前に予約し、exit 確認後だけ解放する。稼働中と回収待ちを含む子の合計上限4、同時 indexing は2とし、固定 reaper へ終了待ち ownership を移す。キャンセルは論理終端を先行し、kill/try_wait と bounded polling で回収する。空き枯渇は明示失敗とし、要求ごとの reader/join/reaper thread を追加しない。
+- `index_recovery` と coordinator が停止対象と admission を所有し、明示更新だけで対象タブを再開する。停止時は最新世代、待機 queue、遅延 finish/refresh、index 待ちの FileList intent を失効する。build/mailbox/finalization payload は既存 bounded reclaimer を利用し、Full 時も所有権を保持する。確定 snapshot と write transaction は別責務として保護する。
+- Trace: FR-049 / NFR-008 / NFR-015 → SP-027 → DES-029 → TC-235, TC-236。rollback は task commit 全体の revert、永続形式の移行なし。

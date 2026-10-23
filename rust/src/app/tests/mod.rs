@@ -104,3 +104,5 @@ mod window_ime;
 
 mod freshness;
 mod freshness_refresh;
+
+mod index_recovery;

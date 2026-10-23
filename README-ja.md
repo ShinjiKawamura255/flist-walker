@@ -27,6 +27,8 @@
 
 GUIのSource表示には、FileListを読み込んだ時刻／Walkerで取得した時刻からの経過を表示します。ホバーで取得元path、UTC取得時刻、確認範囲を確認できます。`filelist_auto_check_enabled=true`（既定）では、アプリとタブがactiveの間、読み込んだroot直下のFileListだけを約5秒間隔で確認します。変更・確認不能の通知から `Refresh Index` を選ぶと、検索語・フィルター・並び順と、残存する選択pathを維持して更新します。子FileList、新規FileList、tree内の増減は確認対象外です。Settings → Searchで無効化でき、保存内容は次回起動から反映します。
 
+GUIの `Refresh Index` は現在のタブを再試行します。応答待ちの探索を止めるには `Stop Indexing`、全タブを止めるには `Stop All Indexing` を使います。停止後も直前の確定結果は残り、明示的なRefreshで対象タブだけを再開できます。全停止後は新規タブも自動で探索を始めません。サーバ停止中は読み取りに失敗します。OSが子処理を終了できず資源上限に達した場合は、理由を表示して再試行を停止します。
+
 ## クイックスタート（GUI）
 
 ```bash
