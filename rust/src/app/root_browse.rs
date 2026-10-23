@@ -302,14 +302,31 @@ mod tests {
     #[test]
     fn browse_delayed_probe_keeps_frames_responsive_and_discards_old_tab() {
         let (mut app, started, release) = delayed_app();
+        let context = eframe::egui::Context::default();
+        // Initialize font/layout resources before the interaction under test.
+        // A cold egui frame is startup work, not time spent awaiting Browse I/O.
+        let _ = context.run_ui(Default::default(), |ui| app.run_ui_frame(ui));
+        context.memory_mut(|memory| memory.request_focus(app.shell.ui.query_input_id));
         let begin = Instant::now();
         app.browse_for_root();
-        assert!(begin.elapsed() < Duration::from_millis(100));
+        let dispatch_elapsed = begin.elapsed();
+        assert!(
+            dispatch_elapsed < Duration::from_millis(100),
+            "Browse dispatch took {dispatch_elapsed:?}"
+        );
         started.recv_timeout(Duration::from_secs(5)).unwrap();
-        let context = eframe::egui::Context::default();
+        let input = eframe::egui::RawInput {
+            events: vec![eframe::egui::Event::Text("responsive".into())],
+            ..Default::default()
+        };
         let begin = Instant::now();
-        let _ = context.run_ui(Default::default(), |ui| app.run_ui_frame(ui));
-        assert!(begin.elapsed() < Duration::from_millis(100));
+        let _ = context.run_ui(input, |ui| app.run_ui_frame(ui));
+        let frame_elapsed = begin.elapsed();
+        assert!(
+            frame_elapsed < Duration::from_millis(100),
+            "Browse-blocked interaction frame took {frame_elapsed:?}"
+        );
+        assert_eq!(app.shell.runtime.query_state.query, "responsive");
         assert!(app
             .shell
             .features
