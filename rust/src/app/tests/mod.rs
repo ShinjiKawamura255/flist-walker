@@ -73,6 +73,7 @@ mod app_core;
 mod autosave;
 mod cache_tests;
 mod empty_query_progress;
+mod finalization_timing;
 mod index_pipeline;
 mod indexing_perf;
 mod paged_preview;

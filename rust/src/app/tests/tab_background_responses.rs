@@ -1112,7 +1112,7 @@ fn receive_after_background_index_progress<T>(
 const BACKGROUND_FINALIZATION_FRAME_LIMIT: usize = 2_000;
 const BACKGROUND_FINALIZATION_STALL_LIMIT: usize = 32;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
 struct BackgroundFinalizationProgress {
     initial_remaining: usize,
     pending_remaining: usize,
@@ -1129,25 +1129,22 @@ struct BackgroundFinalizationProgress {
 struct BackgroundFinalizationFrame {
     elapsed: Duration,
     cpu: Option<Duration>,
+    measurement_overhead: Duration,
+    monotonic_window_ns: Option<[u128; 2]>,
+    native_thread_id: Option<u64>,
     before: Option<BackgroundFinalizationProgress>,
     after: Option<BackgroundFinalizationProgress>,
 }
 
-#[cfg(unix)]
-fn finalization_thread_cpu_time() -> Option<Duration> {
-    let mut time = libc::timespec {
-        tv_sec: 0,
-        tv_nsec: 0,
-    };
-    // SAFETY: clock_gettime writes one initialized timespec; the clock is local
-    // to this test thread and never changes the wall-clock acceptance threshold.
-    (unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut time) } == 0)
-        .then(|| Duration::new(time.tv_sec as u64, time.tv_nsec as u32))
-}
-
-#[cfg(not(unix))]
-fn finalization_thread_cpu_time() -> Option<Duration> {
-    None
+impl BackgroundFinalizationFrame {
+    fn timing(&self) -> super::finalization_timing::FrameTiming {
+        super::finalization_timing::FrameTiming {
+            wall: self.elapsed,
+            cpu: self.cpu,
+            measurement_overhead: self.measurement_overhead,
+            monotonic_window_ns: self.monotonic_window_ns,
+        }
+    }
 }
 
 fn assert_finalization_frame_budget(
@@ -1156,8 +1153,8 @@ fn assert_finalization_frame_budget(
     frame: &BackgroundFinalizationFrame,
 ) {
     assert!(frame.elapsed < Duration::from_millis(100),
-        "background finalization frame exceeded 100ms: request_id={request_id}, frame={ordinal}, wall={:?}, thread_cpu={:?}, before={:?}, after={:?}",
-        frame.elapsed, frame.cpu, frame.before, frame.after);
+        "background finalization frame exceeded 100ms: request_id={request_id}, frame={ordinal}, wall={:?}, thread_cpu={:?}, off_cpu_lower_bound={:?}, measurement_overhead={:?}, before={:?}, after={:?}",
+        frame.elapsed, frame.cpu, frame.timing().off_cpu_lower_bound(), frame.measurement_overhead, frame.before, frame.after);
 }
 
 #[test]
@@ -1165,6 +1162,9 @@ fn tc_207_wall_budget_remains_enforced_when_thread_cpu_is_low() {
     let frame = BackgroundFinalizationFrame {
         elapsed: Duration::from_millis(101),
         cpu: Some(Duration::from_millis(1)),
+        measurement_overhead: Duration::from_micros(2),
+        monotonic_window_ns: None,
+        native_thread_id: None,
         before: None,
         after: None,
     };
@@ -1176,6 +1176,8 @@ fn tc_207_wall_budget_remains_enforced_when_thread_cpu_is_low() {
         "frame=3",
         "wall=",
         "thread_cpu=",
+        "off_cpu_lower_bound=",
+        "measurement_overhead=",
         "before=",
         "after=",
     ] {
@@ -1252,6 +1254,57 @@ fn assert_background_finalization_progress(
     );
 }
 
+fn emit_finalization_frames(
+    request_id: u64,
+    frames: &[BackgroundFinalizationFrame],
+    trace: bool,
+    control: Option<&str>,
+) {
+    let worst_wall = frames
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, f)| f.elapsed)
+        .map(|(i, _)| i);
+    let worst_cpu = frames
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, f)| f.cpu)
+        .map(|(i, _)| i);
+    let worst_off_cpu = frames
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, f)| f.timing().off_cpu_lower_bound())
+        .map(|(i, _)| i);
+    for (ordinal, frame) in frames.iter().enumerate() {
+        if trace
+            || Some(ordinal) == worst_wall
+            || Some(ordinal) == worst_cpu
+            || Some(ordinal) == worst_off_cpu
+        {
+            let timing = frame.timing();
+            eprintln!(
+                "TC207_FRAME {}",
+                serde_json::json!({
+                    "schema": 2, "pid": std::process::id(),
+                    "native_thread_id": frame.native_thread_id,
+                    "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+                    "monotonic_window_ns": frame.monotonic_window_ns,
+                    "test": thread::current().name(), "request_id": request_id,
+                    "frame": ordinal, "frames_observed": frames.len(),
+                    "wall_ns": frame.elapsed.as_nanos(),
+                    "cpu_upper_ns": frame.cpu.map(|d| d.as_nanos()),
+                    "cpu_lower_ns": timing.cpu_lower_bound().map(|d| d.as_nanos()),
+                    "off_cpu_lower_ns": timing.off_cpu_lower_bound().map(|d| d.as_nanos()),
+                    "measurement_overhead_ns": frame.measurement_overhead.as_nanos(),
+                    "wall_under_100ms": frame.elapsed < Duration::from_millis(100),
+                    "before": frame.before, "after": frame.after,
+                    "control": if ordinal == 0 { control } else { None },
+                })
+            );
+        }
+    }
+}
+
 fn drive_background_finalization_with_frame_budget(
     app: &mut FlistWalkerApp,
     tab_index: usize,
@@ -1261,43 +1314,49 @@ fn drive_background_finalization_with_frame_budget(
 ) -> Vec<BackgroundFinalizationFrame> {
     let mut frames = Vec::new();
     let mut consecutive_stalled_frames = 0usize;
+    let native_thread_id = super::finalization_timing::native_thread_id();
+    let trace = std::env::var_os("FLISTWALKER_TEST_TC207_TRACE").is_some();
+    let control = std::env::var("FLISTWALKER_TEST_TC207_CONTROL").ok();
+    assert!(
+        control.is_none() || trace,
+        "diagnostic controls require raw tracing"
+    );
     for frame in 0..BACKGROUND_FINALIZATION_FRAME_LIMIT {
         if background_finalization_target_reached(app, tab_index, request_id, target) {
-            if let Some(worst) = frames
-                .iter()
-                .max_by_key(|frame: &&BackgroundFinalizationFrame| frame.elapsed)
-            {
-                eprintln!(
-                    "TC-207 request={request_id} frames={} max_wall={:?} thread_cpu_at_max={:?}",
-                    frames.len(),
-                    worst.elapsed,
-                    worst.cpu
-                );
-            }
+            emit_finalization_frames(request_id, &frames, trace, control.as_deref());
             return frames;
         }
         let before = background_finalization_progress(app, request_id);
-        let cpu_started = finalization_thread_cpu_time();
-        let started = Instant::now();
-        app.handle_background_index_response(
-            tab_index,
-            IndexResponse::Finished {
-                request_id,
-                source: source.clone(),
-            },
-        );
-        let elapsed = started.elapsed();
-        let cpu = finalization_thread_cpu_time()
-            .zip(cpu_started)
-            .map(|(end, start)| end.saturating_sub(start));
+        let timing = super::finalization_timing::measure(|| {
+            if frame == 0 {
+                if let Some(control) = control.as_deref() {
+                    super::finalization_timing::diagnostic_control(control);
+                }
+            }
+            app.handle_background_index_response(
+                tab_index,
+                IndexResponse::Finished {
+                    request_id,
+                    source: source.clone(),
+                },
+            );
+        });
         let after = background_finalization_progress(app, request_id);
         let observation = BackgroundFinalizationFrame {
-            elapsed,
-            cpu,
+            elapsed: timing.wall,
+            cpu: timing.cpu,
+            measurement_overhead: timing.measurement_overhead,
+            monotonic_window_ns: timing.monotonic_window_ns,
+            native_thread_id,
             before,
             after,
         };
-        assert_finalization_frame_budget(request_id, frame, &observation);
+        frames.push(observation);
+        let observation = frames.last().unwrap();
+        if observation.elapsed >= Duration::from_millis(100) {
+            emit_finalization_frames(request_id, &frames, trace, control.as_deref());
+        }
+        assert_finalization_frame_budget(request_id, frame, observation);
         if !background_finalization_target_reached(app, tab_index, request_id, target) {
             consecutive_stalled_frames = if before == after {
                 consecutive_stalled_frames.saturating_add(1)
@@ -1311,7 +1370,6 @@ fn drive_background_finalization_with_frame_budget(
                 before,
             );
         }
-        frames.push(observation);
     }
     panic!(
         "background finalization exceeded frame bound: request_id={request_id}, tab_index={tab_index}, frames={BACKGROUND_FINALIZATION_FRAME_LIMIT}, progress={:?}",

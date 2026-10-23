@@ -1,0 +1,32 @@
+{
+  "base": "a94590ff31697b59420aa3060fd648a06004b009",
+  "platform": "macOS-27.0.1-arm64-arm-64bit-Mach-O",
+  "cpu_count": 12,
+  "binary_sha256": "853f0f241e7b021cea57af506b067f7252486094701188d181a71e4cb2fdf368",
+  "binary": "/Users/shinji/work/flist-walker/rust/target/debug/deps/flist_walker-9dc4375f621eeb3c",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)\nbinary: rustc\ncommit-hash: 48a229ceaefd4985c50990b14116b6d856af0985\ncommit-date: 2026-09-01\nhost: aarch64-apple-darwin\nrelease: 1.98.1\nLLVM version: 22.1.8\n",
+  "profile": "test debug, cargo test --locked --offline --lib",
+  "wall_limit_ns": 100000000,
+  "retries": 0,
+  "source_sha256": {
+    "rust/src/app/tests/finalization_timing.rs": "e035caa697c66370ab2dc962ebee2185684366b5a5f0bec76d61f426458da0c3",
+    "rust/src/app/tests/tab_background_responses.rs": "361b2c16d577794c0ddc91741acd114720c3421d11e4dd1063a6296562a5a616",
+    "rust/src/app/tests/mod.rs": "8e637029147751a1d5d519b9a08d9456d1a1ca36ad0b92624ffb3b07ce2d9e61",
+    "/Users/shinji/work/flist-walker/docs/history/tc207-timing-2026-10-24/collect.py": "953d9ae4124ed4360cc079f7f4b0832f42dd303c6eb7111f87d5813ebd596dd1"
+  },
+  "plan": {
+    "controls": [
+      "cpu",
+      "sleep",
+      "stop"
+    ],
+    "serial_rounds": 3,
+    "parallel_processes": [
+      4,
+      12
+    ],
+    "cases_per_process": 4,
+    "test_threads_per_process": 1,
+    "child_timeout_seconds": 30
+  }
+}
