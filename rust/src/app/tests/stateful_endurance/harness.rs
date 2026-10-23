@@ -392,6 +392,20 @@ impl StatefulHarness {
             // removes their submitted IDs. Duplicate IDs remain one owner, and
             // unrelated in-flight routes do not acquire ownership here.
             let indexing = &self.app.shell.indexing;
+            // prepare_frame also applies an earlier user root-change intent
+            // before receiving this response. Only that concrete active target
+            // owns this transition; a paused tab need not create a new index
+            // route through which newly_routed_tab_ids could infer ownership.
+            if indexing.pending_finish.is_none()
+                && indexing
+                    .root_after_pending_finish
+                    .as_ref()
+                    .is_some_and(|target| {
+                        path_key(target) != path_key(&self.app.shell.runtime.root)
+                    })
+            {
+                owners.extend(self.app.current_tab_id());
+            }
             // complete_frame retries a retained active finish even when the
             // newly submitted response belongs to another request. Attribute
             // only the matching live request route, never every active tab.
@@ -1134,6 +1148,177 @@ pub(super) fn snapshot_for_app(app: &FlistWalkerApp, roots: &[PathBuf]) -> Seman
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn tc_183_deferred_root_owner_is_exact_and_applies_saved_target_without_reindex() {
+        let mut harness = StatefulHarness::new("endurance-deferred-root-owner");
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        let response_tab = harness.app.shell.tabs.get(0).unwrap().id;
+        let unrelated_tab = harness.app.shell.tabs.get(1).unwrap().id;
+        let active_tab = harness.app.current_tab_id().unwrap();
+        let original_root = harness.app.shell.runtime.root.clone();
+        let saved_target = harness.roots[1].clone();
+        let old_request = harness
+            .app
+            .shell
+            .indexing
+            .allocate_request_id(Some(response_tab));
+        harness.pending_indexes.push_back(IndexRequest {
+            request_id: old_request,
+            tab_id: response_tab,
+            root: original_root.clone(),
+            use_filelist: false,
+            include_files: true,
+            include_dirs: true,
+            max_depth: crate::indexer::MaxDepth::unlimited(),
+            follow_links: false,
+            complete_walker_snapshot: false,
+        });
+        // Match seed 0x183d: Failed/paused indexing and a user root change
+        // retained behind resource backpressure, without a pending finish.
+        harness.app.shell.indexing.suspend_index_retry(active_tab);
+        harness
+            .app
+            .shell
+            .indexing
+            .apply_resource_transition(crate::app::tab_state::TabResourceTransition::Failure);
+        harness
+            .app
+            .shell
+            .indexing
+            .build
+            .index
+            .entries
+            .push(file_entry(original_root.join("partial")));
+        harness.app.shell.indexing.build_reclaim_pending = true;
+        harness.app.shell.tabs.pause_resource_reclaimer();
+        for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+            let mut retired = RetiredIndexBuildResources::empty();
+            retired.set_stale_index_entries(vec![IndexEntry {
+                path: original_root.join("retired"),
+                kind: EntryKind::file(),
+                kind_known: true,
+            }]);
+            assert!(harness
+                .app
+                .shell
+                .tabs
+                .try_retire_index_build_resources(retired)
+                .is_ok());
+        }
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            harness.app.apply_root_change_direct(saved_target.clone());
+            assert_eq!(harness.app.shell.runtime.root, original_root);
+            assert_eq!(
+                harness.app.shell.indexing.root_after_pending_finish,
+                Some(saved_target.clone())
+            );
+            assert!(harness.app.shell.indexing.pending_finish.is_none());
+            let event = Event::DeliverOldestIndexData(IndexData::Batch);
+            let owners = harness.response_owners(&event).unwrap();
+            assert_eq!(owners, HashSet::from([response_tab, active_tab]));
+            assert!(!owners.contains(&unrelated_tab));
+            let before = harness.snapshot();
+            let next_request = harness.app.shell.indexing.next_request_id;
+            harness.app.shell.tabs.resume_resource_reclaimer();
+            harness.apply(&event);
+            harness.capture_requests();
+            let after = harness.snapshot();
+            assert_eq!(harness.app.shell.runtime.root, saved_target);
+            assert_eq!(
+                after
+                    .tabs
+                    .iter()
+                    .find(|tab| tab.id == active_tab)
+                    .unwrap()
+                    .root,
+                1
+            );
+            assert!(harness
+                .app
+                .shell
+                .indexing
+                .root_after_pending_finish
+                .is_none());
+            assert!(!harness.app.shell.indexing.index_admitted(active_tab));
+            assert!(harness.app.shell.indexing.pending_request_id.is_none());
+            assert_eq!(harness.app.shell.indexing.next_request_id, next_request);
+            assert_eq!(
+                harness.pending_indexes.len(),
+                1,
+                "no paused-tab request may start"
+            );
+            harness
+                .assert_other_tab_content_unchanged(&before, &after, &owners, 0x183d, 116, &event);
+            let mut wrong_after = after.clone();
+            wrong_after
+                .tabs
+                .iter_mut()
+                .find(|tab| tab.id == unrelated_tab)
+                .unwrap()
+                .root = 2;
+            assert!(
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    harness.assert_other_tab_content_unchanged(
+                        &before,
+                        &wrong_after,
+                        &owners,
+                        0x183d,
+                        116,
+                        &event,
+                    );
+                }))
+                .is_err(),
+                "pending root intent must not permit unrelated tab mutation"
+            );
+        }));
+        harness.app.shell.tabs.resume_resource_reclaimer();
+        harness.cleanup();
+        if let Err(error) = result {
+            std::panic::resume_unwind(error);
+        }
+    }
+
+    #[test]
+    fn tc_183_deferred_root_owner_requires_concrete_active_target_and_no_pending_finish() {
+        let mut harness = StatefulHarness::new("endurance-deferred-root-negative-controls");
+        harness.app.create_new_tab();
+        let active_tab = harness.app.current_tab_id().unwrap();
+        let other_tab = harness.app.shell.tabs.get(0).unwrap().id;
+        let event = Event::DeliverStaleIndex;
+        assert!(harness.response_owners(&event).unwrap().is_empty());
+        harness.app.shell.indexing.root_after_pending_finish =
+            Some(harness.app.shell.runtime.root.clone());
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "same-root intent does not own a root transition"
+        );
+        harness.app.shell.indexing.root_after_pending_finish = Some(harness.roots[1].clone());
+        let owners = harness.response_owners(&event).unwrap();
+        assert_eq!(owners, HashSet::from([active_tab]));
+        assert!(!owners.contains(&other_tab));
+        harness.app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+            request_id: 42,
+            source: IndexSource::Walker,
+        });
+        assert!(harness.response_owners(&event).unwrap().is_empty(), "root retry is deferred while finish is pending; unmatched finish must not add an owner");
+        harness.app.shell.indexing.pending_finish = None;
+        harness.app.shell.indexing.root_after_pending_finish = None;
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .root_after_pending_finish = Some(harness.roots[2].clone());
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "inactive root intent alone is not the active retry owner"
+        );
+        harness.cleanup();
+    }
 
     #[test]
     fn tc_183_pending_background_finish_keeps_only_its_exact_owner() {

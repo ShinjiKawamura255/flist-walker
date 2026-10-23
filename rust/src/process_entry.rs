@@ -18,6 +18,9 @@ fn init_tracing_if_requested() {
 /// Initializes optional tracing, then handles hidden updater commands before
 /// either public entrypoint gives its arguments to clap.
 pub fn initialize_process_entry() -> Result<InternalUpdaterAction> {
+    if crate::app::index_worker::process::run_internal_if_requested()? {
+        return Ok(InternalUpdaterAction::Exit);
+    }
     init_tracing_if_requested();
     run_internal_updater_command_if_requested()
 }

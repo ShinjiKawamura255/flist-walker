@@ -72,6 +72,7 @@ impl<'a> IndexResponseApplicationOwner<'a> {
     }
 
     pub(super) fn prepare_frame(&mut self) -> bool {
+        self.app.retry_index_recovery_reclamation();
         if !self.app.retry_pending_stale_build_reclaim() {
             return false;
         }
@@ -194,6 +195,9 @@ impl<'a> IndexResponseApplicationOwner<'a> {
                 IndexResponseApplicationEffect::break_after_message(0)
             }
             IndexResponse::Failed { request_id, error } => {
+                if let Some(tab) = self.app.current_tab_id() {
+                    self.app.shell.indexing.suspend_index_retry(tab);
+                }
                 self.app
                     .shell
                     .features

@@ -30,6 +30,8 @@ Language docs:
 
 The GUI source label shows when its index snapshot was loaded (FileList) or indexed (Walker). Hover it for the source path, UTC acquisition time, and scope. With `filelist_auto_check_enabled=true` (default), only the loaded root FileList is checked about every five seconds while the tab and app are active. Changes or an unavailable check show a notice; its `Refresh Index` preserves the query, filters, sort, and selected path when it still exists. Child FileLists, new FileLists, and filesystem tree changes are outside this check. Disable it in Settings → Search; saved settings take effect after restart.
 
+Use `Refresh Index` to retry the current tab, `Stop Indexing` to stop its indexing, or `Stop All Indexing` to stop every tab. The last committed results remain available. An explicit refresh resumes only that tab; new tabs also stay paused after a global stop. An unavailable server can still fail to load. If the OS cannot terminate old work and the process budget is exhausted, the application reports the failure instead of spawning unlimited replacements.
+
 ## Quick Start
 
 ```bash

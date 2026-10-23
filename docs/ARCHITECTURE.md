@@ -290,3 +290,6 @@ OS ごとの差異や表示用正規化のような cross-cutting helper は app
 - Non-goals: FileList の候補解釈、nested FileList の hierarchy override、Walker の走査順、filesystem metadata 自体の OS I/O latency は本 guard の対象外。
 - Related Tests: `tc_152_filelist_restore_index_regression_cancels_before_filelist_start` (in `app/index_worker/tests/mod.rs`), `find_filelist_cancellable_regression_stops_when_request_is_stale` (in `indexer/tests/mod.rs`)
 - Notes for Future Changes: index worker の source selection 前に request freshness を再確認し、root-level FileList discovery を非キャンセルの `read_dir` scan に戻してはならない。検出 API の変更時は TC-152 と VM-003 の FileList/Walker perf guards を再実行すること。
+
+### Index isolation and recovery
+GUI indexing uses two fixed parent supervisors and per-request child processes; `index_worker/process` owns the bounded native-path IPC and four physical child leases, including termination-pending owners. Parent supervisors do not probe the indexed filesystem. `index_recovery` owns manual restart and current/all stop admission; existing reclaimers retain heavy-payload disposal. See [SP-027](spec/gui-behavior.md#sp-027-障害インデクシングの隔離と復旧) and [DES-029](design/flows-data-api.md#des-029-index-process-supervision-and-recovery-controls). Legacy in-process test hooks remain algorithm/coordination evidence; production process validation is separate (TC-235).

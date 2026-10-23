@@ -179,6 +179,11 @@ impl FlistWalkerApp {
             notice: &self.shell.runtime.notice,
             memory_text: memory,
         });
+        let status_line = if let Some(recovery) = self.index_recovery_status() {
+            format!("{recovery} | {status_line}")
+        } else {
+            status_line
+        };
         let status_line = match self.session_persistence_label() {
             Some(label) if self.shell.ui.persistence.error().is_some() => {
                 format!("{label} | {status_line}")

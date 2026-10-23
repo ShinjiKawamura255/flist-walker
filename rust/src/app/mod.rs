@@ -24,6 +24,7 @@ mod freshness;
 mod index_coordinator;
 mod index_finalization;
 pub(crate) mod index_mailbox;
+mod index_recovery;
 mod index_response_arbitration;
 mod index_response_effects;
 pub(crate) mod index_worker;
