@@ -1,0 +1,8 @@
+{
+  "correlation_schema": 2,
+  "additional_load": "A separate host cargo test --locked --offline full regression was started immediately after this collector; compile/test phase overlap was not timestamped. This cohort is not admitted as an isolated serial/4/12 load-level comparison.",
+  "source_v1": "../evidence/provenance.json",
+  "source_v2": "provenance.json",
+  "pooling_allowed": false,
+  "natural_reproduction_of_100ms": false
+}

@@ -4,6 +4,7 @@ This directory contains completed maintenance and closure records. These documen
 
 | Record | Contents |
 | --- | --- |
+| [TC-207 timing observations 2026-10-24](tc207-timing-2026-10-24/diagnosis.md) | Exact-source wall/CPU bounds, controlled CPU/sleep/process-stop failures, source-separated natural cohorts and unresolved original100ms cause |
 | [Linux coverage diagnostic validation 2026-10-19](linux-coverage-rollout-2026-10-19/diagnostic-validation.md) | Source-bound native fault capture, all-platform CI, warning classification and unresolved original SIGSEGV |
 | [WarmReclaim v9 source-bound measurements](warm-reclaim-v9-2026-10-18/measurement-diagnosis.md) | Deferred-refresh/test-isolation/schema repairs; native source admission and prospective3+2 whole sessions with original data, source-CLI replays and unchanged active policy |
 | [WarmReclaim v8 reference/rejection](warm-reclaim-v8-2026-10-18/rejected-v8-session1.md) | Deferred allocation and fixture-isolation native repair; retained runtime-schema rejection and shared Rust/Python default guard |
