@@ -1,6 +1,16 @@
 //! Keep shared storage and result decisions independent from GUI orchestration.
 use std::path::{Path, PathBuf};
 
+#[test]
+fn browse_location_filesystem_probes_stay_off_the_ui_thread() {
+    for owner in ["app/root_browser.rs", "app/root_browse.rs"] {
+        let source = std::fs::read_to_string(source_root().join(owner)).unwrap();
+        for probe in [".is_dir()", ".canonicalize()", "std::env::current_dir()"] {
+            assert!(!source.contains(probe), "{owner} performs {probe}");
+        }
+    }
+}
+
 fn source_root() -> PathBuf {
     Path::new(option_env!("CARGO_MANIFEST_DIR").unwrap_or("rust")).join("src")
 }

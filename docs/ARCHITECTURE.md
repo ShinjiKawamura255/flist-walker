@@ -147,6 +147,8 @@ FlistWalker は Rust 製の GUI/CLI ハイブリッド検索ツールで、FileL
   - preview/action/sort を中心に worker response の polling と routing を集約する。
 - [root_browser.rs](../rust/src/app/root_browser.rs)
   - root selector dialog の state と root change cleanup を担当する。
+- [root_browse.rs](../rust/src/app/root_browse.rs) / [worker/browse.rs](../rust/src/app/worker/browse.rs)
+  - Browse の開始位置探索は遅延起動する単一 worker が担当する。受付から応答消費まで最大1要求を所有し、取消でも受付枠を早期解放しない。UI は request ID、tab/root、manager generation、編集入力を照合してから既存の native modal picker を開く。editor の close/reopen と tab/root 遷移は旧要求を無効化する。native Closeはframeのpolling前に、signal/install/deferred-closeはBrowse応答消費前に旧要求を取り消し、終了中のmodal開始を防ぐ。worker は共通 shutdown signal と有限 join budget に従う。
 - [ui_state.rs](../rust/src/app/ui_state.rs)
   - runtime UI focus、scroll、preview panel、tab drag などの一時状態を保持する。
 - [query_state.rs](../rust/src/app/query_state.rs)

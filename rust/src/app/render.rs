@@ -485,6 +485,14 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.catalog.in_progress
             || self.shell.worker_bus.config_open.in_progress()
             || self.shell.worker_bus.config_settings.in_progress()
+            || self
+                .shell
+                .features
+                .root_browser
+                .browse
+                .service
+                .as_ref()
+                .is_some_and(|service| service.in_progress())
             || self.paged_preview_view.busy
             || self.settings_commit_in_progress()
             || (self.shell.ui.persistence.saving() && self.shell.ui.persistence.error().is_none())

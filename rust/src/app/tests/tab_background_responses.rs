@@ -1128,8 +1128,62 @@ struct BackgroundFinalizationProgress {
 #[derive(Clone, Debug)]
 struct BackgroundFinalizationFrame {
     elapsed: Duration,
+    cpu: Option<Duration>,
     before: Option<BackgroundFinalizationProgress>,
     after: Option<BackgroundFinalizationProgress>,
+}
+
+#[cfg(unix)]
+fn finalization_thread_cpu_time() -> Option<Duration> {
+    let mut time = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: clock_gettime writes one initialized timespec; the clock is local
+    // to this test thread and never changes the wall-clock acceptance threshold.
+    (unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, &mut time) } == 0)
+        .then(|| Duration::new(time.tv_sec as u64, time.tv_nsec as u32))
+}
+
+#[cfg(not(unix))]
+fn finalization_thread_cpu_time() -> Option<Duration> {
+    None
+}
+
+fn assert_finalization_frame_budget(
+    request_id: u64,
+    ordinal: usize,
+    frame: &BackgroundFinalizationFrame,
+) {
+    assert!(frame.elapsed < Duration::from_millis(100),
+        "background finalization frame exceeded 100ms: request_id={request_id}, frame={ordinal}, wall={:?}, thread_cpu={:?}, before={:?}, after={:?}",
+        frame.elapsed, frame.cpu, frame.before, frame.after);
+}
+
+#[test]
+fn tc_207_wall_budget_remains_enforced_when_thread_cpu_is_low() {
+    let frame = BackgroundFinalizationFrame {
+        elapsed: Duration::from_millis(101),
+        cpu: Some(Duration::from_millis(1)),
+        before: None,
+        after: None,
+    };
+    let failure = std::panic::catch_unwind(|| assert_finalization_frame_budget(77, 3, &frame));
+    let error = failure.expect_err("scheduling delay must not bypass the wall-clock gate");
+    let message = error.downcast_ref::<String>().unwrap();
+    for diagnostic in [
+        "request_id=77",
+        "frame=3",
+        "wall=",
+        "thread_cpu=",
+        "before=",
+        "after=",
+    ] {
+        assert!(
+            message.contains(diagnostic),
+            "missing {diagnostic}: {message}"
+        );
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -1209,9 +1263,21 @@ fn drive_background_finalization_with_frame_budget(
     let mut consecutive_stalled_frames = 0usize;
     for frame in 0..BACKGROUND_FINALIZATION_FRAME_LIMIT {
         if background_finalization_target_reached(app, tab_index, request_id, target) {
+            if let Some(worst) = frames
+                .iter()
+                .max_by_key(|frame: &&BackgroundFinalizationFrame| frame.elapsed)
+            {
+                eprintln!(
+                    "TC-207 request={request_id} frames={} max_wall={:?} thread_cpu_at_max={:?}",
+                    frames.len(),
+                    worst.elapsed,
+                    worst.cpu
+                );
+            }
             return frames;
         }
         let before = background_finalization_progress(app, request_id);
+        let cpu_started = finalization_thread_cpu_time();
         let started = Instant::now();
         app.handle_background_index_response(
             tab_index,
@@ -1221,7 +1287,17 @@ fn drive_background_finalization_with_frame_budget(
             },
         );
         let elapsed = started.elapsed();
+        let cpu = finalization_thread_cpu_time()
+            .zip(cpu_started)
+            .map(|(end, start)| end.saturating_sub(start));
         let after = background_finalization_progress(app, request_id);
+        let observation = BackgroundFinalizationFrame {
+            elapsed,
+            cpu,
+            before,
+            after,
+        };
+        assert_finalization_frame_budget(request_id, frame, &observation);
         if !background_finalization_target_reached(app, tab_index, request_id, target) {
             consecutive_stalled_frames = if before == after {
                 consecutive_stalled_frames.saturating_add(1)
@@ -1235,11 +1311,7 @@ fn drive_background_finalization_with_frame_budget(
                 before,
             );
         }
-        frames.push(BackgroundFinalizationFrame {
-            elapsed,
-            before,
-            after,
-        });
+        frames.push(observation);
     }
     panic!(
         "background finalization exceeded frame bound: request_id={request_id}, tab_index={tab_index}, frames={BACKGROUND_FINALIZATION_FRAME_LIMIT}, progress={:?}",

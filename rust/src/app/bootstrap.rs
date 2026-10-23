@@ -480,6 +480,7 @@ impl FlistWalkerApp {
                 tabs: TabSessionState::with_resource_reclaimer(tab_resource_reclaimer),
                 features: FeatureStateBundle {
                     root_browser: RootBrowserState {
+                        browse: Default::default(),
                         #[cfg(test)]
                         browse_dialog_result: None,
                         #[cfg(test)]

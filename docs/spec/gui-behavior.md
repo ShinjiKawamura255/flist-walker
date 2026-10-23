@@ -105,6 +105,7 @@
 - MUST: `Manage list` では直接入力したフォルダパス、または `Browse...` で選択したフォルダを draft list へ追加できなければならない。
 - MUST: `Manage list` の追加・編集時の folder 種別判定、canonicalize、draft snapshot との重複判定は専用 worker で実行し、UI frame 上で filesystem I/O を行ってはならない。要求は request_id、dialog generation、Add/Edit intent、edit index を相関し、close/reopen または後続操作より古い success/error を draft へ反映してはならない。
 - MUST: root 検証中は処理中であることを表示し、worker 切断は対象入力欄のエラーとして終端させなければならない。検証結果は入力時点の状態であり、その後も folder が存在し続けることは保証しない。
+- MUST: root・保存root管理・preset・Named Root のBrowse開始位置探索はUI threadでfilesystem I/Oを行わず、既存ancestorへのfallbackを維持する。準備は最大1要求とし、連打でworkerや待機要求を増やさない。tab/root変更、editorのclose/reopen、入力変更後の古い準備応答からpickerを開いたりdraftを変更してはならない。OS標準pickerの既存modal動作と、選択・取消・失敗時のdraft契約は維持する。
 - MUST: `Manage list` の通常状態ではチェックボックスを表示せず、単一の draft list 項目を行選択し、`Edit` でその行だけをテキスト編集へ切り替えられなければならない。
 - MUST: `Manage list` の通常状態にある draft list 項目は、パス文字列部分だけでなく一覧の利用可能な横幅全体をクリックして行選択できなければならない。
 - MUST: `Manage list` で編集中の入力が元のパスから変更されていない場合、別の行をクリックすると現在の編集を解除してその行を選択し、別の行をダブルクリックすると編集対象をその行へ切り替えなければならない。入力が変更済みの場合は、`Save` または `Cancel` が実行されるまで別の行へ切り替えてはならず、必要な操作を通知しなければならない。
