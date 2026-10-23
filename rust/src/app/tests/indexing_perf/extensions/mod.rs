@@ -2,6 +2,7 @@
 use super::*;
 mod cases;
 mod driver;
+mod finished_offer;
 mod fixture;
 mod oracle;
 mod runner;

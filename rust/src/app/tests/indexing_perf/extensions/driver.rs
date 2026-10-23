@@ -979,6 +979,20 @@ fn proofs(
                             .and_then(|p| p.permission_at),
                     )
                     && (o.terminal_kind == Some("canceled")
+                        || super::finished_offer::finished_offer_revocation(
+                            r.id,
+                            r.tab,
+                            plans,
+                            &o,
+                            &roots[n].root,
+                            source,
+                            driver
+                                .app
+                                .shell
+                                .indexing
+                                .perf_released_requests
+                                .contains_key(&r.id),
+                        )
                         || o.mailbox_closed
                             && o.terminal_offer_current == Some(false)
                             && (matches!(o.terminal_offer_kind, Some("finished" | "canceled"))
@@ -1005,6 +1019,101 @@ fn proofs(
         })
         .collect()
 }
+#[test]
+fn tc_229_finished_offer_then_planned_refresh_close_is_revoked_not_success() {
+    // Replay the native CI event order; these offsets model ordering only,
+    // rather than claim to reproduce the hosted wall-clock performance.
+    let fixture = ExtendedFixture::new(8, super::fixture::Shape::FlatFiles);
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    let tab = driver.app.current_tab_id().unwrap();
+    let t = Instant::now();
+    let plans = vec![
+        PlannedRequest {
+            id: 2,
+            tab,
+            revoked_by: Some(3),
+            permission_at: Some(t + Duration::from_millis(4)),
+            permission_reason: Some("IgnoreList-PreserveSort-refresh"),
+            ..Default::default()
+        },
+        PlannedRequest {
+            id: 3,
+            tab,
+            ..Default::default()
+        },
+    ];
+    let observation = crate::app::index_mailbox::IndexPerfObservation {
+        allocation_observed: true,
+        admitted_at: Some(t),
+        admitted_root: Some(fixture.root.clone()),
+        started_root: Some(fixture.root.clone()),
+        started_source: Some("FileList"),
+        started_published: Some(t + Duration::from_millis(1)),
+        entries_emitted: 8,
+        batches: 1,
+        data_publish_end: Some(t + Duration::from_millis(2)),
+        terminal_offered: Some(t + Duration::from_millis(3)),
+        terminal_offer_kind: Some("finished"),
+        terminal_offer_current: Some(true),
+        mailbox_closed: true,
+        mailbox_closed_at: Some(t + Duration::from_millis(5)),
+        terminal_send_returned: Some(t + Duration::from_millis(6)),
+        request_processing_returned: Some(t + Duration::from_millis(7)),
+        ..Default::default()
+    };
+    driver
+        .app
+        .shell
+        .indexing
+        .perf_released_requests
+        .insert(2, t + Duration::from_millis(5));
+    let ledger = vec![OwnedRequest {
+        id: 2,
+        tab,
+        allocated_at: t,
+        observation: Arc::new(std::sync::Mutex::new(observation)),
+    }];
+    let rows = proofs(
+        &driver,
+        &ledger,
+        &plans,
+        &[&fixture],
+        &[tab],
+        Source::FileList,
+    );
+    assert!(
+        rows[0].revoked_abort,
+        "legal offer/close race must not stall the oracle"
+    );
+    assert!(!rows[0].finished, "unpublished Finished is not success");
+    assert!(
+        !rows[0].source_root_correct,
+        "terminal source was never published"
+    );
+    let latest = RequestProof {
+        id: 3,
+        tab,
+        finished: true,
+        physical_complete: true,
+        source_root_correct: true,
+        revoked_abort: false,
+        last_good_victim: false,
+    };
+    assert!(planned_requests_valid(
+        &plans,
+        &[rows[0].clone(), latest.clone()]
+    ));
+    let failed_latest = RequestProof {
+        finished: false,
+        ..latest
+    };
+    assert!(!planned_requests_valid(
+        &plans,
+        &[rows[0].clone(), failed_latest]
+    ));
+}
+
 pub(super) fn configure(
     driver: &mut Driver,
     fixture: &ExtendedFixture,
