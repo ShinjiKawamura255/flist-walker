@@ -363,7 +363,7 @@ impl PollableOutput {
                 return Ok(None);
             }
             let len = bytes.len().min(available as usize);
-            return self.0.read(&mut bytes[..len]).map(Some);
+            self.0.read(&mut bytes[..len]).map(Some)
         }
         #[cfg(unix)]
         match self.0.read(bytes) {
