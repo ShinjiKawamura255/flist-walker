@@ -334,6 +334,11 @@ impl FlistWalkerApp {
     pub(super) fn run_update_cycle(&mut self, ui: &mut egui::Ui) -> bool {
         let ctx = ui.ctx().clone();
         self.maybe_apply_pending_cjk_font(&ctx);
+        // Browse polling can open a native modal. A close event must invalidate
+        // its owner before any ready preparation response is consumed.
+        if ctx.input(|input| input.viewport().close_requested()) {
+            self.cancel_root_browse();
+        }
         self.poll_runtime_events();
         self.tick_freshness(&ctx);
         if self.request_viewport_close_if_needed(&ctx) {

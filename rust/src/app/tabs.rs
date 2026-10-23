@@ -1017,6 +1017,7 @@ impl FlistWalkerApp {
         effect
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
+        self.cancel_root_browse();
         self.invalidate_filter_undo();
         let normalized = normalize_windows_path_buf(new_root);
         if self.shell.indexing.pending_finish.is_some() {
@@ -1303,6 +1304,7 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index_at(&mut self, next_index: usize, now: Instant) {
+        self.cancel_root_browse();
         if next_index >= self.shell.tabs.len() {
             return;
         }

@@ -1004,6 +1004,7 @@ fn preset_root_browse_updates_only_the_draft_and_uses_its_existing_parent() {
     app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(selected.clone())));
 
     app.browse_for_preset_editor_root();
+    super::support::settle_root_browse(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.last_browse_dialog_root,
@@ -1032,6 +1033,7 @@ fn preset_root_browse_updates_only_the_draft_and_uses_its_existing_parent() {
     app.shell.features.presets.picker.editor.root_path = manual.display().to_string();
     app.shell.features.root_browser.browse_dialog_result = Some(Ok(None));
     app.browse_for_preset_editor_root();
+    super::support::settle_root_browse(&mut app);
     assert_eq!(
         app.shell.features.presets.picker.editor.root_path,
         manual.display().to_string()
@@ -1040,6 +1042,7 @@ fn preset_root_browse_updates_only_the_draft_and_uses_its_existing_parent() {
     app.shell.features.root_browser.browse_dialog_result =
         Some(Err("dialog unavailable".to_string()));
     app.browse_for_preset_editor_root();
+    super::support::settle_root_browse(&mut app);
     assert_eq!(
         app.shell.features.presets.picker.editor.root_path,
         manual.display().to_string()
@@ -1070,6 +1073,7 @@ fn named_root_browse_supports_selection_cancel_and_local_error() {
     app.shell.features.root_browser.browse_dialog_result = Some(Ok(Some(selected.clone())));
 
     app.browse_for_named_root_editor_path();
+    super::support::settle_root_browse(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.last_browse_dialog_root,
@@ -1084,6 +1088,7 @@ fn named_root_browse_supports_selection_cancel_and_local_error() {
     app.shell.features.presets.picker.named_roots.editor.path = manual.display().to_string();
     app.shell.features.root_browser.browse_dialog_result = Some(Ok(None));
     app.browse_for_named_root_editor_path();
+    super::support::settle_root_browse(&mut app);
     assert_eq!(
         app.shell.features.presets.picker.named_roots.editor.path,
         manual.display().to_string()
@@ -1092,6 +1097,7 @@ fn named_root_browse_supports_selection_cancel_and_local_error() {
     app.shell.features.root_browser.browse_dialog_result =
         Some(Err("dialog unavailable".to_string()));
     app.browse_for_named_root_editor_path();
+    super::support::settle_root_browse(&mut app);
     assert_eq!(
         app.shell.features.presets.picker.named_roots.editor.path,
         manual.display().to_string()

@@ -46,6 +46,7 @@ mod response_flow;
 mod result_flow;
 mod result_policy;
 mod result_reducer;
+mod root_browse;
 mod root_browser;
 mod search_assist;
 mod search_coordinator;

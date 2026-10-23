@@ -9,43 +9,8 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::TryRecvError;
 
 impl FlistWalkerApp {
-    /// ダイアログで選んだ root を現在 tab に適用する。
-    pub(super) fn browse_for_root(&mut self) {
-        let dialog_root = Self::browse_dialog_start_location(&self.shell.runtime.root);
-        match self.select_root_via_dialog(&dialog_root) {
-            Ok(Some(dir)) => self.apply_root_change(dir),
-            Ok(None) => {}
-            Err(err) => self.set_notice(format!("Browse failed: {}", err)),
-        }
-    }
-
-    /// ダイアログで選んだ root を新規 tab として開く。
-    pub(super) fn browse_for_root_in_new_tab(&mut self) {
-        let dialog_root = Self::browse_dialog_start_location(&self.shell.runtime.root);
-        match self.select_root_via_dialog(&dialog_root) {
-            Ok(Some(dir)) => {
-                self.create_new_tab();
-                self.apply_root_change(dir);
-            }
-            Ok(None) => {}
-            Err(err) => self.set_notice(format!("Browse failed: {}", err)),
-        }
-    }
-
-    pub(super) fn select_root_for_path_input(
-        &mut self,
-        input: &str,
-    ) -> Result<Option<PathBuf>, String> {
-        let input = input.trim();
-        let start = if input.is_empty() {
-            Self::browse_dialog_start_location(&self.shell.runtime.root)
-        } else {
-            Self::browse_dialog_start_location(Path::new(input))
-        };
-        self.select_root_via_dialog(&start)
-    }
-
     pub(super) fn open_manage_root_list(&mut self) {
+        self.cancel_root_browse();
         let root_browser = &mut self.shell.features.root_browser;
         root_browser.manage_list.dialog_generation =
             root_browser.manage_list.dialog_generation.saturating_add(1);
@@ -263,35 +228,6 @@ impl FlistWalkerApp {
         manage.notice.clear();
     }
 
-    pub(super) fn browse_for_manage_root_list(&mut self) {
-        if self.reject_manage_root_list_mutation_while_saving() {
-            return;
-        }
-        let input = self
-            .shell
-            .features
-            .root_browser
-            .manage_list
-            .input_path
-            .clone();
-        match self.select_root_for_path_input(&input) {
-            Ok(Some(dir)) => {
-                let root = normalize_windows_path_buf(dir);
-                self.shell.features.root_browser.manage_list.input_path =
-                    root.to_string_lossy().to_string();
-                self.request_manage_root_validation(
-                    super::RootValidationIntent::Add,
-                    root.to_string_lossy().to_string(),
-                );
-            }
-            Ok(None) => {}
-            Err(err) => {
-                self.shell.features.root_browser.manage_list.notice =
-                    format!("Browse failed: {}", err);
-            }
-        }
-    }
-
     pub(super) fn remove_selected_manage_root_list_items(&mut self) {
         if self.reject_manage_root_list_mutation_while_saving() {
             return;
@@ -401,7 +337,7 @@ impl FlistWalkerApp {
         self.set_notice("Canceled saved roots list changes");
     }
 
-    fn reject_manage_root_list_mutation_while_saving(&mut self) -> bool {
+    pub(super) fn reject_manage_root_list_mutation_while_saving(&mut self) -> bool {
         if !self.settings_commit_in_progress() {
             return false;
         }
@@ -616,6 +552,7 @@ impl FlistWalkerApp {
     }
 
     fn close_manage_root_list(&mut self) {
+        self.cancel_root_browse();
         let manage = &mut self.shell.features.root_browser.manage_list;
         manage.open = false;
         manage.input_path.clear();
@@ -671,7 +608,7 @@ impl FlistWalkerApp {
         manage.notice = format!("Added root to draft list: {}", root.display());
     }
 
-    fn request_manage_root_validation(
+    pub(super) fn request_manage_root_validation(
         &mut self,
         intent: super::RootValidationIntent,
         input: String,
@@ -809,22 +746,11 @@ impl FlistWalkerApp {
         }
     }
 
-    fn browse_dialog_start_location(root: &Path) -> PathBuf {
-        // This runs only at the explicit native-picker command boundary, not during frame
-        // rendering. Preserve the established fallback so a stale saved path cannot make the
-        // platform picker fail before it opens.
-        let normalized = normalize_windows_path_buf(root.to_path_buf());
-        if normalized.is_dir() {
-            return normalized;
-        }
-        if let Some(ancestor) = normalized.ancestors().find(|ancestor| ancestor.is_dir()) {
-            return ancestor.to_path_buf();
-        }
-        std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
-    }
-
     #[cfg(test)]
-    fn select_root_via_dialog(&mut self, dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+    pub(super) fn select_root_via_dialog(
+        &mut self,
+        dialog_root: &Path,
+    ) -> Result<Option<PathBuf>, String> {
         self.shell.features.root_browser.last_browse_dialog_root = Some(dialog_root.to_path_buf());
         self.shell
             .features
@@ -835,7 +761,10 @@ impl FlistWalkerApp {
     }
 
     #[cfg(not(test))]
-    fn select_root_via_dialog(&mut self, dialog_root: &Path) -> Result<Option<PathBuf>, String> {
+    pub(super) fn select_root_via_dialog(
+        &mut self,
+        dialog_root: &Path,
+    ) -> Result<Option<PathBuf>, String> {
         native_dialog::DialogBuilder::file()
             .set_location(dialog_root)
             .open_single_dir()
