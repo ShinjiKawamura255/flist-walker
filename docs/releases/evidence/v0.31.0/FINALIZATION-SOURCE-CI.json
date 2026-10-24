@@ -1,0 +1,652 @@
+{
+  "source": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+  "date_jst": "2026-10-24",
+  "scope": "source CI only; not a release-candidate or tagged-run disposition",
+  "runs": [
+    {
+      "run": 39996132479,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39996132479",
+      "log_bytes": 2151466,
+      "log_sha256": "e1e21b232ca981f379afc70de7c524cddb227f205ed6847faf7fa53c4787241d",
+      "actual_warning_lines": [
+        "Clippy and Coverage\tUNKNOWN STEP\t2026-10-23T17:34:47.4835373Z warning: default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file",
+        "Windows GNU Updater E2E\tUNKNOWN STEP\t2026-10-23T17:38:32.8166184Z (node:2708) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ],
+      "jobs": [
+        {
+          "id": 120560017397,
+          "name": "CI Policy",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Validate repository tooling",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560017746,
+          "name": "Detect Changes",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Classify changes fail closed",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560100329,
+          "name": "Clippy and Coverage",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust with clippy and llvm tools",
+              "conclusion": "success"
+            },
+            {
+              "name": "Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install cargo-llvm-cov",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo fmt",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo clippy",
+              "conclusion": "success"
+            },
+            {
+              "name": "Prepare coverage output directory",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Linux fault debugger",
+              "conclusion": "success"
+            },
+            {
+              "name": "Generate coverage report",
+              "conclusion": "success"
+            },
+            {
+              "name": "Upload Linux fault diagnostics",
+              "conclusion": "success"
+            },
+            {
+              "name": "Upload coverage artifact",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560100411,
+          "name": "Windows GNU Updater Build",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust with target",
+              "conclusion": "success"
+            },
+            {
+              "name": "Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install mingw-w64",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build updater test channel",
+              "conclusion": "success"
+            },
+            {
+              "name": "Upload Windows GNU test-channel artifact",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560100450,
+          "name": "Rust Test and Build (linux-native)",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust",
+              "conclusion": "success"
+            },
+            {
+              "name": "Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run platform clippy",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Run lightweight perf gate",
+              "conclusion": "success"
+            },
+            {
+              "name": "Build release",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560100513,
+          "name": "Rust Test and Build (windows-native)",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust",
+              "conclusion": "success"
+            },
+            {
+              "name": "Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run platform clippy",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run lightweight perf gate",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Build release",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560100527,
+          "name": "Rust Test and Build (macos-native)",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust",
+              "conclusion": "success"
+            },
+            {
+              "name": "Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run tests",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run platform clippy",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run lightweight perf gate",
+              "conclusion": "skipped"
+            },
+            {
+              "name": "Build release",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Cache Cargo downloads",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120560102241,
+          "name": "Cargo Audit",
+          "conclusion": "skipped",
+          "steps": []
+        },
+        {
+          "id": 120561847784,
+          "name": "Windows GNU Updater E2E",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust for manifest signer",
+              "conclusion": "success"
+            },
+            {
+              "name": "Download Windows GNU test-channel artifact",
+              "conclusion": "success"
+            },
+            {
+              "name": "Execute sandbox self-update",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120568104629,
+          "name": "CI Gate",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Verify required results",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "run": 40017513592,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40017513592",
+      "log_bytes": 122451,
+      "log_sha256": "cbf61e2a7fa200b0d06b24041261e1a527ffd56698a232a46068bd461713d094",
+      "actual_warning_lines": [
+        "Scheduled Cargo Audit\tUNKNOWN STEP\t2026-10-23T20:13:33.4548308Z warning: default toolchain implicitly overridden with `1.97.1-x86_64-unknown-linux-gnu` by rustup toolchain file",
+        "Scheduled Cargo Audit\tUNKNOWN STEP\t2026-10-23T20:15:26.1774384Z warning: 1 allowed warning found",
+        "Scheduled Cargo Audit\tUNKNOWN STEP\t2026-10-23T20:15:26.1775474Z Warning:   yanked"
+      ],
+      "jobs": [
+        {
+          "id": 120633286125,
+          "name": "Scheduled Cargo Audit",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install Rust",
+              "conclusion": "success"
+            },
+            {
+              "name": "Install cargo-audit",
+              "conclusion": "success"
+            },
+            {
+              "name": "Run cargo audit",
+              "conclusion": "success"
+            },
+            {
+              "name": "Post Checkout",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120634272719,
+          "name": "Resolve Recovered Security Audit Issue",
+          "conclusion": "success",
+          "steps": [
+            {
+              "name": "Set up job",
+              "conclusion": "success"
+            },
+            {
+              "name": "Record runner image",
+              "conclusion": "success"
+            },
+            {
+              "name": "Close recovered security issue",
+              "conclusion": "success"
+            },
+            {
+              "name": "Complete job",
+              "conclusion": "success"
+            }
+          ]
+        },
+        {
+          "id": 120634274970,
+          "name": "Track Security Audit Failure",
+          "conclusion": "skipped",
+          "steps": []
+        }
+      ]
+    }
+  ],
+  "check_annotation_inventory": [
+    {
+      "id": 120634274970,
+      "name": "Track Security Audit Failure",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "skipped",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120634274970/annotations"
+    },
+    {
+      "id": 120634272719,
+      "name": "Resolve Recovered Security Audit Issue",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120634272719/annotations"
+    },
+    {
+      "id": 120633286125,
+      "name": "Scheduled Cargo Audit",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120633286125/annotations"
+    },
+    {
+      "id": 120568180755,
+      "name": "Register Dependabot Auto Merge",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "skipped",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120568180755/annotations"
+    },
+    {
+      "id": 120568104629,
+      "name": "CI Gate",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120568104629/annotations"
+    },
+    {
+      "id": 120561847784,
+      "name": "Windows GNU Updater E2E",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120561847784/annotations"
+    },
+    {
+      "id": 120560102241,
+      "name": "Cargo Audit",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "skipped",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560102241/annotations"
+    },
+    {
+      "id": 120560100527,
+      "name": "Rust Test and Build (macos-native)",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 1,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560100527/annotations"
+    },
+    {
+      "id": 120560100513,
+      "name": "Rust Test and Build (windows-native)",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560100513/annotations"
+    },
+    {
+      "id": 120560100450,
+      "name": "Rust Test and Build (linux-native)",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560100450/annotations"
+    },
+    {
+      "id": 120560100411,
+      "name": "Windows GNU Updater Build",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560100411/annotations"
+    },
+    {
+      "id": 120560100329,
+      "name": "Clippy and Coverage",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560100329/annotations"
+    },
+    {
+      "id": 120560017746,
+      "name": "Detect Changes",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560017746/annotations"
+    },
+    {
+      "id": 120560017397,
+      "name": "CI Policy",
+      "head_sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "conclusion": "success",
+      "annotations_count": 0,
+      "annotations_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/120560017397/annotations"
+    }
+  ],
+  "disposition": {
+    "implicit_compiler": "BLOCKED; explicit-selector repair and controlled rollout required",
+    "DEP0005": "NOT ADMITTED; source-run-specific external Action review still required; no prior exception inherited",
+    "quick_xml": "Existing accepted build-time advisory configuration remains unchanged; not the new emitted warning",
+    "noise": "checkout init hints, test names and -D warnings command text are not actual warning emissions",
+    "clipboard_win": "BLOCKED: fresh scheduled audit emitted yanked clipboard-win5.4.1; not covered by existing OSS acceptance. Official registry/upstream diagnosis pending."
+  },
+  "annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/1ba32aebf921ddaf978b87839327e5147cf50b98/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ]
+}
