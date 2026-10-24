@@ -1,5 +1,7 @@
 # Native macOS TC-207 trace evidence
 
+The subsequent [natural full-suite campaign](../natural-reproduction/README.md) preserves6 new traced suites and a natural promotion100ms assertion failure, with source-order bounds on Preempted contribution. The results below retain their earlier identities.
+
 The original TC-207 cause remains **UNKNOWN**. Strict wall `<100ms` remains the only acceptance rule; CPU time and trace classifications do not exempt a failure. This follow-up to [the earlier diagnosis](../diagnosis.md) records actual native scheduling states, separately from the earlier state snapshots and WSL guest observations. No production path, finalization work budget, dependency, CI policy or specification changes.
 
 ## Method and identity
