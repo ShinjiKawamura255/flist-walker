@@ -1,5 +1,7 @@
 # TC-207 timing observations, 2026-10-24
 
+The subsequent [native macOS trace campaign](system-trace/README.md) adds Xcode Thread Activity/CPU samples, two failing controls and calibrated frame-local state attribution. It preserves failed collection protocols and keeps the original cause UNKNOWN and strict100ms unchanged. Earlier unavailable-trace statements below describe those earlier collection dates.
+
 The subsequent [post-v0.31.0 OS-state observations](os-observations/README.md) add56 natural cases/9,504 frames, exact-TID kernel state samples, a captured sleep stack, preserved collector-review fixes and macOS/Linux continuous-trace recipes. A separate WSL2 campaign adds52 natural cases/9,246 frames, owned-task context-switch events and an observed CPU-clock inconsistency. Both keep the original cause unresolved and100ms unchanged. The earlier cohorts below retain their own source/collector identities; new state snapshots are not relabeled as continuous scheduling events.
 
 The original 100ms failures remain unexplained. This collection distinguishes CPU execution from time outside CPU execution; it does **not** identify all off-CPU time as scheduler/run-queue delay. No production behavior, 1ms/2,048-entry finalization budget, strict `<100ms` assertion, ignored test, dependency, or CI policy changed.
