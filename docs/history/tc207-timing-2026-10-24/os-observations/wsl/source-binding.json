@@ -1,0 +1,16 @@
+{
+  "source_base": "f5e20628b4da774bc640ecc1f5351c7179849ed8",
+  "source_sha256": {
+    "rust/Cargo.toml": "d967133e5ce09cfd66128476478d8b539622126dc27785c8a793888852544152",
+    "rust/Cargo.lock": "0e09e9767eceb71cdb8aadc7c6d6658e9845071d3ccd6412d3c327d06d743423",
+    "rust/rust-toolchain.toml": "e7155b5437585c3c3acc3053b08c6936020e9e93cc343e47e7e25f0033418e84",
+    "rust/src/app/tests/finalization_timing.rs": "6feb4308cb68305f8131cb43e7588971df4ad77b60e4d606bf1b45331e7f49b0",
+    "rust/src/app/tests/tab_background_responses.rs": "f265b939fe50428f0bafbfcdda3ad2be1c73c588e0e10df9d0b6552c9c7d0b6a",
+    "rust/src/app/index_finalization.rs": "c80f940f86fd3709575a02753f15f805d9c73a4cbd8504283ac3a5384b59f575",
+    "rust/src/app/tabs.rs": "1a72626f39796ab61e9beec977d904b3df3862431ee46e61f2131ff91c3b599f",
+    "docs/history/tc207-timing-2026-10-24/collect.py": "eb4b2cc489761b916c0d5dfb1f5ea5dd8399ace9a7d99152c3c3941758f42810",
+    "docs/history/tc207-timing-2026-10-24/os-observations/linux-record.py": "e2547ce7ccb76782b919a271bf50fead395225a26c5f68b5fc8908b11e8ae67a"
+  },
+  "perf_sha256": "d6118ccbdd1d9ad234359bd87596b8be2c02ef3006ebd7fbdba21a7d8fb7786c",
+  "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6\n"
+}

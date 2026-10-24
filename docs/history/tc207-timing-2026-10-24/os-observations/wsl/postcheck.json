@@ -1,0 +1,16 @@
+{
+  "repository_postcheck": {
+    "['git', 'status', '--porcelain']": {
+      "exit": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "['git', 'rev-parse', 'HEAD']": {
+      "exit": 0,
+      "stdout": "8a452b3858c80f70a5f3064834c8add4d9b1d347\n",
+      "stderr": ""
+    }
+  },
+  "owned_live_processes": [],
+  "kernel": "6.18.54.1-microsoft-standard-WSL2"
+}

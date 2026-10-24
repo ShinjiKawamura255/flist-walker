@@ -1,0 +1,12 @@
+{
+  "binary": "/tmp/tc207-f5e2062-a68x38ez/rust/target/debug/deps/flist_walker-664499314caf2350",
+  "sha256": "ef4be2be4c6214b02afe8b02bc5e68fd8248f640fcf05b41db07bcd1d4027836",
+  "profile": {
+    "opt_level": "0",
+    "debuginfo": 2,
+    "debug_assertions": true,
+    "overflow_checks": true,
+    "test": true
+  },
+  "lock_sha256": "0e09e9767eceb71cdb8aadc7c6d6658e9845071d3ccd6412d3c327d06d743423"
+}

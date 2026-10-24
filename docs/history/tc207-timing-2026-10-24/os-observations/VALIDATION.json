@@ -1,0 +1,67 @@
+{
+  "source_base": "f5e20628b4da774bc640ecc1f5351c7179849ed8",
+  "changes": "diagnostic Python and history only; uncommitted on codex/tc207-os-observations",
+  "selected_validation": [
+    "VM-001"
+  ],
+  "results": {
+    "observer_unit": {
+      "passed": 11
+    },
+    "existing_collector_signal_tests": {
+      "passed": 2
+    },
+    "wsl_preflight_parser": {
+      "passed": 3
+    },
+    "repository_contract": "PASS",
+    "diff_check": "PASS",
+    "archive_member_inventory": "PASS:130 members,129 hashes",
+    "natural_test_cases": 56,
+    "natural_frames": 9504,
+    "natural100ms_failures": 0,
+    "control_test_exits": [
+      101,
+      101,
+      101
+    ],
+    "linux_recorder_unit": {
+      "passed": 4
+    },
+    "linux_analyzer_unit": {
+      "passed": 5
+    },
+    "wsl_natural_test_cases": 52,
+    "wsl_natural_frames": 9246,
+    "wsl_natural_100ms_failures": 0,
+    "wsl_control_test_exits": [
+      101,
+      101
+    ],
+    "wsl_capture": "15 owned-task perf records; CLOCK_MONOTONIC attributes; matching PID/TID SWITCH events; no LOST/LOST_SAMPLES observed; no wakeup events",
+    "wsl_cpu_clock": "INCONSISTENT: 9165/9248 CPU lower fields exceed wall; confirmed in five independent busy loops; CPU/offCPU fields are raw only"
+  },
+  "independent_review": {
+    "reviewer": "read-only /root/browse_final_review",
+    "initial_findings": "three collector major findings: invalid result exit status; partial-state/independent cleanup retention; startup guard gap",
+    "disposition": "all reproduced by failing focused tests and fixed; final focused review no findings; measured v1 source preserved",
+    "wsl_preflight": "preflight and recorder focused review no findings; final independent raw perf binary-attribute/data recalculation, parser tests, documentation and archive/sidecar hash review no findings",
+    "wsl_analyzer_reviewed_sha256": "7fce092db56f23e48dd713643e8fb8d2267f5882070a611eb71abe041d67c94b"
+  },
+  "observer_sha256": "3e065f1f7698340c0f33fb9244c3ec4f245828924a348a1111caa4ae5da8aae1",
+  "wsl_preflight_sha256": "dbc018d2d9da2d99170b3734c90dc586c87750bd05e39a246724e6d433c28db7",
+  "capture_record_sha256": "2fc2f05f1616f4833d6d6ef3819b357bcdde2533cab695b90302309ea5545719",
+  "remaining": {
+    "original_tc207_cause": "UNKNOWN",
+    "continuous_kernel_scheduling_trace": "macOS System Trace and Linux full sched_switch+wakeup NOT RUN; WSL task-scoped PERF_RECORD_SWITCH completed",
+    "cpu_stack_control": "NOT CAPTURED despite sample exit0",
+    "wsl_environment": "WSL2 Ubuntu24.04.5 kernel6.18.54.1 x86_64, Rust1.97.1; owned source/build+52 cases completed, original remote repo unchanged; perf sched unavailable, tracefs root0700, sudo requires password",
+    "native_GUI": "not changed or retested",
+    "host_vcpu_wait": "UNKNOWN; no Windows host trace",
+    "wsl_cpu_clock_mismatch_cause": "UNKNOWN; no clocksource or threshold adjustment"
+  },
+  "acceptance": "strict wall<100000000ns unchanged; no CPU/scheduling exemption; controls remain FAIL",
+  "linux_recorder_sha256": "e2547ce7ccb76782b919a271bf50fead395225a26c5f68b5fc8908b11e8ae67a",
+  "linux_analyzer_sha256": "7fce092db56f23e48dd713643e8fb8d2267f5882070a611eb71abe041d67c94b",
+  "wsl_capture_record_sha256": "97f71d5c5fe3e92a6bd592ebdebca21a9b161336949c3d28646071f00057c3cb"
+}

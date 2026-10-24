@@ -1,0 +1,425 @@
+{
+  "base": "f5e20628b4da774bc640ecc1f5351c7179849ed8",
+  "wall_limit_ns": 100000000,
+  "natural_cases": 56,
+  "natural_frames": 9504,
+  "natural_overruns": 0,
+  "controls": {
+    "cpu": {
+      "label": "control-cpu",
+      "argv": [
+        "/Users/shinji/work/flist-walker/rust/target/debug/deps/flist_walker-9dc4375f621eeb3c",
+        "--exact",
+        "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "pid": 83871,
+      "observed": true,
+      "control": "cpu",
+      "exit_code": 101,
+      "frame_count": 1,
+      "failures": 1,
+      "max_wall": {
+        "frame": {
+          "after": {
+            "completed": 4096,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 95904,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "before": {
+            "completed": 2048,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 97952,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": "cpu",
+          "cpu_lower_ns": 120084500,
+          "cpu_upper_ns": 120094125,
+          "frame": 0,
+          "frames_observed": 1,
+          "measurement_overhead_ns": 9625,
+          "monotonic_window_ns": [
+            1823170048343000,
+            1823170176063000
+          ],
+          "native_thread_id": 25261503,
+          "off_cpu_lower_ns": 7626375,
+          "pid": 83871,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+          "wall_ns": 127720500,
+          "wall_under_100ms": false
+        },
+        "wall_under_100ms": false,
+        "sample_count": 97,
+        "state_sample_counts": {
+          "1": 93,
+          "3": 4
+        },
+        "sampled_cpu_advance_ns": 117912000,
+        "cpu_counter_retrograde": false
+      },
+      "matched_samples": 97,
+      "state_counts": {
+        "1": 93,
+        "3": 4
+      },
+      "query_errors": 9,
+      "stop": null,
+      "expected_exit": 101,
+      "experiment_valid": true
+    },
+    "sleep": {
+      "label": "control-sleep",
+      "argv": [
+        "/Users/shinji/work/flist-walker/rust/target/debug/deps/flist_walker-9dc4375f621eeb3c",
+        "--exact",
+        "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "pid": 83875,
+      "observed": true,
+      "control": "sleep",
+      "exit_code": 101,
+      "frame_count": 1,
+      "failures": 1,
+      "max_wall": {
+        "frame": {
+          "after": {
+            "completed": 4096,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 95904,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "before": {
+            "completed": 2048,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 97952,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": "sleep",
+          "cpu_lower_ns": 93958,
+          "cpu_upper_ns": 97333,
+          "frame": 0,
+          "frames_observed": 1,
+          "measurement_overhead_ns": 3375,
+          "monotonic_window_ns": [
+            1823172039226000,
+            1823172189605000
+          ],
+          "native_thread_id": 25261629,
+          "off_cpu_lower_ns": 150281792,
+          "pid": 83875,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+          "wall_ns": 150379125,
+          "wall_under_100ms": false
+        },
+        "wall_under_100ms": false,
+        "sample_count": 119,
+        "state_sample_counts": {
+          "3": 118,
+          "1": 1
+        },
+        "sampled_cpu_advance_ns": 0,
+        "cpu_counter_retrograde": false
+      },
+      "matched_samples": 119,
+      "state_counts": {
+        "3": 118,
+        "1": 1
+      },
+      "query_errors": 1,
+      "stop": null,
+      "expected_exit": 101,
+      "experiment_valid": true
+    },
+    "stop": {
+      "label": "control-stop",
+      "argv": [
+        "/Users/shinji/work/flist-walker/rust/target/debug/deps/flist_walker-9dc4375f621eeb3c",
+        "--exact",
+        "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+        "--nocapture",
+        "--test-threads=1"
+      ],
+      "pid": 83877,
+      "observed": true,
+      "control": "stop",
+      "exit_code": 101,
+      "frame_count": 1,
+      "failures": 1,
+      "max_wall": {
+        "frame": {
+          "after": {
+            "completed": 4096,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 95904,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "before": {
+            "completed": 2048,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 97952,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": "stop",
+          "cpu_lower_ns": 114583,
+          "cpu_upper_ns": 117750,
+          "frame": 0,
+          "frames_observed": 1,
+          "measurement_overhead_ns": 3167,
+          "monotonic_window_ns": [
+            1823172408504000,
+            1823172559732000
+          ],
+          "native_thread_id": 25261676,
+          "off_cpu_lower_ns": 151109917,
+          "pid": 83877,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+          "wall_ns": 151227667,
+          "wall_under_100ms": false
+        },
+        "wall_under_100ms": false,
+        "sample_count": 118,
+        "state_sample_counts": {
+          "3": 118
+        },
+        "sampled_cpu_advance_ns": 0,
+        "cpu_counter_retrograde": false
+      },
+      "matched_samples": 118,
+      "state_counts": {
+        "3": 118
+      },
+      "query_errors": 1,
+      "stop": {
+        "signal": 17,
+        "observed_ns": 1823170845368625,
+        "resumed_ns": 1823170995738791
+      },
+      "expected_exit": 101,
+      "experiment_valid": true
+    }
+  },
+  "cohorts": {
+    "unobserved-serial": {
+      "cases": 4,
+      "frames": 493,
+      "max_wall_row": {
+        "frame": {
+          "after": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 0,
+            "kind_cursor": 53610,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 53610
+          },
+          "before": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 0,
+            "kind_cursor": 52634,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 52634
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": null,
+          "cpu_lower_ns": 1015541,
+          "cpu_upper_ns": 1015875,
+          "frame": 103,
+          "frames_observed": 203,
+          "measurement_overhead_ns": 334,
+          "monotonic_window_ns": [
+            1823172933094000,
+            1823172934109000
+          ],
+          "native_thread_id": 25261840,
+          "off_cpu_lower_ns": 0,
+          "pid": 83878,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+          "wall_ns": 1015666,
+          "wall_under_100ms": true
+        },
+        "wall_under_100ms": true,
+        "sample_count": 0,
+        "state_sample_counts": {},
+        "sampled_cpu_advance_ns": null,
+        "cpu_counter_retrograde": false
+      },
+      "all_state_sample_counts": {}
+    },
+    "observed-serial": {
+      "cases": 4,
+      "frames": 495,
+      "max_wall_row": {
+        "frame": {
+          "after": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 94305,
+            "filtered": 23576,
+            "initial_remaining": 0,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "before": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 93686,
+            "filtered": 23421,
+            "initial_remaining": 0,
+            "kind_cursor": 0,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 0
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": null,
+          "cpu_lower_ns": 989207,
+          "cpu_upper_ns": 989916,
+          "frame": 185,
+          "frames_observed": 195,
+          "measurement_overhead_ns": 709,
+          "monotonic_window_ns": [
+            1823173278423000,
+            1823173279444000
+          ],
+          "native_thread_id": 25261914,
+          "off_cpu_lower_ns": 31542,
+          "pid": 83882,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_file_filter_settles_incrementally",
+          "wall_ns": 1021458,
+          "wall_under_100ms": true
+        },
+        "wall_under_100ms": true,
+        "sample_count": 0,
+        "state_sample_counts": {},
+        "sampled_cpu_advance_ns": null,
+        "cpu_counter_retrograde": false
+      },
+      "all_state_sample_counts": {
+        "1": 208
+      }
+    },
+    "observed-parallel": {
+      "cases": 48,
+      "frames": 8516,
+      "max_wall_row": {
+        "frame": {
+          "after": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 0,
+            "kind_cursor": 47340,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 47340
+          },
+          "before": {
+            "completed": 100000,
+            "continuation_remaining": 0,
+            "filter_cursor": 0,
+            "filtered": 0,
+            "initial_remaining": 0,
+            "kind_cursor": 47221,
+            "pending_remaining": 0,
+            "scratch_reclaimed": false,
+            "unresolved_kinds": 47221
+          },
+          "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+          "control": null,
+          "cpu_lower_ns": 294374,
+          "cpu_upper_ns": 295375,
+          "frame": 164,
+          "frames_observed": 318,
+          "measurement_overhead_ns": 1001,
+          "monotonic_window_ns": [
+            1823175487882000,
+            1823175501984000
+          ],
+          "native_thread_id": 25263003,
+          "off_cpu_lower_ns": 13805791,
+          "pid": 83894,
+          "request_id": 2,
+          "schema": 2,
+          "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+          "wall_ns": 14101166,
+          "wall_under_100ms": true
+        },
+        "wall_under_100ms": true,
+        "sample_count": 9,
+        "state_sample_counts": {
+          "1": 9
+        },
+        "sampled_cpu_advance_ns": 0,
+        "cpu_counter_retrograde": false
+      },
+      "all_state_sample_counts": {
+        "1": 3211
+      }
+    }
+  },
+  "stack_capture": {
+    "cpu": "NO STACKS captured despite profiler exit0; original empty callgraph retained; no replacement run",
+    "sleep": "same native TID25261629:44 aggregate stack samples diagnostic_control\u2192sleep\u2192nanosleep; lacks per-stack timestamps, not an independent frame-local continuous event trace",
+    "stop": "not stack sampled; parent waitpid WIFSTOPPED/SIGSTOP observation retained"
+  },
+  "interpretation": "Natural14.101166ms/CPU0.295375ms/offCPUlower13.805791ms and9 exact-TID interior state1 samples support non-CPU elongation without sampled waiting; state1 is running OR runnable, not runqueue-duration proof. Observational polling itself perturbs execution. Original100ms cause remains unknown.",
+  "control_stop_interval_note": "resumed_ns is sampled after SIGCONT call; its difference is an observer span, not an exact stopped lower-bound. Source checks at least150ms before sending, and waitpid independently confirms SIGSTOP. No scheduler verdict."
+}

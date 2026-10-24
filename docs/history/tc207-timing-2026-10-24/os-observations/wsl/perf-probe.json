@@ -1,0 +1,35 @@
+{
+  "perf_realpath": "/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf",
+  "commands": {
+    "['/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf', 'version']": {
+      "code": 0,
+      "stdout": "perf version 6.18.54.1.g26d1ceb55087\n",
+      "stderr": ""
+    },
+    "['/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf', 'version', '--build-options']": {
+      "code": 0,
+      "stdout": "perf version 6.18.54.1.g26d1ceb55087\n                   aio: [ on  ]  # HAVE_AIO_SUPPORT\n                   bpf: [ OFF ]  # HAVE_LIBBPF_SUPPORT\n         bpf_skeletons: [ OFF ]  # HAVE_BPF_SKEL\n            debuginfod: [ OFF ]  # HAVE_DEBUGINFOD_SUPPORT\n                 dwarf: [ OFF ]  # HAVE_LIBDW_SUPPORT\n    dwarf_getlocations: [ OFF ]  # HAVE_LIBDW_SUPPORT\n          dwarf-unwind: [ OFF ]  # HAVE_DWARF_UNWIND_SUPPORT\n              auxtrace: [ on  ]  # HAVE_AUXTRACE_SUPPORT\n                libbfd: [ OFF ]  # HAVE_LIBBFD_SUPPORT ( tip: Deprecated, license incompatibility, use BUILD_NONDISTRO=1 and install binutils-dev[el] )\n        libbpf-strings: [ OFF ]  # HAVE_LIBBPF_STRINGS_SUPPORT\n           libcapstone: [ OFF ]  # HAVE_LIBCAPSTONE_SUPPORT\n    libdw-dwarf-unwind: [ OFF ]  # HAVE_LIBDW_SUPPORT\n                libelf: [ OFF ]  # HAVE_LIBELF_SUPPORT\n               libLLVM: [ OFF ]  # HAVE_LIBLLVM_SUPPORT\n               libnuma: [ OFF ]  # HAVE_LIBNUMA_SUPPORT\n            libopencsd: [ OFF ]  # HAVE_CSTRACE_SUPPORT\n               libperl: [ OFF ]  # HAVE_LIBPERL_SUPPORT ( tip: Deprecated, use LIBPERL=1 and install perl-ExtUtils-Embed/libperl-dev to build with it )\n               libpfm4: [ OFF ]  # HAVE_LIBPFM\n             libpython: [ OFF ]  # HAVE_LIBPYTHON_SUPPORT\n              libslang: [ OFF ]  # HAVE_SLANG_SUPPORT\n         libtraceevent: [ OFF ]  # HAVE_LIBTRACEEVENT\n             libunwind: [ OFF ]  # HAVE_LIBUNWIND_SUPPORT ( tip: Deprecated, use LIBUNWIND=1 and install libunwind-dev[el] to build with it )\n                  lzma: [ OFF ]  # HAVE_LZMA_SUPPORT\nnuma_num_possible_cpus: [ OFF ]  # HAVE_LIBNUMA_SUPPORT\n                  zlib: [ on  ]  # HAVE_ZLIB_SUPPORT\n                  zstd: [ OFF ]  # HAVE_ZSTD_SUPPORT\n",
+      "stderr": ""
+    },
+    "['/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf', 'list', 'sched:*']": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    "['/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf', 'stat', '--', 'true']": {
+      "code": 0,
+      "stdout": "",
+      "stderr": "\n Performance counter stats for 'true':\n\n            645408      task-clock:u                     #    0.405 CPUs utilized             \n                 0      context-switches:u               #    0.000 /sec                      \n                 0      cpu-migrations:u                 #    0.000 /sec                      \n                50      page-faults:u                    #   77.470 K/sec                     \n            138480      instructions:u                   #    0.26  insn per cycle            \n                                                  #    1.43  stalled cycles per insn   \n            534927      cycles:u                         #    0.829 GHz                       \n            197511      stalled-cycles-frontend:u        #   36.92% frontend cycles idle      \n             27523      branches:u                       #   42.644 M/sec                     \n              2577      branch-misses:u                  #    9.36% of all branches           \n\n       0.001593889 seconds time elapsed\n\n       0.000394000 seconds user\n       0.000000000 seconds sys\n\n\n"
+    },
+    "['getcap', '/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf']": {
+      "code": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "review_preflight": {
+    "code": 0,
+    "stdout": "mode: review\nresult: PASS\nhead: 8a452b3858c80f70a5f3064834c8add4d9b1d347\nbranch: master\n",
+    "stderr": ""
+  }
+}
