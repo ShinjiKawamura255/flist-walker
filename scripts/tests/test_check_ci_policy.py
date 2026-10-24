@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import re
 import shutil
 import subprocess
 import sys
@@ -163,6 +164,21 @@ class CiPolicyTests(unittest.TestCase):
                         commands = f"cargo{selector} install {first[0]} --version {first[1]} {separator} cargo{selector} install {second[0]} --version 0.0.0"
                         violations = POLICY.validate_workflow("release-tagged.yml", workflow.replace(original, commands))
                         self.assertTrue(any(f"{second[0]} must be pinned" in v for v in violations))
+
+    def test_repository_cargo_tool_installs_select_the_pinned_compiler(self) -> None:
+        # cargo install outside the workspace can otherwise select a different
+        # default compiler and emit an implicit-override warning under rust/.
+        installs = []
+        for workflow in sorted((ROOT / ".github/workflows").glob("*.yml")):
+            for match in re.finditer(
+                r"\bcargo(?:[ \t]+(?P<selector>\+\S+))?[ \t]+install[ \t]+cargo-(?:audit|llvm-cov)\b",
+                workflow.read_text(),
+            ):
+                installs.append((workflow.name, match.group("selector")))
+        self.assertTrue(installs)
+        for name, selector in installs:
+            with self.subTest(workflow=name, selector=selector):
+                self.assertEqual(f"+{POLICY.PINNED_RUST}", selector)
 
     def test_repository_satisfies_ci_policy(self) -> None:
         self.assertEqual([], POLICY.collect_violations(ROOT))
