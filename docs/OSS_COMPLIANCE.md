@@ -176,6 +176,14 @@
   - verify `rust/Cargo.lock` does not reintroduce `paste` / `metal`
   - if GUI dependencies change again, run `cd rust && cargo test --locked`, `cd rust && cargo clippy --all-targets -- -D warnings`, notice/license review, and release asset sidecar review.
 
+## Windows clipboard dependency review (2026-10-24)
+
+- Fresh scheduled audit40017513592 and local `cargo audit --deny yanked` report locked `clipboard-win 5.4.1` as yanked. This warning is not covered by the accepted quick-xml advisories or external Action warning rules.
+- The [official registry](https://index.crates.io/cl/ip/clipboard-win) marks5.4.1 yanked and5.4.3 non-yanked. The [5.4.1](https://static.crates.io/crates/clipboard-win/clipboard-win-5.4.1.crate) and [5.4.3](https://static.crates.io/crates/clipboard-win/clipboard-win-5.4.3.crate) archives match their registry SHA-256 values; no third-party mirror is used.
+- Updating the lockfile changes only this package/version/checksum. Both package manifests retain BSL-1.0 and the same dependency requirements; neither crate archive contains a separate license file. `THIRD_PARTY_NOTICES.txt` records5.4.3 under its existing BSL-1.0 family, with archive/sidecar/self-update notice delivery unchanged.
+- Upstream code replaces unchecked HTML fragment copying with a checked slice and safe append; Windows clipboard-open retries now sleep5ms instead of yielding with Sleep(0). Other source differences are documentation and a clippy style attribute. Do not characterize this as a metadata-only update or infer why the maintainer yanked the old version.
+- The dependency is reached through arboard/egui-winit on Windows. No FlistWalker query, persistence, updater trust, platform action authorization or public API contract changes. Current native Windows tests/build/clippy and fresh audit must cover the selected source; clipboard retry/native delivery remains a distinct Windows observation. Clipboard testing must follow the existing empty-clipboard safety gate and never read pre-existing contents.
+
 ## Accepted audit warnings
 
 ### RUSTSEC-2026-0194 / RUSTSEC-2026-0195: `quick-xml 0.39.4` via `wayland-scanner`

@@ -78,7 +78,7 @@ Additional notice-bearing components
   ISC, Zlib, and optional Apache-2.0 selections where a crate also offers
   another license.
   Crates include arrayref 0.3.9, zerocopy 0.8.39, zerocopy-derive 0.8.39,
-  moxcms 0.8.1, pxfm 0.1.28, clipboard-win 5.4.1, error-code 3.3.2,
+  moxcms 0.8.1, pxfm 0.1.28, clipboard-win 5.4.3, error-code 3.3.2,
   libloading 0.8.9, self_cell 1.2.2, bytemuck 1.25.0,
   bytemuck_derive 1.10.2, foldhash 0.2.0, miniz_oxide 0.8.9,
   slotmap 1.1.1, tinyvec 1.10.0, and platform-specific windowing crates
