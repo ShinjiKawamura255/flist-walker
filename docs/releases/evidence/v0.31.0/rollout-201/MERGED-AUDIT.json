@@ -1,0 +1,79 @@
+{
+  "pr": 201,
+  "base": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+  "head": "0574c96cc955e4c7dd13b85f99c0d7bf1d449a7e",
+  "merged": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+  "source_commits": [
+    {
+      "sha": "6d81a00d032bab7f5455d6dac8ce213ae558fef6",
+      "tree": "c3d5f50167c6aef423e6ae1d196ea8afddcac6ab",
+      "parents": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "fix(ci): select pinned Rust explicitly for Cargo tools",
+      "stable_patch_id": "94b75a7884e5981b3195abadfc867dd66b803e14"
+    },
+    {
+      "sha": "bab6d9499960001307f4d1671c3effd963b6bc90",
+      "tree": "f61a37b1b42ac741105e6b8ad62f18bf11fea4b3",
+      "parents": "6d81a00d032bab7f5455d6dac8ce213ae558fef6",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "fix(deps): replace yanked Windows clipboard dependency",
+      "stable_patch_id": "2240043e07058de21a8250331f7978bbd427e0e1"
+    },
+    {
+      "sha": "0574c96cc955e4c7dd13b85f99c0d7bf1d449a7e",
+      "tree": "e4b1e583bc8611ae52eb8464db730d1eb3864aff",
+      "parents": "bab6d9499960001307f4d1671c3effd963b6bc90",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "chore(release): reconcile v0.31.0 scope and remaining gates",
+      "stable_patch_id": "bd89ed6d5ff377381875f653293da2c422cb28e0"
+    }
+  ],
+  "merged_commits": [
+    {
+      "sha": "a5f9858fa2d86a8af6b180e181c3b6ab1d6c6d6d",
+      "tree": "c3d5f50167c6aef423e6ae1d196ea8afddcac6ab",
+      "parents": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "fix(ci): select pinned Rust explicitly for Cargo tools",
+      "stable_patch_id": "94b75a7884e5981b3195abadfc867dd66b803e14"
+    },
+    {
+      "sha": "b23006e10c8cc742a998f57c97e87518e9b7a762",
+      "tree": "f61a37b1b42ac741105e6b8ad62f18bf11fea4b3",
+      "parents": "a5f9858fa2d86a8af6b180e181c3b6ab1d6c6d6d",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "fix(deps): replace yanked Windows clipboard dependency",
+      "stable_patch_id": "2240043e07058de21a8250331f7978bbd427e0e1"
+    },
+    {
+      "sha": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+      "tree": "e4b1e583bc8611ae52eb8464db730d1eb3864aff",
+      "parents": "b23006e10c8cc742a998f57c97e87518e9b7a762",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T14:37:07+09:00",
+      "message": "chore(release): reconcile v0.31.0 scope and remaining gates",
+      "stable_patch_id": "bd89ed6d5ff377381875f653293da2c422cb28e0"
+    }
+  ],
+  "all_ordered_patch_tree_author_message_and_single_parent_checks": "PASS",
+  "remote_branch_cleanup": "Prescribed rebase --auto --delete-branch; fetch --prune readback confirmed remote gone",
+  "full_settings_restoration": "controller and independent watchdog verified; fresh post_restore readback before restoring PR180",
+  "pr180_restored": "OPEN/draft=true/unmerged/auto=null/same4765157e854f4fa46a08d573fca4754e531aeec1",
+  "archive": {
+    "path": "reviewed-control-and-restoration.tar.gz",
+    "sha256": "21fabf74f0a8a1cd5fd3b48faf2dcd267e9f78ce7bf44fc085be99b206bf7c07",
+    "bytes": 55160
+  }
+}

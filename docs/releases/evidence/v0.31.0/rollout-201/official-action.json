@@ -1,0 +1,20 @@
+{
+  "checked_date_jst": "2026-10-24",
+  "release": {
+    "tag_name": "v8.0.2",
+    "published_at": "2026-10-07T10:09:51Z",
+    "html_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "draft": false,
+    "prerelease": false
+  },
+  "tag_object": {
+    "sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "type": "commit",
+    "url": "https://api.github.com/repos/actions/download-artifact/git/commits/9000827ccba6bdab643e8b6fd33ac0654aef8333"
+  },
+  "action_definition_blob": "8b8c65029ccad20750a29fecb438eca5a607fc57",
+  "action_definition": "name: 'Download a Build Artifact'\ndescription: 'Download a build artifact that was previously uploaded in the workflow by the upload-artifact action'\nauthor: 'GitHub'\ninputs:\n  name:\n    description: 'Name of the artifact to download. If unspecified, all artifacts for the run are downloaded.'\n    required: false\n  artifact-ids:\n    description: 'IDs of the artifacts to download, comma-separated. Either inputs `artifact-ids` or `name` can be used, but not both.'\n    required: false\n  path:\n    description: 'Destination path. Supports basic tilde expansion. Defaults to $GITHUB_WORKSPACE'\n    required: false\n  pattern:\n    description: 'A glob pattern matching the artifacts that should be downloaded. Ignored if name is specified.'\n    required: false\n  merge-multiple:\n    description: 'When multiple artifacts are matched, this changes the behavior of the destination directories.\n      If true, the downloaded artifacts will be in the same directory specified by path.\n      If false, the downloaded artifacts will be extracted into individual named directories within the specified path.'\n    required: false\n    default: 'false'\n  github-token:\n    description: 'The GitHub token used to authenticate with the GitHub API.\n      This is required when downloading artifacts from a different repository or from a different workflow run.\n      If this is not specified, the action will attempt to download artifacts from the current repository and the current workflow run.'\n    required: false\n  repository:\n    description: 'The repository owner and the repository name joined together by \"/\".\n      If github-token is specified, this is the repository that artifacts will be downloaded from.'\n    required: false\n    default: ${{ github.repository }}\n  run-id:\n    description: 'The id of the workflow run where the desired download artifact was uploaded from.\n      If github-token is specified, this is the run that artifacts will be downloaded from.'\n    required: false\n    default: ${{ github.run_id }}\n  skip-decompress:\n    description: 'If true, the downloaded artifact will not be automatically extracted/decompressed.\n      This is useful when you want to handle the artifact as-is without extraction.'\n    required: false\n    default: 'false'\n  digest-mismatch:\n    description: 'The behavior when a downloaded artifact''s digest does not match the expected digest.\n      Options: ignore, info, warn, error. Default is error which will fail the action.'\n    required: false\n    default: 'error'\noutputs:\n  download-path:\n    description: 'Path of artifact download'\nruns:\n  using: 'node24'\n  main: 'dist/index.js'\n",
+  "bundle_bytes": 4432922,
+  "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+  "diagnostic_boundary": "Exact official bundle matches retained v0.30.1 bounded full-Action diagnosis; this does not transfer an old run exception. Each new actual run requires complete emission/input/runner/downstream validation and independent disposition."
+}
