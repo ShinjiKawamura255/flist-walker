@@ -1,0 +1,49 @@
+[
+  {
+    "argv": [
+      "/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf",
+      "record",
+      "--switch-events",
+      "--clockid",
+      "mono",
+      "-e",
+      "task-clock:u",
+      "-F",
+      "99",
+      "-o",
+      "/tmp/tc207-f5e2062-a68x38ez/switch-probe.data",
+      "--",
+      "python3",
+      "-c",
+      "import time;time.sleep(0.2)"
+    ],
+    "code": 0,
+    "stdout": "",
+    "stderr": "[ perf record: Woken up 1 times to write data ]\n[ perf record: Captured and wrote 0.003 MB /tmp/tc207-f5e2062-a68x38ez/switch-probe.data (1 samples) ]\n"
+  },
+  {
+    "argv": [
+      "/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf",
+      "evlist",
+      "-v",
+      "-i",
+      "/tmp/tc207-f5e2062-a68x38ez/switch-probe.data"
+    ],
+    "code": 0,
+    "stdout": "task-clock:u: type: 1 (PERF_TYPE_SOFTWARE), size: 136, config: 0x1 (PERF_COUNT_SW_TASK_CLOCK), { sample_period, sample_freq }: 99, sample_type: IP|TID|TIME|PERIOD, read_format: ID|LOST, disabled: 1, inherit: 1, exclude_kernel: 1, exclude_hv: 1, mmap: 1, comm: 1, freq: 1, enable_on_exec: 1, task: 1, sample_id_all: 1, mmap2: 1, comm_exec: 1, use_clockid: 1, context_switch: 1, ksymbol: 1, bpf_event: 1, build_id: 1, clockid: 1\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "/usr/lib/linux-tools/6.18.54.1-microsoft-standard-WSL2/bin/perf",
+      "script",
+      "--ns",
+      "--show-switch-events",
+      "-i",
+      "/tmp/tc207-f5e2062-a68x38ez/switch-probe.data"
+    ],
+    "code": 0,
+    "stdout": "         python3    9871   891.683875344:   10101010 task-clock:u:            584fcb [unknown] (/usr/bin/python3.12)\n         python3    9871   891.685318514: PERF_RECORD_SWITCH OUT        \n         python3    9871   891.885404023: PERF_RECORD_SWITCH IN         \n",
+    "stderr": ""
+  }
+]

@@ -1,0 +1,139 @@
+{
+  "observed_utc": "2026-10-24T09:58:49Z",
+  "purpose": "Prerequisites only; no perf_event_open/capture or privilege change",
+  "kernel": "6.18.54.1-microsoft-standard-WSL2",
+  "wsl_marker_hint": true,
+  "tracepoint_inventory": {
+    "status": "UNKNOWN",
+    "required": [
+      "sched:sched_switch",
+      "sched:sched_wakeup",
+      "sched:sched_wakeup_new"
+    ],
+    "missing": [
+      "sched:sched_switch",
+      "sched:sched_wakeup",
+      "sched:sched_wakeup_new"
+    ]
+  },
+  "tracefs_reads": [
+    {
+      "path": "/sys/kernel/tracing/available_events",
+      "status": "UNAVAILABLE",
+      "errno": 13,
+      "error": "[Errno 13] Permission denied: '/sys/kernel/tracing/available_events'"
+    },
+    {
+      "path": "/sys/kernel/debug/tracing/available_events",
+      "status": "UNAVAILABLE",
+      "errno": 13,
+      "error": "[Errno 13] Permission denied: '/sys/kernel/debug/tracing/available_events'"
+    }
+  ],
+  "settings": [
+    {
+      "path": "/proc/sys/kernel/perf_event_paranoid",
+      "status": "READ",
+      "content": "2\n"
+    },
+    {
+      "path": "/proc/sys/kernel/kptr_restrict",
+      "status": "READ",
+      "content": "1\n"
+    },
+    {
+      "path": "/proc/sys/kernel/sched_schedstats",
+      "status": "UNAVAILABLE",
+      "errno": 2,
+      "error": "[Errno 2] No such file or directory: '/proc/sys/kernel/sched_schedstats'"
+    },
+    {
+      "path": "/proc/pressure/cpu",
+      "status": "READ",
+      "content": "some avg10=0.00 avg60=0.00 avg300=0.00 total=411088\nfull avg10=0.00 avg60=0.00 avg300=0.00 total=0\n"
+    },
+    {
+      "path": "/etc/os-release",
+      "status": "READ",
+      "content": "PRETTY_NAME=\"Ubuntu 24.04.5 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.5 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n"
+    }
+  ],
+  "commands": [
+    {
+      "argv": [
+        "uname",
+        "-r"
+      ],
+      "exit": 0,
+      "stdout": "6.18.54.1-microsoft-standard-WSL2\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "uname",
+        "-m"
+      ],
+      "exit": 0,
+      "stdout": "x86_64\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "id",
+        "-u"
+      ],
+      "exit": 0,
+      "stdout": "1000\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "getconf",
+        "_NPROCESSORS_ONLN"
+      ],
+      "exit": 0,
+      "stdout": "32\n",
+      "stderr": ""
+    },
+    {
+      "argv": [
+        "perf",
+        "--version"
+      ],
+      "exit": null,
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "argv": [
+        "perf",
+        "version",
+        "--build-options"
+      ],
+      "exit": null,
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "argv": [
+        "perf",
+        "list",
+        "sched:sched_*"
+      ],
+      "exit": null,
+      "error": "FileNotFoundError(2, 'No such file or directory')"
+    },
+    {
+      "argv": [
+        "stat",
+        "-f",
+        "-c",
+        "%T",
+        "."
+      ],
+      "exit": 0,
+      "stdout": "ext2/ext3\n",
+      "stderr": ""
+    }
+  ],
+  "capture_readiness": "NOT CONFIRMED; availability does not establish recording permission or complete events",
+  "host_vcpu_wait": "NOT OBSERVED; guest scheduling cannot exclude host pause"
+}

@@ -1,0 +1,14 @@
+{
+  "archive": "capture-v1.tar.gz",
+  "bytes": 3443207,
+  "sha256": "0d8ebbc255c4bdb084267e344e95226f5a631d70a117a327134b47d22f04079c",
+  "members": 130,
+  "source": "f5e20628b4da774bc640ecc1f5351c7179849ed8 plus diagnostic collector, no Rust changes",
+  "used_collector_sha256": "cef702651e228501775b0058ea97bd6ecb7ff9194f633be5f4e475e334826ab0",
+  "current_collector_sha256": "3e065f1f7698340c0f33fb9244c3ec4f245828924a348a1111caa4ae5da8aae1",
+  "current_collector_relation": "post-capture nonzero-exit, independent cleanup/partial-evidence, guarded startup and row-cap fixes only; no replacement natural cohort or relabeling",
+  "original_capture_all_experiments_valid": true,
+  "natural_cases": 56,
+  "natural_frames": 9504,
+  "controls": "three intentionally failing101; never productPASS"
+}

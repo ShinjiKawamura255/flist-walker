@@ -1,0 +1,655 @@
+{
+  "captures": [
+    {
+      "label": "control-cpu",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 16,
+        "82": 1,
+        "14": 206,
+        "4": 37,
+        "10": 17,
+        "9": 17,
+        "7": 36,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 1,
+      "switch_records": 206,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "control-sleep",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 16,
+        "82": 1,
+        "14": 196,
+        "7": 36,
+        "9": 5,
+        "4": 37,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 1,
+      "switch_records": 196,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-serial",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 647,
+        "4": 142,
+        "10": 17,
+        "9": 52,
+        "7": 141,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 635,
+      "switch_records": 647,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-0",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 759,
+        "4": 142,
+        "7": 141,
+        "9": 69,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 713,
+      "switch_records": 759,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-1",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 785,
+        "4": 142,
+        "7": 141,
+        "9": 61,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 710,
+      "switch_records": 785,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-2",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 793,
+        "4": 142,
+        "7": 141,
+        "9": 65,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 739,
+      "switch_records": 793,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-3",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 759,
+        "4": 142,
+        "7": 141,
+        "9": 64,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 704,
+      "switch_records": 759,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-4",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 859,
+        "4": 142,
+        "10": 17,
+        "9": 67,
+        "7": 141,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 723,
+      "switch_records": 859,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-5",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 783,
+        "4": 142,
+        "7": 141,
+        "9": 65,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 721,
+      "switch_records": 783,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-6",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 961,
+        "4": 142,
+        "10": 17,
+        "9": 72,
+        "7": 141,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 722,
+      "switch_records": 961,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-7",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 877,
+        "4": 142,
+        "10": 17,
+        "9": 68,
+        "7": 141,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 718,
+      "switch_records": 877,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-8",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 851,
+        "4": 142,
+        "7": 141,
+        "9": 66,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 719,
+      "switch_records": 851,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-9",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 851,
+        "7": 141,
+        "4": 142,
+        "9": 71,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 737,
+      "switch_records": 851,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-10",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 873,
+        "7": 141,
+        "4": 142,
+        "10": 17,
+        "9": 69,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 697,
+      "switch_records": 873,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    },
+    {
+      "label": "natural-parallel-11",
+      "execution_and_export_valid": true,
+      "clockid": 1,
+      "record_counts": {
+        "69": 1,
+        "78": 1,
+        "73": 1,
+        "74": 1,
+        "3": 55,
+        "82": 1,
+        "14": 697,
+        "4": 142,
+        "7": 141,
+        "9": 71,
+        "10": 17,
+        "68": 1
+      },
+      "lost_records": 0,
+      "frames": 708,
+      "switch_records": 697,
+      "cpu_fields": "raw only; WSL clock inconsistency"
+    }
+  ],
+  "natural_cases": 52,
+  "natural_frames": 9246,
+  "natural_wall_failures": 0,
+  "cpu_lower_exceeds_wall": 9165,
+  "overlap_unavailable": 0,
+  "max_natural_wall": {
+    "label": "natural-parallel-0",
+    "frame": {
+      "after": {
+        "completed": 100000,
+        "continuation_remaining": 0,
+        "filter_cursor": 0,
+        "filtered": 0,
+        "initial_remaining": 0,
+        "kind_cursor": 96116,
+        "pending_remaining": 0,
+        "scratch_reclaimed": false,
+        "unresolved_kinds": 96116
+      },
+      "before": {
+        "completed": 100000,
+        "continuation_remaining": 0,
+        "filter_cursor": 0,
+        "filtered": 0,
+        "initial_remaining": 0,
+        "kind_cursor": 95604,
+        "pending_remaining": 0,
+        "scratch_reclaimed": false,
+        "unresolved_kinds": 95604
+      },
+      "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+      "control": null,
+      "cpu_lower_ns": 1711071,
+      "cpu_upper_ns": 1714893,
+      "frame": 222,
+      "frames_observed": 280,
+      "measurement_overhead_ns": 3822,
+      "monotonic_window_ns": [
+        1118892234748,
+        1118893921845
+      ],
+      "native_thread_id": 12360,
+      "off_cpu_lower_ns": 0,
+      "pid": 11078,
+      "request_id": 2,
+      "schema": 2,
+      "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+      "wall_ns": 1686900,
+      "wall_under_100ms": true
+    },
+    "clock_consistency": "INCONSISTENT",
+    "os_overlap": {
+      "switch_off_core_overlap_ns": 0,
+      "preempt_out_overlap_ns": 0,
+      "intervals": [],
+      "conservative_window_ns": [
+        1118892238570,
+        1118893918023
+      ],
+      "reason": "guest switch-out to switch-in overlap; wakeup and host vCPU state not observed"
+    }
+  },
+  "max_natural_os_overlap": {
+    "label": "natural-parallel-4",
+    "frame": {
+      "after": null,
+      "before": {
+        "completed": 98304,
+        "continuation_remaining": 0,
+        "filter_cursor": 0,
+        "filtered": 0,
+        "initial_remaining": 1696,
+        "kind_cursor": 0,
+        "pending_remaining": 0,
+        "scratch_reclaimed": false,
+        "unresolved_kinds": 0
+      },
+      "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+      "control": null,
+      "cpu_lower_ns": 372773,
+      "cpu_upper_ns": 375777,
+      "frame": 47,
+      "frames_observed": 48,
+      "measurement_overhead_ns": 3004,
+      "monotonic_window_ns": [
+        1118195813291,
+        1118196818303
+      ],
+      "native_thread_id": 11257,
+      "off_cpu_lower_ns": 629127,
+      "pid": 11189,
+      "request_id": 2,
+      "schema": 2,
+      "test": "app::tests::tab_background_responses::tc_207_background_finished_commits_100k_default_snapshot_within_ui_budget",
+      "wall_ns": 1004904,
+      "wall_under_100ms": true
+    },
+    "clock_consistency": "NOT DISPROVEN; not a calibration",
+    "os_overlap": {
+      "switch_off_core_overlap_ns": 644013,
+      "preempt_out_overlap_ns": 0,
+      "intervals": [
+        {
+          "start_ns": 1118196134180,
+          "end_ns": 1118196778193,
+          "switch_out_preempt": false
+        }
+      ],
+      "conservative_window_ns": [
+        1118195816295,
+        1118196815299
+      ],
+      "reason": "guest switch-out to switch-in overlap; wakeup and host vCPU state not observed"
+    }
+  },
+  "max_natural_preempt_overlap": {
+    "label": "natural-parallel-5",
+    "frame": {
+      "after": {
+        "completed": 92160,
+        "continuation_remaining": 0,
+        "filter_cursor": 0,
+        "filtered": 0,
+        "initial_remaining": 7840,
+        "kind_cursor": 0,
+        "pending_remaining": 0,
+        "scratch_reclaimed": false,
+        "unresolved_kinds": 0
+      },
+      "before": {
+        "completed": 90112,
+        "continuation_remaining": 0,
+        "filter_cursor": 0,
+        "filtered": 0,
+        "initial_remaining": 9888,
+        "kind_cursor": 0,
+        "pending_remaining": 0,
+        "scratch_reclaimed": false,
+        "unresolved_kinds": 0
+      },
+      "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+      "control": null,
+      "cpu_lower_ns": 301152,
+      "cpu_upper_ns": 304068,
+      "frame": 43,
+      "frames_observed": 329,
+      "measurement_overhead_ns": 2916,
+      "monotonic_window_ns": [
+        1118227930825,
+        1118228539722
+      ],
+      "native_thread_id": 11365,
+      "off_cpu_lower_ns": 304731,
+      "pid": 11083,
+      "request_id": 2,
+      "schema": 2,
+      "test": "app::tests::tab_background_responses::tc_207_background_finished_file_filter_settles_incrementally",
+      "wall_ns": 608799,
+      "wall_under_100ms": true
+    },
+    "clock_consistency": "NOT DISPROVEN; not a calibration",
+    "os_overlap": {
+      "switch_off_core_overlap_ns": 309955,
+      "preempt_out_overlap_ns": 309955,
+      "intervals": [
+        {
+          "start_ns": 1118228080774,
+          "end_ns": 1118228390729,
+          "switch_out_preempt": true
+        }
+      ],
+      "conservative_window_ns": [
+        1118227933741,
+        1118228536806
+      ],
+      "reason": "guest switch-out to switch-in overlap; wakeup and host vCPU state not observed"
+    }
+  },
+  "controls": [
+    {
+      "label": "control-cpu",
+      "frame": {
+        "after": {
+          "completed": 4096,
+          "continuation_remaining": 0,
+          "filter_cursor": 0,
+          "filtered": 0,
+          "initial_remaining": 95904,
+          "kind_cursor": 0,
+          "pending_remaining": 0,
+          "scratch_reclaimed": false,
+          "unresolved_kinds": 0
+        },
+        "before": {
+          "completed": 2048,
+          "continuation_remaining": 0,
+          "filter_cursor": 0,
+          "filtered": 0,
+          "initial_remaining": 97952,
+          "kind_cursor": 0,
+          "pending_remaining": 0,
+          "scratch_reclaimed": false,
+          "unresolved_kinds": 0
+        },
+        "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+        "control": "cpu",
+        "cpu_lower_ns": 120200237,
+        "cpu_upper_ns": 120208285,
+        "frame": 0,
+        "frames_observed": 1,
+        "measurement_overhead_ns": 8048,
+        "monotonic_window_ns": [
+          1116620087393,
+          1116738490745
+        ],
+        "native_thread_id": 10815,
+        "off_cpu_lower_ns": 0,
+        "pid": 10814,
+        "request_id": 2,
+        "schema": 2,
+        "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+        "wall_ns": 118402594,
+        "wall_under_100ms": false
+      },
+      "clock_consistency": "INCONSISTENT",
+      "os_overlap": {
+        "switch_off_core_overlap_ns": 0,
+        "preempt_out_overlap_ns": 0,
+        "intervals": [],
+        "conservative_window_ns": [
+          1116620095441,
+          1116738482697
+        ],
+        "reason": "guest switch-out to switch-in overlap; wakeup and host vCPU state not observed"
+      }
+    },
+    {
+      "label": "control-sleep",
+      "frame": {
+        "after": {
+          "completed": 4096,
+          "continuation_remaining": 0,
+          "filter_cursor": 0,
+          "filtered": 0,
+          "initial_remaining": 95904,
+          "kind_cursor": 0,
+          "pending_remaining": 0,
+          "scratch_reclaimed": false,
+          "unresolved_kinds": 0
+        },
+        "before": {
+          "completed": 2048,
+          "continuation_remaining": 0,
+          "filter_cursor": 0,
+          "filtered": 0,
+          "initial_remaining": 97952,
+          "kind_cursor": 0,
+          "pending_remaining": 0,
+          "scratch_reclaimed": false,
+          "unresolved_kinds": 0
+        },
+        "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+        "control": "sleep",
+        "cpu_lower_ns": 242518,
+        "cpu_upper_ns": 250999,
+        "frame": 0,
+        "frames_observed": 1,
+        "measurement_overhead_ns": 8481,
+        "monotonic_window_ns": [
+          1116917815657,
+          1117068095518
+        ],
+        "native_thread_id": 10856,
+        "off_cpu_lower_ns": 150028360,
+        "pid": 10855,
+        "request_id": 2,
+        "schema": 2,
+        "test": "app::tests::tab_background_responses::tc_207_background_finished_walker_kind_queue_settles_incrementally",
+        "wall_ns": 150279359,
+        "wall_under_100ms": false
+      },
+      "clock_consistency": "NOT DISPROVEN; not a calibration",
+      "os_overlap": {
+        "switch_off_core_overlap_ns": 150052017,
+        "preempt_out_overlap_ns": 0,
+        "intervals": [
+          {
+            "start_ns": 1116917824138,
+            "end_ns": 1117067876155,
+            "switch_out_preempt": false
+          }
+        ],
+        "conservative_window_ns": [
+          1116917824138,
+          1117068087037
+        ],
+        "reason": "guest switch-out to switch-in overlap; wakeup and host vCPU state not observed"
+      }
+    }
+  ],
+  "limits": [
+    "No sched_wakeup or blocked stacks: nonpreempt OUT cannot split blocked versus runnable wait",
+    "Preempt bit establishes TASK_RUNNING at switch-out; no continuous runnable-state proof",
+    "No host vCPU trace; no retroactive original-macOS causal attribution",
+    "Raw CPU fields cannot be treated as strict elapsed-time bounds on this WSL host"
+  ]
+}

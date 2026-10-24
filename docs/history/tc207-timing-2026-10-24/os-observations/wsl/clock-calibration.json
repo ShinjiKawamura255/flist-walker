@@ -1,0 +1,36 @@
+{
+  "kernel": "6.18.54.1-microsoft-standard-WSL2",
+  "purpose": "five declared CPU busy loops; no affinity/settings changes, do not replace TC evidence",
+  "clock_info": {
+    "monotonic": "namespace(implementation='clock_gettime(CLOCK_MONOTONIC)', monotonic=True, adjustable=False, resolution=1e-09)",
+    "thread_time": "namespace(implementation='clock_gettime(CLOCK_THREAD_CPUTIME_ID)', monotonic=True, adjustable=False, resolution=1e-09)",
+    "perf_counter": "namespace(implementation='clock_gettime(CLOCK_MONOTONIC)', monotonic=True, adjustable=False, resolution=1e-09)"
+  },
+  "rows": [
+    {
+      "monotonic_outer_ns": 118499815,
+      "thread_cpu_inner_ns": 120002956
+    },
+    {
+      "monotonic_outer_ns": 118478668,
+      "thread_cpu_inner_ns": 120001676
+    },
+    {
+      "monotonic_outer_ns": 118493082,
+      "thread_cpu_inner_ns": 120000885
+    },
+    {
+      "monotonic_outer_ns": 118477088,
+      "thread_cpu_inner_ns": 120000596
+    },
+    {
+      "monotonic_outer_ns": 118490012,
+      "thread_cpu_inner_ns": 120000886
+    }
+  ],
+  "files": {
+    "/sys/devices/system/clocksource/clocksource0/current_clocksource": "tsc\n",
+    "/sys/devices/system/clocksource/clocksource0/available_clocksource": "tsc hyperv_clocksource_tsc_page hyperv_clocksource_msr acpi_pm \n",
+    "/proc/uptime": "1184.69 37268.97\n"
+  }
+}
