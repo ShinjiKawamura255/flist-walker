@@ -1,0 +1,202 @@
+{
+  "schema": 1,
+  "complete": true,
+  "exit": 0,
+  "coverage_exit": 0,
+  "phases": [
+    {
+      "phase": "native-selftest",
+      "status": "PASS"
+    },
+    {
+      "phase": "coverage",
+      "exit": 0
+    }
+  ],
+  "cores": [
+    {
+      "phase": "selftest-segv",
+      "status": "CAPTURED",
+      "pid": 7360,
+      "signal": 11,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "stack": "coverage_identity_verified=true\ncoverage_signal=11\ncoverage_fault_lwp=7360\ncoverage_fault_is_leader=true\ncoverage_leader_lwp=7360\ncoverage_thread=1\n#0  0x0000561c2346f2e1 in diagnostic_fault (private_value=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:11\n#1  0x0000561c2346f41e in main (argc=..., argv=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:40\nrax            0x0                 0\nrbx            0x7ffe6cfb9058      140730726846552\nrcx            0x0                 0\nrdx            0x561c23470004      94678850928644\nrsi            0x561c23470004      94678850928644\nrdi            0x7ffe6cfbaa09      140730726853129\nrbp            0x7ffe6cfb8ed0      0x7ffe6cfb8ed0\nrsp            0x7ffe6cfb8ed0      0x7ffe6cfb8ed0\nr8             0x0                 0\nr9             0x7f02b7267380      139649639412608\nr10            0x7ffe6cfb8c50      140730726845520\nr11            0x203               515\nr12            0x3                 3\nr13            0x0                 0\nr14            0x561c23471d60      94678850936160\nr15            0x7f02b729a000      139649639620608\nrip            0x561c2346f2e1      0x561c2346f2e1 <diagnostic_fault+24>\neflags         0x10202             [ IF RF ]\ncs             0x33                51\nss             0x2b                43\nds             0x0                 0\nes             0x0                 0\nfs             0x0                 0\ngs             0x0                 0\nfs_base        0x7f02b724b740      139649639298880\ngs_base        0x0                 0\n=> 0x561c2346f2e1 <diagnostic_fault+24>:\tmovl   $0x1,(%rax)\n   0x561c2346f2e7 <diagnostic_fault+30>:\tnop\n   0x561c2346f2e8 <diagnostic_fault+31>:\tpop    %rbp\n   0x561c2346f2e9 <diagnostic_fault+32>:\tret\n   0x561c2346f2ea <diagnostic_abort>:\tendbr64\n   0x561c2346f2ee <diagnostic_abort+4>:\tpush   %rbp\n   0x561c2346f2ef <diagnostic_abort+5>:\tmov    %rsp,%rbp\n   0x561c2346f2f2 <diagnostic_abort+8>:\tcall   0x561c2346f110 <abort@plt>\n   0x561c2346f2f7 <diagnostic_worker>:\tendbr64\n   0x561c2346f2fb <diagnostic_worker+4>:\tpush   %rbp\n   0x561c2346f2fc <diagnostic_worker+5>:\tmov    %rsp,%rbp\n   0x561c2346f2ff <diagnostic_worker+8>:\tsub    $0x10,%rsp\nFrom                To                  Syms Read   Shared Object Library\n0x00007f02b7028800  0x00007f02b71b0039  Yes (*)     /lib/x86_64-linux-gnu/libc.so.6\n0x00007f02b7263000  0x00007f02b728d195  Yes (*)     /lib64/ld-linux-x86-64.so.2\n(*): Shared library is missing debugging information.\ncoverage_threads_complete=true\n",
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-worker-segv",
+      "status": "CAPTURED",
+      "pid": 7367,
+      "signal": 11,
+      "bytes": 17235968,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "stack": "coverage_identity_verified=true\ncoverage_signal=11\ncoverage_fault_lwp=7368\ncoverage_fault_is_leader=false\ncoverage_leader_lwp=7367\ncoverage_thread=1\n#0  0x000055f2e37f32e1 in diagnostic_fault (private_value=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:11\n#1  0x000055f2e37f3356 in diagnostic_worker (private_value=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:26\n#2  0x00007f678d09cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#3  0x00007f678d129ecc in ?? () from /lib/x86_64-linux-gnu/libc.so.6\nrax            0x0                 0\nrbx            0x7f678cfffcdc      140082723945692\nrcx            0x0                 0\nrdx            0x0                 0\nrsi            0x0                 0\nrdi            0x7ffe03e92a09      140728964033033\nrbp            0x7f678cffeea0      0x7f678cffeea0\nrsp            0x7f678cffeea0      0x7f678cffeea0\nr8             0x0                 0\nr9             0x0                 0\nr10            0x8                 8\nr11            0x246               582\nr12            0x7f678cfff6c0      140082723944128\nr13            0xffffffffffffff88  -120\nr14            0x0                 0\nr15            0x7ffe03e914f0      140728964027632\nrip            0x55f2e37f32e1      0x55f2e37f32e1 <diagnostic_fault+24>\neflags         0x10246             [ PF ZF IF RF ]\ncs             0x33                51\nss             0x2b                43\nds             0x0                 0\nes             0x0                 0\nfs             0x0                 0\ngs             0x0                 0\nfs_base        0x7f678cfff6c0      140082723944128\ngs_base        0x0                 0\n=> 0x55f2e37f32e1 <diagnostic_fault+24>:\tmovl   $0x1,(%rax)\n   0x55f2e37f32e7 <diagnostic_fault+30>:\tnop\n   0x55f2e37f32e8 <diagnostic_fault+31>:\tpop    %rbp\n   0x55f2e37f32e9 <diagnostic_fault+32>:\tret\n   0x55f2e37f32ea <diagnostic_abort>:\tendbr64\n   0x55f2e37f32ee <diagnostic_abort+4>:\tpush   %rbp\n   0x55f2e37f32ef <diagnostic_abort+5>:\tmov    %rsp,%rbp\n   0x55f2e37f32f2 <diagnostic_abort+8>:\tcall   0x55f2e37f3110 <abort@plt>\n   0x55f2e37f32f7 <diagnostic_worker>:\tendbr64\n   0x55f2e37f32fb <diagnostic_worker+4>:\tpush   %rbp\n   0x55f2e37f32fc <diagnostic_worker+5>:\tmov    %rsp,%rbp\n   0x55f2e37f32ff <diagnostic_worker+8>:\tsub    $0x10,%rsp\ncoverage_thread=2\n#0  0x00007f678d098e51 in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#1  0x00007f678d09e883 in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#2  0x000055f2e37f33b5 in diagnostic_leader_wait (worker=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:35\n#3  0x000055f2e37f34d0 in main (argc=..., argv=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:46\nFrom                To                  Syms Read   Shared Object Library\n0x00007f678d028800  0x00007f678d1b0039  Yes (*)     /lib/x86_64-linux-gnu/libc.so.6\n0x00007f678d3c3000  0x00007f678d3ed195  Yes (*)     /lib64/ld-linux-x86-64.so.2\n(*): Shared library is missing debugging information.\ncoverage_threads_complete=true\n",
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-child-segv",
+      "status": "CAPTURED",
+      "pid": 7376,
+      "signal": 11,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "stack": "coverage_identity_verified=true\ncoverage_signal=11\ncoverage_fault_lwp=7376\ncoverage_fault_is_leader=true\ncoverage_leader_lwp=7376\ncoverage_thread=1\n#0  0x000055f59e27e2e1 in diagnostic_fault (private_value=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:11\n#1  0x000055f59e27e41e in main (argc=..., argv=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:40\nrax            0x0                 0\nrbx            0x7fff24d46308      140733811286792\nrcx            0x0                 0\nrdx            0x55f59e27f004      94513408765956\nrsi            0x55f59e27f004      94513408765956\nrdi            0x7fff24d47a09      140733811292681\nrbp            0x7fff24d46180      0x7fff24d46180\nrsp            0x7fff24d46180      0x7fff24d46180\nr8             0x0                 0\nr9             0x7fc6bcefd380      140491550086016\nr10            0x7fff24d45f00      140733811285760\nr11            0x203               515\nr12            0x3                 3\nr13            0x0                 0\nr14            0x55f59e280d60      94513408773472\nr15            0x7fc6bcf30000      140491550294016\nrip            0x55f59e27e2e1      0x55f59e27e2e1 <diagnostic_fault+24>\neflags         0x10206             [ PF IF RF ]\ncs             0x33                51\nss             0x2b                43\nds             0x0                 0\nes             0x0                 0\nfs             0x0                 0\ngs             0x0                 0\nfs_base        0x7fc6bcee1740      140491549972288\ngs_base        0x0                 0\n=> 0x55f59e27e2e1 <diagnostic_fault+24>:\tmovl   $0x1,(%rax)\n   0x55f59e27e2e7 <diagnostic_fault+30>:\tnop\n   0x55f59e27e2e8 <diagnostic_fault+31>:\tpop    %rbp\n   0x55f59e27e2e9 <diagnostic_fault+32>:\tret\n   0x55f59e27e2ea <diagnostic_abort>:\tendbr64\n   0x55f59e27e2ee <diagnostic_abort+4>:\tpush   %rbp\n   0x55f59e27e2ef <diagnostic_abort+5>:\tmov    %rsp,%rbp\n   0x55f59e27e2f2 <diagnostic_abort+8>:\tcall   0x55f59e27e110 <abort@plt>\n   0x55f59e27e2f7 <diagnostic_worker>:\tendbr64\n   0x55f59e27e2fb <diagnostic_worker+4>:\tpush   %rbp\n   0x55f59e27e2fc <diagnostic_worker+5>:\tmov    %rsp,%rbp\n   0x55f59e27e2ff <diagnostic_worker+8>:\tsub    $0x10,%rsp\nFrom                To                  Syms Read   Shared Object Library\n0x00007fc6bcc28800  0x00007fc6bcdb0039  Yes (*)     /lib/x86_64-linux-gnu/libc.so.6\n0x00007fc6bcef9000  0x00007fc6bcf23195  Yes (*)     /lib64/ld-linux-x86-64.so.2\n(*): Shared library is missing debugging information.\ncoverage_threads_complete=true\n",
+      "expected_abort": false
+    },
+    {
+      "phase": "selftest-child-abort",
+      "status": "CAPTURED",
+      "pid": 7384,
+      "signal": 6,
+      "bytes": 319488,
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "stack": "coverage_identity_verified=true\ncoverage_signal=6\ncoverage_fault_lwp=7384\ncoverage_fault_is_leader=true\ncoverage_leader_lwp=7384\ncoverage_thread=1\n#0  0x00007f15a2a9ec0c in pthread_kill () from /lib/x86_64-linux-gnu/libc.so.6\n#1  0x00007f15a2a4527e in raise () from /lib/x86_64-linux-gnu/libc.so.6\n#2  0x00007f15a2a288ff in abort () from /lib/x86_64-linux-gnu/libc.so.6\n#3  0x000055a5a66e62f7 in diagnostic_abort () at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:15\n#4  0x000055a5a66e6444 in main (argc=..., argv=...) at /home/runner/work/flist-walker/flist-walker/scripts/tests/fixtures/linux_coverage_fault.c:41\nrax            0x0                 0\nrbx            0x1cd8              7384\nrcx            0x7f15a2a9ec0c      139730900085772\nrdx            0x6                 6\nrsi            0x1cd8              7384\nrdi            0x1cd8              7384\nrbp            0x7ffea1de9030      0x7ffea1de9030\nrsp            0x7ffea1de8ff0      0x7ffea1de8ff0\nr8             0x0                 0\nr9             0x7f15a2c85380      139730902078336\nr10            0x8                 8\nr11            0x246               582\nr12            0x6                 6\nr13            0x0                 0\nr14            0x16                22\nr15            0x7f15a2cb8000      139730902286336\nrip            0x7f15a2a9ec0c      0x7f15a2a9ec0c <pthread_kill+284>\neflags         0x246               [ PF ZF IF ]\ncs             0x33                51\nss             0x2b                43\nds             0x0                 0\nes             0x0                 0\nfs             0x0                 0\ngs             0x0                 0\nfs_base        0x7f15a2c69740      139730901964608\ngs_base        0x0                 0\n=> 0x7f15a2a9ec0c <pthread_kill+284>:\tmov    %eax,%r14d\n   0x7f15a2a9ec0f <pthread_kill+287>:\tneg    %r14d\n   0x7f15a2a9ec12 <pthread_kill+290>:\tcmp    $0xfffff000,%eax\n   0x7f15a2a9ec17 <pthread_kill+295>:\tmov    $0x0,%eax\n   0x7f15a2a9ec1c <pthread_kill+300>:\tcmovbe %eax,%r14d\n   0x7f15a2a9ec20 <pthread_kill+304>:\tjmp    0x7f15a2a9eba0 <pthread_kill+176>\n   0x7f15a2a9ec25 <pthread_kill+309>:\tnopl   (%rax)\n   0x7f15a2a9ec28 <pthread_kill+312>:\tmov    %r13,%rdi\n   0x7f15a2a9ec2b <pthread_kill+315>:\tcall   0x7f15a2a98fc0 <__lll_lock_wait_private>\n   0x7f15a2a9ec30 <pthread_kill+320>:\tjmp    0x7f15a2a9eb6e <pthread_kill+126>\n   0x7f15a2a9ec35 <pthread_kill+325>:\tnopl   (%rax)\n   0x7f15a2a9ec38 <pthread_kill+328>:\tmov    %r13,%rdi\nFrom                To                  Syms Read   Shared Object Library\n0x00007f15a2a28800  0x00007f15a2bb0039  Yes (*)     /lib/x86_64-linux-gnu/libc.so.6\n0x00007f15a2c81000  0x00007f15a2cab195  Yes (*)     /lib64/ld-linux-x86-64.so.2\n(*): Shared library is missing debugging information.\ncoverage_threads_complete=true\n",
+      "expected_abort": true
+    },
+    {
+      "phase": "coverage",
+      "status": "CAPTURED",
+      "pid": 48456,
+      "signal": 6,
+      "bytes": 5890048,
+      "sha256": "02238f0815b87cd0780c305224b8ddae43532556650be2b73f4a15e7764075a4",
+      "gdb_exit": 0,
+      "gdb_timeout": false,
+      "gdb_interrupted": false,
+      "gdb_unreaped": false,
+      "gdb_stderr_present": false,
+      "gdb_stderr_categories": [],
+      "stack": "coverage_identity_verified=true\ncoverage_signal=6\ncoverage_fault_lwp=48457\ncoverage_fault_is_leader=false\ncoverage_leader_lwp=48456\ncoverage_thread=1\n#0  0x00007f5ba309ec0c in pthread_kill () from /lib/x86_64-linux-gnu/libc.so.6\n#1  0x00007f5ba304527e in raise () from /lib/x86_64-linux-gnu/libc.so.6\n#2  0x00007f5ba30288ff in abort () from /lib/x86_64-linux-gnu/libc.so.6\n#3  0x0000562a9d44e0ca in std::sys::pal::unix::abort_internal () at library/std/src/sys/pal/unix/mod.rs:303\n#4  0x0000562a9d449669 in std::process::abort () at library/std/src/process.rs:2605\n#5  0x0000562a9b125e39 in flist_walker::indexer::filelist_writer::abort_after_filelist_commit_if_requested (committed_count=...) at src/indexer/filelist_writer.rs:857\n#6  0x0000562a9b04c13c in flist_walker::indexer::filelist_writer::execute_filelist_write_plan_with<flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit::{closure_env#0}, flist_walker::indexer::filelist_writer::execute_filelist_write_plan::{closure_env#0}<flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit::{closure_env#0}>> (plan=..., should_cancel=..., replace=...) at src/indexer/filelist_writer.rs:806\n#7  0x0000562a9b041898 in flist_walker::indexer::filelist_writer::execute_filelist_write_plan<flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit::{closure_env#0}> (plan=..., should_cancel=...) at src/indexer/filelist_writer.rs:721\n#8  0x0000562a9b12ed0a in flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit () at src/indexer/tests/mod.rs:1036\n#9  0x0000562a9b0c4ca7 in flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit::{closure#0} () at src/indexer/tests/mod.rs:1022\n#10 0x0000562a9ace4cb6 in core::ops::function::FnOnce::call_once<flist_walker::indexer::tests::tc165_hard_abort_child_after_first_filelist_commit::{closure_env#0}, ()> () at /rustc/8bab26f4f68e0e26f0bb7960be334d5b520ea452/library/core/src/ops/function.rs:250\n#11 0x0000562a9b7948cb in core::ops::function::FnOnce::call_once<fn() -> core::result::Result<(), alloc::string::String>, ()> () at library/core/src/ops/function.rs:250\n#12 test::__rust_begin_short_backtrace<core::result::Result<(), alloc::string::String>, fn() -> core::result::Result<(), alloc::string::String>> () at library/test/src/lib.rs:724\n#13 0x0000562a9b7a2145 in test::run_test_in_process::{closure#0} () at library/test/src/lib.rs:747\n#14 core::panic::unwind_safe::{impl#23}::call_once<core::result::Result<(), alloc::string::String>, test::run_test_in_process::{closure_env#0}> () at library/core/src/panic/unwind_safe.rs:275\n#15 std::panicking::catch_unwind::do_call<core::panic::unwind_safe::AssertUnwindSafe<test::run_test_in_process::{closure_env#0}>, core::result::Result<(), alloc::string::String>> () at library/std/src/panicking.rs:581\n#16 std::panicking::catch_unwind<core::result::Result<(), alloc::string::String>, core::panic::unwind_safe::AssertUnwindSafe<test::run_test_in_process::{closure_env#0}>> () at library/std/src/panicking.rs:544\n#17 std::panic::catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<test::run_test_in_process::{closure_env#0}>, core::result::Result<(), alloc::string::String>> () at library/std/src/panic.rs:359\n#18 test::run_test_in_process () at library/test/src/lib.rs:747\n#19 test::run_test::{closure#0} () at library/test/src/lib.rs:668\n#20 0x0000562a9b79ba54 in test::run_test::{closure#1} () at library/test/src/lib.rs:698\n#21 std::sys::backtrace::__rust_begin_short_backtrace<test::run_test::{closure_env#1}, ()> () at library/std/src/sys/backtrace.rs:166\n#22 0x0000562a9b7a51c2 in std::thread::lifecycle::spawn_unchecked::{closure#1}::{closure#0}<test::run_test::{closure_env#1}, ()> () at library/std/src/thread/lifecycle.rs:70\n#23 core::panic::unwind_safe::{impl#23}::call_once<(), std::thread::lifecycle::spawn_unchecked::{closure#1}::{closure_env#0}<test::run_test::{closure_env#1}, ()>> () at library/core/src/panic/unwind_safe.rs:275\n#24 std::panicking::catch_unwind::do_call<core::panic::unwind_safe::AssertUnwindSafe<std::thread::lifecycle::spawn_unchecked::{closure#1}::{closure_env#0}<test::run_test::{closure_env#1}, ()>>, ()> () at library/std/src/panicking.rs:581\n#25 std::panicking::catch_unwind<(), core::panic::unwind_safe::AssertUnwindSafe<std::thread::lifecycle::spawn_unchecked::{closure#1}::{closure_env#0}<test::run_test::{closure_env#1}, ()>>> () at library/std/src/panicking.rs:544\n#26 std::panic::catch_unwind<core::panic::unwind_safe::AssertUnwindSafe<std::thread::lifecycle::spawn_unchecked::{closure#1}::{closure_env#0}<test::run_test::{closure_env#1}, ()>>, ()> () at library/std/src/panic.rs:359\n#27 std::thread::lifecycle::spawn_unchecked::{closure#1}<test::run_test::{closure_env#1}, ()> () at library/std/src/thread/lifecycle.rs:68\n#28 core::ops::function::FnOnce::call_once<std::thread::lifecycle::spawn_unchecked::{closure_env#1}<test::run_test::{closure_env#1}, ()>, ()> () at library/core/src/ops/function.rs:250\n#29 0x0000562a9d45282f in alloc::boxed::{impl#31}::call_once<(), (dyn core::ops::function::FnOnce<(), Output=()> + core::marker::Send), alloc::alloc::Global> () at library/alloc/src/boxed.rs:2275\n#30 std::sys::thread::unix::{impl#2}::new::thread_start () at library/std/src/sys/thread/unix.rs:118\n#31 0x00007f5ba309cb84 in ?? () from /lib/x86_64-linux-gnu/libc.so.6\n#32 0x00007f5ba3129ecc in ?? () from /lib/x86_64-linux-gnu/libc.so.6\nrax            0x0                 0\nrbx            0xbd49              48457\nrcx            0x7f5ba309ec0c      140031554087948\nrdx            0x6                 6\nrsi            0xbd49              48457\nrdi            0xbd48              48456\nrbp            0x7f5ba2ffd800      0x7f5ba2ffd800\nrsp            0x7f5ba2ffd7c0      0x7f5ba2ffd7c0\nr8             0x7f5b9c0008e0      140031435999456\nr9             0x7                 7\nr10            0x8                 8\nr11            0x246               582\nr12            0x6                 6\nr13            0xfffffffffffffc60  -928\nr14            0x16                22\nr15            0x0                 0\nrip            0x7f5ba309ec0c      0x7f5ba309ec0c <pthread_kill+284>\neflags         0x246               [ PF ZF IF ]\ncs             0x33                51\nss             0x2b                43\nds             0x0                 0\nes             0x0                 0\nfs             0x0                 0\ngs             0x0                 0\nfs_base        0x7f5ba2fff6c0      140031553435328\ngs_base        0x0                 0\n=> 0x7f5ba309ec0c <pthread_kill+284>:\tmov    %eax,%r14d\n   0x7f5ba309ec0f <pthread_kill+287>:\tneg    %r14d\n   0x7f5ba309ec12 <pthread_kill+290>:\tcmp    $0xfffff000,%eax\n   0x7f5ba309ec17 <pthread_kill+295>:\tmov    $0x0,%eax\n   0x7f5ba309ec1c <pthread_kill+300>:\tcmovbe %eax,%r14d\n   0x7f5ba309ec20 <pthread_kill+304>:\tjmp    0x7f5ba309eba0 <pthread_kill+176>\n   0x7f5ba309ec25 <pthread_kill+309>:\tnopl   (%rax)\n   0x7f5ba309ec28 <pthread_kill+312>:\tmov    %r13,%rdi\n   0x7f5ba309ec2b <pthread_kill+315>:\tcall   0x7f5ba3098fc0 <__lll_lock_wait_private>\n   0x7f5ba309ec30 <pthread_kill+320>:\tjmp    0x7f5ba309eb6e <pthread_kill+126>\n   0x7f5ba309ec35 <pthread_kill+325>:\tnopl   (%rax)\n   0x7f5ba309ec38 <pthread_kill+328>:\tmov    %r13,%rdi\ncoverage_thread=2\n#0  0x00007f5ba312752d in syscall () from /lib/x86_64-linux-gnu/libc.so.6\n#1  0x0000562a9d43bd66 in std::sys::pal::unix::futex::futex_wait () at library/std/src/sys/pal/unix/futex.rs:73\n#2  std::sys::sync::thread_parking::futex::Parker::park_timeout () at library/std/src/sys/sync/thread_parking/futex.rs:75\n#3  std::thread::thread::Thread::park_timeout () at library/std/src/thread/thread.rs:132\n#4  0x0000562a9b7a2e9d in std::sync::mpmc::context::Context::wait_until () at library/std/src/sync/mpmc/context.rs:133\n#5  std::sync::mpmc::list::{impl#3}::recv::{closure#1}<test::event::CompletedTest> () at library/std/src/sync/mpmc/list.rs:453\n#6  0x0000562a9b7adfa9 in std::sync::mpmc::context::{impl#0}::with::{closure#0}<std::sync::mpmc::list::{impl#3}::recv::{closure_env#1}<test::event::CompletedTest>, ()> () at library/std/src/sync/mpmc/context.rs:49\n#7  std::sync::mpmc::context::{impl#0}::with::{closure#1}<std::sync::mpmc::list::{impl#3}::recv::{closure_env#1}<test::event::CompletedTest>, ()> () at library/std/src/sync/mpmc/context.rs:57\n#8  std::thread::local::LocalKey::try_with<core::cell::Cell<core::option::Option<std::sync::mpmc::context::Context>>, std::sync::mpmc::context::{impl#0}::with::{closure_env#1}<std::sync::mpmc::list::{impl#3}::recv::{closure_env#1}<test::event::CompletedTest>, ()>, ()> () at library/std/src/thread/local.rs:462\n#9  std::sync::mpmc::context::Context::with<std::sync::mpmc::list::{impl#3}::recv::{closure_env#1}<test::event::CompletedTest>, ()> () at library/std/src/sync/mpmc/context.rs:53\n#10 std::sync::mpmc::list::Channel::recv<test::event::CompletedTest> () at library/std/src/sync/mpmc/list.rs:442\n#11 0x0000562a9b7bacc0 in std::sync::mpmc::Receiver::recv_deadline<test::event::CompletedTest> () at library/std/src/sync/mpmc/mod.rs:1149\n#12 std::sync::mpmc::Receiver::recv_timeout<test::event::CompletedTest> () at library/std/src/sync/mpmc/mod.rs:1081\n#13 std::sync::mpsc::Receiver::recv_timeout<test::event::CompletedTest> () at library/std/src/sync/mpsc.rs:933\n#14 test::run_tests<test::console::run_tests_console::{closure_env#2}> () at library/test/src/lib.rs:470\n#15 test::console::run_tests_console () at library/test/src/console.rs:328\n#16 0x0000562a9b7a69c8 in test::test_main_inner<test::test_main_static::{closure_env#0}> () at library/test/src/lib.rs:170\n#17 test::test_main_static () at library/test/src/lib.rs:195\n#18 0x0000562a9b256e73 in flist_walker::main () at src/lib.rs:1\nFrom                To                  Syms Read   Shared Object Library\n0x00007f5ba34af780  0x00007f5ba34d2745  Yes (*)     /lib/x86_64-linux-gnu/libgcc_s.so.1\n0x00007f5ba33d2420  0x00007f5ba34503a6  Yes (*)     /lib/x86_64-linux-gnu/libm.so.6\n0x00007f5ba3028800  0x00007f5ba31b0039  Yes (*)     /lib/x86_64-linux-gnu/libc.so.6\n0x00007f5ba34ee000  0x00007f5ba3518195  Yes (*)     /lib64/ld-linux-x86-64.so.2\n(*): Shared library is missing debugging information.\ncoverage_threads_complete=true\n",
+      "expected_abort": true
+    }
+  ],
+  "errors": [],
+  "host": {
+    "kernel": "6.17.0-1022-azure",
+    "machine": "x86_64",
+    "cpu_count": 4,
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "memory": {
+      "MemTotal": "16373452 kB",
+      "MemAvailable": "15229104 kB",
+      "SwapTotal": "3145724 kB",
+      "SwapFree": "3145724 kB"
+    },
+    "image_os": "ubuntu24",
+    "image_version": "20261012.334.1",
+    "tools": {
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-unknown-linux-gnu\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "llvm_cov": "cargo-llvm-cov 0.8.7",
+      "gdb": "GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1\nCopyright (C) 2024 Free Software Foundation, Inc.\nLicense GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\nThis is free software: you are free to change and redistribute it.\nThere is NO WARRANTY, to the extent permitted by law.",
+      "source_commit": "59176f5be077e16f69cc42c62f21d0fee990a5f3"
+    },
+    "libc_sha256": "3a15d66867d83762c7f2f1e37359cb8f6c5743edb369c65285cb0b1c4f7498bf",
+    "limits": {
+      "RLIMIT_CORE": [
+        0,
+        -1
+      ],
+      "RLIMIT_STACK": [
+        16777216,
+        -1
+      ],
+      "RLIMIT_AS": [
+        -1,
+        -1
+      ],
+      "RLIMIT_NOFILE": [
+        65536,
+        65536
+      ],
+      "RLIMIT_NPROC": [
+        63838,
+        63838
+      ]
+    }
+  },
+  "executables": [
+    {
+      "name": "flist_walker-diagnostic-fixture",
+      "sha256": "6435647905668d0aa3e7ef48f11a8f6be610bf2f0c02a7d9f52474ebbcdbef6d",
+      "bytes": 21600
+    },
+    {
+      "name": "flist_walker-1a62af7a613ac2da",
+      "sha256": "02238f0815b87cd0780c305224b8ddae43532556650be2b73f4a15e7764075a4",
+      "bytes": 420461312
+    },
+    {
+      "name": "fw",
+      "sha256": "e3253fbf711e0b9e4fb685bec8804f7954e1a2b9e8b5a232ed68ff6b3a6b4c82",
+      "bytes": 304243912
+    },
+    {
+      "name": "flistwalker",
+      "sha256": "270faf379414bf062c527ad2fde76ee3d85f2b9b5ca14d36d765a8e6fbf81b8b",
+      "bytes": 423916728
+    },
+    {
+      "name": "flistwalker-96a3caadb486e271",
+      "sha256": "ad810273851a63d473a8cb659d89db5acdcc62a68f3fce6155e6c624a6959e1d",
+      "bytes": 368027448
+    },
+    {
+      "name": "fw-27e746cee0272bd3",
+      "sha256": "a576a73002ac96ac9a6d8b34f802ce17625c8ae9ec8c05b5fa3e2666d0e4f452",
+      "bytes": 7156176
+    },
+    {
+      "name": "architecture_boundaries-b84eee98ed90d053",
+      "sha256": "59ee389ae6be2720854ef025114266be6d30511fdc5da6ce6c20c4c03e727876",
+      "bytes": 7427792
+    },
+    {
+      "name": "cli_contract-d405d2c70926b177",
+      "sha256": "5a5a578ad826e3c7527266ab0d527fa4a8130717cabe5bc8bd9e61513f9b12e7",
+      "bytes": 10248792
+    },
+    {
+      "name": "index_process-d6814eb5ca26fa6f",
+      "sha256": "3cd226deefd706aa76299478a42380a8eeb93d1746dff27c5e41776d128b2527",
+      "bytes": 9641640
+    },
+    {
+      "name": "macos_quit_menu-6f72732e423fc94d",
+      "sha256": "5f3390e405112d7dfe3a3dcceaa9bf3dec66351c09a5fa2694dd00aa6c5f8005",
+      "bytes": 4539984
+    },
+    {
+      "name": "path_key_contract-5ba15ff305524cd2",
+      "sha256": "0f84e6d081b9378d8bcf490baf450e715e5a380643a2c0973ebe02b522a99228",
+      "bytes": 277129040
+    }
+  ],
+  "raw_core_upload": false,
+  "core_limit_bytes": 2147483648,
+  "core_settings": "RESTORED"
+}

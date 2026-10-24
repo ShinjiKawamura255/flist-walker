@@ -1,0 +1,283 @@
+{
+  "head": "0574c96cc955e4c7dd13b85f99c0d7bf1d449a7e",
+  "base": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+  "run": 40067017249,
+  "attempt": 1,
+  "conclusion": "success",
+  "jobs": [
+    {
+      "id": 120792305296,
+      "name": "Detect Changes",
+      "conclusion": "success",
+      "log_bytes": 30830,
+      "log_sha256": "b6b3887087c58736675f9955b7914c2b470232ffba39fd00742f96dfa7fca0ce",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:11.0722119Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": []
+    },
+    {
+      "id": 120792305500,
+      "name": "CI Policy",
+      "conclusion": "success",
+      "log_bytes": 16438,
+      "log_sha256": "35ef0ce7c0f266e4605c89e8f494b8b0dd541d42cce9f002c681268a55e3fd00",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:11.0037251Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": []
+    },
+    {
+      "id": 120792345009,
+      "name": "Windows GNU Updater Build",
+      "conclusion": "success",
+      "log_bytes": 98215,
+      "log_sha256": "e46dabbd4f178a3323c6c154b6d8c692b504eed7d75e468353c759fadd877c89",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:22.7270549Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": []
+    },
+    {
+      "id": 120792345014,
+      "name": "Clippy and Coverage",
+      "conclusion": "success",
+      "log_bytes": 395610,
+      "log_sha256": "57029feaaaeab9a6a9c8255afd2e8f16337f39449a41fb7bed2dbf71426eae80",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:22.9083998Z Current runner version: '2.338.0'"
+      ],
+      "tests": [
+        "2026-10-24T05:43:02.8515626Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1685 filtered out; finished in 0.00s",
+        "2026-10-24T05:43:09.8397286Z test result: ok. 1666 passed; 0 failed; 20 ignored; 0 measured; 0 filtered out; finished in 45.54s",
+        "2026-10-24T05:43:11.5889017Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "2026-10-24T05:43:12.5331849Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:43:13.4943921Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:43:14.9195194Z test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s",
+        "2026-10-24T05:43:15.9072882Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "2026-10-24T05:43:18.4081147Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "explicit_install": [
+        "2026-10-24T05:38:42.8189085Z ##[group]Run cargo +1.97.1 install cargo-llvm-cov --version 0.8.7 --locked --force"
+      ]
+    },
+    {
+      "id": 120792345047,
+      "name": "Cargo Audit",
+      "conclusion": "success",
+      "log_bytes": 81137,
+      "log_sha256": "f5f3facf4e6c623006a1128162792dda4eda699692e85573ec4ffb2b256f0080",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:22.4056433Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": [
+        "2026-10-24T05:38:37.0761534Z ##[group]Run cargo +1.97.1 install cargo-audit --version 0.22.2 --locked --force"
+      ]
+    },
+    {
+      "id": 120792345061,
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success",
+      "log_bytes": 349651,
+      "log_sha256": "9fe54fb9e71a70b83b7e359423cc05d742de7e8cc4cf8732264852d718620a89",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:24.7098110Z Current runner version: '2.338.0'"
+      ],
+      "tests": [
+        "2026-10-24T05:42:45.3241020Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1676 filtered out; finished in 0.00s",
+        "2026-10-24T05:42:50.3475260Z test result: ok. 1657 passed; 0 failed; 20 ignored; 0 measured; 0 filtered out; finished in 83.96s",
+        "2026-10-24T05:42:50.5261870Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s",
+        "2026-10-24T05:42:50.5357500Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:42:50.5645330Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "2026-10-24T05:42:52.6688200Z test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.10s",
+        "2026-10-24T05:42:52.7999530Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s",
+        "2026-10-24T05:42:53.0277790Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:42:54.9966120Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "explicit_install": []
+    },
+    {
+      "id": 120792345083,
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success",
+      "log_bytes": 352304,
+      "log_sha256": "50d0e759b8919707d7ea7c3fcb5573695958cd94646be0bee75ae597c7bb8260",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:23.1294131Z Current runner version: '2.338.0'"
+      ],
+      "tests": [
+        "2026-10-24T05:45:10.0147088Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1705 filtered out; finished in 0.01s",
+        "2026-10-24T05:45:15.8410887Z test result: ok. 1685 passed; 0 failed; 21 ignored; 0 measured; 0 filtered out; finished in 163.48s",
+        "2026-10-24T05:45:15.8953322Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "2026-10-24T05:45:15.9077456Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:45:15.9213984Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:45:19.9153152Z test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.98s",
+        "2026-10-24T05:45:20.0345625Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s",
+        "2026-10-24T05:45:20.0564958Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:45:21.1070085Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "explicit_install": []
+    },
+    {
+      "id": 120792345120,
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success",
+      "log_bytes": 339455,
+      "log_sha256": "1516bfdb8462c0b871d8f80b99f71c4b983e1d23cf5912b75357aa046a4aad3d",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:38:33.1047355Z Current runner version: '2.338.0'"
+      ],
+      "tests": [
+        "2026-10-24T05:41:36.7033195Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1685 filtered out; finished in 0.00s",
+        "2026-10-24T05:41:39.9261664Z test result: ok. 1666 passed; 0 failed; 20 ignored; 0 measured; 0 filtered out; finished in 43.95s",
+        "2026-10-24T05:41:39.9702857Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s",
+        "2026-10-24T05:41:39.9718687Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:41:39.9744864Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:41:40.3678130Z test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.39s",
+        "2026-10-24T05:41:40.3911190Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "2026-10-24T05:41:40.3935457Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:41:41.1034804Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "2026-10-24T05:41:43.9932989Z test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1685 filtered out; finished in 2.61s"
+      ],
+      "explicit_install": []
+    },
+    {
+      "id": 120793190218,
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "success",
+      "log_bytes": 41748,
+      "log_sha256": "89ef7e4ea932d3280f250ff54d758c3cd810803ff1221df8b260ff436026282e",
+      "actual_warnings": [
+        "2026-10-24T05:43:19.2329882Z (node:6172) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ],
+      "runners": [
+        "\ufeff2026-10-24T05:42:48.1789927Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": []
+    },
+    {
+      "id": 120795396897,
+      "name": "CI Gate",
+      "conclusion": "success",
+      "log_bytes": 4972,
+      "log_sha256": "dd5fb88b3a8e246bb196f6d2a2294666b37eb472e41fbed698f629e176ffb1ac",
+      "actual_warnings": [],
+      "runners": [
+        "\ufeff2026-10-24T05:54:16.4156846Z Current runner version: '2.338.0'"
+      ],
+      "tests": [],
+      "explicit_install": []
+    }
+  ],
+  "check_annotations": [
+    {
+      "id": 120795396897,
+      "name": "CI Gate",
+      "count": 0
+    },
+    {
+      "id": 120793190218,
+      "name": "Windows GNU Updater E2E",
+      "count": 0
+    },
+    {
+      "id": 120792345120,
+      "name": "Rust Test and Build (linux-native)",
+      "count": 0
+    },
+    {
+      "id": 120792345083,
+      "name": "Rust Test and Build (windows-native)",
+      "count": 0
+    },
+    {
+      "id": 120792345061,
+      "name": "Rust Test and Build (macos-native)",
+      "count": 1
+    },
+    {
+      "id": 120792345047,
+      "name": "Cargo Audit",
+      "count": 0
+    },
+    {
+      "id": 120792345014,
+      "name": "Clippy and Coverage",
+      "count": 0
+    },
+    {
+      "id": 120792345009,
+      "name": "Windows GNU Updater Build",
+      "count": 0
+    },
+    {
+      "id": 120792306983,
+      "name": "CI Policy Guardian",
+      "count": 1
+    },
+    {
+      "id": 120792305500,
+      "name": "CI Policy",
+      "count": 0
+    },
+    {
+      "id": 120792305296,
+      "name": "Detect Changes",
+      "count": 0
+    }
+  ],
+  "macos_annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/0574c96cc955e4c7dd13b85f99c0d7bf1d449a7e/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "guardian_annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/0574c96cc955e4c7dd13b85f99c0d7bf1d449a7e/.github",
+      "start_line": 11,
+      "start_column": null,
+      "end_line": 11,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "Process completed with exit code 1.",
+      "raw_details": ""
+    }
+  ],
+  "lcov": {
+    "hit": 44884,
+    "found": 52397,
+    "percentage": 85.66139282783365,
+    "required": 75
+  },
+  "coverage_diagnostics": {
+    "complete": true,
+    "coverage_exit": 0,
+    "errors": [],
+    "core_settings": "RESTORED"
+  },
+  "warning_assessment": "One external download-artifact DEP0005; exact-run independent assessment pending. No Rust/test/clippy/audit warnings. Guardian expected3path immutable refusal remains separate; no activation authority inferred."
+}
