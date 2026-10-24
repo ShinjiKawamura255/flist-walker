@@ -1,0 +1,182 @@
+{
+  "result": "REJECTED",
+  "version": "v0.31.0",
+  "source": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d",
+  "run": 40069314271,
+  "attempt": 1,
+  "workflow_conclusion": "success; Create Draft Release correctly SKIPPED for manual candidate",
+  "stop_gate": "Full source README identity",
+  "evidence": "Actual Windows producer README omits both ignore-list file names; hosted package log emitted two command-not-found errors despite exit0. API ZIP digest/size, CRC and all extracted byte bindings verified.",
+  "repair_pr": 204,
+  "repair_source_head": "304331af9831dd0819c4a30a66b84594c8910379",
+  "semantic_TDD": "old packager invoked harmless canary commands (RED); fixed Windows/Linux invoked none, zero stderr, exact README/archive (GREEN);158tooling tests PASS",
+  "all_completed_job_logs": [
+    {
+      "job_id": 120799113587,
+      "bytes": 16826,
+      "sha256": "c4dd50a3fad981fa5770e397fd9cd0885898ff0bda5f0c5aaa66060fc87238bf",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120799162962,
+      "bytes": 79325,
+      "sha256": "6d2de70414e0a519bb3e9b17469ced20d2037043e1ad51d6c95ba2d494cb9b3c",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120799163006,
+      "bytes": 330715,
+      "sha256": "1b218ea694b8a0e7c718f26641350f6748dff93b5968678c8ec7f1fe444a3fdf",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120799163033,
+      "bytes": 329086,
+      "sha256": "b39bd6385268cf5029fcde538ad76bde0345128b207370332c6f7f67628d33b8",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120799163034,
+      "bytes": 333582,
+      "sha256": "b407f1914d765e1017abbbece7352daff43052254a88e1d3127be5338627118b",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120800541442,
+      "bytes": 84824,
+      "sha256": "2d4b14823cf6f49f92995a7cbedc93bda6e5238320e7c73992705e705c04ca13",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120800541450,
+      "bytes": 84776,
+      "sha256": "1ac6aea1fe0346b771c81223187572b79479bea7abe1ca0b31af046b76ee2e53",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120800541498,
+      "bytes": 87286,
+      "sha256": "a9bd529382a0b3d336343247fbf85517be20528473cb3c568ce53fa488a97e19",
+      "actual_emissions": []
+    },
+    {
+      "job_id": 120800541525,
+      "bytes": 98843,
+      "sha256": "5b6def0b192085043585b15160857a2d9a583eed92410272d1c6d7100b07c2b9",
+      "actual_emissions": [
+        "2026-10-24T06:23:28.7404411Z ./scripts/prepare-release.sh: line 67: flistwalker.ignore.txt.example: command not found",
+        "2026-10-24T06:23:28.7408629Z ./scripts/prepare-release.sh: line 67: flistwalker.ignore.txt: command not found"
+      ]
+    },
+    {
+      "job_id": 120803374597,
+      "bytes": 52531,
+      "sha256": "e2d1f5254efa5528e45dddbdc94eef9ec31dda2e12ec81d6019049e4ff2ca1ce",
+      "actual_emissions": [
+        "2026-10-24T06:34:39.7518215Z (node:2482) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ]
+    }
+  ],
+  "artifact_metadata": {
+    "artifacts": [
+      {
+        "id": 12551285422,
+        "name": "release-windows-x86_64",
+        "size_in_bytes": 18247956,
+        "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551285422",
+        "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551285422/zip",
+        "expired": false,
+        "created_at": "2026-10-24T06:23:32Z",
+        "expires_at": "2027-01-22T06:12:59Z",
+        "updated_at": "2026-10-24T06:23:32Z",
+        "digest": "sha256:f83c6125ec76e2b4161af354fb7b7d061ec9c7f85b788a87c2b7414e3a4e3630",
+        "workflow_run": {
+          "id": 40069314271,
+          "repository_id": 1160125223,
+          "head_repository_id": 1160125223,
+          "head_branch": "master",
+          "head_sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d"
+        }
+      },
+      {
+        "id": 12551177010,
+        "name": "release-macos-x86_64",
+        "size_in_bytes": 25334211,
+        "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551177010",
+        "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551177010/zip",
+        "expired": false,
+        "created_at": "2026-10-24T06:34:11Z",
+        "expires_at": "2027-01-22T06:12:59Z",
+        "updated_at": "2026-10-24T06:34:11Z",
+        "digest": "sha256:eca809fbb47d27bfa2fc75da86ef0085a9060d4edbe5e87ffd78cd0620db25db",
+        "workflow_run": {
+          "id": 40069314271,
+          "repository_id": 1160125223,
+          "head_repository_id": 1160125223,
+          "head_branch": "master",
+          "head_sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d"
+        }
+      },
+      {
+        "id": 12550947285,
+        "name": "release-macos-arm64",
+        "size_in_bytes": 23031707,
+        "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550947285",
+        "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550947285/zip",
+        "expired": false,
+        "created_at": "2026-10-24T06:28:06Z",
+        "expires_at": "2027-01-22T06:12:59Z",
+        "updated_at": "2026-10-24T06:28:06Z",
+        "digest": "sha256:3b9764c05b7582c78db9d1ee53fa21ee378018c3545b47dcf859374d00f63901",
+        "workflow_run": {
+          "id": 40069314271,
+          "repository_id": 1160125223,
+          "head_repository_id": 1160125223,
+          "head_branch": "master",
+          "head_sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d"
+        }
+      },
+      {
+        "id": 12550871822,
+        "name": "release-linux-x86_64",
+        "size_in_bytes": 20095707,
+        "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550871822",
+        "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550871822/zip",
+        "expired": false,
+        "created_at": "2026-10-24T06:23:15Z",
+        "expires_at": "2027-01-22T06:12:59Z",
+        "updated_at": "2026-10-24T06:23:15Z",
+        "digest": "sha256:fc194b73d063b5f0da696ac894a758d1560ac34b19ca993e4405ab1f1964f9c9",
+        "workflow_run": {
+          "id": 40069314271,
+          "repository_id": 1160125223,
+          "head_repository_id": 1160125223,
+          "head_branch": "master",
+          "head_sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d"
+        }
+      },
+      {
+        "id": 12550772698,
+        "name": "validated-release-bundle-v0.31.0-39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d",
+        "size_in_bytes": 86708859,
+        "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550772698",
+        "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12550772698/zip",
+        "expired": false,
+        "created_at": "2026-10-24T06:36:36Z",
+        "expires_at": "2026-11-07T06:36:31Z",
+        "updated_at": "2026-10-24T06:36:36Z",
+        "digest": "sha256:3b9384293ece2ac3c086f7307e0ebef56e3218456b5890bc28b59742728370fb",
+        "workflow_run": {
+          "id": 40069314271,
+          "repository_id": 1160125223,
+          "head_repository_id": 1160125223,
+          "head_branch": "master",
+          "head_sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d"
+        }
+      }
+    ]
+  },
+  "artifact_validation": "Strict release observer rejects actual old candidate at README; diagnostic-only bypass of README checked all other structures. This is never an admitted candidate.",
+  "warning_disposition": "No exception granted: candidate rejected; external DEP0005 remains retained, independent assessment belongs only to new candidate/tagged run.",
+  "native_deviation": "v0.31.0-only human approvals apply to named native/unknown historical causes; they do not excuse this packaging defect."
+}

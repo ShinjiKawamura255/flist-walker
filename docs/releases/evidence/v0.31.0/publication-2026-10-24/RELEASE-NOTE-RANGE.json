@@ -1,0 +1,226 @@
+{
+  "base": "v0.30.2",
+  "head": "304331af9831dd0819c4a30a66b84594c8910379",
+  "commits": [
+    {
+      "sha": "304331af9831dd0819c4a30a66b84594c8910379",
+      "subject": "fix(release): preserve Windows README literals without command expansion",
+      "public_section": "Fixed: Windows README literals"
+    },
+    {
+      "sha": "39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d",
+      "subject": "docs(release): bind protected proof before v0.31.0 candidate",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "f0a98835856d45c34d0af829efdd15b28de3d9e0",
+      "subject": "docs(release): disclose accepted v0.31.0 validation gaps",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "efb62d2b4993c5c66ad421a214dc22863cd8318c",
+      "subject": "docs(ci): retain PR201 controlled activation and full restoration",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+      "subject": "chore(release): reconcile v0.31.0 scope and remaining gates",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "b23006e10c8cc742a998f57c97e87518e9b7a762",
+      "subject": "fix(deps): replace yanked Windows clipboard dependency",
+      "public_section": "Security: TLS/clipboard"
+    },
+    {
+      "sha": "a5f9858fa2d86a8af6b180e181c3b6ab1d6c6d6d",
+      "subject": "fix(ci): select pinned Rust explicitly for Cargo tools",
+      "public_section": "Fixed: explicit CI compiler"
+    },
+    {
+      "sha": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+      "subject": "test: account for Finished offer cancellation in TC-229",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "fdb73eb0e538c094a1b3e384e175382774f3bc67",
+      "subject": "test: add source-bound TC-207 timing diagnostics",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "a94590ff31697b59420aa3060fd648a06004b009",
+      "subject": "test: isolate Browse interaction timing from cold GUI setup",
+      "public_section": "Fixed: Browse; Changed: timing diagnostics"
+    },
+    {
+      "sha": "5f76dd0533dd93a0c0eec2535e926ce3934fc80b",
+      "subject": "fix: prepare Browse off-thread and diagnose TC-207 timing",
+      "public_section": "Fixed: Browse; Changed: timing diagnostics"
+    },
+    {
+      "sha": "429978e3bb396ead1a9935b167b162abfaccca74",
+      "subject": "fix: satisfy Windows pipe reader clippy",
+      "public_section": "Added/Changed: indexing stop/recovery subprocess"
+    },
+    {
+      "sha": "1fc079210dfaff9503cb697cc3657b800d6c8538",
+      "subject": "fix: isolate indexing and add reliable recovery controls",
+      "public_section": "Added/Changed: indexing stop/recovery subprocess"
+    },
+    {
+      "sha": "b2d46559710fb396569b302b355bd4e705e6902e",
+      "subject": "test: bound TC-151 completion by work and progress",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "223f868043c7b92b1dddee375cd7659d060fd02f",
+      "subject": "fix(deps): patch TLS certificate distrust vulnerabilities",
+      "public_section": "Security: TLS/clipboard"
+    },
+    {
+      "sha": "d1bf330fd599cc04a333fc903c64dec77fd50aee",
+      "subject": "Fix multiline Root labels and offscreen row layout regressions",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "8b941ef498ca840eb982bb903ccd52e2f6ad4b6a",
+      "subject": "Fix font-dependent clipping in root selector and shared rows",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "2d32faaf03c56c12bd6f0c9ec94fa9962af41639",
+      "subject": "fix(gui): keep scrolled tab add button within pixel bounds",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "9b8f959f49715768a8ead99378bc74ffe57d76e8",
+      "subject": "fix(gui): show source while initial indexing is in progress",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "e9ea6ec056ba8634ac83adf5fb3e79871ff6a988",
+      "subject": "docs(ci): retain controlled activation and complete restoration evidence",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "ac1b3261f90138f7c3eb5c8d2966d0f7d965b29e",
+      "subject": "docs(ci): retain source-bound Linux fault capture evidence",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "2654cc51f2d72bc764e9d24ccd3d75ed15d9e508",
+      "subject": "fix(ci): retain emitted fault stacks when debugger reaping times out",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "1b8d48dcfb849e7009a8f10b24469a58da80e266",
+      "subject": "test(persistence): wait for final patch generation before flush",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "01e87e2a909ec5d5010c082131e9eb130990c3e0",
+      "subject": "fix(ci): protect coverage collector implementations as trusted policy",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "1d628e9fdd47cb2868f3e18f8243c6237b7d57f9",
+      "subject": "fix(ci): preserve coverage fault evidence through cancellation",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "ffdd808683bb43e7a7d8baea0c26c0e8c0e7f651",
+      "subject": "test(ci): retain Linux coverage fault stacks across child exits",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "2ae4ab5820dbfd034667a219f367419e7f20fede",
+      "subject": "docs: retain unresolved Linux coverage evidence and restore CI",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "8d1473fa7d58a71a57c21036d278db6b60994ddb",
+      "subject": "test(ci): load owned core paths across GDB versions",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "7a94c120ed3a3a147c2d497f374cc0fa51742b4f",
+      "subject": "test(ci): isolate core stack output from GDB headers",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "2d5f1aa22505821eb8edd1482820e0b4ca62abf3",
+      "subject": "test(ci): require fixture backtrace before coverage diagnosis",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "5b4156503f5693903dadea53103ded2a9585088c",
+      "subject": "test(ci): collect bounded coverage cores without live ptrace",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "fd168d1d7aa7d5b9a56103fca5a77e663af0cac2",
+      "subject": "test(ci): capture Linux coverage fault stacks for PR 190",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "ea3cf857427a41f0c5e926a1babb9c7f66468f68",
+      "subject": "fix(build): honor pinned macOS Rust and retain timeout evidence",
+      "public_section": "Fixed: pinned compiler/timeout evidence"
+    },
+    {
+      "sha": "78b93e5869df214ffb9c39b58a566348d06eaba6",
+      "subject": "docs(release): record v0.31.0 candidate verification and Windows handoff",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "3194f03c27f9a72f06a836dbd02e9141d8740a26",
+      "subject": "chore(release): prepare v0.31.0 and register v0.30.2 updater capability",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    },
+    {
+      "sha": "1ae6ca04127ad4513b80fed6e8c655ea6356ecb0",
+      "subject": "docs: retain verified WarmReclaim v9 evidence",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "5c26783e07b7d21cea1eb7c50b550923dfcdb74b",
+      "subject": "test: pin v9 indexing admission to validated runtime schema",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "7732cbab3eadfc1279d811074698ce6190ae5d7d",
+      "subject": "test: align indexing admission with serialized runtime defaults",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "689d9a85bd40b063630541a66bd10b1de51fab52",
+      "subject": "test: pin native-validated v8 indexing benchmark reference",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "fae5ec4f5c68b5415612d10354ce50870960ab8e",
+      "subject": "test: track deferred Warm refresh allocation under reclaim pressure",
+      "public_section": "Changed: persistence/Warm test evidence"
+    },
+    {
+      "sha": "be6f76c46e662f78557117991a734bd0162cc65f",
+      "subject": "fix: improve light result contrast and history test readiness",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "5c4c9eee9af50a7d1a9ced5d1e285481d5904cc5",
+      "subject": "feat(settings): add query restoration and theme preferences",
+      "public_section": "Added: query restoration/theme"
+    },
+    {
+      "sha": "63e0bc8436ecdb9919163a2a9888d8cf794b5ffa",
+      "subject": "fix(gui): align dialog commit actions at the lower right",
+      "public_section": "Fixed: GUI layout/contrast/status"
+    },
+    {
+      "sha": "4b0fd92fa144f02bebfc5ba19c6a8f2c0691be8f",
+      "subject": "docs(release): record v0.30.2 publication and validation",
+      "public_section": "Changed: Linux coverage/async/timing diagnostics or Fixed: release validation; documentation-only retained evidence summarized in corresponding topic"
+    }
+  ]
+}

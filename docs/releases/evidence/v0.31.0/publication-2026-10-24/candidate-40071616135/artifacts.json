@@ -1,0 +1,99 @@
+{
+  "artifacts": [
+    {
+      "id": 12552221470,
+      "name": "release-macos-arm64",
+      "size_in_bytes": 23031689,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552221470",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552221470/zip",
+      "expired": false,
+      "created_at": "2026-10-24T07:10:13Z",
+      "expires_at": "2027-01-22T06:47:52Z",
+      "updated_at": "2026-10-24T07:10:13Z",
+      "digest": "sha256:ead2510b21b8cb1331e15db00cd2986b69f94302d965d284ee1e8744afd18f8b",
+      "workflow_run": {
+        "id": 40071616135,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "master",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551992799,
+      "name": "validated-release-bundle-v0.31.0-147dac77d025ee0191ff7c949a9a095688115066",
+      "size_in_bytes": 86708883,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551992799",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551992799/zip",
+      "expired": false,
+      "created_at": "2026-10-24T07:12:17Z",
+      "expires_at": "2026-11-07T07:12:13Z",
+      "updated_at": "2026-10-24T07:12:17Z",
+      "digest": "sha256:173931e4d61b6b28a286b5171b8952720c213dddd1f20d96fa6c00259e3df900",
+      "workflow_run": {
+        "id": 40071616135,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "master",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551871360,
+      "name": "release-windows-x86_64",
+      "size_in_bytes": 18247974,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551871360",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551871360/zip",
+      "expired": false,
+      "created_at": "2026-10-24T07:01:41Z",
+      "expires_at": "2027-01-22T06:47:52Z",
+      "updated_at": "2026-10-24T07:01:41Z",
+      "digest": "sha256:4c77a54620682f1ba5aa6fe8ead9f11c137960840f2910726c61882e061ea192",
+      "workflow_run": {
+        "id": 40071616135,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "master",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551754017,
+      "name": "release-macos-x86_64",
+      "size_in_bytes": 25334212,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551754017",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551754017/zip",
+      "expired": false,
+      "created_at": "2026-10-24T07:10:31Z",
+      "expires_at": "2027-01-22T06:47:52Z",
+      "updated_at": "2026-10-24T07:10:31Z",
+      "digest": "sha256:1b4b9180fa8c29f6ee41719b1a0ba8c2a44706bfd6edc7fb71f664f9753b844d",
+      "workflow_run": {
+        "id": 40071616135,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "master",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551509362,
+      "name": "release-linux-x86_64",
+      "size_in_bytes": 20095730,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551509362",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551509362/zip",
+      "expired": false,
+      "created_at": "2026-10-24T07:03:04Z",
+      "expires_at": "2027-01-22T06:47:52Z",
+      "updated_at": "2026-10-24T07:03:04Z",
+      "digest": "sha256:6cd7699e723d38ba11e5e6eb9b7bf5efc07df77b9b6ae36eef728a793d8413e6",
+      "workflow_run": {
+        "id": 40071616135,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "master",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    }
+  ]
+}

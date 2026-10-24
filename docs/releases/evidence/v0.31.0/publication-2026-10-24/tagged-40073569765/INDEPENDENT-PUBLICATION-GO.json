@@ -1,0 +1,73 @@
+{
+  "observed_utc": "2026-10-24T07:52:24.105860+00:00",
+  "reviewer": "independent read-only /root/browse_final_review; no implementation, product edits, application launch or external mutation",
+  "version": "v0.31.0",
+  "tag_object": "859199d06328e7b1190ef91d386c3f8c583b4aec",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "tagged_run": 40073569765,
+  "attempt": 1,
+  "release_id": 422590286,
+  "findings": [],
+  "decision": "GO to publish this exact reviewed draft at release ID422590286 using the reviewed payload, provided immediate pre-operation identity remains unchanged. Post-publication readback/public bytes/URL/signature/N-1 checks remain required.",
+  "publication_operation": {
+    "method": "PATCH",
+    "endpoint": "repos/ShinjiKawamura255/flist-walker/releases/422590286",
+    "payload_sha256": "0b2268a687a54d6176b5a58604ee6b7522736ecd811fc84fcf69cce557475cd3",
+    "tag_name": "v0.31.0",
+    "target_commitish": "147dac77d025ee0191ff7c949a9a095688115066",
+    "name": "v0.31.0",
+    "draft": false,
+    "prerelease": false,
+    "make_latest": "true",
+    "body_sha256": "50c65e00b86834a9bc2cfe51005e4a079346ca48cd9a1f51053cc8ed61de2ffe"
+  },
+  "artifact": {
+    "id": 12552354896,
+    "bytes": 86708775,
+    "sha256": "00b444cea1aae64aaa2c0714979571bdb50a03c5e00d19123a1e75915c0bc560"
+  },
+  "independent_checks": [
+    "all11 tagged jobs successful; all11 raw logs and annotations audited; only2 capacity notices",
+    "all4 producer API/upload/expected/computed chains and final bundle assembly\u2192draft chain independently match",
+    "fresh during-tag officiallatest/fullSHA/Node24/runner support/actual fullAction bundle bytes match retained complete causal diagnosis",
+    "actual outer ZIP API hash/size/CRC/exact28 names and all extracted bytes match",
+    "independent full verify_bundle.verify equals tagged BUNDLE-VALIDATION:26strict hashes,raw64 Ed25519,trusted actualpublicv0.30.2 key,onebit tamper rejection,8binary key bytes/compiler/arch,PEversions/icons/asInvoker/imports,current source README/notices,archives/modes/plist",
+    "working source inputs used by byte verifier equal exact tag source files despite unrelated task-owned closure evidence edits",
+    "independently rerun actual26-entry manifest previous0.30.2\u2192candidate0.31.0 N-1 PASS",
+    "fresh API ID422590286 draft/tag/name/explicit target/body and all28 unique assetIDs/names/sizes/digests match actual tagged bundle and initial/final receipts",
+    "reviewed release-body full44-commit accounting and fixed headers; download names equal actual28assets",
+    "fresh remote master/tagobject/peeledsource/complete successful taggedrun/latestpublicv0.30.2 rechecked",
+    "current-master CI40071447559 and coverage85.670935%/diagnostic complete/errors[]/RESTORED already independently passed"
+  ],
+  "warning_disposition": {
+    "classification": "MINOR exact v0.31.0/source147dac77/taggedrun40073569765 attempt1 only; authorized repository external-Action exception conditions now satisfied",
+    "actual_emissions": [
+      "2026-10-24T07:42:06.9732912Z (node:2261) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "2026-10-24T07:43:36.2059815Z (node:1926) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    ],
+    "count": 2,
+    "provenance": "One each separate actual Node invocation in assembly job120816797856 (four same-run producer ZIPs) and draft job120817128625 (exact validated same-run bundle). Both fullSHA9000827ccba6bdab643e8b6fd33ac0654aef8333/Node24 on runner2.338.0/normal extraction/digest-mismatch:error. Additional draft invocation explains count relative to candidate.",
+    "causal_evidence": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; exact unchanged full Action code and related input/impact boundary reused, no prior run exception inherited",
+    "observed_vs_inferred": "Hosted emission/step/count/runtime/inputs/digests/completed outputs observed. Hosted stack NOT RUN; attribution to retained empty-string constructor/fully filled4byte allocation is bounded causal inference from unchanged complete Action diagnosis.",
+    "owner": "repository maintainer",
+    "re_evaluate": "Every subsequent run and any changed code/callsite/message/input/count/runtime/security/integrity/function uncertainty; no general DEP0005 allowance"
+  },
+  "approved_deviations": "Existing explicit v0.31.0-only native GUI/TC193/clipboard/OS-theme/share NOT RUN acceptance remains; no native PASS claimed. TC207 original cause/OS trace NOT RUN and historical Linux SIGSEGV original cause unresolved stay disclosed. No100ms/0.70/75% threshold changes. macOS unnotarized remains disclosed. No acceptance of new defects or waived byte/security gates.",
+  "future_required": "After publication, fresh exactID/publicbytag/latest API readback, canonical tag/asset URLs, same28 assetIDs/names/sizes/API digests, actual public bytes/signature/N-1, exact body and tag/source consistency. Publication not yet performed by reviewer.",
+  "verifier_sha256": "53783a396206b82640d4df01b20739a091de0c95d35efeb5d99a94cacb0d79da",
+  "metadata_observer_sha256": "539cc243c0e9b862c8d32eb28421cc128a7c21dd72684785ed78f620425e4f18",
+  "evidence_sha256": {
+    "run.json": "be87bd4ce02dccaaef13dd6b814f5bc8c3760d45369fe6c711fc6d1e491e717a",
+    "jobs.json": "06b0ccd2303fe72fcf418a1093d1634b6f5780a30137f5e570e722845744f503",
+    "annotations.json": "7b0652b462e173a57ca87017d8b759d08e22cf072717a3cbffea021eb069c108",
+    "artifacts.json": "cc457608d60cbb155e8a6a49b73cea82292051c3c27fc794a07f74adfbdfe6a3",
+    "INDEPENDENT-LOG-REVIEW.json": "c734a5179b51b959796c8b350bea2989a23b50c5db2ec90441bb10f99a531381",
+    "ACTION-FRESH-IDENTITY.json": "e2c1e143b03769b3fef3627e0ab45491c6d2dc3d4a9956de11d4c9f8523561ed",
+    "BUNDLE-VALIDATION.json": "869901a82f8e8c59a9a01497e06cf4fae30d04efb2e760e62b9c8fd603f91b99",
+    "REAL-N-1.txt": "3213a9f47a04d4697d68273d283609a9b71e7e1eb791128ea38721447ab00a2b",
+    "INITIAL-DRAFT-BINDING.json": "3667df026b45a78be3cf9e64f29b4bac00af60dd45d486cae9a33a200a677a4c",
+    "DRAFT-BINDING.json": "a0a14df2f2f019e29a543d39944239856261aef35ac556f17411681a5337c728",
+    "INDEPENDENT-FRESH-DRAFT-BY-ID.json": "f05ea1379e61d645f8c66ccca8d763f9254c1861f1554db885455fe581f78c74",
+    "INDEPENDENT-FRESH-PREPUBLISH-STATE.json": "11b8616920da5f68e823028eec8132f4d6de5f1d56dec9d62b78bff935992516"
+  }
+}

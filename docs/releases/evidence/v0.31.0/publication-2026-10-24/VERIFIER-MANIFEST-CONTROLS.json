@@ -1,0 +1,10 @@
+{
+  "positive": "actual predecessor26manifest PASS",
+  "negative": {
+    "duplicate": "REJECTED: duplicate manifest row",
+    "missing": "REJECTED: manifest inventory mismatch",
+    "bad_digest": "REJECTED: malformed manifest row",
+    "extra_family": "REJECTED: manifest inventory mismatch",
+    "path_escape": "REJECTED: malformed manifest row"
+  }
+}

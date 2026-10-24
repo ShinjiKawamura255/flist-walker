@@ -1,0 +1,28 @@
+{
+  "observed_utc": "2026-10-24T07:55:24.969847+00:00",
+  "reviewer": "independent read-only /root/browse_final_review",
+  "release_id": 422590286,
+  "version": "v0.31.0",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "tag_object": "859199d06328e7b1190ef91d386c3f8c583b4aec",
+  "result": "PASS published public bytes and N-1; no findings",
+  "checks": [
+    "all28 unauthenticated browser URL transport responses passed with expected lengths/digests; helper inspection confirms no Authorization on initial browser download or redirected range requests (API metadata independently authenticated)",
+    "all28 actual public files byte-identical to actual tagged bundle and API asset IDs/names/sizes/digests",
+    "independent full public-byte verify equals tagged and saved public reports:strict26manifest,raw64 Ed25519/trusted predecessor key/onebit tamper controls,8binary keys/compiler/architecture,Windows PE/fullREADME/licenses/notices/archives/plist/modes",
+    "actual public26-entry manifest previous0.30.2\u21920.31.0 N-1 independently rerun PASS",
+    "fresh independent by-ID/by-tag/latest API metadata/canonical URLs/body/annotatedtag/source already verified in INDEPENDENT-PUBLISHED-METADATA.json"
+  ],
+  "helper_sha256": "53783a396206b82640d4df01b20739a091de0c95d35efeb5d99a94cacb0d79da",
+  "transport_helpers_sha256": {
+    "download_artifact.py": "9abd4162f113f51ee00f02ed6d052191b08f8903279780dde74bb5a425ae4604",
+    "download_public_release.py": "a9d4a77aaba6b33485f62911a77f4087b02e278df5095920ffac30d8474841d4"
+  },
+  "formal_residuals": "Previously accepted v0.31.0-only native NOT RUN and original TC207/Linux causes unresolved remain; no native PASS or cause resolution inferred. macOS unnotarized disclosed. Thresholds unchanged.",
+  "evidence_sha256": {
+    "public-v0.31.0-transport.json": "acd54b922cfeb6d977399eabe9fdd774a90c40c852c245b7c532e56ce09d4867",
+    "PUBLIC-BUNDLE-VALIDATION.json": "869901a82f8e8c59a9a01497e06cf4fae30d04efb2e760e62b9c8fd603f91b99",
+    "PUBLIC-REAL-N-1.txt": "3213a9f47a04d4697d68273d283609a9b71e7e1eb791128ea38721447ab00a2b",
+    "INDEPENDENT-PUBLISHED-METADATA.json": "7626e4114ba380f6217e9a11a63b3ae216c21af80a405e816684edc39b12c4cf"
+  }
+}

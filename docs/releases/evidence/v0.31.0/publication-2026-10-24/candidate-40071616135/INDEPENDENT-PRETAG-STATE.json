@@ -1,0 +1,11 @@
+{
+  "observed_utc": "2026-10-24T07:15:56.816728+00:00",
+  "master": "147dac77d025ee0191ff7c949a9a095688115066",
+  "latest_public": "v0.30.2",
+  "latest_release_id": 413006487,
+  "v0.31.0_tag": "ABSENT HTTP404",
+  "candidate_run": 40071616135,
+  "attempt": 1,
+  "candidate_conclusion": "success",
+  "current_artifact_ids_and_digests_match_retained": true
+}

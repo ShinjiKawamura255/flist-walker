@@ -1,0 +1,16 @@
+{
+  "observed_utc": "2026-10-24T07:54:00.893584+00:00",
+  "release_id": 422590286,
+  "version": "v0.31.0",
+  "published_at": "2026-10-24T07:53:02Z",
+  "draft": false,
+  "prerelease": false,
+  "html_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.31.0",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "tag_object": "859199d06328e7b1190ef91d386c3f8c583b4aec",
+  "byID_byTag_latest_all_match": true,
+  "same28assetIDs_names_sizes_digests": true,
+  "all_canonical_assetURLs": true,
+  "body_sha256": "50c65e00b86834a9bc2cfe51005e4a079346ca48cd9a1f51053cc8ed61de2ffe",
+  "result": "PUBLIC METADATA PASS; actual anonymous public byte/N-1 gate still pending"
+}

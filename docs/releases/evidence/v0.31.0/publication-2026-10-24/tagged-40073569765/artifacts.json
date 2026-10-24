@@ -1,0 +1,105 @@
+{
+  "total_count": 5,
+  "artifacts": [
+    {
+      "id": 12552607699,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjYwNzY5OQ==",
+      "name": "release-windows-x86_64",
+      "size_in_bytes": 18247980,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552607699",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552607699/zip",
+      "expired": false,
+      "digest": "sha256:e954196f293f2895d5454309790841bac188700f6d1599c74a2b8cd59e06bcca",
+      "created_at": "2026-10-24T07:31:33Z",
+      "updated_at": "2026-10-24T07:31:33Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12552572706,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjU3MjcwNg==",
+      "name": "release-linux-x86_64",
+      "size_in_bytes": 20095609,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552572706",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552572706/zip",
+      "expired": false,
+      "digest": "sha256:a2b40e305830fc719b42a6b4b356fb8e5042d1d3c0a560b0d6112d27436d5183",
+      "created_at": "2026-10-24T07:30:53Z",
+      "updated_at": "2026-10-24T07:30:53Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12552354896,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjM1NDg5Ng==",
+      "name": "validated-release-bundle-v0.31.0-147dac77d025ee0191ff7c949a9a095688115066",
+      "size_in_bytes": 86708775,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552354896",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552354896/zip",
+      "expired": false,
+      "digest": "sha256:00b444cea1aae64aaa2c0714979571bdb50a03c5e00d19123a1e75915c0bc560",
+      "created_at": "2026-10-24T07:43:29Z",
+      "updated_at": "2026-10-24T07:43:29Z",
+      "expires_at": "2026-11-07T07:43:25Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551899600,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTg5OTYwMA==",
+      "name": "release-macos-x86_64",
+      "size_in_bytes": 25334211,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551899600",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551899600/zip",
+      "expired": false,
+      "digest": "sha256:e6e2bc67b6f569fd0f1e97a153f4ad3d634ef1958c9be4152677cfb2c080962c",
+      "created_at": "2026-10-24T07:41:44Z",
+      "updated_at": "2026-10-24T07:41:44Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551779634,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTc3OTYzNA==",
+      "name": "release-macos-arm64",
+      "size_in_bytes": 23031699,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551779634",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551779634/zip",
+      "expired": false,
+      "digest": "sha256:d1ae7c4a62129aa154f2ffa62c028c7b985c5dbefef1b33f13799ce12b2596fb",
+      "created_at": "2026-10-24T07:34:51Z",
+      "updated_at": "2026-10-24T07:34:51Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    }
+  ]
+}

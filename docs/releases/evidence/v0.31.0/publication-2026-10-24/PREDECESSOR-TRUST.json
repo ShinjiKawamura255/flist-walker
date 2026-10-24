@@ -1,0 +1,34 @@
+{
+  "result": "PASS",
+  "source": "Fresh actual publicv0.30.2 download; binary not executed",
+  "release_id": 413006487,
+  "tag": "v0.30.2",
+  "verification_key_hex": "6733c5e70dd31e1bd2e2f8eac7356e88b169f1355d0cbfac5e0cf9d1ac2a12e6",
+  "files": [
+    {
+      "name": "SHA256SUMS",
+      "size": 2754,
+      "sha256": "2c68092d4b2944454926d2388941d60ab3708d7370e142a58264c44cdde154b5",
+      "asset_id": 641147137
+    },
+    {
+      "name": "SHA256SUMS.sig",
+      "size": 64,
+      "sha256": "5b56b71f02297c59f91df02b4464cd13dc6770fb9d7382b5cd26c66cf0728388",
+      "asset_id": 641147141
+    },
+    {
+      "name": "fw-0.30.2-macos-arm64",
+      "size": 5048640,
+      "sha256": "0f46c34b36092d9954eddc91005e59b1ffc0a846081a93366228c4115d889707",
+      "asset_id": 641147162
+    }
+  ],
+  "checks": [
+    "Public API digests match actual files",
+    "Actual binary digest matches signed actual26entry manifest",
+    "Previous known public key exists in actual binary",
+    "Raw64byte signature verifies",
+    "One-bit manifest tamper rejected"
+  ]
+}

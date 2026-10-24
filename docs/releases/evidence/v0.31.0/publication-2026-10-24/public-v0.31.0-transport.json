@@ -1,0 +1,204 @@
+{
+  "release_id": 422590286,
+  "tag": "v0.31.0",
+  "unauthenticated_public_browser_url": true,
+  "assets": [
+    {
+      "id": 671622072,
+      "name": "FlistWalker-0.31.0-linux-x86_64",
+      "exit": 0,
+      "output": "{\"id\": 671622072, \"bytes\": 19561056, \"sha256\": \"e512db43b26c58464ed2621fa7c25693c04536b28e231772f1ba0b70dc5e7eb9\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622069,
+      "name": "FlistWalker-0.31.0-linux-x86_64.LICENSE.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622069, \"bytes\": 1071, \"sha256\": \"9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622067,
+      "name": "FlistWalker-0.31.0-linux-x86_64.README.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622067, \"bytes\": 6871, \"sha256\": \"09771e05da6b4123a9c1ab8b274900f6bcdb72755f37e09a1b51abe268cf6b6d\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622071,
+      "name": "FlistWalker-0.31.0-linux-x86_64.tar.gz",
+      "exit": 0,
+      "output": "{\"id\": 671622071, \"bytes\": 8482513, \"sha256\": \"68ca11c96457c48b81e1530b80a5e04f622dae054b004c111f44f1166ee4707e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622068,
+      "name": "FlistWalker-0.31.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622068, \"bytes\": 5122, \"sha256\": \"44f7a579aa7c7a78d304538f749f14d5f7d74458015f79c11dbab6f9b57515c2\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622083,
+      "name": "FlistWalker-0.31.0-macos-arm64",
+      "exit": 0,
+      "output": "{\"id\": 671622083, \"bytes\": 13617008, \"sha256\": \"6a5df18d040e5c2cbedabb55f2e6dfefc54ff26fc98cb7f0b43da80dbfb0768d\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622091,
+      "name": "FlistWalker-0.31.0-macos-arm64-app.zip",
+      "exit": 0,
+      "output": "{\"id\": 671622091, \"bytes\": 6794154, \"sha256\": \"a85138b06a6b3dcb6dcbb50d2bdc7b1f86f57206c5e151739fc429d5c8f63ac0\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622093,
+      "name": "FlistWalker-0.31.0-macos-arm64.LICENSE.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622093, \"bytes\": 1071, \"sha256\": \"9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622099,
+      "name": "FlistWalker-0.31.0-macos-arm64.README.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622099, \"bytes\": 6798, \"sha256\": \"b10178ceaa55fbd3d65fcd91275d9db2bbf2943e5ccefe92a84f42913e7423de\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622120,
+      "name": "FlistWalker-0.31.0-macos-arm64.tar.gz",
+      "exit": 0,
+      "output": "{\"id\": 671622120, \"bytes\": 6695260, \"sha256\": \"d7a18e3f6300f095e62c974a939f5f04bbc03f22820c3717c26374a56f5009c8\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622116,
+      "name": "FlistWalker-0.31.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622116, \"bytes\": 5122, \"sha256\": \"44f7a579aa7c7a78d304538f749f14d5f7d74458015f79c11dbab6f9b57515c2\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622123,
+      "name": "FlistWalker-0.31.0-macos-x86_64",
+      "exit": 0,
+      "output": "{\"id\": 671622123, \"bytes\": 15913592, \"sha256\": \"dafe4ce49a4cec9355f5b7d800bff33775f0b1c88390b10cd92f55dcf2e7b842\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622127,
+      "name": "FlistWalker-0.31.0-macos-x86_64-app.zip",
+      "exit": 0,
+      "output": "{\"id\": 671622127, \"bytes\": 7529452, \"sha256\": \"e3d8a936d2ae04e18583dfeddfb5c3288b53ed541513497c491a21ce12a6b462\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622133,
+      "name": "FlistWalker-0.31.0-macos-x86_64.LICENSE.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622133, \"bytes\": 1071, \"sha256\": \"9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622135,
+      "name": "FlistWalker-0.31.0-macos-x86_64.README.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622135, \"bytes\": 6802, \"sha256\": \"b331bde59822996bbfdd5081a588525340e1b7c724ea86bb97d617429cc6ef27\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622147,
+      "name": "FlistWalker-0.31.0-macos-x86_64.tar.gz",
+      "exit": 0,
+      "output": "{\"id\": 671622147, \"bytes\": 7430047, \"sha256\": \"7daf757ae5642b8d2ba124347dd914f967a6cadb9536b9ef0f8fdd762a2acfae\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622143,
+      "name": "FlistWalker-0.31.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622143, \"bytes\": 5122, \"sha256\": \"44f7a579aa7c7a78d304538f749f14d5f7d74458015f79c11dbab6f9b57515c2\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622156,
+      "name": "FlistWalker-0.31.0-windows-x86_64.exe",
+      "exit": 0,
+      "output": "{\"id\": 671622156, \"bytes\": 16576000, \"sha256\": \"e5d0a2cf3f4bedd2a389e6eeb4212778a95ac2e35c15ae263224b97304e4830e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622149,
+      "name": "FlistWalker-0.31.0-windows-x86_64.LICENSE.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622149, \"bytes\": 1071, \"sha256\": \"9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622150,
+      "name": "FlistWalker-0.31.0-windows-x86_64.README.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622150, \"bytes\": 7208, \"sha256\": \"e4e283abaa5a2045411f4b31eb6a9324c735edc0d642b22a201b7d6359050a63\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622151,
+      "name": "FlistWalker-0.31.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "exit": 0,
+      "output": "{\"id\": 671622151, \"bytes\": 5122, \"sha256\": \"44f7a579aa7c7a78d304538f749f14d5f7d74458015f79c11dbab6f9b57515c2\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622168,
+      "name": "FlistWalker-0.31.0-windows-x86_64.zip",
+      "exit": 0,
+      "output": "{\"id\": 671622168, \"bytes\": 7565561, \"sha256\": \"3eb9719f9eac8ea2cd8897a7fb39a99378ae6b17ecf44a64e2d3b4ef7c80dd6a\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622185,
+      "name": "fw-0.31.0-linux-x86_64",
+      "exit": 0,
+      "output": "{\"id\": 671622185, \"bytes\": 6698560, \"sha256\": \"d99252f8946920f13e986d0e7e37763c4faf1a08952cffd3b0680e83f8b97ff2\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622189,
+      "name": "fw-0.31.0-macos-arm64",
+      "exit": 0,
+      "output": "{\"id\": 671622189, \"bytes\": 5164208, \"sha256\": \"9e9047b98d1f126db40580534723806e7e5695cd3f267210c85e2b7c263b31c3\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622188,
+      "name": "fw-0.31.0-macos-x86_64",
+      "exit": 0,
+      "output": "{\"id\": 671622188, \"bytes\": 5953572, \"sha256\": \"b1029f88cbb675343ad89a7bd7f7097ab488b3640fd2e1a4576c74dcd5c432b9\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622193,
+      "name": "fw-0.31.0-windows-x86_64.exe",
+      "exit": 0,
+      "output": "{\"id\": 671622193, \"bytes\": 6253568, \"sha256\": \"4ebb0c4c411f3b74938036a03f9267361c48ab5997a18b97f6e520104006f0c3\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622176,
+      "name": "SHA256SUMS",
+      "exit": 0,
+      "output": "{\"id\": 671622176, \"bytes\": 2754, \"sha256\": \"01dd2ac2988a5d417aa1aaf5c45d03f656bd81e59b2f689aab384ef2ab94e913\", \"result\": \"PASS\"}",
+      "stderr": ""
+    },
+    {
+      "id": 671622180,
+      "name": "SHA256SUMS.sig",
+      "exit": 0,
+      "output": "{\"id\": 671622180, \"bytes\": 64, \"sha256\": \"07670c7d89d7a7c1a60ef261c2a8871f5aaf5e2fc50db412ce9d10082638afdf\", \"result\": \"PASS\"}",
+      "stderr": ""
+    }
+  ],
+  "result": "PASS"
+}

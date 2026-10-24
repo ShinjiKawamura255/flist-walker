@@ -1,0 +1,20 @@
+{
+  "conclusion": "",
+  "createdAt": "2026-10-24T07:17:48Z",
+  "databaseId": 40073569765,
+  "event": "push",
+  "headBranch": "v0.31.0",
+  "headSha": "147dac77d025ee0191ff7c949a9a095688115066",
+  "status": "in_progress",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40073569765",
+  "tag": "v0.31.0",
+  "tag_object": "859199d06328e7b1190ef91d386c3f8c583b4aec",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "candidate_run": 40071616135,
+  "candidate_artifact": 12551992799,
+  "candidate_final": "GO; independent no findings",
+  "user_authority": "Explicit preparation and actual release; exact v0.31.0-only native and historical unknown-cause deviations accepted",
+  "operation": "one annotated tag creation/push, no overwrite",
+  "tagged_gate": "All gates new run/bytes/warnings required; candidate exception not inherited",
+  "observed_utc": "2026-10-24T07:18:20.797553+00:00"
+}

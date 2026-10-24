@@ -1,0 +1,742 @@
+{
+  "version": "v0.31.0",
+  "pr": 204,
+  "run": 40070314647,
+  "attempt": 1,
+  "source": "304331af9831dd0819c4a30a66b84594c8910379",
+  "merged": "147dac77d025ee0191ff7c949a9a095688115066",
+  "jobs": [
+    {
+      "id": 120802141659,
+      "name": "Detect Changes",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Classify changes fail closed",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        }
+      ]
+    },
+    {
+      "id": 120802141907,
+      "name": "CI Policy",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Validate repository tooling",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        }
+      ]
+    },
+    {
+      "id": 120802194795,
+      "name": "Clippy and Coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust with clippy and llvm tools",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Install cargo-llvm-cov",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run cargo fmt",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Run cargo clippy",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Prepare coverage output directory",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Install Linux fault debugger",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10
+        },
+        {
+          "name": "Generate coverage report",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11
+        },
+        {
+          "name": "Upload Linux fault diagnostics",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Upload coverage artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        },
+        {
+          "name": "Post Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27
+        }
+      ]
+    },
+    {
+      "id": 120802194834,
+      "name": "Windows GNU Updater Build",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust with target",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Install mingw-w64",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Build updater test channel",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Upload Windows GNU test-channel artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Post Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 15
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 16
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        }
+      ]
+    },
+    {
+      "id": 120802194873,
+      "name": "Rust Test and Build (windows-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run platform clippy",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Run lightweight perf gate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Build release",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Post Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19
+        }
+      ]
+    },
+    {
+      "id": 120802194914,
+      "name": "Rust Test and Build (linux-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run platform clippy",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 7
+        },
+        {
+          "name": "Run lightweight perf gate",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Build release",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Post Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19
+        }
+      ]
+    },
+    {
+      "id": 120802194918,
+      "name": "Rust Test and Build (macos-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Run tests",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Run platform clippy",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7
+        },
+        {
+          "name": "Run lightweight perf gate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "number": 8
+        },
+        {
+          "name": "Build release",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        },
+        {
+          "name": "Post Cache Cargo downloads",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 17
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 18
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 19
+        }
+      ]
+    },
+    {
+      "id": 120802196215,
+      "name": "Cargo Audit",
+      "status": "completed",
+      "conclusion": "skipped",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": null
+    },
+    {
+      "id": 120803158017,
+      "name": "Windows GNU Updater E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Install Rust for manifest signer",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Download Windows GNU test-channel artifact",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5
+        },
+        {
+          "name": "Execute sandbox self-update",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6
+        },
+        {
+          "name": "Post Checkout",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13
+        }
+      ]
+    },
+    {
+      "id": 120805477412,
+      "name": "CI Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 40070314647,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Record runner image",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Verify required results",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        }
+      ]
+    }
+  ],
+  "logs": [
+    {
+      "id": 120802141659,
+      "bytes": 30024,
+      "sha256": "d510a3698b4832943bae4770830892f1f7b84b86d5739800ed8dc30f0552c20b",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802141907,
+      "bytes": 16440,
+      "sha256": "43221948f29ef8f21801f34c53453c03717feb90b16a0b05646f2f024ad85356",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802194795,
+      "bytes": 368455,
+      "sha256": "4c7c0378a1a4f507926e451adb60bd53b45ec303c205384d328f21771c421571",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802194834,
+      "bytes": 72724,
+      "sha256": "8e39a0b54bb8ce9011caed95f6381495cc1bc3e80e8956f8c6d18f1b4d076bc3",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802194873,
+      "bytes": 352239,
+      "sha256": "d2fd385f90fbdead2758de935524f2e8367cae2ce9d21a10ad7c5324f41299f5",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802194914,
+      "bytes": 315498,
+      "sha256": "0ee9d8709cad18c85a18765f978a08ad81af68ca7283a330d4cc62e3437d2879",
+      "actual_emissions": []
+    },
+    {
+      "id": 120802194918,
+      "bytes": 349018,
+      "sha256": "e385a63cfd7aa60d3ebf933319864413ffb7bdfe8a8e094a9391157c4134b31e",
+      "actual_emissions": []
+    },
+    {
+      "id": 120803158017,
+      "bytes": 41428,
+      "sha256": "ed3fed7462b7acf396a9d9c5846d4977a61f39e303119aba899e4b2d2b12f7c5",
+      "actual_emissions": [
+        "2026-10-24T06:33:36.4533743Z (node:7944) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ]
+    },
+    {
+      "id": 120805477412,
+      "bytes": 4974,
+      "sha256": "a8cc712b116d60130b35967d80a236dd26c562a348d6fa21320a220861e5d344",
+      "actual_emissions": []
+    }
+  ],
+  "annotations": {
+    "120802141659": [],
+    "120802141907": [],
+    "120802194795": [],
+    "120802194834": [],
+    "120802194873": [],
+    "120802194914": [],
+    "120802194918": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/304331af9831dd0819c4a30a66b84594c8910379/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "120802196215": [],
+    "120803158017": [],
+    "120805477412": [],
+    "120802142862": []
+  },
+  "coverage": {
+    "covered_lines": 44892,
+    "total_lines": 52397,
+    "percent": 85.67666087753116,
+    "threshold_percent": 75,
+    "result": "PASS"
+  },
+  "coverage_diagnostics": {
+    "complete": true,
+    "coverage_exit": 0,
+    "errors": [],
+    "core_settings": "RESTORED",
+    "diagnostic_api_zip_sha256": "b93b93505e728b716d2906c5b437ee98ff2c0778c8140872c2ce4b292980d87c"
+  },
+  "external_action": {
+    "version": "v8.0.2",
+    "full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "runtime": "node24",
+    "actual_runner": "2.338.0",
+    "minimum_runner": "2.327.1",
+    "full_bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "diagnostic": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+    "artifact_id": 12550659766,
+    "api_upload_expected_computed_sha256": "4495501802ce54e49302f4156eb2c8672136184c5276ac4a867d7f408fbffe73",
+    "digest_mismatch": "error"
+  },
+  "assessment": "MINOR exact source-CI run40070314647 attempt1 only: independent final review no findings. All logs/annotations/API digest/coverage verified. No inheritance to candidate/tagged."
+}

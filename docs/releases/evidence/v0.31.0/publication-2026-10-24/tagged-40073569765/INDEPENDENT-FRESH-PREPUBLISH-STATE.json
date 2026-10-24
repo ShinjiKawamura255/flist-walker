@@ -1,0 +1,15 @@
+{
+  "observed_utc": "2026-10-24T07:51:23.266325+00:00",
+  "release_id": 422590286,
+  "draft": true,
+  "target": "147dac77d025ee0191ff7c949a9a095688115066",
+  "body_sha256": "50c65e00b86834a9bc2cfe51005e4a079346ca48cd9a1f51053cc8ed61de2ffe",
+  "all28asset_ids_names_sizes_digests_match_reviewed": true,
+  "master": "147dac77d025ee0191ff7c949a9a095688115066",
+  "tag_object": "859199d06328e7b1190ef91d386c3f8c583b4aec",
+  "tag_peeled": "147dac77d025ee0191ff7c949a9a095688115066",
+  "latest_public": "v0.30.2",
+  "tagged_run": 40073569765,
+  "run_conclusion": "success",
+  "run_attempt": 1
+}
