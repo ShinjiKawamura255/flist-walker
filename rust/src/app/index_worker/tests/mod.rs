@@ -486,6 +486,7 @@ fn adaptive_walker_can_stop_from_consumer_callback() {
 
 #[test]
 fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
+    let _config_scope = crate::runtime_config::runtime_config_test_guard();
     set_process_runtime_config(RuntimeConfig {
         developer: DeveloperRuntimeConfig {
             walker_adaptive_initial_limit: Some(1),
@@ -517,7 +518,6 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
     let result = stream_walker_index(&tx_res, &req, &root, &shutdown, &latest_request_ids);
 
     assert_eq!(result, Err("superseded".to_string()));
-    set_process_runtime_config(RuntimeConfig::default());
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -1138,6 +1138,7 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
 
 #[test]
 fn index_worker_trace_smoke_emits_canonical_fields() {
+    let _config_scope = crate::runtime_config::runtime_config_test_guard();
     init_test_tracing();
     set_process_runtime_config(RuntimeConfig::default());
     let root = test_root("trace-smoke");

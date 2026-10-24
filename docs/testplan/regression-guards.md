@@ -29,10 +29,17 @@ Back to the [Validation Matrix](validation-matrix.md).
 ### Regression Guard: stateful response ownership is request-exact
 
 - Scenario: endurance oracle が index/search の全 routed tab を response owner として除外し、実際には応答を消費しない別 tab の mutation を見逃す。または reclaimer 待機の根拠がない notice 変化を scheduler side effect として無条件に許す。
-- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id と、前 event から submitted 済みで未消費の request_id の route owner だけを一次 owner とする。応答処理後は family/request_id/tab_id の組で新規 route を判定し、同じ tab の旧 route が残っていても新要求の owner transfer を識別する。resource reservation により lifecycle が新たに `Evicted` へ遷移した exact tab だけも証跡付き downstream owner とする。reclaimer notice の例外は、直前 snapshot に対応する reclaim-pending state があり、既知の reclamation/finalization phase 間を遷移する場合だけ認める。
+- Expected Behavior: 応答直前に oldest/newest として実際に選ばれる request_id と、前 event から submitted 済みで未消費の request_id の route owner だけを一次 owner とする。応答処理後は family/request_id/tab_id の組で新規 route を判定し、同じ tab の旧 route が残っていても新要求の owner transfer を識別する。resource reservation により lifecycle が新たに `Evicted` へ遷移した exact tab だけも証跡付き downstream owner とする。 frame準備で保存済みbackground rootを適用する場合も、pending finish→最初のbuild reclaim→最初のdeferred refreshの優先順位で実際に選ばれるcandidateだけをownerに含める。paused tabへのroot適用は新index routeを作らない場合があり、root flagだけや後順位candidateへ一括して権限を与えない。reclaimer notice の例外は、直前 snapshot に対応する reclaim-pending state があり、既知の reclamation/finalization phase 間を遷移する場合だけ認める。
 - Non-goals: worker 完了順序の固定、非応答イベント間の tab mutation 比較、scheduler が正当に追加した新規 route の拒否。
-- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_downstream_owner_uses_request_identity_when_tab_is_already_routed`, `tc_184_response_owner_includes_only_the_exact_newly_evicted_tab`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`, `tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases`。
+- Related Tests: TC-183, TC-184, `tc_184_response_owner_is_exact_and_cross_owner_mutation_is_rejected_regression`, `tc_184_downstream_owner_uses_request_identity_when_tab_is_already_routed`, `tc_184_response_owner_includes_only_the_exact_newly_evicted_tab`, `tc_184_unrelated_reclaimer_wait_notice_is_not_ignored_regression`, `tc_184_reclaimer_wait_notice_requires_matching_pending_transition`, `tc_184_reclaimer_phase_notice_transition_requires_known_pending_phases`, `tc_184_deferred_background_root_retry_owns_only_its_saved_target`, `tc_184_background_root_retry_respects_single_candidate_priority`。
 - Notes for Future Changes: response event を追加する場合は pending request の選択規則と request_id route を同じ owner resolver に接続する。notice 文字列だけで例外化せず、直前 state の因果フラグを snapshot に含める。
+
+### Regression Guard: runtime-configuration tests own and restore shared state
+
+- Scenario: effective settingsのbefore/after比較中に、別テストがprocess共通設定を適用する。また、テスト終了時に既定値へ上書きするか、変更値を残して後続テストへ漏らす。
+- Expected Behavior: 同一process内の設定を変更するテストと変更有無を比較するテストは、既存env test mutexを共有するtest-only scopeを使う。scopeは変更前のprocess snapshotを保持し、mutex解放前にその値を復元する。設定保存の不変assertionはscope内で実行し、保存処理自身による意図しない適用は引き続き検出する。環境変数の復元は既存EnvRestoreが担当し、test mutexのpoisonを自動解除しない。
+- Related Tests: `process_config_test_scope_restores_the_process_snapshot`, `process_config_restore_runs_when_a_test_operation_unwinds`, `editable_settings_save_preserves_unknown_json_and_defers_effective_config`。index-workerのdirect setter testsも同scopeを使用する。単一leaf child内または明示serialのignored測定は別process/実行条件で隔離する。
+- Non-goals: production設定のlockや反映タイミングの変更、全テストの直列化、設定保存がeffective configを変えた失敗の隠蔽。
 
 ### Regression Guard: Recent Inactive engagement follows actual mutations
 
