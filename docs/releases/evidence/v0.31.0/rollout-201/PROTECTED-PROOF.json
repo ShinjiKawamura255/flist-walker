@@ -1,0 +1,81 @@
+{
+  "pr": 202,
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/pull/202",
+  "state": "MERGED",
+  "merged_at": "2026-10-24T06:05:57Z",
+  "base": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+  "source_commits": [
+    {
+      "sha": "c2cdf6e9792d279d39904ef2faea8009f00297d5",
+      "tree": "a0dff8d5d306cc6b1cfb9fd6ae05362dcae8c85f",
+      "parents": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T15:02:24+09:00",
+      "message": "docs(ci): retain PR201 controlled activation and full restoration",
+      "stable_patch_id": "ff9140a8ef9d4531b260b38c983d0505141d8fe7"
+    },
+    {
+      "sha": "fc489fe6660bac0cec1b2b3a5c089bd113d0b7b3",
+      "tree": "0e0d3abc385cd458911131b674a560012f99670a",
+      "parents": "c2cdf6e9792d279d39904ef2faea8009f00297d5",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T15:02:26+09:00",
+      "message": "docs(release): disclose accepted v0.31.0 validation gaps",
+      "stable_patch_id": "73b8e2aea147605acb3480867b81d354b9a228f7"
+    }
+  ],
+  "merged_commits": [
+    {
+      "sha": "efb62d2b4993c5c66ad421a214dc22863cd8318c",
+      "tree": "a0dff8d5d306cc6b1cfb9fd6ae05362dcae8c85f",
+      "parents": "13360a79526d7e9c7dcdbcaef0080cd6ea7ae1d4",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T15:02:24+09:00",
+      "message": "docs(ci): retain PR201 controlled activation and full restoration",
+      "stable_patch_id": "ff9140a8ef9d4531b260b38c983d0505141d8fe7"
+    },
+    {
+      "sha": "f0a98835856d45c34d0af829efdd15b28de3d9e0",
+      "tree": "0e0d3abc385cd458911131b674a560012f99670a",
+      "parents": "efb62d2b4993c5c66ad421a214dc22863cd8318c",
+      "author_name": "ShinjiKawamura",
+      "author_email": "southerncross456@gmail.com",
+      "author_date": "2026-10-24T15:02:26+09:00",
+      "message": "docs(release): disclose accepted v0.31.0 validation gaps",
+      "stable_patch_id": "73b8e2aea147605acb3480867b81d354b9a228f7"
+    }
+  ],
+  "result": "PASS all ordered commit/message/author/patch/tree/single-parent checks",
+  "required_checks": [
+    {
+      "id": 120797560546,
+      "name": "CI Gate",
+      "head_sha": "fc489fe6660bac0cec1b2b3a5c089bd113d0b7b3",
+      "conclusion": "success",
+      "app_id": 15368,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40068680724/job/120797560546"
+    },
+    {
+      "id": 120797220129,
+      "name": "CI Policy Guardian",
+      "head_sha": "fc489fe6660bac0cec1b2b3a5c089bd113d0b7b3",
+      "conclusion": "success",
+      "app_id": 15368,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40068680784/job/120797220129"
+    }
+  ],
+  "restored_policy_equal_to_original": true,
+  "policy_sha256": "d37c3b74e2874a6fcf2158288dd6db5a00a3c69cfd262f5dde463fa20decb107",
+  "pr180": {
+    "state": "open",
+    "draft": true,
+    "head": "4765157e854f4fa46a08d573fca4754e531aeec1",
+    "auto_merge": null
+  },
+  "remote_branch_auto_deleted": true,
+  "local_checkout": "Only owner checkout synchronized; other worktrees unchanged",
+  "product_evidence_reuse": "Proof and receipt only change docs/evidence; application/dependencies/build remain those of PR201 exact source CI40067017249. Candidate tests/audit/artifact verification remain fresh."
+}
