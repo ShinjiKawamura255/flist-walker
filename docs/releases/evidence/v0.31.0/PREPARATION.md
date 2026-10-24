@@ -2,7 +2,15 @@
 
 ## Active release execution — 2026-10-24 JST
 
-**CANDIDATE PREPARATION; protected proof complete; new distribution and publication gates remain pending.** The user explicitly requests preparation and actual publication of v0.31.0. The subsequent version-scoped decisions and completed PR201 controlled rollout are recorded immediately below. This section is the single current execution packet; the original candidate observations below and the [failed regenerated candidate](regenerated-39810727499/REPORT.md) retain their original identities and results.
+**CANDIDATE REJECTED BY PACKAGING CHECK; minimal repair prepared; publication gates remain pending.** The user explicitly requests preparation and actual publication of v0.31.0. The subsequent version-scoped decisions and completed PR201 controlled rollout are recorded below. This section is the single current execution packet; the original candidate observations and the [failed regenerated candidate](regenerated-39810727499/REPORT.md) retain their original identities and results.
+
+### Candidate40069314271 README rejection and repair
+
+[Candidate40069314271](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40069314271), attempt1, manual/master source39173e0f52927be7fcc0f62e8c73f2d5f88b6d1d, was dispatched once after the protected proof/receipt. Latest-public readback was0.30.2; explicit26-entry N-1 self-test passed and0.31.0 tag was absent. Fresh actual predecessor manifest/signature/fw-arm64 public-API digests, trusted key presence and one-bit signature tamper rejection passed. Native user deviations remain unchanged.
+
+During independent byte-verifier review, complete README-source comparison exposed an existing Windows packaging defect: `prepare-release.sh` uses an expanding heredoc but its two Markdown code spans were unescaped. [Owned reproduction](README-REPRODUCTION.json) records exit0 with two attempted commands and missing literal file names. The Linux script already escapes these spans and passes the adjacent control; macOS uses a quoted template. This is a concrete generation defect, not an external Action warning exception. Do not promote40069314271 even if its workflow completes successfully; preserve its original run/artifacts/logs rather than cancel/retry to obtain green.
+
+The minimal Windows repair escapes the four backticks, matching the existing Linux convention. A focused test executes the actual packager in a disposable owned repository with inert, never-executed binary files and two harmless canary commands. Before repair Windows invokes the canaries (RED); after repair Windows/Linux both retain literal names and the proper variant/version, invoke neither canary, emit no stderr and put byte-identical README in archive and sidecar (GREEN). No binary/compiler/profile/key/persistent format/license/asset-name or workflow changes. A replacement candidate must use the protected merged repair and new source/run identities; current failed bytes are never relabeled. The public CHANGELOG discloses the corrected Windows README.
 
 ### Approved scope and completed controlled activation
 
