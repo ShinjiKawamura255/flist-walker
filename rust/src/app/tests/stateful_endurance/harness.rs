@@ -436,6 +436,7 @@ impl StatefulHarness {
                     owners.insert(tab.id);
                 }
             }
+            owners.extend(self.pending_background_root_retry_owner());
             // Retrying a previously requested activation can change the
             // current tab's waiting notice and transfer the target's state.
             if let Some(target_id) = self.app.shell.tabs.pending_activation_tab_id {
@@ -491,6 +492,39 @@ impl StatefulHarness {
             );
         }
         Some(owners)
+    }
+
+    fn pending_background_root_retry_owner(&self) -> Option<u64> {
+        // Mirror prepare_frame's single-candidate priority. A saved background
+        // root can be applied before index admission (including a paused tab),
+        // without a new route through which the snapshot comparison could infer
+        // ownership. A root flag alone, or a later candidate, grants no owner.
+        let inactive = || {
+            self.app
+                .shell
+                .tabs
+                .iter()
+                .enumerate()
+                .filter(|(index, _)| *index != self.app.shell.tabs.active_tab_index())
+                .map(|(_, tab)| tab)
+        };
+        if inactive().any(|tab| tab.index_state.pending_index_finish.is_some()) {
+            return None;
+        }
+        if let Some(tab) = inactive().find(|tab| tab.index_state.build_reclaim_pending) {
+            return (self.app.shell.indexing.index_start_admitted(tab.id)
+                && tab.index_state.refresh_after_pending_finish.is_some()
+                && tab.index_state.root_after_pending_finish.is_some())
+            .then_some(tab.id);
+        }
+        inactive()
+            .find(|tab| {
+                tab.index_state.pending_index_request_id.is_none()
+                    && tab.index_state.pending_index_finish.is_none()
+                    && tab.index_state.refresh_after_pending_finish.is_some()
+            })
+            .filter(|tab| tab.index_state.root_after_pending_finish.is_some())
+            .map(|tab| tab.id)
     }
 
     fn assert_other_tab_content_unchanged(
@@ -1278,6 +1312,231 @@ mod tests {
         if let Err(error) = result {
             std::panic::resume_unwind(error);
         }
+    }
+
+    #[test]
+    fn tc_184_deferred_background_root_retry_owns_only_its_saved_target() {
+        let mut harness = StatefulHarness::new("endurance-background-root-retry-owner");
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        let background_id = harness.app.shell.tabs.get(0).unwrap().id;
+        let unrelated_id = harness.app.shell.tabs.get(1).unwrap().id;
+        let active_id = harness.app.current_tab_id().unwrap();
+        let saved_target = harness.roots[1].clone();
+        harness
+            .app
+            .shell
+            .indexing
+            .suspend_index_retry(background_id);
+        let state = &mut harness.app.shell.tabs.get_mut(0).unwrap().index_state;
+        state.apply_resource_transition(crate::app::tab_state::TabResourceTransition::Failure);
+        state.root_after_pending_finish = Some(saved_target.clone());
+        state.refresh_after_pending_finish = Some(crate::app::PendingIndexRefreshMode::Normal);
+        let event = Event::DeliverStaleIndex;
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let owners = harness.response_owners(&event).unwrap();
+            assert_eq!(owners, HashSet::from([background_id]));
+            let before = harness.snapshot();
+            let next_request = harness.app.shell.indexing.next_request_id;
+            harness.apply(&event);
+            harness.capture_requests();
+            let after = harness.snapshot();
+            let background = harness.app.shell.tabs.get(0).unwrap();
+            assert_eq!(background.root, saved_target);
+            assert_eq!(
+                background.index_state.lifecycle(),
+                TabResourceLifecycle::Dormant
+            );
+            assert!(background.index_state.root_after_pending_finish.is_none());
+            assert!(!harness.app.shell.indexing.index_admitted(background_id));
+            assert_eq!(harness.app.shell.indexing.next_request_id, next_request);
+            harness.assert_other_tab_content_unchanged(
+                &before, &after, &owners, 0x1840002e, 337, &event,
+            );
+            // The originally observed terminal-failure event runs the same
+            // frame preparation before applying its own, distinct request.
+            let response_request = harness
+                .app
+                .shell
+                .indexing
+                .allocate_request_id(Some(unrelated_id));
+            let response_root = harness.app.shell.tabs.get(1).unwrap().root.clone();
+            let state = &mut harness.app.shell.tabs.get_mut(1).unwrap().index_state;
+            state.pending_index_request_id = Some(response_request);
+            state.index_in_progress = true;
+            harness.pending_indexes.push_back(IndexRequest {
+                request_id: response_request,
+                tab_id: unrelated_id,
+                root: response_root,
+                use_filelist: false,
+                include_files: true,
+                include_dirs: true,
+                max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
+                complete_walker_snapshot: false,
+            });
+            let state = &mut harness.app.shell.tabs.get_mut(0).unwrap().index_state;
+            state.root_after_pending_finish = Some(harness.roots[2].clone());
+            state.refresh_after_pending_finish = Some(crate::app::PendingIndexRefreshMode::Normal);
+            let failed = Event::CompleteNewestIndex(TerminalOutcome::Failed);
+            let failed_owners = harness.response_owners(&failed).unwrap();
+            assert_eq!(failed_owners, HashSet::from([background_id, unrelated_id]));
+            let failed_before = harness.snapshot();
+            harness.apply(&failed);
+            harness.capture_requests();
+            let failed_after = harness.snapshot();
+            assert_eq!(
+                harness.app.shell.tabs.get(0).unwrap().root,
+                harness.roots[2]
+            );
+            assert!(harness
+                .app
+                .shell
+                .tabs
+                .get(0)
+                .unwrap()
+                .index_state
+                .root_after_pending_finish
+                .is_none());
+            assert!(!harness.app.shell.indexing.index_admitted(background_id));
+            assert_eq!(
+                harness.app.shell.indexing.next_request_id,
+                response_request + 1
+            );
+            harness.assert_other_tab_content_unchanged(
+                &failed_before,
+                &failed_after,
+                &failed_owners,
+                0x1840002e,
+                337,
+                &failed,
+            );
+            for wrong_id in [unrelated_id, active_id] {
+                let mut wrong_after = after.clone();
+                wrong_after
+                    .tabs
+                    .iter_mut()
+                    .find(|tab| tab.id == wrong_id)
+                    .unwrap()
+                    .root = 2;
+                assert!(
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        harness.assert_other_tab_content_unchanged(
+                            &before,
+                            &wrong_after,
+                            &owners,
+                            0x1840002e,
+                            337,
+                            &event,
+                        );
+                    }))
+                    .is_err(),
+                    "root retry must not permit unrelated root changes"
+                );
+            }
+        }));
+        harness.cleanup();
+        if let Err(error) = result {
+            std::panic::resume_unwind(error);
+        }
+    }
+
+    #[test]
+    fn tc_184_background_root_retry_respects_single_candidate_priority() {
+        let mut harness = StatefulHarness::new("endurance-background-root-retry-priority");
+        for _ in 0..3 {
+            harness.app.create_new_tab();
+        }
+        let first = harness.app.shell.tabs.get(0).unwrap().id;
+        let second = harness.app.shell.tabs.get(1).unwrap().id;
+        for (index, root) in [(0, 1), (1, 2)] {
+            let state = &mut harness.app.shell.tabs.get_mut(index).unwrap().index_state;
+            state.root_after_pending_finish = Some(harness.roots[root].clone());
+            state.refresh_after_pending_finish = Some(crate::app::PendingIndexRefreshMode::Normal);
+        }
+        let event = Event::DeliverStaleIndex;
+        assert_eq!(
+            harness.response_owners(&event).unwrap(),
+            HashSet::from([first])
+        );
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(2)
+            .unwrap()
+            .index_state
+            .pending_index_finish = Some(PendingActiveIndexFinish {
+            request_id: 777,
+            source: IndexSource::Walker,
+        });
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "a retained finish blocks lower-priority root retries"
+        );
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(2)
+            .unwrap()
+            .index_state
+            .pending_index_finish = None;
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(2)
+            .unwrap()
+            .index_state
+            .build_reclaim_pending = true;
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "the first build reclaim blocks deferred refreshes"
+        );
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(2)
+            .unwrap()
+            .index_state
+            .build_reclaim_pending = false;
+        let request = harness.app.shell.indexing.allocate_request_id(Some(first));
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .pending_index_request_id = Some(request);
+        assert_eq!(
+            harness.response_owners(&event).unwrap(),
+            HashSet::from([second])
+        );
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .pending_index_request_id = None;
+        harness.app.shell.indexing.cleanup_request(request);
+        harness
+            .app
+            .shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .root_after_pending_finish = None;
+        assert!(
+            harness.response_owners(&event).unwrap().is_empty(),
+            "an earlier rootless refresh does not grant ownership to a later root intent"
+        );
+        harness.cleanup();
     }
 
     #[test]

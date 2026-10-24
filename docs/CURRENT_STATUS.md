@@ -21,6 +21,8 @@ This document is the durable current-state snapshot for maintainers. It does not
 
 ## Known Evidence Gaps
 
+- TC-207 keeps its strict 100ms wall gate. Additional tracing of the [native stress failure with 48 test threads](history/tc207-timing-2026-10-24/natural-reproduction/README.md) is on hold as a documented stress-condition limitation; the historical file-filter/Walker causes remain unknown. A fresh normal-condition failure or matching native GUI stall reopens investigation. Retained failures and release gates remain unchanged.
+
 - Paged preview has an application-owned control mode via Primary+Shift+L, with normal-render-path regression tests. Native OS key delivery and IME remain separate manual evidence axes.
 - Native Japanese IME composition, alternate-DPI display movement, real UNC access, and explicitly authorized external Open/Reveal behavior require suitable platform sessions and remain conditional manual evidence.
 - Releases reconcile change-time checks under [Release Validation Selection](testplan/release-validation.md); unaffected functional/native evidence can be reused. Full native evaluation is not required for every release. Changed GUI flows follow [GUI-TESTPLAN.md](GUI-TESTPLAN.md); known native failures still require fix confirmation or explicit acceptance.
