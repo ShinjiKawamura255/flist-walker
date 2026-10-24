@@ -1,0 +1,81 @@
+{
+  "date_jst": "2026-10-24",
+  "registry_url": "https://index.crates.io/cl/ip/clipboard-win",
+  "registry_sha256": "56f0385e6112458e866b0ce8d9eb082f908afe246bcc52cdcd63d01eff10e84d",
+  "packages": [
+    {
+      "version": "5.4.1",
+      "yanked": true,
+      "crate_sha256": "bde03770d3df201d4fb868f2c9c59e66a3e4e2bd06692a0fe701e7103c7e84d4",
+      "dependencies": [
+        {
+          "name": "error-code",
+          "req": "^3",
+          "features": [],
+          "optional": false,
+          "default_features": true,
+          "target": "cfg(windows)",
+          "kind": "normal"
+        },
+        {
+          "name": "windows-win",
+          "req": "^3",
+          "features": [],
+          "optional": true,
+          "default_features": true,
+          "target": "cfg(windows)",
+          "kind": "normal"
+        }
+      ]
+    },
+    {
+      "version": "5.4.3",
+      "yanked": false,
+      "crate_sha256": "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a",
+      "dependencies": [
+        {
+          "name": "error-code",
+          "req": "^3",
+          "features": [],
+          "optional": false,
+          "default_features": true,
+          "target": "cfg(windows)",
+          "kind": "normal"
+        },
+        {
+          "name": "windows-win",
+          "req": "^3",
+          "features": [],
+          "optional": true,
+          "default_features": true,
+          "target": "cfg(windows)",
+          "kind": "normal"
+        }
+      ]
+    }
+  ],
+  "changed_members": [
+    ".cargo_vcs_info.json",
+    "Cargo.lock",
+    "Cargo.toml",
+    "Cargo.toml.orig",
+    "README.md",
+    "src/formats.rs",
+    "src/lib.rs",
+    "src/raw.rs",
+    "tests/test_clip.rs"
+  ],
+  "licenses": [],
+  "audit_logs": [
+    {
+      "name": "red-host",
+      "sha256": "6f0ff4fdb516a2614862fc7053e66733d628e654b2720a7baf0539b063c4ef84",
+      "content": "    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`\n      Loaded 1352 security advisories (from /Users/shinji/.cargo/advisory-db)\n    Updating crates.io index\n    Scanning Cargo.lock for vulnerabilities (452 crate dependencies)\nCrate:     clipboard-win\nVersion:   5.4.1\nWarning:   yanked\n\nerror: 1 denied warning found!\n"
+    },
+    {
+      "name": "green",
+      "sha256": "065a3fb7c1b71e2aeb3e4aa1ecaec7434039307112fc8771c086b39eb199d638",
+      "content": "    Fetching advisory database from `https://github.com/RustSec/advisory-db.git`\n      Loaded 1352 security advisories (from /Users/shinji/.cargo/advisory-db)\n    Updating crates.io index\n    Scanning Cargo.lock for vulnerabilities (452 crate dependencies)\n"
+    }
+  ]
+}

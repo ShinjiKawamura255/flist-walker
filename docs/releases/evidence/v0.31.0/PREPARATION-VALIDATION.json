@@ -1,0 +1,73 @@
+{
+  "base": "1ba32aebf921ddaf978b87839327e5147cf50b98",
+  "scope": "task preparation diff; exact committed head/hosted runs recorded by PR",
+  "logs": {
+    "install-red": {
+      "bytes": 2803,
+      "sha256": "63135ea7b81fb4641ea95cdc2bbce9e2b6b3b957722c890c8996b13e1b9a1b3a",
+      "result_lines": [
+        "Ran 1 test in 0.002s",
+        "FAILED (failures=3)"
+      ],
+      "first_errors": [
+        "FAIL: test_repository_cargo_tool_installs_select_the_pinned_compiler (scripts.tests.test_check_ci_policy.CiPolicyTests.test_repository_cargo_tool_installs_select_the_pinned_compiler) (workflow='ci-cross-platform.yml', command='        run: cargo install cargo-audit --version 0.22.2 --locked --force')",
+        "FAIL: test_repository_cargo_tool_installs_select_the_pinned_compiler (scripts.tests.test_check_ci_policy.CiPolicyTests.test_repository_cargo_tool_installs_select_the_pinned_compiler) (workflow='ci-cross-platform.yml', command='        run: cargo install cargo-llvm-cov --version 0.8.7 --locked --force')",
+        "FAIL: test_repository_cargo_tool_installs_select_the_pinned_compiler (scripts.tests.test_check_ci_policy.CiPolicyTests.test_repository_cargo_tool_installs_select_the_pinned_compiler) (workflow='security-audit.yml', command='        run: cargo install cargo-audit --version 0.22.2 --locked --force')"
+      ]
+    },
+    "policy-final": {
+      "bytes": 138,
+      "sha256": "51c943449bf10f943cca041ab4af3c0242e5510721d2227a81b7bbfc41709e9c",
+      "result_lines": [
+        "Ran 39 tests in 0.511s",
+        "OK"
+      ],
+      "first_errors": []
+    },
+    "tooling-tests": {
+      "bytes": 258,
+      "sha256": "7f58dafa06e7026bed2886ce952a127f9c64ed59c4fae6802d8fcf44bea2b2f4",
+      "result_lines": [
+        "Ran 157 tests in 57.575s",
+        "OK"
+      ],
+      "first_errors": []
+    },
+    "finalize-cargo-test": {
+      "bytes": 174954,
+      "sha256": "1db74e0aad9b7ebf85b24f2fbf7834f596129f115229d278bee278d041b3e15b",
+      "result_lines": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1676 filtered out; finished in 0.01s",
+        "test result: FAILED. 1655 passed; 2 failed; 20 ignored; 0 measured; 0 filtered out; finished in 20.55s"
+      ],
+      "first_errors": [
+        "bind unix socket: Os { code: 1, kind: PermissionDenied, message: \"Operation not permitted\" }",
+        "called `Result::unwrap()` on an `Err` value: Os { code: 1, kind: PermissionDenied, message: \"Operation not permitted\" }"
+      ]
+    },
+    "finalize-cargo-test-host": {
+      "bytes": 180012,
+      "sha256": "ee16ab07692c77e84b77b18733d36f68a5af697ecb699006b373aa6b3be1c28b",
+      "result_lines": [
+        "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1676 filtered out; finished in 0.01s",
+        "test result: ok. 1657 passed; 0 failed; 20 ignored; 0 measured; 0 filtered out; finished in 20.85s",
+        "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 48 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.96s",
+        "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s",
+        "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+        "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      ],
+      "first_errors": []
+    },
+    "finalize-clippy": {
+      "bytes": 145,
+      "sha256": "438e4a2d7bca25a22c9be98c83ac5846584edc269c09413778cefb70c62b62b2",
+      "result_lines": [
+        "    Finished `dev` profile [unoptimized + debuginfo] target(s) in 6.20s"
+      ],
+      "first_errors": []
+    }
+  }
+}
