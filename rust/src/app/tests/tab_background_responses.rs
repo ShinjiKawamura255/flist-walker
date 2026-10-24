@@ -1131,6 +1131,9 @@ struct BackgroundFinalizationFrame {
     cpu: Option<Duration>,
     measurement_overhead: Duration,
     monotonic_window_ns: Option<[u128; 2]>,
+    mach_absolute_window_ns: Option<[u128; 2]>,
+    mach_absolute_window_ticks: Option<[u64; 2]>,
+    mach_timebase: Option<[u32; 2]>,
     native_thread_id: Option<u64>,
     before: Option<BackgroundFinalizationProgress>,
     after: Option<BackgroundFinalizationProgress>,
@@ -1143,6 +1146,9 @@ impl BackgroundFinalizationFrame {
             cpu: self.cpu,
             measurement_overhead: self.measurement_overhead,
             monotonic_window_ns: self.monotonic_window_ns,
+            mach_absolute_window_ns: self.mach_absolute_window_ns,
+            mach_absolute_window_ticks: self.mach_absolute_window_ticks,
+            mach_timebase: self.mach_timebase,
         }
     }
 }
@@ -1164,6 +1170,9 @@ fn tc_207_wall_budget_remains_enforced_when_thread_cpu_is_low() {
         cpu: Some(Duration::from_millis(1)),
         measurement_overhead: Duration::from_micros(2),
         monotonic_window_ns: None,
+        mach_absolute_window_ns: None,
+        mach_absolute_window_ticks: None,
+        mach_timebase: None,
         native_thread_id: None,
         before: None,
         after: None,
@@ -1254,6 +1263,41 @@ fn assert_background_finalization_progress(
     );
 }
 
+fn write_finalization_frame_json(
+    writer: &mut impl std::io::Write,
+    value: &serde_json::Value,
+) -> std::io::Result<()> {
+    let line = format!("TC207_FRAME {value}\n");
+    writer.write_all(line.as_bytes())
+}
+
+fn emit_finalization_frame_json(value: serde_json::Value) {
+    if let Some(directory) = std::env::var_os("FLISTWALKER_TEST_TC207_FRAME_LOG_DIR") {
+        static LOG: std::sync::OnceLock<std::sync::Mutex<std::fs::File>> =
+            std::sync::OnceLock::new();
+        let log = LOG.get_or_init(|| {
+            let path = std::path::PathBuf::from(directory)
+                .join(format!("frames-{}.jsonl", std::process::id()));
+            let file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .expect("create owned TC-207 diagnostic log");
+            std::sync::Mutex::new(file)
+        });
+        write_finalization_frame_json(
+            &mut *log.lock().expect("TC-207 diagnostic writer poisoned"),
+            &value,
+        )
+        .expect("write complete TC-207 diagnostic record");
+    } else {
+        // Preserve libtest's usual per-test output capture, while formatting the
+        // JSON before the stderr call instead of streaming its nested fields.
+        let line = format!("TC207_FRAME {value}");
+        eprintln!("{line}");
+    }
+}
+
 fn emit_finalization_frames(
     request_id: u64,
     frames: &[BackgroundFinalizationFrame],
@@ -1282,27 +1326,55 @@ fn emit_finalization_frames(
             || Some(ordinal) == worst_off_cpu
         {
             let timing = frame.timing();
-            eprintln!(
-                "TC207_FRAME {}",
-                serde_json::json!({
-                    "schema": 2, "pid": std::process::id(),
-                    "native_thread_id": frame.native_thread_id,
-                    "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
-                    "monotonic_window_ns": frame.monotonic_window_ns,
-                    "test": thread::current().name(), "request_id": request_id,
-                    "frame": ordinal, "frames_observed": frames.len(),
-                    "wall_ns": frame.elapsed.as_nanos(),
-                    "cpu_upper_ns": frame.cpu.map(|d| d.as_nanos()),
-                    "cpu_lower_ns": timing.cpu_lower_bound().map(|d| d.as_nanos()),
-                    "off_cpu_lower_ns": timing.off_cpu_lower_bound().map(|d| d.as_nanos()),
-                    "measurement_overhead_ns": frame.measurement_overhead.as_nanos(),
-                    "wall_under_100ms": frame.elapsed < Duration::from_millis(100),
-                    "before": frame.before, "after": frame.after,
-                    "control": if ordinal == 0 { control } else { None },
-                })
-            );
+            emit_finalization_frame_json(serde_json::json!({
+                "schema": 3, "pid": std::process::id(),
+                "native_thread_id": frame.native_thread_id,
+                "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
+                "monotonic_window_ns": frame.monotonic_window_ns,
+                "mach_absolute_window_ns": frame.mach_absolute_window_ns,
+                "mach_absolute_window_ticks": frame.mach_absolute_window_ticks,
+                "mach_timebase": frame.mach_timebase,
+                "test": thread::current().name(), "request_id": request_id,
+                "frame": ordinal, "frames_observed": frames.len(),
+                "wall_ns": frame.elapsed.as_nanos(),
+                "cpu_upper_ns": frame.cpu.map(|d| d.as_nanos()),
+                "cpu_lower_ns": timing.cpu_lower_bound().map(|d| d.as_nanos()),
+                "off_cpu_lower_ns": timing.off_cpu_lower_bound().map(|d| d.as_nanos()),
+                "measurement_overhead_ns": frame.measurement_overhead.as_nanos(),
+                "wall_under_100ms": frame.elapsed < Duration::from_millis(100),
+                "before": frame.before, "after": frame.after,
+                "control": if ordinal == 0 { control } else { None },
+            }));
         }
     }
+}
+
+#[test]
+fn tc_207_diagnostic_json_is_written_as_one_owned_line() {
+    struct RecordingWriter(Vec<Vec<u8>>);
+    impl std::io::Write for RecordingWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.push(bytes.to_vec());
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let value = serde_json::json!({"nested": {"frame": 3}, "text": "embedded\nnewline"});
+    let mut writer = RecordingWriter(Vec::new());
+    write_finalization_frame_json(&mut writer, &value).expect("owned record write");
+    assert_eq!(writer.0.len(), 1, "no fragmented serialization writes");
+    let line = std::str::from_utf8(&writer.0[0]).expect("UTF-8 record");
+    assert_eq!(line.lines().count(), 1);
+    let body = line
+        .trim_end()
+        .strip_prefix("TC207_FRAME ")
+        .expect("frame tag");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(body).unwrap(),
+        value
+    );
 }
 
 fn drive_background_finalization_with_frame_budget(
@@ -1347,6 +1419,9 @@ fn drive_background_finalization_with_frame_budget(
             cpu: timing.cpu,
             measurement_overhead: timing.measurement_overhead,
             monotonic_window_ns: timing.monotonic_window_ns,
+            mach_absolute_window_ns: timing.mach_absolute_window_ns,
+            mach_absolute_window_ticks: timing.mach_absolute_window_ticks,
+            mach_timebase: timing.mach_timebase,
             native_thread_id,
             before,
             after,

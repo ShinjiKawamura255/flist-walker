@@ -7,6 +7,9 @@ pub(super) struct FrameTiming {
     pub(super) cpu: Option<Duration>,
     pub(super) measurement_overhead: Duration,
     pub(super) monotonic_window_ns: Option<[u128; 2]>,
+    pub(super) mach_absolute_window_ns: Option<[u128; 2]>,
+    pub(super) mach_absolute_window_ticks: Option<[u64; 2]>,
+    pub(super) mach_timebase: Option<[u32; 2]>,
 }
 
 impl FrameTiming {
@@ -69,6 +72,40 @@ pub(super) fn native_thread_id() -> Option<u64> {
     None
 }
 
+fn native_trace_point() -> Option<(u64, [u32; 2])> {
+    #[cfg(target_os = "macos")]
+    {
+        // Public SDK ABI, kept here to avoid adding a test-only dependency on
+        // deprecated libc Mach bindings or a separate Mach binding crate.
+        #[repr(C)]
+        struct TimebaseInfo {
+            numer: u32,
+            denom: u32,
+        }
+        unsafe extern "C" {
+            fn mach_timebase_info(info: *mut TimebaseInfo) -> i32;
+            fn mach_absolute_time() -> u64;
+        }
+        static TIMEBASE: std::sync::OnceLock<Option<(u32, u32)>> = std::sync::OnceLock::new();
+        let (numer, denom) = (*TIMEBASE.get_or_init(|| {
+            let mut info = TimebaseInfo { numer: 0, denom: 0 };
+            // SAFETY: the OS initializes the timebase value supplied by us.
+            let result = unsafe { mach_timebase_info(&mut info) };
+            (result == 0 && info.numer > 0 && info.denom > 0).then_some((info.numer, info.denom))
+        }))?;
+        // SAFETY: mach_absolute_time has no arguments or ownership effects.
+        let ticks = unsafe { mach_absolute_time() };
+        Some((ticks, [numer, denom]))
+    }
+    #[cfg(not(target_os = "macos"))]
+    None
+}
+
+fn native_trace_time_ns() -> Option<u128> {
+    native_trace_point()
+        .map(|(ticks, [numer, denom])| u128::from(ticks) * u128::from(numer) / u128::from(denom))
+}
+
 pub(super) fn measure(work: impl FnOnce()) -> FrameTiming {
     // CPU samples enclose the strict wall interval. Thus cpu is an upper bound
     // on CPU spent within it; subtracting the outer wall overhead gives a lower
@@ -76,14 +113,19 @@ pub(super) fn measure(work: impl FnOnce()) -> FrameTiming {
     let outer = Instant::now();
     let cpu_started = thread_cpu_time();
     let monotonic_started = monotonic_time_ns();
+    let mach_started = native_trace_point();
     let started = Instant::now();
     work();
     let wall = started.elapsed();
+    let mach_finished = native_trace_point();
     let monotonic_finished = monotonic_time_ns();
     let cpu = thread_cpu_time()
         .zip(cpu_started)
         .and_then(|(end, start)| end.checked_sub(start));
     let measurement_overhead = outer.elapsed().saturating_sub(wall);
+    let mach_window = mach_started
+        .zip(mach_finished)
+        .filter(|(start, end)| start.1 == end.1 && start.0 <= end.0);
     FrameTiming {
         wall,
         cpu,
@@ -91,6 +133,12 @@ pub(super) fn measure(work: impl FnOnce()) -> FrameTiming {
         monotonic_window_ns: monotonic_started
             .zip(monotonic_finished)
             .and_then(|(start, end)| (start <= end).then_some([start, end])),
+        mach_absolute_window_ns: mach_window.map(|(start, end)| {
+            let [numer, denom] = start.1;
+            [start.0, end.0].map(|ticks| u128::from(ticks) * u128::from(numer) / u128::from(denom))
+        }),
+        mach_absolute_window_ticks: mach_window.map(|(start, end)| [start.0, end.0]),
+        mach_timebase: mach_window.map(|(start, _)| start.1),
     }
 }
 
@@ -133,6 +181,9 @@ fn tc_207_cpu_and_off_cpu_bounds_preserve_measurement_uncertainty() {
         cpu: Some(Duration::from_millis(121)),
         measurement_overhead: Duration::from_millis(2),
         monotonic_window_ns: None,
+        mach_absolute_window_ns: None,
+        mach_absolute_window_ticks: None,
+        mach_timebase: None,
     };
     assert_eq!(work.cpu_lower_bound(), Some(Duration::from_millis(119)));
     assert_eq!(work.off_cpu_lower_bound(), Some(Duration::from_millis(4)));
@@ -141,6 +192,9 @@ fn tc_207_cpu_and_off_cpu_bounds_preserve_measurement_uncertainty() {
         cpu: Some(Duration::from_millis(1)),
         measurement_overhead: Duration::from_micros(5),
         monotonic_window_ns: None,
+        mach_absolute_window_ns: None,
+        mach_absolute_window_ticks: None,
+        mach_timebase: None,
     };
     assert_eq!(
         off_cpu.off_cpu_lower_bound(),
@@ -151,6 +205,9 @@ fn tc_207_cpu_and_off_cpu_bounds_preserve_measurement_uncertainty() {
         cpu: Some(Duration::from_micros(2)),
         measurement_overhead: Duration::from_micros(3),
         monotonic_window_ns: None,
+        mach_absolute_window_ns: None,
+        mach_absolute_window_ticks: None,
+        mach_timebase: None,
     };
     assert_eq!(bracket.cpu_lower_bound(), Some(Duration::ZERO));
     assert_eq!(bracket.off_cpu_lower_bound(), Some(Duration::ZERO));
@@ -172,4 +229,27 @@ fn tc_207_measure_observes_executed_work_and_retains_wall_interval() {
     assert!(native_thread_id().is_some_and(|id| id > 0));
     #[cfg(not(unix))]
     assert!(timing.cpu.is_none());
+}
+
+#[test]
+fn tc_207_native_trace_window_encloses_the_measured_payload() {
+    let mut inside = None;
+    let timing = measure(|| inside = native_trace_time_ns());
+    #[cfg(target_os = "macos")]
+    {
+        let [start, end] = timing.mach_absolute_window_ns.expect("native trace clock");
+        let inside = inside.expect("clock inside measured work");
+        assert!(start <= inside && inside <= end);
+        let [numer, denom] = timing.mach_timebase.expect("timebase");
+        let ticks = timing.mach_absolute_window_ticks.expect("raw trace ticks");
+        assert_eq!(
+            [start, end],
+            ticks.map(|value| u128::from(value) * u128::from(numer) / u128::from(denom))
+        );
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        assert!(inside.is_none());
+        assert!(timing.mach_absolute_window_ns.is_none());
+    }
 }
