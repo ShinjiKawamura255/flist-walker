@@ -1,0 +1,49 @@
+{
+  "observed_utc": "2026-10-24T07:16:47.813967+00:00",
+  "reviewer": "independent read-only /root/browse_final_review; no implementation, product changes, app launch or external mutation",
+  "version": "v0.31.0",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "run": 40071616135,
+  "attempt": 1,
+  "findings": [],
+  "candidate_decision": "GO for this exact candidate/source; annotated tag readiness satisfied at observed identity. No tagged-run/publication admission implied.",
+  "artifact": {
+    "id": 12551992799,
+    "bytes": 86708883,
+    "sha256": "173931e4d61b6b28a286b5171b8952720c213dddd1f20d96fa6c00259e3df900",
+    "expires_at": "2026-11-07T07:12:13Z"
+  },
+  "checks": [
+    "all10 executed jobs SUCCESS; draft creation correctly SKIPPED",
+    "all10 raw logs sha256/bytes/emissions verified; all11 annotations only2 capacity NOTICE",
+    "four producer API/upload/expected/computed digests match",
+    "outer ZIP API hash/size/CRC/exact28 flat members and all extracted bytes match",
+    "independent verify_bundle.verify full28assets/26strict manifest entries/raw64 Ed25519/predecessor key/onebit tamper controls matches saved result",
+    "all8 binary key bytes/compiler/arch; actual Windows PE versions/icon/manifest/imports; exact source README/notices/archive modes/plist verified",
+    "actual signed publicv0.30.2 predecessor bytes rechecked; actual new26-entry manifest N-1 independently PASS",
+    "current-master CI40071447559 complete success; coverage44889/52397=85.670935%; diagnostic complete/errors[]/RESTORED",
+    "release body download names exactly match actual28assets",
+    "fresh remote master/source match; latestpublicv0.30.2; v0.31.0 tag HTTP404; source checkout clean"
+  ],
+  "warning_disposition": {
+    "classification": "MINOR: exact candidate40071616135 attempt1 assembly externalDEP0005 one only; repo-authorized exception conditions satisfied",
+    "code_source": "official stablev8.0.2 fullSHA9000827ccba6bdab643e8b6fd33ac0654aef8333, Node24; actual runner2.338.0; fullAction bundle7834b909...bc5bbe matches retained full-Action diagnosis",
+    "basis": "unchanged fullAction causal code/input boundary, exact emitted message/count/extraction step; strict API/actual digest integrity and completed actual bundle functional/structural gates; observed hosted versus bounded local causal inference separated",
+    "hosted_stack": "NOT RUN; not claimed directly observed",
+    "owner": "repository maintainer",
+    "scope": "No source-CI exception inheritance and no future candidate/tagged inheritance; new code/message/count/callsite/input/security/integrity/function uncertainty stops"
+  },
+  "native_disposition": "Existing explicitly approved v0.31.0-only deviations apply to selected native GUI/TC193/clipboard/OS themes/share axes; formal status stays NOT RUN. TC207 original cause and OS trace NOT RUN, and historical Linux SIGSEGV cause unresolved remain disclosed; successful current gates do not resolve original causes. Threshold100ms/ratio0.70/coverage75 unchanged. macOS unnotarized remains disclosed.",
+  "next_gates": "Fresh source/tag state immediately before mutation; exact annotated tag on reviewed source only; tagged run has separate full logs/annotations/official metadata/runtime/artifact/manifest/signature/N-1/independent review; publication only after tagged gates and public readbacks.",
+  "helper_sha256": "53783a396206b82640d4df01b20739a091de0c95d35efeb5d99a94cacb0d79da",
+  "evidence_sha256": {
+    "run.json": "a84847a1014746cdc9787402339b3f4b99a24d24392c58ef5a23fcf87fcee272",
+    "jobs.json": "2283c6bd7d9775ea8f10f102dbd6220e3dc061acbbfb9a43ccdd3388cee7d5e7",
+    "artifacts.json": "4c07a03b8cfe6e10333fab7791f57801d410bc67eb662f38e0c222094a805181",
+    "annotations.json": "2798a3507a6223de2966c88e17ec09617a6e81c50fd35052d75b218dadec328c",
+    "LOG-WARNING-REVIEW.json": "f8ae43c4ca60ff0ec87238924c5a286f8336120acb6692f78959ccd862acbc3f",
+    "BUNDLE-VALIDATION.json": "e3ed40f7c290b82b29595409735c6bcb74ca86c90f66da9dadee2f48925bc621",
+    "REAL-N-1.txt": "3213a9f47a04d4697d68273d283609a9b71e7e1eb791128ea38721447ab00a2b",
+    "INDEPENDENT-PRETAG-STATE.json": "ba2b579170214643ae9fa09182cf14b56d7c3209598b0600b47e294914b345eb"
+  }
+}

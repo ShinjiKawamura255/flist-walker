@@ -1,0 +1,39 @@
+{
+  "120812031211": [],
+  "120812066616": [],
+  "120812066635": [],
+  "120812066642": [],
+  "120812066784": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "120813875575": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  ],
+  "120813875652": [],
+  "120813875660": [],
+  "120813875678": [],
+  "120816797856": [],
+  "120817128625": []
+}

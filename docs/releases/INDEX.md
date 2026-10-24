@@ -2,7 +2,7 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.30.2 (2026-10-15 Asia/Tokyo; 2026-10-14 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.2).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.31.0 (2026-10-24 Asia/Tokyo and UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.31.0).
 
 ## Release And Candidate Records
 
@@ -10,7 +10,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 | --- | --- |
 | [v0.31.0 Regenerated Candidate39810727499](evidence/v0.31.0/regenerated-39810727499/REPORT.md) | Source d1bf330; fresh audit failed on two TLS dependencies, so distribution/signature/actual N-1 remain unverified; updated Windows preparation |
 | [v0.31.0 Linux Coverage Diagnosis](evidence/v0.31.0/LINUX-COVERAGE-DIAGNOSIS.md) | Unresolved SIGSEGV, exact diagnostic observations and merge hold |
-| [v0.31.0 Execution Packet](evidence/v0.31.0/PREPARATION.md) | Complete release selection, explicit version-scoped native/unknown-cause deviations and PR201 controlled activation/restoration; new candidate/tag/publication gates remain pending |
+| [v0.31.0 Execution Packet](evidence/v0.31.0/PREPARATION.md) | Published source/tag, separate candidate/tagged/public byte and warning gates, restored PR201 activation, rejected README candidate and explicit native/unknown-cause deviations |
 | [v0.30.2 Execution Packet](v0.30.2.md) | Published source, candidate/tagged/public assets, native deviations and Windows startup measurements |
 | [v0.30.1 Execution Packet](v0.30.1.md) | Published tag/source, separate candidate/tagged warning decisions, fresh assets/public readback and selected reuse |
 | [v0.30.0 Execution Packet](v0.30.0.md) | Published tag, assets, validation selection, GUI repairs, approved deviations and exact-run warnings |
@@ -26,7 +26,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
-| `evidence/v0.31.0/` | Candidate identity, distribution/signature/N-1/log verification and Windows handoff; native measurements remain separate |
+| `evidence/v0.31.0/` | Original rejected candidates, published tag/source/28 assets, signed manifests, exact-run CI/warning decisions, public downloads, independent reviews and scoped native deviations |
 | `evidence/v0.30.2/` | Preparation, exact candidate/tagged bindings, Windows native and raw TC-193 results, scoped deviations, separate warning decisions and public readback |
 | `evidence/v0.30.1/` | Whole48-commit classification, predecessor/native reuse, latest Action diagnosis, per-run artifact/warning decisions and publication readback |
 | `evidence/v0.30.0/` | Preparation and whole-release classification, native repair/reuse, published body, actual public downloads and closure validation |

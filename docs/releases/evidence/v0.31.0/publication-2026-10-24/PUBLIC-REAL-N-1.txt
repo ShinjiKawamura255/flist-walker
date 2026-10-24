@@ -1,0 +1,1 @@
+N-1 manifest compatibility passed for v0.30.2

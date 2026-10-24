@@ -1,0 +1,79 @@
+import importlib.util,json,pathlib,re,stat,struct,tempfile
+root=pathlib.Path(__file__).parent
+spec=importlib.util.spec_from_file_location('verifier',root/'verify_bundle.py')
+v=importlib.util.module_from_spec(spec);spec.loader.exec_module(v)
+repo=pathlib.Path('/Users/shinji/work/flist-walker')
+source=(repo/'rust/build.rs').read_text()
+manifest=re.search(r'const WINDOWS_AS_INVOKER_MANIFEST:.*?r#"(.*?)"#;',source,re.S)[1].encode()
+data=(root/'rejected-40069314271/windows/FlistWalker-0.31.0-windows-x86_64.exe').read_bytes()
+results=[]
+def reject(name,fn):
+ try:fn()
+ except (ValueError,struct.error,UnicodeError) as e:results.append({'control':name,'result':'REJECT','reason':str(e)})
+ else:raise AssertionError(name+' accepted')
+def inspect(b):return v.pe_inspection(b,'0.31.0',False,manifest)
+assert inspect(data)['asInvoker']
+reject('XML unexpected tail text',lambda:v.require(v.xml_shape(manifest.replace(b'</trustInfo>',b'</trustInfo>BADTEXT'))==v.xml_shape(manifest),'manifest tail mismatch'))
+pe=struct.unpack_from('<I',data,0x3c)[0];opt=pe+24
+sections=[]
+for i in range(struct.unpack_from('<H',data,pe+6)[0]):
+ off=opt+struct.unpack_from('<H',data,pe+20)[0]+i*40
+ vs,rva,size,raw=struct.unpack_from('<IIII',data,off+8);sections.append((rva,raw,size))
+def offset(rva):return next(raw+rva-start for start,raw,size in sections if start<=rva<start+size)
+rr,rs=struct.unpack_from('<II',data,opt+128);resource=offset(rr)
+leaves={};entries={}
+def walk(rel,path=()):
+ named,ids=struct.unpack_from('<HH',data,resource+rel+12)
+ for i in range(named+ids):
+  e=resource+rel+16+8*i;n,c=struct.unpack_from('<II',data,e);key=path+(n,);entries[key]=e
+  if c&0x80000000:walk(c&0x7fffffff,key)
+  else:
+   rva,size=struct.unpack_from('<II',data,resource+c);leaves[key]=(offset(rva),size,resource+c)
+walk(0)
+def mutate(off,fmt,*values):
+ b=bytearray(data);struct.pack_into(fmt,b,off,*values);return bytes(b)
+vo,vl,_=leaves[(16,1,1033)]
+fixed=data.index(struct.pack('<I',0xFEEF04BD),vo,vo+vl)
+reject('old fixed FileVersion despite current strings',lambda:inspect(mutate(fixed+12,'<I',30<<16)))
+needle='0.31.0'.encode('utf-16-le');pos=data.index(needle,vo,vo+vl)
+b=bytearray(data);b[pos:pos+len(needle)]='0.30.0'.encode('utf-16-le')
+reject('old formal version string',lambda:inspect(bytes(b)))
+mo,ml,_=leaves[(24,1,1033)]
+b=bytearray(data);m=data[mo:mo+ml].replace(b'asInvoker',b'badLevelX');assert m!=data[mo:mo+ml];b[mo:mo+ml]=m
+reject('wrong manifest execution level',lambda:inspect(bytes(b)))
+reject('wrong manifest ID',lambda:inspect(mutate(entries[(24,1)],'<I',2)))
+reject('missing resource hierarchy',lambda:inspect(mutate(entries[(24,)]+4,'<I',struct.unpack_from('<I',data,entries[(24,)]+4)[0]&0x7fffffff)))
+reject('extra resource hierarchy',lambda:inspect(mutate(entries[(24,1,1033)]+4,'<I',0x80000000)))
+reject('duplicate root resource key',lambda:inspect(mutate(entries[(24,)],'<I',16)))
+for resource_type in (3,14):
+ child=struct.unpack_from('<I',data,entries[(resource_type,)]+4)[0]&0x7fffffff
+ reject('empty resource type '+str(resource_type),lambda child=child:inspect(mutate(resource+child+12,'<HH',0,0)))
+for size in (0,19,20):
+ reject('import directory size '+str(size),lambda size=size:inspect(mutate(opt+124,'<I',size)))
+ir,isz=struct.unpack_from('<II',data,opt+120);io=offset(ir)
+last_start,last_raw,last_size=sections[-1]
+b=bytearray(data);b[last_raw+last_size-1]=65;struct.pack_into('<I',b,io+12,last_start+last_size-1)
+reject('import string crosses section',lambda:inspect(bytes(b)))
+allowed={'bin'}
+valid=[('bin',False,stat.S_IFREG|0o755,True)]
+v.archive_paths(valid,allowed,executable_files=allowed)
+for name,entries_,dirs,exes in [
+ ('parent path',[('../bin',False,stat.S_IFREG|0o755,True)],(),()),
+ ('absolute path',[('/bin',False,stat.S_IFREG|0o755,True)],(),()),
+ ('duplicate directory',valid+[('d/',True,stat.S_IFDIR|0o755,True)]*2,{'d'},()),
+ ('canonical duplicate directory',valid+[('d/',True,stat.S_IFDIR|0o755,True),('d//',True,stat.S_IFDIR|0o755,True)],{'d'},()),
+ ('symlink',[('bin',False,stat.S_IFLNK|0o777,True)],(),()),
+ ('fifo',[('bin',False,stat.S_IFIFO|0o644,True)],(),()),
+ ('owner execute missing',[('bin',False,stat.S_IFREG|0o654,True)],(),allowed),
+ ('extra app member',valid+[('extra',False,stat.S_IFREG|0o644,True)],(),()),
+ ('unexpected directory',valid+[('extra/',True,stat.S_IFDIR|0o755,True)],(),())]:
+ reject(name,lambda e=entries_,d=dirs,x=exes:v.archive_paths(e,allowed,d,x))
+for platform in ('windows-x86_64','linux-x86_64','macos-arm64','macos-x86_64'):
+ expected=v.readme_template(repo,platform,'0.31.0')
+ assert expected.count(b'flistwalker.ignore.txt.example')>=1
+ reject('README header only '+platform,lambda e=expected:v.require(e==e.splitlines(keepends=True)[0],'README mismatch'))
+old=(root/'rejected-40069314271/windows/FlistWalker-0.31.0-windows-x86_64.README.txt').read_bytes()
+reject('actual rejected Windows README',lambda:v.require(old==v.readme_template(repo,'windows-x86_64','0.31.0'),'README mismatch'))
+record={'verifier_sha256':v.digest((root/'verify_bundle.py').read_bytes()),'fixture':'rejected candidate 40069314271 Windows producer; only structural PE positive, never release admission','positive':['actual GUI PE','actual fw PE in REJECTED-PRODUCER-PE-POSITIVE.json','regular executable archive','four full source README templates'],'negative_controls':results,'result':'PASS'}
+(root/'VERIFIER-CONTROLS.json').write_text(json.dumps(record,indent=2)+'\n')
+print('PASS',len(results),'negative controls rejected')

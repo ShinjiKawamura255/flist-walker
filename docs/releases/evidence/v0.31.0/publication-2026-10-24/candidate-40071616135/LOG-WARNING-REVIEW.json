@@ -1,0 +1,244 @@
+{
+  "version": "v0.31.0",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "run": 40071616135,
+  "attempt": 1,
+  "jobs": [
+    {
+      "id": 120806077634,
+      "name": "Resolve Release Context",
+      "conclusion": "success"
+    },
+    {
+      "id": 120806120903,
+      "name": "Release Cargo Audit",
+      "conclusion": "success"
+    },
+    {
+      "id": 120806120933,
+      "name": "Release Preflight (linux-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120806120944,
+      "name": "Release Preflight (windows-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120806120980,
+      "name": "Release Preflight (macos-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120808120772,
+      "name": "Build Release Assets (windows-x86_64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120808120774,
+      "name": "Build Release Assets (macos-x86_64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120808120791,
+      "name": "Build Release Assets (linux-x86_64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120808120901,
+      "name": "Build Release Assets (macos-arm64)",
+      "conclusion": "success"
+    },
+    {
+      "id": 120810596466,
+      "name": "Assemble Release Bundle",
+      "conclusion": "success"
+    },
+    {
+      "id": 120810935322,
+      "name": "Create Draft Release",
+      "conclusion": "skipped"
+    }
+  ],
+  "logs": [
+    {
+      "job_id": 120806077634,
+      "bytes": 16827,
+      "sha256": "a1686c2914640c54928f211c815190acfe9f51ae13abe6e72d6a14a6dd046180",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120806120903,
+      "bytes": 79325,
+      "sha256": "feb4c97fa62664a37b35a03f032a4b40d6fe938a54c1fbebbeb05623ef054a55",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120806120933,
+      "bytes": 309790,
+      "sha256": "e7a424e605867708e3e7741aea5b0ca4fa30504c3c4f34d450cc28d0db088dee",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120806120944,
+      "bytes": 309997,
+      "sha256": "eb9643fc46e712c08dfc48a81e74c51f298abcb2ba9dde9f16ea9de56a8af489",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120806120980,
+      "bytes": 305732,
+      "sha256": "3edc7a5ec369c5ea10f0890e5af532b9db8fb7726a9032201077a6ccb8cb7e3c",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120808120772,
+      "bytes": 73214,
+      "sha256": "4647b9547ee21f624c8a1523e778fa3f58114ac8fb00bca2cad8d4f2b31679c5",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120808120774,
+      "bytes": 61956,
+      "sha256": "e817a8e4185b5c7778cd13f9cb3ceeeb6adf404fdca293e82cc0bd9ab13ef37b",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120808120791,
+      "bytes": 60959,
+      "sha256": "44a5d52ba179f8ea2260cb6a3c120e8674a023ecd381183867426ed8ff219811",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120808120901,
+      "bytes": 60690,
+      "sha256": "77e5e71c05e725804460f184c42f686f3740ef9a7c327ad7ea9a5ad0bc13f463",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": []
+    },
+    {
+      "job_id": 120810596466,
+      "bytes": 52531,
+      "sha256": "24d0791d219285275ede83b0cc55c7cda2c28b1179201869a8e14dbf9ef6c679",
+      "runner": [
+        "2.338.0"
+      ],
+      "emissions": [
+        "2026-10-24T07:10:54.5294770Z (node:2254) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ]
+    }
+  ],
+  "annotations": {
+    "120806077634": [],
+    "120806120903": [],
+    "120806120933": [],
+    "120806120944": [],
+    "120806120980": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "120808120772": [],
+    "120808120774": [],
+    "120808120791": [],
+    "120808120901": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "120810596466": [],
+    "120810935322": []
+  },
+  "producer_digest_checks": [
+    {
+      "id": 12552221470,
+      "name": "release-macos-arm64",
+      "sha256": "ead2510b21b8cb1331e15db00cd2986b69f94302d965d284ee1e8744afd18f8b",
+      "api_upload_expected_computed_match": true
+    },
+    {
+      "id": 12551871360,
+      "name": "release-windows-x86_64",
+      "sha256": "4c77a54620682f1ba5aa6fe8ead9f11c137960840f2910726c61882e061ea192",
+      "api_upload_expected_computed_match": true
+    },
+    {
+      "id": 12551754017,
+      "name": "release-macos-x86_64",
+      "sha256": "1b4b9180fa8c29f6ee41719b1a0ba8c2a44706bfd6edc7fb71f664f9753b844d",
+      "api_upload_expected_computed_match": true
+    },
+    {
+      "id": 12551509362,
+      "name": "release-linux-x86_64",
+      "sha256": "6cd7699e723d38ba11e5e6eb9b7bf5efc07df77b9b6ae36eef728a793d8413e6",
+      "api_upload_expected_computed_match": true
+    }
+  ],
+  "official_action": {
+    "observed_utc": "2026-10-24T06:49:08.094897+00:00",
+    "latest_stable": "v8.0.2",
+    "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "action_yml_sha256": "e98559b7a31ba31be4709f20d22102dc2737fa630f69a339eb89981151e505fe",
+    "runtime": "node24",
+    "bundle_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+    "bundle_bytes": 4432922,
+    "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "diagnosed_bundle_identical": true,
+    "minimum_runner": "2.327.1",
+    "runtime_floor_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+    "result": "PASS official identity; actual run logs/results/artifact checks still required"
+  },
+  "warning_count": 1,
+  "warning": "2026-10-24T07:10:54.5294770Z (node:2254) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+  "classification": "PROPOSED MINOR exact run only; independent review and actual bundle byte gate pending",
+  "causal_evidence": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+  "boundary": "Hosted pin/runtime/input/emission/digests/output observed. Hosted stack not collected; unchanged full Action bounded diagnosis reused. No general DEP0005 allowance, no prior exception inheritance.",
+  "follow_up_owner": "repository maintainer",
+  "re_evaluate": "Every new candidate/tagged run; any new code/callsite/message/input/count/security/integrity/function uncertainty stops."
+}

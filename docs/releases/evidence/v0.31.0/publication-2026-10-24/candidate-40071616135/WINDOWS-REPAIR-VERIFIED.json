@@ -1,0 +1,206 @@
+{
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "run": 40071616135,
+  "producer_artifact": 12551871360,
+  "result": "PASS affected Windows packaging and structural checks; overall candidate pending",
+  "readme_full_source_and_archive_bytes_match": true,
+  "producer_sha256": "4c77a54620682f1ba5aa6fe8ead9f11c137960840f2910726c61882e061ea192",
+  "binaries": {
+    "FlistWalker-0.31.0-windows-x86_64.exe": {
+      "sha256": "fa75d2c5703d2b9273b72db465b8417f40acaea78a3575db5eabe5528bda29e5",
+      "PE": {
+        "subsystem": 2,
+        "resource_types": [
+          3,
+          14,
+          16,
+          24
+        ],
+        "imports": [
+          "GDI32.dll",
+          "ole32.dll",
+          "OPENGL32.dll",
+          "dwmapi.dll",
+          "imm32.dll",
+          "ntdll.dll",
+          "psapi.dll",
+          "uxtheme.dll",
+          "ws2_32.dll",
+          "kernel32.dll",
+          "kernel32.dll",
+          "bcryptprimitives.dll",
+          "advapi32.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "combase.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "ole32.dll",
+          "shell32.dll",
+          "shlwapi.dll",
+          "userenv.dll",
+          "ADVAPI32.dll",
+          "bcrypt.dll",
+          "KERNEL32.dll",
+          "msvcrt.dll",
+          "ntdll.dll",
+          "USER32.dll"
+        ],
+        "resource_paths": [
+          [
+            3,
+            1,
+            1033
+          ],
+          [
+            3,
+            2,
+            1033
+          ],
+          [
+            3,
+            3,
+            1033
+          ],
+          [
+            3,
+            4,
+            1033
+          ],
+          [
+            3,
+            5,
+            1033
+          ],
+          [
+            3,
+            6,
+            1033
+          ],
+          [
+            3,
+            7,
+            1033
+          ],
+          [
+            14,
+            1,
+            1033
+          ],
+          [
+            16,
+            1,
+            1033
+          ],
+          [
+            24,
+            1,
+            1033
+          ]
+        ],
+        "formal_versions": [
+          {
+            "ProductVersion": "0.31.0",
+            "FileVersion": "0.31.0"
+          }
+        ],
+        "version": "0.31.0",
+        "source_manifest_equivalent": true,
+        "asInvoker": true,
+        "authenticode_declared_table_bytes": 0,
+        "authenticode_verification": "NOT RUN; declaration observation only"
+      }
+    },
+    "fw-0.31.0-windows-x86_64.exe": {
+      "sha256": "85d2c8f1dd575e0a0035805399df94100c74d27e6e6691d9c0e09ac608576886",
+      "PE": {
+        "subsystem": 3,
+        "resource_types": [
+          3,
+          14,
+          16,
+          24
+        ],
+        "imports": [
+          "ntdll.dll",
+          "ws2_32.dll",
+          "kernel32.dll",
+          "kernel32.dll",
+          "bcryptprimitives.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "shell32.dll",
+          "user32.dll",
+          "ADVAPI32.dll",
+          "bcrypt.dll",
+          "KERNEL32.dll",
+          "msvcrt.dll",
+          "ntdll.dll"
+        ],
+        "resource_paths": [
+          [
+            3,
+            1,
+            1033
+          ],
+          [
+            3,
+            2,
+            1033
+          ],
+          [
+            3,
+            3,
+            1033
+          ],
+          [
+            3,
+            4,
+            1033
+          ],
+          [
+            3,
+            5,
+            1033
+          ],
+          [
+            3,
+            6,
+            1033
+          ],
+          [
+            3,
+            7,
+            1033
+          ],
+          [
+            14,
+            1,
+            1033
+          ],
+          [
+            16,
+            1,
+            1033
+          ],
+          [
+            24,
+            1,
+            1033
+          ]
+        ],
+        "formal_versions": [
+          {
+            "ProductVersion": "0.31.0",
+            "FileVersion": "0.31.0"
+          }
+        ],
+        "version": "0.31.0",
+        "source_manifest_equivalent": true,
+        "asInvoker": true,
+        "authenticode_declared_table_bytes": 0,
+        "authenticode_verification": "NOT RUN; declaration observation only"
+      }
+    }
+  }
+}

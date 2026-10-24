@@ -1,0 +1,278 @@
+{
+  "observed_utc": "2026-10-24T07:46:12.747085+00:00",
+  "source": "147dac77d025ee0191ff7c949a9a095688115066",
+  "tag": "v0.31.0",
+  "run": 40073569765,
+  "attempt": 1,
+  "conclusion": "success",
+  "logs": [
+    {
+      "id": 120812031211,
+      "name": "Resolve Release Context",
+      "bytes": 17739,
+      "sha256": "64b425aff64296065038423c8e913fbc728819a5c25d77c5420e471d72fd88f3",
+      "emissions": []
+    },
+    {
+      "id": 120812066616,
+      "name": "Release Preflight (linux-native)",
+      "bytes": 310732,
+      "sha256": "da5e284e0baa4e633a9e20ad5072975552045b9516815b07064bb7a510987aa7",
+      "emissions": []
+    },
+    {
+      "id": 120812066635,
+      "name": "Release Preflight (windows-native)",
+      "bytes": 313302,
+      "sha256": "a9cf9c4da0328846f35d8e1464a9486f75b806f24fdb46fbcf58efd6d32f43dd",
+      "emissions": []
+    },
+    {
+      "id": 120812066642,
+      "name": "Release Cargo Audit",
+      "bytes": 80261,
+      "sha256": "87688d712a66c911c780dc94b862f05f60dd3e083a33860fd17ffab36591b921",
+      "emissions": []
+    },
+    {
+      "id": 120812066784,
+      "name": "Release Preflight (macos-native)",
+      "bytes": 305626,
+      "sha256": "14c37eeed86378bd7f4f8a9124b32b8f9f7a9245e2e022ab3b0903bf4495de16",
+      "emissions": []
+    },
+    {
+      "id": 120813875575,
+      "name": "Build Release Assets (macos-arm64)",
+      "bytes": 60496,
+      "sha256": "4de9dd5241fb0f2d518060258846a58ff5874f7f9519cf7b0ea20ff26e7f087d",
+      "emissions": []
+    },
+    {
+      "id": 120813875652,
+      "name": "Build Release Assets (macos-x86_64)",
+      "bytes": 63022,
+      "sha256": "21fd4ad9a4ae818f1c13380c067e949fd67dd4b3af5ef8f7c22237aafc1f6a62",
+      "emissions": []
+    },
+    {
+      "id": 120813875660,
+      "name": "Build Release Assets (windows-x86_64)",
+      "bytes": 74145,
+      "sha256": "c4c19f1caddfcfbf945deceb5b7eeafa00ab2311a027ba80a54faeec8b7919f3",
+      "emissions": []
+    },
+    {
+      "id": 120813875678,
+      "name": "Build Release Assets (linux-x86_64)",
+      "bytes": 61891,
+      "sha256": "de5bcfbd805f14567d696630961b496cccc288784302b018535712b21cd510bd",
+      "emissions": []
+    },
+    {
+      "id": 120816797856,
+      "name": "Assemble Release Bundle",
+      "bytes": 53454,
+      "sha256": "4a3b727007ee334c45ea306d060fd4354b906c2f92e4c2e14262b4c1146301f5",
+      "emissions": [
+        "2026-10-24T07:42:06.9732912Z (node:2261) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ]
+    },
+    {
+      "id": 120817128625,
+      "name": "Create Draft Release",
+      "bytes": 7251,
+      "sha256": "94dfd2992ccc010c524207875bc02fdebd3c0f6339cef7f60e5ae60b49c0e91f",
+      "emissions": [
+        "2026-10-24T07:43:36.2059815Z (node:1926) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      ]
+    }
+  ],
+  "annotations": {
+    "120812031211": [],
+    "120812066616": [],
+    "120812066635": [],
+    "120812066642": [],
+    "120812066784": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "120813875575": [
+      {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/147dac77d025ee0191ff7c949a9a095688115066/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    ],
+    "120813875652": [],
+    "120813875660": [],
+    "120813875678": [],
+    "120816797856": [],
+    "120817128625": []
+  },
+  "artifact_metadata": [
+    {
+      "id": 12552607699,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjYwNzY5OQ==",
+      "name": "release-windows-x86_64",
+      "size_in_bytes": 18247980,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552607699",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552607699/zip",
+      "expired": false,
+      "digest": "sha256:e954196f293f2895d5454309790841bac188700f6d1599c74a2b8cd59e06bcca",
+      "created_at": "2026-10-24T07:31:33Z",
+      "updated_at": "2026-10-24T07:31:33Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12552572706,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjU3MjcwNg==",
+      "name": "release-linux-x86_64",
+      "size_in_bytes": 20095609,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552572706",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552572706/zip",
+      "expired": false,
+      "digest": "sha256:a2b40e305830fc719b42a6b4b356fb8e5042d1d3c0a560b0d6112d27436d5183",
+      "created_at": "2026-10-24T07:30:53Z",
+      "updated_at": "2026-10-24T07:30:53Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12552354896,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MjM1NDg5Ng==",
+      "name": "validated-release-bundle-v0.31.0-147dac77d025ee0191ff7c949a9a095688115066",
+      "size_in_bytes": 86708775,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552354896",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12552354896/zip",
+      "expired": false,
+      "digest": "sha256:00b444cea1aae64aaa2c0714979571bdb50a03c5e00d19123a1e75915c0bc560",
+      "created_at": "2026-10-24T07:43:29Z",
+      "updated_at": "2026-10-24T07:43:29Z",
+      "expires_at": "2026-11-07T07:43:25Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551899600,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTg5OTYwMA==",
+      "name": "release-macos-x86_64",
+      "size_in_bytes": 25334211,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551899600",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551899600/zip",
+      "expired": false,
+      "digest": "sha256:e6e2bc67b6f569fd0f1e97a153f4ad3d634ef1958c9be4152677cfb2c080962c",
+      "created_at": "2026-10-24T07:41:44Z",
+      "updated_at": "2026-10-24T07:41:44Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    },
+    {
+      "id": 12551779634,
+      "node_id": "MDg6QXJ0aWZhY3QxMjU1MTc3OTYzNA==",
+      "name": "release-macos-arm64",
+      "size_in_bytes": 23031699,
+      "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551779634",
+      "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12551779634/zip",
+      "expired": false,
+      "digest": "sha256:d1ae7c4a62129aa154f2ffa62c028c7b985c5dbefef1b33f13799ce12b2596fb",
+      "created_at": "2026-10-24T07:34:51Z",
+      "updated_at": "2026-10-24T07:34:51Z",
+      "expires_at": "2027-01-22T07:17:48Z",
+      "workflow_run": {
+        "id": 40073569765,
+        "repository_id": 1160125223,
+        "head_repository_id": 1160125223,
+        "head_branch": "v0.31.0",
+        "head_sha": "147dac77d025ee0191ff7c949a9a095688115066"
+      }
+    }
+  ],
+  "official_action": {
+    "observed_utc": "2026-10-24T07:18:47.911318+00:00",
+    "latest_stable": "v8.0.2",
+    "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "runtime": "node24",
+    "definition_sha256": "e98559b7a31ba31be4709f20d22102dc2737fa630f69a339eb89981151e505fe",
+    "bundle_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+    "bundle_bytes": 4432922,
+    "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "minimum_runner": "2.327.1",
+    "runtime_floor_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+    "diagnosed_bundle_identical": true,
+    "boundary": "Fresh metadata during this tagged run. Actual hosted/runtime/input/emission/output gates remain separate."
+  },
+  "actual_downloads": {
+    "assembly": {
+      "job": 120816797856,
+      "pattern": "release-*",
+      "same_run": 40073569765,
+      "producer_artifacts": [
+        12552607699,
+        12552572706,
+        12551899600,
+        12551779634
+      ],
+      "api_upload_expected_computed_all_match": true
+    },
+    "draft": {
+      "job": 120817128625,
+      "name": "validated-release-bundle-v0.31.0-147dac77d025ee0191ff7c949a9a095688115066",
+      "artifact_id": 12552354896,
+      "same_run": 40073569765,
+      "api_upload_expected_computed_match": true
+    },
+    "both": {
+      "runtime": "node24",
+      "actual_runner": "2.338.0",
+      "skip_decompress": false,
+      "merge_multiple": false,
+      "digest_mismatch": "error"
+    }
+  },
+  "assessment": "Only two DEP0005 emissions: one each separate Node process invocation in assembly and draft extraction. Increase over candidate explained by additional real draft Action invocation; not inherited allowance. Full byte/real N-1/draft identity gates pending before final minor classification/publication admission.",
+  "hosted_vs_diagnosis": "Hosted message/count/input/runtime/digests/output observed; hosted stack NOT RUN. Retained unchanged full Action causal diagnosis reusable only for unchanged code/input/impact boundary.",
+  "result": "LOG/ANNOTATION/INPUT CHAIN PASS; FINAL BYTE/DRAFT REVIEW PENDING"
+}

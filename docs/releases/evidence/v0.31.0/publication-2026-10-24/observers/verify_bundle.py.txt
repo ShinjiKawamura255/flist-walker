@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Independent byte inspection of a release bundle; never executes its files."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import plistlib
+import re
+import stat
+import struct
+import tarfile
+import zipfile
+import xml.etree.ElementTree as ET
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def require(value, reason):
+    if not value:
+        raise ValueError(reason)
+
+
+def inventory(version):
+    result = set()
+    for platform in ('windows-x86_64', 'linux-x86_64', 'macos-arm64', 'macos-x86_64'):
+        base = f'FlistWalker-{version}-{platform}'
+        windows = platform.startswith('windows')
+        result.update([base + ('.exe' if windows else ''),
+                       f'fw-{version}-{platform}' + ('.exe' if windows else ''),
+                       base + ('.zip' if windows else '.tar.gz')])
+        result.update(base + '.' + n + '.txt' for n in ('README', 'LICENSE', 'THIRD_PARTY_NOTICES'))
+        if platform.startswith('macos'):
+            result.add(base + '-app.zip')
+    return result
+
+
+def strict_manifest(raw, expected):
+    rows = raw.decode('ascii').splitlines()
+    result = {}
+    for row in rows:
+        match = re.fullmatch(r'([0-9a-f]{64})  ([A-Za-z0-9_.-]+)', row)
+        require(match is not None, 'malformed manifest row')
+        value, name = match.groups()
+        require(name not in result, 'duplicate manifest row')
+        result[name] = value
+    require(set(result) == expected and len(result) == 26, 'manifest inventory mismatch')
+    return result
+
+
+def version_info(blob, version):
+    strings = {}
+    visited = 0
+    def block(off, limit, depth=0):
+        nonlocal visited
+        visited += 1
+        require(depth <= 8 and visited <= 256 and off+6 <= limit, 'invalid VERSIONINFO tree')
+        length, value_length, kind = struct.unpack_from('<HHH', blob, off)
+        end = off+length
+        require(length >= 8 and end <= limit and kind in (0,1), 'invalid VERSIONINFO length')
+        cursor = off+6
+        while cursor+2 <= end and blob[cursor:cursor+2] != b'\0\0': cursor += 2
+        require(cursor+2 <= end, 'unterminated VERSIONINFO key')
+        key = blob[off+6:cursor].decode('utf-16-le')
+        value_off = (cursor+2+3) & ~3
+        value_bytes = value_length*(2 if kind else 1)
+        require(value_off+value_bytes <= end, 'VERSIONINFO value outside block')
+        value = blob[value_off:value_off+value_bytes]
+        if depth == 0:
+            require(key == 'VS_VERSION_INFO' and kind == 0 and value_length == 52, 'invalid fixed version info')
+            fields = struct.unpack('<13I', value)
+            require(fields[0] == 0xFEEF04BD, 'fixed version signature mismatch')
+            expected = tuple(map(int,version.split('.'))) + (0,)
+            for high,low in ((fields[2],fields[3]),(fields[4],fields[5])):
+                require((high>>16,high&65535,low>>16,low&65535) == expected, 'formal file/product version mismatch')
+        if key in ('FileVersion','ProductVersion'):
+            require(kind == 1 and key not in strings, 'duplicate/nontext formal version')
+            text = value.decode('utf-16-le').rstrip('\0')
+            require(text in (version,version+'.0'), 'formal version string mismatch')
+            strings[key] = text
+        child = (value_off+value_bytes+3)&~3
+        while child < end:
+            if blob[child:end].strip(b'\0') == b'': break
+            child_end = block(child,end,depth+1)
+            child = (child_end+3)&~3
+        return end
+    end = block(0,len(blob))
+    require(not blob[end:].strip(b'\0') and set(strings) == {'FileVersion','ProductVersion'}, 'missing/extra VERSIONINFO data')
+    return strings
+
+
+def xml_shape(blob):
+    require(len(blob) <= 65536 and b'<!DOCTYPE' not in blob and b'<!ENTITY' not in blob, 'unexpected manifest declaration')
+    def shape(element):
+        return (element.tag,sorted(element.attrib.items()),(element.text or '').strip(),(element.tail or '').strip(),[shape(x) for x in element])
+    return shape(ET.fromstring(blob.rstrip(b'\0').strip()))
+
+
+def archive_paths(entries, allowed_files, allowed_dirs=(), executable_files=()):
+    seen = set()
+    for name, directory, mode, unix in entries:
+        canonical = name[:-1] if directory and name.endswith('/') else name
+        require(canonical not in seen, 'duplicate archive member')
+        seen.add(canonical)
+        require(canonical and not name.startswith(('/', '\\')) and '\\' not in name and all(p not in ('','.', '..') for p in canonical.split('/')), 'unsafe archive path')
+        if directory:
+            require(name.rstrip('/') in allowed_dirs and (not unix or stat.S_IFMT(mode) in (0,stat.S_IFDIR)), 'unexpected/special archive directory')
+        else:
+            require(name in allowed_files and (not unix or stat.S_IFMT(mode) == stat.S_IFREG), 'unexpected/special archive file')
+            if name in executable_files:
+                require(unix and stat.S_ISREG(mode) and mode & stat.S_IXUSR, 'archive owner executable mode missing')
+    require({name for name,directory,_,_ in entries if not directory} == set(allowed_files), 'archive exact member mismatch')
+
+
+def readme_template(repo, platform, version):
+    filename = 'prepare-release-macos.sh' if platform.startswith('macos') else ('prepare-release.sh' if platform.startswith('windows') else 'prepare-release-linux.sh')
+    text = (repo/'scripts'/filename).read_text()
+    match = re.search(r'cat > .* <<(\x27?README\x27?)\n(.*?)\nREADME\n',text,re.S)
+    require(match is not None, 'source README template missing')
+    body = match[2]+'\n'
+    variables = {'VERSION':'v'+version,'ZIP_EXE_NAME':'flistwalker.exe','TAR_BIN_NAME':'flistwalker','FW_EXE_NAME':f'fw-{version}-{platform}.exe','FW_BIN_NAME':f'fw-{version}-{platform}'}
+    if match[1] == "'README'":
+        for key,value in variables.items(): body = body.replace('__'+key+'__',value)
+        require(not re.search(r'__[A-Z_]+__',body), 'unresolved README placeholder')
+    else:
+        require(re.search(r'(?<!\\)`|\$\(',body) is None, 'unsafe command expansion in source README')
+        def substitute(m):
+            require(m[1] in variables, 'unknown README source variable')
+            return variables[m[1]]
+        body = re.sub(r'\$\{([A-Z_]+)\}',substitute,body)
+        require(not re.search(r'(?<!\\)\$[A-Za-z_0-9{]',body), 'unresolved README expansion')
+        body = re.sub(r'\\([\\$`])',r'\1',body)
+        body = body.replace('\\\n','')
+    return body.encode()
+
+
+def pe_inspection(data, version, fw, expected_manifest):
+    def u16(off): return struct.unpack_from('<H', data, off)[0]
+    def u32(off): return struct.unpack_from('<I', data, off)[0]
+    require(data[:2] == b'MZ', 'missing DOS header')
+    pe = u32(0x3c)
+    require(data[pe:pe+4] == b'PE\0\0' and u16(pe+4) == 0x8664, 'PE architecture mismatch')
+    count, optional_size, opt = u16(pe+6), u16(pe+20), pe+24
+    require(u16(opt) == 0x20b and optional_size >= 240 and u32(opt+108) >= 5, 'expected PE32+ directories')
+    subsystem = u16(opt+68)
+    require(subsystem == (3 if fw else 2), 'wrong Windows subsystem')
+    sections = []
+    for index in range(count):
+        off = opt + optional_size + index*40
+        virtual_size, rva, raw_size, raw_off = struct.unpack_from('<IIII', data, off+8)
+        require(raw_off+raw_size <= len(data), 'truncated PE section')
+        sections.append((rva, virtual_size, raw_off, raw_size))
+    def offset(rva, size=1):
+        for start, virtual_size, raw_off, raw_size in sections:
+            if start <= rva and rva+size <= start+raw_size:
+                return raw_off+rva-start
+        raise ValueError('unmapped PE RVA')
+    def cstring(rva):
+        off = offset(rva)
+        section_end = next(raw_off+raw_size for start,_,raw_off,raw_size in sections if raw_off <= off < raw_off+raw_size)
+        end = data.find(b'\0', off, min(off+512,section_end))
+        require(end >= off, 'unbounded PE import name')
+        return data[off:end].decode('ascii')
+    import_rva, import_size = struct.unpack_from('<II', data, opt+112+8)
+    imports = []
+    require(import_rva and 20 <= import_size <= len(data), 'invalid import directory size')
+    offset(import_rva,import_size)
+    for index in range(min(import_size//20,256)):
+        off = offset(import_rva+20*index, 20)
+        descriptor = struct.unpack_from('<IIIII', data, off)
+        if not any(descriptor):
+            break
+        imports.append(cstring(descriptor[3]))
+    else:
+        raise ValueError('unbounded PE imports')
+    require(imports, 'missing PE imports')
+    require(not any(re.search(r'msys-|mingw|libgcc|libstdc\+\+|libwinpthread', n, re.I) for n in imports), 'unexpected GNU runtime import')
+    if fw:
+        require(not any(re.search(r'GDI32|OPENGL32|imm32|psapi|dwmapi|uxtheme', n, re.I) for n in imports), 'fw imports GUI framework')
+    resource_rva, resource_size = struct.unpack_from('<II', data, opt+112+16)
+    resource = offset(resource_rva, resource_size)
+    types, leaves, visited = [], {}, set()
+    def directory(relative, depth, path=()):
+        require(depth <= 2 and relative not in visited and relative+16 <= resource_size, 'invalid PE resource tree')
+        visited.add(relative)
+        named, ids = struct.unpack_from('<HH', data, resource+relative+12)
+        require(named == 0 and ids <= 256 and relative+16+8*ids <= resource_size, 'invalid resource entries')
+        entry_names = set()
+        for index in range(named+ids):
+            name, child = struct.unpack_from('<II', data, resource+relative+16+8*index)
+            require(not name & 0x80000000, 'unexpected named resource')
+            require(name not in entry_names, 'duplicate resource directory key')
+            entry_names.add(name)
+            key = path+(name,)
+            if depth == 0:
+                types.append(name)
+            if child & 0x80000000:
+                require(depth < 2, 'extra resource hierarchy')
+                directory(child & 0x7fffffff, depth+1, key)
+            else:
+                require(depth == 2 and key not in leaves and name <= 65535, 'missing/duplicate resource hierarchy')
+                require(child+16 <= resource_size, 'invalid resource leaf')
+                rva, size = struct.unpack_from('<II', data, resource+child)
+                require(size > 0, 'empty resource payload')
+                leaf = offset(rva, size)
+                leaves[key] = data[leaf:leaf+size]
+    directory(0, 0)
+    require({3, 14, 16, 24}.issubset(types), 'missing icon/group/version/manifest resources')
+    require(any(path[0] == 3 for path in leaves) and any(path[0] == 14 for path in leaves), 'missing icon/group payload')
+    versions = [version_info(blob,version) for path,blob in leaves.items() if path[0] == 16]
+    require(versions and all(path[1] == 1 for path in leaves if path[0] in (16,24)), 'unexpected version/manifest ID')
+    manifests = [blob for path,blob in leaves.items() if path[0] == 24]
+    require(manifests and all(xml_shape(x) == xml_shape(expected_manifest) for x in manifests), 'manifest differs from exact source asInvoker assembly')
+    for path,blob in leaves.items():
+        if path[0] == 14:
+            require(len(blob) >= 6, 'truncated group icon')
+            reserved,kind,count = struct.unpack_from('<HHH',blob)
+            require(reserved == 0 and kind == 1 and count > 0 and len(blob) == 6+14*count, 'invalid group icon')
+            for index in range(count):
+                size,icon_id = struct.unpack_from('<IH',blob,6+14*index+8)
+                images = [image for key,image in leaves.items() if key[0] == 3 and key[1] == icon_id]
+                require(images and all(len(image) == size for image in images), 'group icon target/size mismatch')
+    certificate_offset, certificate_size = struct.unpack_from('<II', data, opt+112+32)
+    return dict(subsystem=subsystem, resource_types=sorted(types), imports=imports,
+                resource_paths=[list(x) for x in sorted(leaves)], formal_versions=versions,
+                version=version, source_manifest_equivalent=True, asInvoker=True,
+                authenticode_declared_table_bytes=certificate_size,
+                authenticode_verification='NOT RUN; declaration observation only')
+
+
+def verify(bundle, repo, version, key):
+    expected = inventory(version)
+    require(set(p.name for p in bundle.iterdir()) == expected | {'SHA256SUMS', 'SHA256SUMS.sig'}, 'exact28 assets required')
+    require(all(p.is_file() and not p.is_symlink() for p in bundle.iterdir()), 'non-regular bundle member')
+    raw = (bundle/'SHA256SUMS').read_bytes()
+    manifest = strict_manifest(raw, expected)
+    signature = (bundle/'SHA256SUMS.sig').read_bytes()
+    require(len(signature) == 64, 'signature must be raw64 bytes')
+    public = Ed25519PublicKey.from_public_bytes(bytes.fromhex(key))
+    public.verify(signature, raw)
+    try:
+        public.verify(signature, bytes([raw[0] ^ 1])+raw[1:])
+    except InvalidSignature:
+        pass
+    else:
+        raise ValueError('signature tamper control accepted')
+    for corrupted in (raw+raw.splitlines(keepends=True)[0], b'\n'.join(raw.splitlines()[:-1])+b'\n'):
+        try: strict_manifest(corrupted, expected)
+        except ValueError: pass
+        else: raise ValueError('manifest negative control accepted')
+    contents = {name: (bundle/name).read_bytes() for name in manifest}
+    for name, value in contents.items():
+        require(digest(value) == manifest[name], 'digest mismatch: '+name)
+    license_bytes = (repo/'LICENSE').read_bytes()
+    notices_bytes = (repo/'THIRD_PARTY_NOTICES.txt').read_bytes()
+    binaries, archives = {}, []
+    for platform in ('windows-x86_64', 'linux-x86_64', 'macos-arm64', 'macos-x86_64'):
+        base = f'FlistWalker-{version}-{platform}'
+        windows = platform.startswith('windows')
+        binary = base + ('.exe' if windows else '')
+        readme = contents[base+'.README.txt']
+        require(readme == readme_template(repo,platform,version), 'README current source template mismatch')
+        require(contents[base+'.LICENSE.txt'] == license_bytes and contents[base+'.THIRD_PARTY_NOTICES.txt'] == notices_bytes, 'sidecar mismatch')
+        for name in (binary, f'fw-{version}-{platform}'+('.exe' if windows else '')):
+            data = contents[name]
+            require(key.encode() in data, 'predecessor key missing: '+name)
+            commits = sorted(set(x.decode() for x in re.findall(rb'/rustc/([0-9a-f]{40})/', data)))
+            require(commits == ['8bab26f4f68e0e26f0bb7960be334d5b520ea452'], 'compiler provenance mismatch: '+name)
+            record = dict(sha256=digest(data), bytes=len(data), expected_key_bytes_present=True, rustc_commits=commits)
+            if windows:
+                source = (repo/'rust/build.rs').read_text()
+                expected_manifest = re.search(r'const WINDOWS_AS_INVOKER_MANIFEST:.*?r#"(.*?)"#;',source,re.S)
+                require(expected_manifest is not None, 'expected source manifest missing')
+                record['pe'] = pe_inspection(data, version, name.startswith('fw-'), expected_manifest[1].encode())
+            elif platform.startswith('linux'):
+                require(data[:6] == b'\x7fELF\x02\x01' and struct.unpack_from('<H', data, 18)[0] == 62, 'ELF architecture mismatch')
+            else:
+                require(data[:4] == b'\xcf\xfa\xed\xfe', 'Mach-O64 magic mismatch')
+                require(struct.unpack_from('<I', data, 4)[0] == (0x100000c if platform.endswith('arm64') else 0x1000007), 'Mach-O architecture mismatch')
+            binaries[name] = record
+        archived_name = 'flistwalker.exe' if windows else 'flistwalker'
+        archive_name = base + ('.zip' if windows else '.tar.gz')
+        if windows:
+            with zipfile.ZipFile(bundle/archive_name) as z:
+                require(z.testzip() is None, 'ZIP CRC failure')
+                require(all(i.create_system == 3 for i in z.infolist()), 'expected Unix ZIP producer metadata')
+                archive_paths([(i.filename,i.is_dir(),i.external_attr>>16,True) for i in z.infolist()],{archived_name,'README.txt','LICENSE.txt','THIRD_PARTY_NOTICES.txt'})
+                names = [n for n in z.namelist() if not n.endswith('/')]
+                members = {n:z.read(n) for n in names}
+                require(len(names) == len(members), 'duplicate ZIP member')
+        else:
+            with tarfile.open(bundle/archive_name) as t:
+                entries = t.getmembers()
+                require(all(n.isfile() for n in entries), 'unexpected archive directory/link/special member')
+                archive_paths([(n.name,n.isdir(),stat.S_IFREG|n.mode,True) for n in entries],{archived_name,'README.txt','LICENSE.txt','THIRD_PARTY_NOTICES.txt'},executable_files={archived_name})
+                names = [n.name.removeprefix('./') for n in entries if n.isfile()]
+                members = {n.name.removeprefix('./'):t.extractfile(n).read() for n in entries if n.isfile()}
+                require(len(names) == len(members), 'duplicate tar member')
+                require(any(n.name == archived_name and n.mode & stat.S_IXUSR for n in entries), 'archive owner executable mode missing')
+        require(set(members) == {archived_name,'README.txt','LICENSE.txt','THIRD_PARTY_NOTICES.txt'}, 'archive exact member mismatch')
+        require(members[archived_name] == contents[binary] and members['README.txt'] == readme and members['LICENSE.txt'] == license_bytes and members['THIRD_PARTY_NOTICES.txt'] == notices_bytes, 'archive/sidecar byte mismatch')
+        archives.append(dict(name=archive_name, exact_members=sorted(members), bytes_match=True))
+        if platform.startswith('macos'):
+            app = base+'.app/Contents/'
+            with zipfile.ZipFile(bundle/(base+'-app.zip')) as z:
+                require(z.testzip() is None, 'app ZIP CRC failure')
+                names = [i.filename for i in z.infolist() if not i.is_dir()]
+                expected_app = {app+'Info.plist',app+'MacOS/FlistWalker',app+'Resources/LICENSE.txt',app+'Resources/THIRD_PARTY_NOTICES.txt',app+'Resources/FlistWalker.icns'}
+                require(all(i.create_system == 3 for i in z.infolist()), 'expected Unix app ZIP producer metadata')
+                archive_paths([(i.filename,i.is_dir(),i.external_attr>>16,True) for i in z.infolist()],expected_app,{base+'.app',app.rstrip('/'),app+'MacOS',app+'Resources'},executable_files={app+'MacOS/FlistWalker'})
+                require(set(names) == expected_app and len(names) == len(expected_app), 'app exact file inventory mismatch')
+                info = plistlib.loads(z.read(app+'Info.plist'))
+                require(all(info.get(k) == v for k,v in {'CFBundleVersion':version,'CFBundleShortVersionString':version,'CFBundleExecutable':'FlistWalker','CFBundleIdentifier':'com.flistwalker.app','CFBundlePackageType':'APPL','LSMinimumSystemVersion':'11.0'}.items()), 'app metadata mismatch')
+                executable = z.getinfo(app+'MacOS/FlistWalker')
+                require(executable.create_system == 3 and stat.S_ISREG(executable.external_attr >> 16), 'app executable Unix type missing')
+                require(z.read(app+'MacOS/FlistWalker') == contents[binary] and (executable.external_attr >> 16) & stat.S_IXUSR, 'app binary/owner mode mismatch')
+                require(z.read(app+'Resources/LICENSE.txt') == license_bytes and z.read(app+'Resources/THIRD_PARTY_NOTICES.txt') == notices_bytes, 'app notices mismatch')
+                require(z.read(app+'Resources/FlistWalker.icns').startswith(b'icns'), 'app icon missing')
+                archives.append(dict(name=base+'-app.zip', exact_members=sorted(names), bytes_match=True, metadata=info))
+    return dict(result='PASS', version=version, assets=[dict(name=p.name, bytes=p.stat().st_size, sha256=digest(p.read_bytes())) for p in sorted(bundle.iterdir())], binaries=binaries, archives=archives, signature_verified=True, controls=['one-bit signature tamper rejected','duplicate manifest row rejected','missing manifest row rejected'], trusted_key_hex=key)
+
+
+if __name__ == '__main__':
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--bundle',type=Path,required=True)
+    p.add_argument('--repo',type=Path,required=True)
+    p.add_argument('--version',default='0.31.0')
+    p.add_argument('--key',required=True)
+    p.add_argument('--output',type=Path,required=True)
+    a=p.parse_args()
+    require(not a.output.exists(), 'refuse to overwrite retained result')
+    result=verify(a.bundle,a.repo,a.version,a.key)
+    a.output.write_text(json.dumps(result,indent=2)+'\n')
+    print('PASS:28assets,26hashes,signature/keys,archives/notices/metadata,8architectures/compilers,Windows PE')

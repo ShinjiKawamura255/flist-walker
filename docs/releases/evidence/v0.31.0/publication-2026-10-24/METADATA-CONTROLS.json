@@ -1,0 +1,67 @@
+{
+  "scope": "Synthetic metadata only; NEVER actual release admission",
+  "observer_sha256": "539cc243c0e9b862c8d32eb28421cc128a7c21dd72684785ed78f620425e4f18",
+  "result": "PASS",
+  "cases": [
+    {
+      "case": "positive TEST ONLY",
+      "expected": "PASS fixture only",
+      "actual_exit": 0
+    },
+    {
+      "case": "wrong tag",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong source",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "body mismatch",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong size",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong digest",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "duplicate asset ID",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "missing asset",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong bundle version",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong fixed inventory",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "wrong release ID",
+      "expected": "REJECT",
+      "actual_exit": 1
+    },
+    {
+      "case": "missing release ID",
+      "expected": "REJECT",
+      "actual_exit": 1
+    }
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "verifier_sha256": "53783a396206b82640d4df01b20739a091de0c95d35efeb5d99a94cacb0d79da",
+  "fixture": "rejected candidate 40069314271 Windows producer; only structural PE positive, never release admission",
+  "positive": [
+    "actual GUI PE",
+    "actual fw PE in REJECTED-PRODUCER-PE-POSITIVE.json",
+    "regular executable archive",
+    "four full source README templates"
+  ],
+  "negative_controls": [
+    {
+      "control": "XML unexpected tail text",
+      "result": "REJECT",
+      "reason": "manifest tail mismatch"
+    },
+    {
+      "control": "old fixed FileVersion despite current strings",
+      "result": "REJECT",
+      "reason": "formal file/product version mismatch"
+    },
+    {
+      "control": "old formal version string",
+      "result": "REJECT",
+      "reason": "formal version string mismatch"
+    },
+    {
+      "control": "wrong manifest execution level",
+      "result": "REJECT",
+      "reason": "manifest differs from exact source asInvoker assembly"
+    },
+    {
+      "control": "wrong manifest ID",
+      "result": "REJECT",
+      "reason": "unexpected version/manifest ID"
+    },
+    {
+      "control": "missing resource hierarchy",
+      "result": "REJECT",
+      "reason": "missing/duplicate resource hierarchy"
+    },
+    {
+      "control": "extra resource hierarchy",
+      "result": "REJECT",
+      "reason": "extra resource hierarchy"
+    },
+    {
+      "control": "duplicate root resource key",
+      "result": "REJECT",
+      "reason": "duplicate resource directory key"
+    },
+    {
+      "control": "empty resource type 3",
+      "result": "REJECT",
+      "reason": "missing icon/group payload"
+    },
+    {
+      "control": "empty resource type 14",
+      "result": "REJECT",
+      "reason": "missing icon/group payload"
+    },
+    {
+      "control": "import directory size 0",
+      "result": "REJECT",
+      "reason": "invalid import directory size"
+    },
+    {
+      "control": "import directory size 19",
+      "result": "REJECT",
+      "reason": "invalid import directory size"
+    },
+    {
+      "control": "import directory size 20",
+      "result": "REJECT",
+      "reason": "unbounded PE imports"
+    },
+    {
+      "control": "import string crosses section",
+      "result": "REJECT",
+      "reason": "unbounded PE import name"
+    },
+    {
+      "control": "parent path",
+      "result": "REJECT",
+      "reason": "unsafe archive path"
+    },
+    {
+      "control": "absolute path",
+      "result": "REJECT",
+      "reason": "unsafe archive path"
+    },
+    {
+      "control": "duplicate directory",
+      "result": "REJECT",
+      "reason": "duplicate archive member"
+    },
+    {
+      "control": "canonical duplicate directory",
+      "result": "REJECT",
+      "reason": "unsafe archive path"
+    },
+    {
+      "control": "symlink",
+      "result": "REJECT",
+      "reason": "unexpected/special archive file"
+    },
+    {
+      "control": "fifo",
+      "result": "REJECT",
+      "reason": "unexpected/special archive file"
+    },
+    {
+      "control": "owner execute missing",
+      "result": "REJECT",
+      "reason": "archive owner executable mode missing"
+    },
+    {
+      "control": "extra app member",
+      "result": "REJECT",
+      "reason": "unexpected/special archive file"
+    },
+    {
+      "control": "unexpected directory",
+      "result": "REJECT",
+      "reason": "unexpected/special archive directory"
+    },
+    {
+      "control": "README header only windows-x86_64",
+      "result": "REJECT",
+      "reason": "README mismatch"
+    },
+    {
+      "control": "README header only linux-x86_64",
+      "result": "REJECT",
+      "reason": "README mismatch"
+    },
+    {
+      "control": "README header only macos-arm64",
+      "result": "REJECT",
+      "reason": "README mismatch"
+    },
+    {
+      "control": "README header only macos-x86_64",
+      "result": "REJECT",
+      "reason": "README mismatch"
+    },
+    {
+      "control": "actual rejected Windows README",
+      "result": "REJECT",
+      "reason": "README mismatch"
+    }
+  ],
+  "result": "PASS"
+}
