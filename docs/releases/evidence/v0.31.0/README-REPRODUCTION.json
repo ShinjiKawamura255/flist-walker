@@ -1,0 +1,14 @@
+{
+  "prepare-release.sh": {
+    "exit": 0,
+    "stderr": "/bin/bash: flistwalker.ignore.txt.example: command not found\n/bin/bash: flistwalker.ignore.txt: command not found\n",
+    "literal_code_preserved": false,
+    "nonempty_readme": true
+  },
+  "prepare-release-linux.sh": {
+    "exit": 0,
+    "stderr": "",
+    "literal_code_preserved": true,
+    "nonempty_readme": true
+  }
+}
