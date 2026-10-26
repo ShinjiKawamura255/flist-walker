@@ -254,4 +254,4 @@
 | TC-234 | unit+regression | 起動/復帰計測の第1段階として、test-only intentの初回起点をretry/coalesced入力で保持し、別target・取消・逆行を拒否する。既存TC-207 deferred fixtureへ観測起点を添付する。typed admission controlsはmandatory guardのFAILを欠測/参照不良より優先し、UNKNOWN・Startedだけ・clock/phase不整合・timeout/nonzero・不要再索引・初回のみ誤表示して後で修復・必須first-model/first-frame receiptが脱落し後続のみ正常でも成功扱いしない。合法なsend-return前worker着手とterminal-before-frame、保持復帰のworker時刻NA、予定cancelのcleanupを区別し数値PASSを返さない。collector/raw schema/cardinality・実frame receipt・native/Windows/計装負荷・時間閾値は後段で未実装 | SP-007, SP-010 |
 
 | TC-235 | unit+process+platform | 本番の内部子entrypoint、同じsupervisor/decoderによる停止・再試行、2件停止後の正常要求、pipe背圧/partial frame/EOF/crash、native path/effective settings、physical leaseとexit回収、回収不能時の上限を検証する。in-process algorithm testsを本番process証拠へ昇格しない | SP-027 |
-| TC-236 | unit+GUI+manual | 現在/全停止、保留・遅延更新の取消、停止後のtab作成/切替/設定変更/late completion、対象tabだけの明示更新、旧確定snapshot保持を検証する。実共有フォルダ切断・復帰は各platformの実行軸を別記する | SP-027 |
+| TC-236 | unit+GUI+manual | 現在/全停止、保留・遅延更新の取消、停止ボタンの処理中/待機/確定待ち/遅延更新での有効化と完了/停止/失敗後の無効化、背景タブだけ処理中の全停止、描画から実行までに完了した操作の無作用、停止後のtab作成/切替/設定変更/late completion、対象tabだけの明示更新、旧確定snapshot保持を検証する。実共有フォルダ切断・復帰は各platformの実行軸を別記する | SP-027 |

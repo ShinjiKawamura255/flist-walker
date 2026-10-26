@@ -34,6 +34,7 @@ pub(super) struct GuiSurfaceSnapshot {
     pub(super) show_preview: bool,
     pub(super) preview_panel_width: u32,
     pub(super) top_actions: Vec<String>,
+    pub(super) disabled_top_actions: Vec<String>,
     pub(super) status_line: String,
     pub(super) help_dialogs: Vec<DialogSnapshot>,
     pub(super) preset_picker_dialogs: Vec<DialogSnapshot>,
@@ -350,6 +351,12 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
         top_actions: app
             .top_action_labels()
             .into_iter()
+            .map(str::to_string)
+            .collect(),
+        disabled_top_actions: app
+            .top_action_labels()
+            .into_iter()
+            .filter(|label| !app.top_action_enabled(label))
             .map(str::to_string)
             .collect(),
         status_line: app.shell.runtime.status_line.clone(),

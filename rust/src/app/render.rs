@@ -459,6 +459,57 @@ impl FlistWalkerApp {
         }
     }
 
+    fn tab_has_stoppable_indexing(&self, tab: &super::AppTabState) -> bool {
+        let tab_id = tab.id;
+        if !self.shell.indexing.index_admitted(tab_id) {
+            return false;
+        }
+        let indexing = &self.shell.indexing;
+        if indexing.pending_queue.iter().any(|request| {
+            request.tab_id == tab_id
+                && !indexing
+                    .superseded_request_ids
+                    .contains(&request.request_id)
+        }) || indexing.inflight_requests.iter().any(|request| {
+            indexing.request_tabs.get(request) == Some(&tab_id)
+                && !indexing.superseded_request_ids.contains(request)
+        }) {
+            return true;
+        }
+        // The active tab's saved slot is not its live state.
+        if self.current_tab_id() == Some(tab_id) {
+            self.shell.indexing.in_progress
+                || self.shell.indexing.pending_request_id.is_some()
+                || self.shell.indexing.pending_entries_request_id.is_some()
+                || self.shell.indexing.pending_finish.is_some()
+                || self.shell.indexing.refresh_after_pending_finish.is_some()
+                || self.shell.indexing.root_after_pending_finish.is_some()
+        } else {
+            tab.index_state.index_in_progress
+                || tab.index_state.pending_index_request_id.is_some()
+                || tab.index_state.pending_index_entries_request_id.is_some()
+                || tab.index_state.pending_index_finish.is_some()
+                || tab.index_state.refresh_after_pending_finish.is_some()
+                || tab.index_state.root_after_pending_finish.is_some()
+        }
+    }
+
+    pub(super) fn top_action_enabled(&self, label: &str) -> bool {
+        match label {
+            "Stop Indexing" => self
+                .shell
+                .tabs
+                .get(self.shell.tabs.active_tab_index())
+                .is_some_and(|tab| self.tab_has_stoppable_indexing(tab)),
+            "Stop All Indexing" => self
+                .shell
+                .tabs
+                .iter()
+                .any(|tab| self.tab_has_stoppable_indexing(tab)),
+            _ => true,
+        }
+    }
+
     pub(super) fn preset_top_action_tooltip() -> String {
         format!(
             "Open saved search presets ({}+Shift+P)",
@@ -668,10 +719,14 @@ impl FlistWalkerApp {
                     self.restart_current_index();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::StopIndexing) => {
-                    self.stop_current_indexing();
+                    if self.top_action_enabled("Stop Indexing") {
+                        self.stop_current_indexing();
+                    }
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::StopAllIndexing) => {
-                    self.stop_all_indexing();
+                    if self.top_action_enabled("Stop All Indexing") {
+                        self.stop_all_indexing();
+                    }
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::OpenPresetPicker) => {
                     self.open_preset_picker(ctx);

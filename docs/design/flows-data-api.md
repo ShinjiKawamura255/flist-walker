@@ -117,4 +117,5 @@
 - 親の固定 supervisor 2件が request-scoped mailbox へ順序付き応答を渡す。子 stdout は pollable に読み、frame byte/entry/identity/order を検証する。取得時点の FileList observation も子から転送し、親 sink はファイルへ再アクセスしない。mailbox Full 時も latest/shutdown を確認し、受信の背圧を filesystem 停滞と同一視しない。
 - physical lease は spawn 前に予約し、exit 確認後だけ解放する。稼働中と回収待ちを含む子の合計上限4、同時 indexing は2とし、固定 reaper へ終了待ち ownership を移す。キャンセルは論理終端を先行し、kill/try_wait と bounded polling で回収する。空き枯渇は明示失敗とし、要求ごとの reader/join/reaper thread を追加しない。
 - `index_recovery` と coordinator が停止対象と admission を所有し、明示更新だけで対象タブを再開する。停止時は最新世代、待機 queue、遅延 finish/refresh、index 待ちの FileList intent を失効する。build/mailbox/finalization payload は既存 bounded reclaimer を利用し、Full 時も所有権を保持する。確定 snapshot と write transaction は別責務として保護する。
+- render の共通有効条件が、admission、queue/inflight、active shell または inactive tab の要求・完了確定・遅延更新を参照する。active tab の保存 slot や停止後の資源回収待ちは停止対象に数えない。停止ボタンのグレーアウトと command dispatch の再確認に同じ条件を使い、surface snapshot に無効な action を記録する。
 - Trace: FR-049 / NFR-008 / NFR-015 → SP-027 → DES-029 → TC-235, TC-236。rollback は task commit 全体の revert、永続形式の移行なし。
