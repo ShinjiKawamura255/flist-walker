@@ -1,0 +1,70 @@
+{
+  "reviewer": "independent read-only /root/release_prep_review",
+  "observed_utc": "2026-10-26T16:02:03.930059+00:00",
+  "scope": "Final pre-publication admission for existing draft424455243 only",
+  "identity": {
+    "version": "v0.31.1",
+    "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+    "tag_object": "3c50db82a399a28882316a074d3ab65e0f1b3d3d",
+    "tagged_run": 40348832993,
+    "attempt": 1,
+    "event": "push",
+    "draft_release": 424455243,
+    "body_sha256": "25eacb0389a36ee5666529c59caf3ddf4ca926ab7945ba9683a0de10b59e7cd4"
+  },
+  "verdict": "GO_PUBLISH",
+  "blocking_findings": [],
+  "major_findings": [],
+  "independence": "No product/helper/Git/CI/draft/publication mutations by reviewer. Only sanitized temporary review receipts written; prior involvement is independent preparation/candidate/CI diagnostic reviews.",
+  "verified": [
+    "Exact protected preparation PR211 checks pass; PR/merged source trees match. Tagged source b1 unchanged; branch untracked evidence preparation does not alter source. MasterCI40341861333 attempt2 hold independently cleared; original failed attempt1 remains retained.",
+    "Live tagged run terminal sourceb1/attempt1/eventpush/tagv0.31.1 completed success; all11jobs pass. Native Linux/macOS/Windows locked tests/clippy and fresh audit execute successfully.",
+    "All130rawlogs CRC/SHA256, all11aggregate source/runner identities and all annotations inspected. No product/Rust/test/clippy/audit warning/error. Three macOS capacity notices, including duplicate notice, have no failed job.",
+    "All5actual artifactZIP byte sizes/SHA256 equal captured exact-run APIs; CRC/flat-unique inventories PASS. All26four-producer payloads equal final signed bundle and extracted files.",
+    "Independent in-memory verify_bundle equals retained BUNDLE-VALIDATION: exact28assets/26rows; predecessor verification key; detached signature and bit-tamper/duplicate/missing controls;8binaries/6archives; compiler/architecture/PE/app metadata; exact current README/license/notices.",
+    "Actual tagged manifest N-1 checker independently rerun: v0.31.0 to v0.31.1 PASS. Live latest public readback remains release422590286/v0.31.0.",
+    "Windows selected source GUI/candidate startup evidence retains original source/build/native identities and PASS; no relevant source/compiler/build/launch-input change. Eligible behavior evidence reused under release-validation.md; fresh tagged byte/PE/manifest identity verified. New executable hash alone does not trigger duplicate native GUI execution.",
+    "Local and live remote annotatedtag object3c50 resolves b1. Actual draft create step uses verify-tag/draft and GitHub Actions owner; initial generated notes replaced under same releaseID without asset overwrite.",
+    "Live draft424455243/namev0.31.1/tagv0.31.1/targetb1/drafttrue/nonprerelease and exact reviewed body bytes match. All28unique asset IDs/name/state/size/API SHA256 match actual tagged bundle. DRAFT-BINDING and reviewed-draft agree.",
+    "Public body lists actual28names, date2026-10-27, accurate stop-control/test changes, unchanged thresholds, known limitations and explicit current macOS not-notarized status. No claim that ordinary CI resolved unknown historical defects."
+  ],
+  "exact_run_warning_disposition": {
+    "severity": "minor",
+    "status": "Accepted only for tagged40348832993 attempt1; no prior candidate/CI exception inherited",
+    "evidence": [
+      {
+        "step": "Assemble Release Bundle/5_Download packaged assets.txt",
+        "line": 32,
+        "node": 2370,
+        "utc": "2026-10-26T15:53:13.2151415Z"
+      },
+      {
+        "step": "Create Draft Release/4_Download validated candidate bundle.txt",
+        "line": 20,
+        "node": 2163,
+        "utc": "2026-10-26T15:55:12.3233452Z"
+      }
+    ],
+    "count": "2actualDEP0005 emissions, one per actual Action extraction invocation;4exports include aggregate/step duplicates. Increase from candidate1 is explained by successful tagged-only draft-consumer invocation, not unexplained extra emission.",
+    "cause_and_boundary": "Fresh official lateststablev8.0.2 resolves fullSHA9000827ccba6bdab643e8b6fd33ac0654aef8333; Node24 compatible with actual2.338.0 runners. Full4432922B bundle SHA2567834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe independently fetched again and identical to bounded full-Action causal diagnosis: empty-string Buffer in UnzipStream; numeric4 Buffer immediately written completely. Actual pin/runtime/inputs/error-on-digest/normal-extraction and both executions observed. Hosted stack/argument count/HTTPS/four-way causal reproduction not claimed.",
+    "impact": "No demonstrated security, integrity or functional harm for observed paths. Four producer and final-consumer API/expected/computed/actual-byte hashes all agree; all required artifact/signature/N-1/function gates pass.",
+    "recommended_fix": "Maintainer tracks upstream Buffer modernization; independently re-evaluate every subsequent run. New code/callsite/message/count/input, security/integrity/function uncertainty or failed gate stops.",
+    "residual_risk": "No generic DEP0005 allowlist; bounded code/path diagnosis is not certification of every Action/network path."
+  },
+  "known_deviations": "User directly accepted v0.31.1-only TC20748-thread100ms stress failure and historical Linux coverage SIGSEGV unknown cause. Thresholds/ordinary CI/new-failure stops preserved; not inferred fixed.",
+  "not_run": [
+    "Reviewer did not launch native GUI or binaries; eligible recorded Windows functional/startup evidence inspected and reused.",
+    "Tagged executable interactive GUI rerun not triggered by hash-only change. Unselected IME/DPI/clipboard/UNC/share outage/fullsoak/performance axes are not PASS claims.",
+    "Actual public anonymous downloads/latestfeed/immutable metadata verification cannot be completed before publication."
+  ],
+  "conditions_for_owner_action": [
+    "Publish only existing reviewed draft424455243 with unchanged tag/source/body/assets; any intervening change/failure requires re-evaluation.",
+    "Immediately after publishing verify all28anonymous publicdownload hashes/sizes, signature/realN-1, latestfeed/release metadata/body/tag/source and independent readback. No overwrite of public tag/assets.",
+    "Retain exact identities/this review/warning disposition/master failure+retry in versioned evidence and finish closure PR."
+  ],
+  "residual_risks": [
+    "Known accepted product issues remain unresolved.",
+    "Attempt1 package transport stall precise cause and permanent repair remain unproven.",
+    "Public readback and closure PR are separate required completion steps after this admission."
+  ]
+}

@@ -1,0 +1,199 @@
+{
+  "result": "PASS_RESULT; INDEPENDENT_HOLD_CLEARANCE_PENDING",
+  "run": 40341861333,
+  "attempt": 2,
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "all_job_results": [
+    {
+      "id": 121666557802,
+      "name": "Windows GNU Updater Build",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666560269,
+      "name": "CI Policy",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666560911,
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666609469,
+      "name": "Clippy and Coverage",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666624146,
+      "name": "Detect Changes",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666633731,
+      "name": "Cargo Audit",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666635405,
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 121666641121,
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 121668894297,
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "success"
+    },
+    {
+      "id": 121673294217,
+      "name": "CI Gate",
+      "conclusion": "success"
+    }
+  ],
+  "rerun_job_names": [
+    "CI Gate",
+    "Windows GNU Updater Build",
+    "Windows GNU Updater E2E"
+  ],
+  "seven_other_successes_reused": [
+    {
+      "name": "CI Policy",
+      "original_job": 121638385183,
+      "latest_api_job": 121666560269,
+      "started_at": "2026-10-26T14:40:53Z",
+      "completed_at": "2026-10-26T14:43:54Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Rust Test and Build (macos-native)",
+      "original_job": 121638483337,
+      "latest_api_job": 121666560911,
+      "started_at": "2026-10-26T14:46:07Z",
+      "completed_at": "2026-10-26T14:59:51Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Clippy and Coverage",
+      "original_job": 121638482906,
+      "latest_api_job": 121666609469,
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:47:10Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Detect Changes",
+      "original_job": 121638384566,
+      "latest_api_job": 121666624146,
+      "started_at": "2026-10-26T14:40:52Z",
+      "completed_at": "2026-10-26T14:41:00Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Cargo Audit",
+      "original_job": 121638482982,
+      "latest_api_job": 121666633731,
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:44:26Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Rust Test and Build (windows-native)",
+      "original_job": 121638483700,
+      "latest_api_job": 121666635405,
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:52:17Z",
+      "all_steps_identical": true
+    },
+    {
+      "name": "Rust Test and Build (linux-native)",
+      "original_job": 121638483058,
+      "latest_api_job": 121666641121,
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:46:51Z",
+      "all_steps_identical": true
+    }
+  ],
+  "api_carry_forward_behavior": "GitHub assigns new job IDs/run_attempt2 to seven carried-forward successes; original start/end and every step are identical. Initial observer ID-equality assumption stopped and was corrected to actual full timestamp/step equality; no result was weakened.",
+  "original_failure": "Retained cancelled GNU build/Gate failure/E2E skipped in attempt1; not rewritten or explained by later success",
+  "original_failure_diagnosis": "../master-ci-40341861333-attempt1/DIAGNOSIS.json",
+  "original_independent_review": "../master-ci-40341861333-attempt1/INDEPENDENT-DIAGNOSIS-REVIEW.json",
+  "retry_apt_step_sha256": "d5b2a1db3525d72f9e1a73b7d3604264b2ee657f2f8dc46ea450e372fd29defc",
+  "e2e_actual_variants": [
+    "Universal",
+    "Fw"
+  ],
+  "e2e_mode": "SameVersion isolated headless self-update; both calls/postconditions completed, no native GUI input claim",
+  "e2e_step_sha256": "b1b9bd0c36b62a4e7fa47b4a9bbdff0ca3c47aff0cafe60e08896d11a549f397",
+  "test_artifact": {
+    "id": 12663850307,
+    "bytes": 10685465,
+    "sha256": "c52404f5425133f308372ae8c5b7791ff87de8991a28f3703add886f3f013797",
+    "crc": "PASS",
+    "exact_members": [
+      "FlistWalker.exe",
+      "fw.exe"
+    ],
+    "api_expected_computed_actual_digests_match": true,
+    "test_only_not_release": true,
+    "binaries": {
+      "FlistWalker.exe": {
+        "bytes": 16578048,
+        "sha256": "1c02ee6f96585b394d1f98926e4842ac31534f9bc59b0cbb9302f37c8ec479e8",
+        "test_only_key_present": true,
+        "subsystem": 2,
+        "formal_versions": [
+          {
+            "ProductVersion": "0.31.1",
+            "FileVersion": "0.31.1"
+          }
+        ],
+        "source_manifest_equivalent": true
+      },
+      "fw.exe": {
+        "bytes": 6252544,
+        "sha256": "bb6b23800f90157f116b50bc779ab6a9f96baba8236391fe41f2cbc1f3c37c38",
+        "test_only_key_present": true,
+        "subsystem": 3,
+        "formal_versions": [
+          {
+            "ProductVersion": "0.31.1",
+            "FileVersion": "0.31.1"
+          }
+        ],
+        "source_manifest_equivalent": true
+      }
+    }
+  },
+  "latest_attempt_log_files": 28,
+  "logs_zip_sha256": "56370124482ac7619898a8f4761588488a6a213df41ff424dff1fc20543bc1b4",
+  "annotations": [],
+  "external_warning": {
+    "actual_count": 1,
+    "exported_occurrences": 2,
+    "emissions": [
+      {
+        "file": "1_Windows GNU Updater E2E.txt",
+        "line": 371,
+        "text": "2026-10-26T15:34:03.8268632Z (node:7048) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      },
+      {
+        "file": "Windows GNU Updater E2E/5_Download Windows GNU test-channel artifact.txt",
+        "line": 23,
+        "text": "2026-10-26T15:34:03.8268585Z (node:7048) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+      }
+    ],
+    "official_action": "ACTION-FRESH.json",
+    "classification": "PROPOSED MINOR for40341861333 attempt2 only; independent review pending",
+    "causal_diagnosis": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+    "boundary": "Actual full pin/Node24 runtime/input/download/API+actualZIP digests and success observed; identical full official code causal diagnosis reused, no hosted stack trace/parallel/HTTPS causality claim or prior exception inheritance",
+    "followup_owner": "repository maintainer",
+    "re_evaluate": "Every run and any new code/callsite/message/count/input/security/integrity/function uncertainty"
+  },
+  "product_warnings": 0,
+  "publication": "Still HOLD pending independent retry review and separate tagged/draft gates; precise original transport cause remains unknown"
+}

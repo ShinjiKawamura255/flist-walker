@@ -1,0 +1,73 @@
+{
+  "reviewer": "independent read-only subagent /root/release_prep_review",
+  "observed_utc": "2026-10-26T15:22:08.825071+00:00",
+  "scope": "v0.31.1 pre-tag admission only; no publication authorization",
+  "independence": "No product, helper, Git, CI, release or external-state mutations. Prior independent preparation reviews only; this JSON is the sole review evidence write.",
+  "identity": {
+    "base": "93890b5521abcbfa98fbf192f42974b488ec25f1",
+    "head": "b1febf364457db9feb99a5b0f745b97a99816591",
+    "preparation_pr": 211,
+    "pr_head": "b5c31be07af4b951871b5ad63dc0c6720c5426d5",
+    "shared_tree": "419323a875bbb74fcd8cb1a96ea923db444a99b1",
+    "candidate_run": 40342283885,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "checkout_clean": true
+  },
+  "verdict": "GO_TAG_ONLY",
+  "blocking_findings": [],
+  "major_findings": [],
+  "warning_disposition": {
+    "severity": "minor",
+    "status": "accepted only for candidate run 40342283885 attempt 1",
+    "evidence": "All 121 logs and all annotations; one actual DEP0005 emission in Assemble Release Bundle/5_Download packaged assets.txt line 32; two exported occurrences are aggregate/step duplicates. No product/Rust/test/clippy/audit warnings; two macOS capacity notices.",
+    "cause": "Fresh official v8.0.2/full SHA 9000827ccba6bdab643e8b6fd33ac0654aef8333; full bundle blob e5fe23803e0378f1f365aa0d6326cd288f5b660c (4432922 bytes, SHA256 7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe) identical to bounded full-Action causal diagnosis. dist line 67720 constructs Buffer(empty string); numeric Buffer(4) at 67982 is immediately completely written at 67983. Actual hosted pin, node24-compatible runner 2.338.0, extraction inputs, all expected/computed/API/archive byte hashes, and success were checked independently.",
+    "impact": "No demonstrated security, integrity or functional impact on the observed extraction path; all required candidate gates pass.",
+    "recommended_fix": "Maintainer to track upstream Buffer API modernization; independently reassess the tagged run and stop on new or unexplained emissions, code, inputs or integrity/function uncertainty.",
+    "residual_risk": "Hosted stack/argument count/HTTPS/four-way-parallel causal reproduction is not claimed. This is no general DEP0005 allowance and inherits no previous release exception."
+  },
+  "verified": [
+    "Preparation tracked range, clean merged source, whole-tag-range selection and TDD/script evidence reviewed previously; no new preparation findings.",
+    "PR211 CI Gate and CI Policy Guardian independently re-read as completed success on b5c31be; PR head and merged b1 trees independently equal.",
+    "Candidate terminal run/attempt/source re-read independently as completed success; exact source in all actual aggregate logs; all required jobs pass, draft job skipped.",
+    "All five API-bound artifact ZIP byte sizes/SHA256/CRC/flat inventory; all 26 producer payload bytes equal final bundle; extracted bytes equal final ZIP.",
+    "Independent verifier rerun in memory equals retained BUNDLE-VALIDATION: 28 assets/26 rows, signature and negative controls, public predecessor key, compiler, archive, architecture, PE/app and current README/license sidecars.",
+    "Actual v0.31.0 -> v0.31.1 N-1 manifest check rerun PASS.",
+    "Windows selected source GUI receipt reviewed at identical merged tree; candidate startup receipt and actual signed Windows GUI SHA256 f825706e218371923cd48427e3d3a09edea5f4e345bc3163278a80ea8396fde7 agree.",
+    "All 121 log files and annotations independently inspected; fresh audit/native tests/clippy/build gates pass.",
+    "Fresh official latest Action release/tag/full code/action.yml hash and official runner Node24 support independently read from GitHub; actual artifact digest paths agree.",
+    "collect_run.py, fetch_verify_artifacts.py, review_logs.py, official_action.py and required-argument metadata observer parameterization read-only reviewed without gate weakening."
+  ],
+  "validation_selection": {
+    "preparation": [
+      "VM-001",
+      "VM-005",
+      "VM-009"
+    ],
+    "whole_prior_tag_range": [
+      "VM-001",
+      "VM-002",
+      "VM-003",
+      "VM-008",
+      "VM-010"
+    ],
+    "note": "Intent-specific conditional requirements and evidence reuse were reviewed; path selection alone is not a mandate to execute irrelevant production performance tests."
+  },
+  "ci_gate_interpretation": {
+    "policy": "docs/testplan/release-validation.md Every Release: required PR checks plus exact-source candidate test/clippy/audit/build jobs.",
+    "ordinary_master_ci": 40341861333,
+    "disposition": "An unfinished duplicate post-merge run with no failed result is not an additional normative pre-tag gate. Required PR checks pass, PR/merge trees equal, and exact merged-source candidate passes. Earlier operational intention to await this duplicate can be revised with this explicit reason. Any subsequently observed new failure stops publication for diagnosis."
+  },
+  "accepted_known_issues": "Direct user acceptance for v0.31.1 only: TC-207 48-thread stress exceeding 100ms and historical Linux coverage SIGSEGV cause unresolved. Thresholds, normal CI and new-failure stops unchanged.",
+  "not_run": [
+    "Reviewer did not launch GUI/binaries; selected Windows functional and candidate startup results are independently inspected receipts bound to exact identities.",
+    "Unselected IME, DPI/multiple displays, clipboard, UNC/share outage, full soak and startup/performance tests are not claimed PASS.",
+    "Tagged workflow artifacts/logs/warnings, annotated tag object, draft and public release metadata do not yet exist and are not covered by this verdict."
+  ],
+  "conditions_before_publication": [
+    "Owner must retain fresh source/public predecessor/tag absence checks and create only the authorized annotated v0.31.1 tag at b1.",
+    "Tagged workflow must independently complete all required gates; inspect actual tagged artifacts/signature/N-1/all logs/annotations and exact-run warnings.",
+    "Stop publication on any newly failed CI result or new implicated defect; do not apply this candidate warning disposition to the tagged run.",
+    "Validate actual publication date/body and draft exact inventory/asset hashes/annotated tag source; perform immutable public read-back and no-overwrite checks."
+  ]
+}

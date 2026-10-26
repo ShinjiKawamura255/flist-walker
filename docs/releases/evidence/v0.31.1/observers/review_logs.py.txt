@@ -1,0 +1,30 @@
+"""Exact-run log admission evidence. Conditional minor proposal, never publication GO."""
+import argparse,hashlib,json,pathlib,re,zipfile
+p=argparse.ArgumentParser();p.add_argument('evidence',type=pathlib.Path);p.add_argument('official',type=pathlib.Path);a=p.parse_args();d=a.evidence
+r=json.loads((d/'run.json').read_text());jobs=json.loads((d/'jobs.json').read_text());scan=json.loads((d/'LOG-SCAN.json').read_text());annotations=json.loads((d/'annotations.json').read_text());official=json.loads(a.official.read_text());integrity=json.loads((d/'ARTIFACT-INTEGRITY.json').read_text());bundle=json.loads((d/'BUNDLE-VALIDATION.json').read_text());end=json.loads((d/'collection-end.json').read_text());arts=json.loads((d/'artifacts.json').read_text())['artifacts']
+assert r['conclusion']=='success' and r['head_sha']==end['source']==bundle.get('source',r['head_sha']) and r['run_attempt']==end['attempt']
+assert integrity['result']==bundle['result']=='PASS'
+tagged=r['event']=='push';assert tagged or r['event']=='workflow_dispatch'
+assert len(jobs)==11 and all(j['conclusion']==('skipped' if j['name']=='Create Draft Release' and not tagged else 'success') for j in jobs)
+assert all(x['annotation']['annotation_level']=='notice' and x['annotation']['message']=='Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.' for x in annotations)
+assert all('[DEP0005] DeprecationWarning: Buffer() is deprecated' in x['text'] for x in scan['matches'])
+canonical=[x for x in scan['matches'] if '/' in x['file']];assert len(canonical)==(2 if tagged else 1) and len(scan['matches'])==2*len(canonical)
+assert all('Download' in x['file'] for x in canonical)
+logs=[];input_steps=[]
+with zipfile.ZipFile(d/'logs.zip') as z:
+ assert z.testzip() is None
+ for name in z.namelist():
+  data=z.read(name);text=data.decode('utf-8',errors='replace')
+  if '/' not in name:
+   runners=re.findall(r"Current runner version: '([^']+)'",text);assert runners and all(tuple(map(int,x.split('.'))) >= (2,327,1) for x in runners)
+   logs.append(dict(file=name,bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),runners=runners))
+  if '/' in name and 'Download' in name and ('packaged assets' in name or 'validated candidate bundle' in name):
+   assert official['full_sha'] in text and 'digest-mismatch: error' in text and 'skip-decompress: false' in text and f'run-id: {r["id"]}' in text
+   selected=[x for x in arts if (x['name'].startswith('release-') if 'packaged assets' in name else x['name'].startswith('validated-release-bundle-'))]
+   for x in selected:
+    assert f'ID: {x["id"]}, Size: {x["size_in_bytes"]}, Expected Digest: {x["digest"]}' in text
+    assert 'SHA256 digest of downloaded artifact is '+x['digest'][7:] in text
+   input_steps.append(dict(file=name,sha256=hashlib.sha256(data).hexdigest(),selected_artifact_ids=[x['id'] for x in selected],api_expected_computed_actual_hashes_equal=True,digest_mismatch='error',skip_decompress=False))
+assert len(input_steps)==(2 if tagged else 1)
+receipt=dict(version='v0.31.1',source=r['head_sha'],run=r['id'],attempt=r['run_attempt'],event=r['event'],status='PROPOSED MINOR; independent exact-run review pending',all_required_jobs_pass=True,draft_job='success' if tagged else 'skipped',all_log_files=scan['log_files'],logs_zip_sha256=scan['zip_sha256'],aggregate_log_identities=logs,actual_external_action_emissions=canonical,actual_warning_count=len(canonical),exported_occurrences=len(scan['matches']),duplicate_reason='one aggregate and one step export per actual emission; same node/message/step, timestamps differ by export microseconds',product_rust_test_clippy_audit_warnings=0,warning_error_annotations=0,notices=annotations,actual_download_steps=input_steps,official_action=official,causal_evidence='docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md',callsite='unchanged full bundle UnzipStream dist67720 new Buffer(empty string), numeric4 dist67982 immediately filled by writeUInt32LE67983',observation_inference_boundary='Hosted pin/runtime/input/emission/digests/success observed; actual producer/final bytes independently checked. Unchanged full official Action bounded causal diagnosis reused. No hosted stack/argument count/HTTPS/parallel reproduction claimed; no prior exception inherited.',fresh_artifact_checks='ARTIFACT-INTEGRITY.json and BUNDLE-VALIDATION.json; real N-1 separately required',operator='release owner',followup_owner='repository maintainer',re_evaluate='Every candidate/tagged run; any new code/callsite/message/count/input/security/integrity/function uncertainty stops. No general DEP0005 allowance.')
+out=d/'LOG-WARNING-REVIEW.json';assert not out.exists();out.write_text(json.dumps(receipt,indent=2)+'\n');print('PASS strict log classification; proposed minor exact-run only; independent review pending')

@@ -1,0 +1,37 @@
+"""Read-only fetch plus outer ZIP/producer-to-signed-bundle reconciliation."""
+import argparse,concurrent.futures,hashlib,importlib.util,json,pathlib,subprocess,zipfile
+p=argparse.ArgumentParser();p.add_argument('evidence',type=pathlib.Path);a=p.parse_args()
+spec=importlib.util.spec_from_file_location('observer',pathlib.Path(__file__).with_name('verify_bundle.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+art=json.loads((a.evidence/'artifacts.json').read_text())['artifacts'];assert len(art)==5
+r=json.loads((a.evidence/'run.json').read_text());assert r['head_sha']=='b1febf364457db9feb99a5b0f745b97a99816591'
+source=r['head_sha'];version='0.31.1';full='validated-release-bundle-v'+version+'-'+source
+expected_names={'release-'+x for x in ('windows-x86_64','linux-x86_64','macos-arm64','macos-x86_64')}|{full};assert {x['name'] for x in art}==expected_names
+out=a.evidence/'artifact-zips';assert not out.exists();out.mkdir()
+def fetch(x):
+ assert x['workflow_run']['id']==r['id'] and x['workflow_run']['head_sha']==source and not x['expired']
+ early=pathlib.Path('/private/tmp/flist-v0311-observers/candidate-early-windows/producer.zip')
+ raw=early.read_bytes() if x['id']==12659968679 else subprocess.check_output(['gh','api',f"repos/ShinjiKawamura255/flist-walker/actions/artifacts/{x['id']}/zip"])
+ assert len(raw)==x['size_in_bytes'] and 'sha256:'+hashlib.sha256(raw).hexdigest()==x['digest'],'outer API size/digest mismatch'
+ path=out/(str(x['id'])+'.zip');path.write_bytes(raw)
+ with zipfile.ZipFile(path) as z:
+  assert z.testzip() is None
+  names=z.namelist();assert len(names)==len(set(names)) and all('/' not in n and '\\' not in n and n not in ('.','..') for n in names)
+  members={n:z.read(n) for n in names}
+ return x,members
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:items=list(pool.map(fetch,art))
+final=next(members for x,members in items if x['name']==full);assert set(final)==m.inventory(version)|{'SHA256SUMS','SHA256SUMS.sig'}
+records=[];seen=set()
+for x,members in items:
+ if x['name']==full:continue
+ platform=x['name'].removeprefix('release-');expected={n for n in m.inventory(version) if platform in n}
+ assert set(members)==expected|{'SHA256SUMS'}
+ rows={row.split('  ')[1]:row.split('  ')[0] for row in members['SHA256SUMS'].decode().splitlines()};assert set(rows)==expected
+ for name in expected:
+  assert members[name]==final[name] and hashlib.sha256(members[name]).hexdigest()==rows[name],name
+ assert not seen&expected;seen|=expected
+ records.append(dict(id=x['id'],name=x['name'],bytes=x['size_in_bytes'],sha256=x['digest'][7:],crc='PASS',exact_members=sorted(members),all_payloads_equal_final=True))
+assert seen==m.inventory(version)
+bundle=a.evidence/'bundle';assert not bundle.exists();bundle.mkdir()
+for name,raw in final.items():(bundle/name).write_bytes(raw)
+record=dict(result='PASS',run=r['id'],attempt=r['run_attempt'],source=source,producers=records,final_artifact=next({k:x[k] for k in ('id','name','size_in_bytes','digest')} for x in art if x['name']==full),exact_final_members=sorted(final),all26_producer_payloads_equal_final=True)
+(a.evidence/'ARTIFACT-INTEGRITY.json').write_text(json.dumps(record,indent=2)+'\n');print('PASS:5 API archive hashes/sizes/CRC; exact inventories; all26 producer payloads equal final')

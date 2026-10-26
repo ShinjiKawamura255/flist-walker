@@ -1,6 +1,6 @@
 ## Summary
 - Release: `v0.31.1`
-- Date: `2026-10-26`
+- Date: `2026-10-27`
 - Windows asset は `x86_64-pc-windows-gnu` + mingw-w64 により Linux/WSL 系導線から生成する。
 - standalone バイナリ配布に対応するため、各 OS 向け `README` / `LICENSE` / `THIRD_PARTY_NOTICES` sidecar asset も同時に添付する。
 
@@ -55,12 +55,12 @@
 ## Security
 - query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を案内する。
 - 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
-- 当面の暫定運用として、macOS 配布物は未 notarized のまま publish する場合があり、その場合は本 release の `Known issues` または `Security` に明記する。
+- このリリースのmacOS配布物は未notarizedです。
 
 ## Known issues
 - TC-207の48並列ストレス条件での100ms超過と、過去Linux coverageのSIGSEGVは原因未確定。通常CIの成功を原因解消とは扱わない。
 - 大規模候補集合のquery準備中はindex取り込みを一時停止する。過去版の性能値を本版の測定値とは扱わない。
-- notarization 環境が整うまで、macOS 配布物は未 notarized の場合がある。
+- macOS配布物は未notarizedです。
 - v0.24.3 の updater は `fw-*` を含む現在の checksum manifest を読めないため、v0.24.3 利用者は同じvariantのbinaryと`SHA256SUMS`を手動で取得・検証して一度置き換える必要がある。v0.24.4以降へ移行後は通常の自動更新を再利用できる。
 
 ## Verify checksum

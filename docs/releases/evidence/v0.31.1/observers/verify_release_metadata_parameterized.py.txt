@@ -1,0 +1,33 @@
+"""Bind draft/public release metadata to inspected bytes and the annotated tag."""
+import argparse,datetime,hashlib,json,pathlib,subprocess
+p=argparse.ArgumentParser();p.add_argument('--source',required=True);p.add_argument('--tag-object',required=True);p.add_argument('--version',required=True);p.add_argument('--metadata',type=pathlib.Path,required=True);p.add_argument('--bundle-report',type=pathlib.Path,required=True);p.add_argument('--body',type=pathlib.Path,required=True);p.add_argument('--mode',choices=['initial-draft','draft','published'],required=True);p.add_argument('--release-id',type=int);p.add_argument('--output',type=pathlib.Path,required=True);a=p.parse_args()
+assert not a.output.exists(),'refuse receipt overwrite'
+assert a.mode=='initial-draft' or a.release_id is not None,'release ID required after initial binding'
+source=a.source;tag_object=a.tag_object;version=a.version;tag='v'+version
+assert len(source)==len(tag_object)==40 and all(c in '0123456789abcdef' for c in source+tag_object)
+assert len(version.split('.'))==3 and all(x.isdigit() for x in version.split('.'))
+r=json.loads(a.metadata.read_text());bundle=json.loads(a.bundle_report.read_text());assert bundle['result']=='PASS'
+assert bundle['version']==version
+inventory={'SHA256SUMS','SHA256SUMS.sig'}
+for platform in ('windows-x86_64','linux-x86_64','macos-arm64','macos-x86_64'):
+ base='FlistWalker-'+version+'-'+platform;windows=platform.startswith('windows')
+ inventory.update([base+('.exe' if windows else ''),'fw-'+version+'-'+platform+('.exe' if windows else ''),base+('.zip' if windows else '.tar.gz')])
+ inventory.update(base+'.'+s+'.txt' for s in ('README','LICENSE','THIRD_PARTY_NOTICES'))
+ if platform.startswith('macos'):inventory.add(base+'-app.zip')
+assert len(bundle['assets'])==28 and {x['name'] for x in bundle['assets']}==inventory,'fixed exact26 bundle inventory required'
+assert r['tag_name']==tag and r['name']==tag and not r['prerelease']
+assert r['draft']==(a.mode!='published')
+if a.release_id is not None:assert r['id']==a.release_id
+assert r['target_commitish'] in ([source,'master'] if a.mode=='initial-draft' else [source])
+actual_tag=dict(line.split()[::-1] for line in subprocess.check_output(['git','ls-remote','--tags','origin','refs/tags/'+tag,'refs/tags/'+tag+'^{}'],text=True).splitlines())
+assert actual_tag=={'refs/tags/'+tag:tag_object,'refs/tags/'+tag+'^{}':source}
+expected={x['name']:x for x in bundle['assets']};assets=r['assets'];assert len(assets)==len(expected)==28
+assert len({x['id'] for x in assets})==28 and {x['name'] for x in assets}==set(expected)
+for x in assets:
+ e=expected[x['name']];assert x['state']=='uploaded' and x['size']==e['bytes'] and x['digest']=='sha256:'+e['sha256'],x['name']
+ url=x['browser_download_url'];suffix='/'+x['name'];assert url.startswith('https://github.com/ShinjiKawamura255/flist-walker/releases/download/') and url.endswith(suffix)
+ if a.mode=='published':assert url=='https://github.com/ShinjiKawamura255/flist-walker/releases/download/'+tag+suffix
+if a.mode!='initial-draft':assert r['body'].encode()==a.body.read_bytes(),'body byte mismatch'
+if a.mode=='published':assert r['html_url']=='https://github.com/ShinjiKawamura255/flist-walker/releases/tag/'+tag and r['published_at']
+receipt={'observed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'mode':a.mode,'release_id':r['id'],'tag':tag,'tag_object':tag_object,'source':source,'draft':r['draft'],'published_at':r['published_at'],'html_url':r['html_url'],'body_sha256':hashlib.sha256(r['body'].encode()).hexdigest(),'body_matches_reviewed':a.mode!='initial-draft','assets':[{'id':x['id'],'name':x['name'],'bytes':x['size'],'sha256':x['digest'][7:],'url':x['browser_download_url']} for x in sorted(assets,key=lambda x:x['name'])],'actual_bundle_assets_match':True,'result':'PASS'}
+a.output.write_text(json.dumps(receipt,indent=2)+'\n');print('PASS',a.mode,'release',r['id'],'tag/source/body/28asset IDs,names,sizes,digests')

@@ -1,0 +1,16 @@
+"""Fresh official stable/full-SHA/runtime/code identity; read only."""
+import base64,datetime,hashlib,json,pathlib,subprocess,sys
+out=pathlib.Path(sys.argv[1]);assert not out.exists()
+def api(path):return json.loads(subprocess.check_output(['gh','api',path]))
+base='repos/actions/download-artifact/'
+r=api(base+'releases/latest');assert not r['draft'] and not r['prerelease']
+ref=api(base+'git/ref/tags/'+r['tag_name']);obj=ref['object']
+while obj['type']=='tag':obj=api(base+'git/tags/'+obj['sha'])['object']
+assert obj['type']=='commit';sha=obj['sha'];assert sha=='9000827ccba6bdab643e8b6fd33ac0654aef8333','official latest differs from actual workflow pin; stop'
+a=api(base+'contents/action.yml?ref='+sha);raw=base64.b64decode(a['content']);assert b"using: 'node24'" in raw
+b=api(base+'contents/dist/index.js?ref='+sha);assert b['sha']=='e5fe23803e0378f1f365aa0d6326cd288f5b660c' and b['size']==4432922
+blob=api(base+'git/blobs/'+b['sha']);code=base64.b64decode(blob['content']);assert len(code)==4432922
+assert hashlib.sha256(code).hexdigest()=='7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe'
+runner=api('repos/actions/runner/releases/tags/v2.327.1');assert 'Runner Support for executing Node24 Actions' in runner['body']
+receipt=dict(observed_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),latest_stable=r['tag_name'],release_url=r['html_url'],full_sha=sha,runtime='node24',action_yml_sha256=hashlib.sha256(raw).hexdigest(),bundle_git_blob=b['sha'],bundle_bytes=len(code),bundle_sha256=hashlib.sha256(code).hexdigest(),diagnosed_bundle_identical=True,minimum_runner='2.327.1',support_source=runner['html_url'],result='PASS official latest identity/code/runtime support; exact hosted run still separately reviewed')
+out.write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt,indent=2))

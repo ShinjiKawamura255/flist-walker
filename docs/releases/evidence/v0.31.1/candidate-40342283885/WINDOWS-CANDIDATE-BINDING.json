@@ -1,0 +1,41 @@
+{
+  "result": "PASS_PRODUCER_STARTUP",
+  "run": 40342283885,
+  "attempt": 1,
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "producer_artifact": 12659968679,
+  "producer_zip_bytes": 18249256,
+  "producer_zip_sha256": "cecfb4a5d43659369a65a872e73fd02d83aff7e51e24ad7cfb1b245473c0e881",
+  "binary_bytes": 16578560,
+  "binary_sha256": "f825706e218371923cd48427e3d3a09edea5f4e345bc3163278a80ea8396fde7",
+  "pe": "AMD64/GUI subsystem2/.rsrc/FileVersion and ProductVersion0.31.1",
+  "observed_jst": "2026-10-27 00:00:45\u201300:02:06",
+  "theme": "dark",
+  "logical_dimensions": [
+    1000,
+    720
+  ],
+  "scale": 1.0,
+  "remote_chat": "01a17899-6c94-7661-852a-32a5b0f618fd",
+  "cases": {
+    "startup_24_entries_and_both_stop_disabled": "PASS",
+    "alpha-024_query_filters_to_one": "PASS",
+    "normal_exit": "PASS"
+  },
+  "axes": {
+    "input": "PASS",
+    "visual": "PASS",
+    "liveness": "PASS"
+  },
+  "cleanup": {
+    "owned_pid": 25816,
+    "remaining": 0,
+    "binary_hash_and_three_file_allowlist_unchanged": true,
+    "updater_artifacts_before": 0,
+    "updater_artifacts_after": 0,
+    "usual_profile_untouched": true
+  },
+  "final_signed_bundle_binding": "PASS: identical GUI bytes in independently verified signed26-entry manifest",
+  "validated_bundle_artifact": 12661192551,
+  "signature_verified": true
+}

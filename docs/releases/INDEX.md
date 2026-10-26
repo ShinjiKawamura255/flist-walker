@@ -2,13 +2,13 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.31.0 (2026-10-24 Asia/Tokyo and UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.31.0).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.31.1 (2026-10-27 Asia/Tokyo; 2026-10-26 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.31.1).
 
 ## Release And Candidate Records
 
 | Record | Role |
 | --- | --- |
-| [v0.31.1 Execution Packet](v0.31.1.md) | Preparation, Windows handoff, validation selection and pending candidate/publication gates; not published |
+| [v0.31.1 Execution Packet](v0.31.1.md) | Published source/tag, Windows native verification, separate candidate/tagged/public gates and retained external-install CI failure/retry |
 | [v0.31.0 Regenerated Candidate39810727499](evidence/v0.31.0/regenerated-39810727499/REPORT.md) | Source d1bf330; fresh audit failed on two TLS dependencies, so distribution/signature/actual N-1 remain unverified; updated Windows preparation |
 | [v0.31.0 Linux Coverage Diagnosis](evidence/v0.31.0/LINUX-COVERAGE-DIAGNOSIS.md) | Unresolved SIGSEGV, exact diagnostic observations and merge hold |
 | [v0.31.0 Execution Packet](evidence/v0.31.0/PREPARATION.md) | Published source/tag, separate candidate/tagged/public byte and warning gates, restored PR201 activation, rejected README candidate and explicit native/unknown-cause deviations |
@@ -27,6 +27,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.31.1/` | Native source/candidate results, signed candidate/tagged/public inventories, per-run warnings/reviews, exact CI timeout/retry and public/latest bindings |
 | `evidence/v0.31.0/` | Original rejected candidates, published tag/source/28 assets, signed manifests, exact-run CI/warning decisions, public downloads, independent reviews and scoped native deviations |
 | `evidence/v0.30.2/` | Preparation, exact candidate/tagged bindings, Windows native and raw TC-193 results, scoped deviations, separate warning decisions and public readback |
 | `evidence/v0.30.1/` | Whole48-commit classification, predecessor/native reuse, latest Action diagnosis, per-run artifact/warning decisions and publication readback |

@@ -1,0 +1,42 @@
+"""Read-only authenticated GitHub artifact download, independently hash checked."""
+import argparse,concurrent.futures,hashlib,json,pathlib,subprocess,urllib.request,urllib.error,urllib.parse
+p=argparse.ArgumentParser();p.add_argument('artifact_id',type=int);p.add_argument('output',type=pathlib.Path);p.add_argument('--release-asset',action='store_true');a=p.parse_args()
+assert not a.output.exists(),'refuse overwrite'
+base='https://api.github.com/repos/ShinjiKawamura255/flist-walker/'+('releases/assets/' if a.release_asset else 'actions/artifacts/')+str(a.artifact_id)
+meta=json.loads(subprocess.check_output(['gh','api',base],text=True))
+token=subprocess.check_output(['gh','auth','token'],text=True).strip()
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+ def redirect_request(self,req,fp,code,msg,headers,newurl):return None
+if a.release_asset:
+ public_url=meta['browser_download_url']
+ assert public_url.startswith('https://github.com/ShinjiKawamura255/flist-walker/releases/download/') and public_url.endswith('/'+meta['name'])
+ request=urllib.request.Request(public_url,headers={'User-Agent':'FlistWalker-release-verification'})
+else:
+ request=urllib.request.Request(base+'/zip',headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','User-Agent':'FlistWalker-release-verification'})
+try:response=urllib.request.build_opener(NoRedirect).open(request,timeout=60)
+except urllib.error.HTTPError as e:
+ assert e.code==302,e.code
+ location=e.headers['Location']
+else:
+ assert a.release_asset and response.status==200,'expected redirect'
+ raw=response.read();size=meta['size'];actual=hashlib.sha256(raw).hexdigest();assert len(raw)==size and meta['digest']=='sha256:'+actual
+ with a.output.open('xb') as f:f.write(raw)
+ print(json.dumps({'id':a.artifact_id,'bytes':size,'sha256':actual,'result':'PASS direct200'}));raise SystemExit
+del token,request
+u=urllib.parse.urlsplit(location)
+assert u.scheme=='https' and (u.hostname.endswith('.blob.core.windows.net') or u.hostname.endswith('.actions.githubusercontent.com') or (a.release_asset and u.hostname=='release-assets.githubusercontent.com')),'unexpected artifact host'
+size=meta['size'] if a.release_asset else meta['size_in_bytes'];chunk=4*1024*1024
+def part(start):
+ end=min(start+chunk,size)-1
+ req=urllib.request.Request(location,headers={'Range':f'bytes={start}-{end}'})
+ with urllib.request.urlopen(req,timeout=180) as r:
+  assert r.status==206 and r.headers['Content-Range']==f'bytes {start}-{end}/{size}','range response mismatch'
+  b=r.read();assert len(b)==end-start+1
+ return start,b
+with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+ pieces=dict(pool.map(part,range(0,size,chunk)))
+raw=b''.join(pieces[x] for x in sorted(pieces));assert len(raw)==size
+actual=hashlib.sha256(raw).hexdigest();assert meta['digest']=='sha256:'+actual,'API digest mismatch'
+with a.output.open('xb') as f:f.write(raw)
+if not a.release_asset:a.output.with_suffix(a.output.suffix+'.metadata.json').write_text(json.dumps(meta,indent=2)+'\n')
+print(json.dumps({'id':a.artifact_id,'bytes':size,'sha256':actual,'result':'PASS'}))
