@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.31.1] - 2026-10-26
+### Added
+- なし。
+
+### Changed
+- 非同期処理の回帰テスト、TC-207の性能診断と公開版の検証記録を補強した。runtime設定をテスト間で隔離し、背景タブの再試行を正しい所有タブで検証する。製品の性能閾値は変更しない。
+
+### Fixed
+- `Stop Indexing` と `Stop All Indexing` は、対象タブに処理中・実行待ち・完了確定待ち・遅延更新がない場合にグレーアウトする。ボタンの位置は維持し、操作直前に処理が完了した場合も停止状態へ変更しない。
+- 公開済みv0.31.0からの更新互換性を、v0.31.1の26件のchecksum inventoryで検証する回帰テストを追加した。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存関係と更新時の署名検証方式の変更はない。
+
+### Known issues
+- macOS 配布物は未 notarized。
+- TC-207は通常条件の成功と48並列ストレス条件での100ms超過を区別して記録している。ストレス条件での原因は未確定で、閾値を緩和したものではない。
+- 過去のLinux coverage実行中のSIGSEGVは原因未確定。後続CIの成功を原因解消の証明とは扱わない。
+- v0.24.3 利用者は同じvariantのbinaryと`SHA256SUMS`を手動で取得・検証して一度置き換える必要がある。v0.24.4以降は通常の自動更新を利用できる。
+- 大規模候補集合のquery準備中はindex取り込みを一時停止する。過去版の性能値を本版の測定値とは扱わない。
+
 ## [0.31.0] - 2026-10-24
 ### Added
 - Settings に検索クエリの復元設定を追加した。前回のタブを復元するとき、root・filter・active tab を保ったまま検索欄だけを空にできる。既存設定では従来どおりクエリを復元する。
@@ -2242,7 +2269,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.1...HEAD
+[0.31.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...v0.31.0
 [0.30.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...v0.30.2
 [0.30.1]: https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.30.1
