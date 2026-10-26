@@ -1,0 +1,33 @@
+"""Read-only reconciliation of retained attempt1 and the one selected retry."""
+from pathlib import Path
+import json,zipfile,hashlib,re,importlib.util
+base=Path('/private/tmp/flist-v0311-observers');p=base/'master-ci-40341861333-attempt2';old=base/'master-ci-40341861333-attempt1';r=json.loads((p/'run.json').read_text());jobs=json.loads((p/'jobs.json').read_text());prior=json.loads((old/'jobs.json').read_text())['jobs'];scan=json.loads((p/'LOG-SCAN.json').read_text());assert r['run_attempt']==2 and r['head_sha']=='b1febf364457db9feb99a5b0f745b97a99816591' and r['conclusion']=='success' and all(x['conclusion']=='success' for x in jobs)
+oldmap={x['name']:x for x in prior};rerun={'Windows GNU Updater Build','Windows GNU Updater E2E','CI Gate'};reused=[]
+for x in jobs:
+ y=oldmap[x['name']]
+ if x['name'] not in rerun:
+  assert y['conclusion']=='success' and all(x[k]==y[k] for k in ('started_at','completed_at','steps'))
+  reused.append(dict(name=x['name'],original_job=y['id'],latest_api_job=x['id'],started_at=x['started_at'],completed_at=x['completed_at'],all_steps_identical=True))
+ else:assert x['started_at']>= '2026-10-26T15:29:00Z' and x['id']!=y['id']
+assert len(reused)==7
+raw=(p/'test-channel.zip').read_bytes();assert len(raw)==10685465 and hashlib.sha256(raw).hexdigest()=='c52404f5425133f308372ae8c5b7791ff87de8991a28f3703add886f3f013797'
+spec=importlib.util.spec_from_file_location('verifier',base/'verify_bundle.py');m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+expected_manifest=re.search(r'const WINDOWS_AS_INVOKER_MANIFEST:.*?r#"(.*?)"#;',Path('rust/build.rs').read_text(),re.S)[1].encode();binaries={}
+with zipfile.ZipFile(p/'test-channel.zip') as z:
+ assert z.testzip() is None and set(z.namelist())=={'FlistWalker.exe','fw.exe'} and len(z.namelist())==2
+ for name in z.namelist():
+  data=z.read(name);assert b'79b5562e8fe654f94078b112e8a98ba7901f853ae695bed7e0e3910bad049664' in data
+  pe=m.pe_inspection(data,'0.31.1',name=='fw.exe',expected_manifest)
+  binaries[name]=dict(bytes=len(data),sha256=hashlib.sha256(data).hexdigest(),test_only_key_present=True,subsystem=pe['subsystem'],formal_versions=pe['formal_versions'],source_manifest_equivalent=pe['source_manifest_equivalent'])
+with zipfile.ZipFile(p/'logs.zip') as z:
+ e2e=z.read('Windows GNU Updater E2E/6_Execute sandbox self-update.txt').decode();download=z.read('Windows GNU Updater E2E/5_Download Windows GNU test-channel artifact.txt').decode();build=z.read('Windows GNU Updater Build/6_Install mingw-w64.txt').decode()
+ assert e2e.count('Variant: Universal')==e2e.count('Variant: Fw')==1 and 'SELF_UPDATE_FAILURE' not in e2e
+ assert '9000827ccba6bdab643e8b6fd33ac0654aef8333' in download and 'digest-mismatch: error' in download and 'skip-decompress: false' in download
+ assert 'ID: 12663850307, Size: 10685465, Expected Digest: sha256:c52404f5425133f308372ae8c5b7791ff87de8991a28f3703add886f3f013797' in download
+ assert 'SHA256 digest of downloaded artifact is c52404f5425133f308372ae8c5b7791ff87de8991a28f3703add886f3f013797' in download
+ assert len(scan['matches'])==2 and all('[DEP0005] DeprecationWarning: Buffer() is deprecated' in x['text'] for x in scan['matches'])
+ for n in z.namelist():
+  if '/' not in n:assert "Current runner version: '2.338.0'" in z.read(n).decode()
+assert json.loads((p/'annotations.json').read_text())==[]
+report=dict(result='PASS_RESULT; INDEPENDENT_HOLD_CLEARANCE_PENDING',run=r['id'],attempt=2,source=r['head_sha'],all_job_results=[{k:x[k] for k in ('id','name','conclusion')} for x in jobs],rerun_job_names=sorted(rerun),seven_other_successes_reused=reused,api_carry_forward_behavior='GitHub assigns new job IDs/run_attempt2 to seven carried-forward successes; original start/end and every step are identical. Initial observer ID-equality assumption stopped and was corrected to actual full timestamp/step equality; no result was weakened.',original_failure='Retained cancelled GNU build/Gate failure/E2E skipped in attempt1; not rewritten or explained by later success',original_failure_diagnosis='../master-ci-40341861333-attempt1/DIAGNOSIS.json',original_independent_review='../master-ci-40341861333-attempt1/INDEPENDENT-DIAGNOSIS-REVIEW.json',retry_apt_step_sha256=hashlib.sha256(build.encode()).hexdigest(),e2e_actual_variants=['Universal','Fw'],e2e_mode='SameVersion isolated headless self-update; both calls/postconditions completed, no native GUI input claim',e2e_step_sha256=hashlib.sha256(e2e.encode()).hexdigest(),test_artifact=dict(id=12663850307,bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),crc='PASS',exact_members=['FlistWalker.exe','fw.exe'],api_expected_computed_actual_digests_match=True,test_only_not_release=True,binaries=binaries),latest_attempt_log_files=scan['log_files'],logs_zip_sha256=scan['zip_sha256'],annotations=[],external_warning=dict(actual_count=1,exported_occurrences=2,emissions=scan['matches'],official_action='ACTION-FRESH.json',classification='PROPOSED MINOR for40341861333 attempt2 only; independent review pending',causal_diagnosis='docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md',boundary='Actual full pin/Node24 runtime/input/download/API+actualZIP digests and success observed; identical full official code causal diagnosis reused, no hosted stack trace/parallel/HTTPS causality claim or prior exception inheritance',followup_owner='repository maintainer',re_evaluate='Every run and any new code/callsite/message/count/input/security/integrity/function uncertainty'),product_warnings=0,publication='Still HOLD pending independent retry review and separate tagged/draft gates; precise original transport cause remains unknown')
+out=p/'RECONCILIATION.json';assert not out.exists();out.write_text(json.dumps(report,indent=2)+'\n');print('PASS:exact-source retry3 jobs/7 carried successes; both updater variants; actual test artifact hash/CRC/PE; original failure retained')

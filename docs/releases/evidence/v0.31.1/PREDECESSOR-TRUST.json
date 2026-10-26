@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "tag": "v0.31.0",
+  "release_id": 422590286,
+  "verification_key_hex": "6733c5e70dd31e1bd2e2f8eac7356e88b169f1355d0cbfac5e0cf9d1ac2a12e6",
+  "files": [
+    {
+      "name": "SHA256SUMS",
+      "bytes": 2754,
+      "sha256": "01dd2ac2988a5d417aa1aaf5c45d03f656bd81e59b2f689aab384ef2ab94e913",
+      "asset_id": 671622176
+    },
+    {
+      "name": "SHA256SUMS.sig",
+      "bytes": 64,
+      "sha256": "07670c7d89d7a7c1a60ef261c2a8871f5aaf5e2fc50db412ce9d10082638afdf",
+      "asset_id": 671622180
+    },
+    {
+      "name": "fw-0.31.0-macos-arm64",
+      "bytes": 5164208,
+      "sha256": "9e9047b98d1f126db40580534723806e7e5695cd3f267210c85e2b7c263b31c3",
+      "asset_id": 671622189
+    }
+  ],
+  "actual_api_hashes_match": true,
+  "actual_binary_bound_to_signed_manifest": true,
+  "one_bit_tamper_rejected": true,
+  "binary_not_executed": true
+}

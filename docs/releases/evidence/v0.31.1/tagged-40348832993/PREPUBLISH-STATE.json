@@ -1,0 +1,14 @@
+{
+  "result": "PASS",
+  "release_id": 424455243,
+  "tag": "v0.31.1",
+  "tag_object": "3c50db82a399a28882316a074d3ab65e0f1b3d3d",
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "body_sha256": "25eacb0389a36ee5666529c59caf3ddf4ca926ab7945ba9683a0de10b59e7cd4",
+  "actual28asset_rows_unchanged": true,
+  "predecessor": "v0.31.0",
+  "master_ci_attempt2": "success",
+  "tagged_attempt1": "success",
+  "publication_jst_date": "2026-10-27",
+  "independent_review": "GO_PUBLISH"
+}

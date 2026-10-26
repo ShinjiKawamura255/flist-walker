@@ -1,0 +1,45 @@
+{
+  "previous_tag": "v0.31.0",
+  "target_tag": "v0.31.1",
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "commits": [
+    {
+      "commit": "f5e20628b4da774bc640ecc1f5351c7179849ed8",
+      "subject": "docs(release): record v0.31.0 publication and verified assets",
+      "release_note_coverage": "Changed: previous publication evidence; no new product behavior"
+    },
+    {
+      "commit": "5247237f94629e32f742a76204163599bdc2e509",
+      "subject": "docs(perf): preserve TC-207 OS observations and WSL switch traces",
+      "release_note_coverage": "Changed: OS/WSL performance diagnostic evidence; no root-cause fix claim"
+    },
+    {
+      "commit": "9ab1b8be7d23b67706f33e48cc8b4592b5413eb5",
+      "subject": "test(perf): correlate TC-207 frames with native macOS traces",
+      "release_note_coverage": "Changed: asynchronous/frame/native trace test correlation; test-only"
+    },
+    {
+      "commit": "35ed36914f506f0ef28b901149a4c98a636aa3d6",
+      "subject": "docs(perf): retain natural TC-207 preemption failure",
+      "release_note_coverage": "Changed: natural/stress TC-207 evidence; failure retained"
+    },
+    {
+      "commit": "2258e64ec19b703566cdd01d03f6053557325d2a",
+      "subject": "test: isolate runtime config and correct background retry ownership",
+      "release_note_coverage": "Changed: runtime config isolation and background retry ownership in tests; no production retry behavior change"
+    },
+    {
+      "commit": "93890b5521abcbfa98fbf192f42974b488ec25f1",
+      "subject": "fix(gui): disable indexing stop actions without pending work",
+      "release_note_coverage": "Fixed: stoppable-work availability and dispatch recheck; fixed layout/retained results"
+    },
+    {
+      "commit": "b1febf364457db9feb99a5b0f745b97a99816591",
+      "subject": "chore(release): prepare v0.31.1 and Windows verification",
+      "release_note_coverage": "Fixed: explicit predecessor compatibility gate regression; release version/preparation/handoff"
+    }
+  ],
+  "body": "release-body.md",
+  "public_date": "Use actual Asia/Tokyo publication date; immutable preparation source retains2026-10-26",
+  "all_commits_accounted": true
+}

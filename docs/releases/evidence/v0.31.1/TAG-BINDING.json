@@ -1,0 +1,11 @@
+{
+  "result": "PASS",
+  "observed_utc": "2026-10-26T15:23:45.816260+00:00",
+  "tag": "v0.31.1",
+  "tag_object": "3c50db82a399a28882316a074d3ab65e0f1b3d3d",
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "candidate_run": 40342283885,
+  "tagged_run": 40348832993,
+  "pretag_review": "GO_TAG_ONLY",
+  "pushed_once": true
+}

@@ -1,0 +1,57 @@
+{
+  "result": "PASS_SOURCE_BUILD",
+  "source": "b5c31be07af4b951871b5ad63dc0c6720c5426d5",
+  "equivalent_merged_tree": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "version": "0.31.1",
+  "binary_sha256": "fc382c72a787214a26153556bb9578e8851dd19dd44fd6775096c3398466b2a5",
+  "compiler": "Rust 1.97.1; GCC 16.1.0; Windows GNU release",
+  "os": "Windows build 26300.9711 / 26H2",
+  "scale": 1.0,
+  "logical_dimensions": [
+    [
+      1000,
+      720
+    ],
+    [
+      640,
+      720
+    ]
+  ],
+  "themes": [
+    "dark",
+    "light"
+  ],
+  "remote_chat": "01a17899-6c94-7661-852a-32a5b0f618fd",
+  "durable_summary": "https://github.com/ShinjiKawamura255/flist-walker/pull/211",
+  "native_cases": {
+    "completed disabled and ineffective click": "PASS",
+    "current stop and retained query/snapshot": "PASS",
+    "background-only availability": "PASS",
+    "all stop and no auto-resume/new-tab": "PASS",
+    "target-only explicit refresh": "PASS",
+    "failure retained results and repair/retry": "PASS",
+    "typing/deleting/selection/scroll/tab input": "PASS",
+    "dark/light640 wrap/disabled visibility": "PASS"
+  },
+  "cleanup": {
+    "owned_parent_and_children_remaining": 0,
+    "binary_hash_unchanged": true,
+    "allowlist_count": 3,
+    "allowlist_unchanged": true,
+    "updater_artifacts_before": 0,
+    "updater_artifacts_after": 0,
+    "usual_profile_untouched": true,
+    "source_worktree": "retained clean; host app refused archive as primary"
+  },
+  "not_run": [
+    "candidate-asset startup/hash (not yet provided)",
+    "exact native completion/click race",
+    "p95",
+    "IME/DPI",
+    "external Open/Reveal",
+    "clipboard",
+    "real share",
+    "TC-193",
+    "full soak"
+  ]
+}

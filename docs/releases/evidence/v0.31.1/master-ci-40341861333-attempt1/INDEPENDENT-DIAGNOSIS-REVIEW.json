@@ -1,0 +1,39 @@
+{
+  "reviewer": "independent read-only /root/release_prep_review",
+  "observed_utc": "2026-10-26T15:31:00.422929+00:00",
+  "identity": {
+    "run": 40341861333,
+    "attempt": 1,
+    "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+    "job": 121638483300,
+    "job_name": "Windows GNU Updater Build"
+  },
+  "verdict": "DIAGNOSIS_ACCEPTED_FOR_ONE_TARGETED_RETRY; PUBLICATION_HOLD",
+  "findings": [],
+  "observations": [
+    "DIAGNOSIS hashes independently match logs.zip (2768a0157d5b2c5f444d8e4b55a7e2ebfc3cf17b059e327bddab77c2b65c7778) and install-mingw.log (dfc66d5863776844930a21912dfb77b3b8aaa67fdcaa1ac9b9c533fdb5d52a23); all 97 ZIP entries CRC PASS, retained install log byte-equals the actual step export.",
+    "apt update fetched 12.6 MB and completed package-list reading; install requested 144 MB. Package downloads from azure.archive.ubuntu.com were slow with repeated Ign/reacquisition. Cancellation occurred during acquisition before any unpack/build step.",
+    "Job annotation explicitly reports maximum 45m0s exceeded. Install step ran 14:41:24Z to 15:26:23Z; Build updater test channel and artifact upload were skipped. There is no observed Rust build failure in this job.",
+    "CI Gate actual environment sees Windows GNU build cancelled and E2E skipped and exits 1. This is correct fail-closed enforcement, not an independent product defect.",
+    "Other original jobs completed success, including native tests/builds, clippy/coverage and audit. Those results cannot substitute for skipped GNU build/E2E.",
+    "Workflow ci-cross-platform.yml retains 45minute job timeout and the actual unchanged apt commands; no threshold or workflow weakening is proposed."
+  ],
+  "inference": {
+    "supported": "The immediate failure boundary is external package acquisition/runner-to-mirror path delay, independent of product compilation. It is reasonable to classify this as a suspected external transient for one evidence-preserving targeted retry under docs/CI_OPERATIONS.md Merge contract.",
+    "not_proven": "Exact remote mirror/server/network/runner root cause and permanence/transience are unproven. Ign alone does not identify TCP, DNS, mirror capacity or server fault. A successful retry would support a nonreproducing external stall, not repair or prove its precise cause."
+  },
+  "retry_policy": "Original failure and run URL retained; one selected failed producer retry and its actual dependent E2E/Gate at identical source/commands/thresholds/timeout is permitted. Rerun success does not erase attempt1.",
+  "conditions_to_release_this_hold": [
+    "Retain original attempt1 evidence/diagnosis/retry registration and exact attempt2 source/event/attempt/job IDs; verify no source, workflow, command, timeout, permission or threshold alteration.",
+    "Attempt2 Windows GNU updater producer actually executes install and Rust build and succeeds; retain its actual output artifact identity/digest, compiler/package/runner identities and completed logs.",
+    "Dependent Windows GNU Updater E2E actually executes both Universal and Fw variants against the new successful producer artifact in the required sandbox, succeeds with expected markers, and CI Gate completes success. A skipped or old unrelated success is insufficient.",
+    "Review complete retry logs/annotations and resulting latest job conclusions, with unaffected original successes explicitly bound as reused evidence. Any new or unexplained failure/warning remains a stop; repeated transport failure requires diagnosis rather than automatic retry-until-green.",
+    "An independent retry result review confirms the above. This resolves only the master-CI hold; tagged run 40348832993 must independently complete every required preflight/build/artifact/signature/N-1/log-warning gate plus draft/publication read-backs before any publication."
+  ],
+  "not_run": [
+    "Attempt2 is not yet complete/reviewed here; no claim of retry PASS.",
+    "Precise remote network fault reproduction/repair was not performed.",
+    "No Git/CI/external-state mutation was performed by this reviewer."
+  ],
+  "residual_risk": "External package acquisition can recur. No timeout expansion, mirror substitution, product-correctness inference, or general transient-failure exception is authorized by this review."
+}

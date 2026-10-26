@@ -1,0 +1,38 @@
+"""Read-only exact-run evidence collection; no credentials printed."""
+import argparse,hashlib,json,pathlib,re,subprocess,zipfile
+p=argparse.ArgumentParser();p.add_argument('run',type=int);p.add_argument('out',type=pathlib.Path);a=p.parse_args()
+assert not a.out.exists();a.out.mkdir()
+base='repos/ShinjiKawamura255/flist-walker/'
+def api(path):return json.loads(subprocess.check_output(['gh','api',base+path]))
+def save(name,obj): (a.out/name).write_text(json.dumps(obj,indent=2)+'\n')
+r=api(f'actions/runs/{a.run}');save('run.json',r)
+assert r['status']=='completed' and r['conclusion']=='success'
+jobs=[];page=1
+while True:
+ d=api(f'actions/runs/{a.run}/jobs?per_page=100&page={page}');jobs+=d['jobs']
+ if len(jobs)>=d['total_count']:break
+ page+=1
+save('jobs.json',jobs)
+annotations=[]
+for job in jobs:
+ if not job.get('check_run_url'):continue
+ check=job['check_run_url'].split('/check-runs/')[-1];page=1
+ while True:
+  rows=api(f'check-runs/{check}/annotations?per_page=100&page={page}')
+  annotations += [dict(job=job['name'],check_run=check,annotation=x) for x in rows]
+  if len(rows)<100:break
+  page+=1
+save('annotations.json',annotations)
+art=api(f'actions/runs/{a.run}/artifacts?per_page=100');assert art['total_count']==len(art['artifacts']);save('artifacts.json',art)
+raw=subprocess.check_output(['gh','api',base+f'actions/runs/{a.run}/logs']);(a.out/'logs.zip').write_bytes(raw)
+scan=[];runtime=[]
+with zipfile.ZipFile(a.out/'logs.zip') as z:
+ assert z.testzip() is None
+ for n in z.namelist():
+  if n.endswith('/'):continue
+  for i,line in enumerate(z.read(n).decode('utf-8',errors='replace').splitlines(),1):
+   if re.search(r'##\[warning\]|DeprecationWarning|^.*\bwarning(?:\[[^]]+\])?:|^.*\b(?:error|ERROR)(?:\[[^]]+\])?:',line):scan.append(dict(file=n,line=i,text=line))
+   if re.search(r'Current runner version|Runner Image|Image:|Image Version:|Buffer\(\)|node24|Download artifact|SHA256 digest|Digest:|Artifact ID|Artifact name',line):runtime.append(dict(file=n,line=i,text=line))
+ save('LOG-SCAN.json',dict(run=a.run,attempt=r['run_attempt'],source=r['head_sha'],zip_sha256=hashlib.sha256(raw).hexdigest(),log_files=len(z.namelist()),matches=scan,runtime=runtime))
+end=api(f'actions/runs/{a.run}');assert end['run_attempt']==r['run_attempt'] and end['head_sha']==r['head_sha'] and end['status']=='completed' and end['conclusion']=='success';save('collection-end.json',dict(run=a.run,attempt=end['run_attempt'],source=end['head_sha'],status=end['status'],conclusion=end['conclusion'],identity_unchanged=True))
+print(json.dumps(dict(run=a.run,source=r['head_sha'],jobs=[dict(name=j['name'],conclusion=j['conclusion']) for j in jobs],annotations=len(annotations),warning_error_candidates=len(scan),artifacts=[{k:x[k] for k in ('id','name','size_in_bytes','digest')} for x in art['artifacts']]),indent=2))

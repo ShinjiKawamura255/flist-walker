@@ -1,0 +1,129 @@
+{
+  "result": "ORIGINAL_FAILURE_RETAINED; PUBLICATION_HOLD",
+  "run": 40341861333,
+  "attempt": 1,
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "run_conclusion": "cancelled",
+  "failed_job": 121638483300,
+  "failed_job_name": "Windows GNU Updater Build",
+  "classification": "external package transport/runner path stall before product build",
+  "observed": "apt-get update completed; 144MB package installation repeatedly stalled/reported Ign at azure.archive.ubuntu.com; 45minute job timeout canceled it before Rust build. CI Gate failed and updater E2E skipped as designed.",
+  "cause_limit": "Precise remote mirror/network root cause is unproven; no product/Rust failure observed in this canceled build.",
+  "policy": "docs/CI_OPERATIONS.md: retained evidence of runner/network external transient permits an exact job rerun; rerun alone cannot erase failure.",
+  "logs_zip_sha256": "2768a0157d5b2c5f444d8e4b55a7e2ebfc3cf17b059e327bddab77c2b65c7778",
+  "install_step_sha256": "dfc66d5863776844930a21912dfb77b3b8aaa67fdcaa1ac9b9c533fdb5d52a23",
+  "build_annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "The job has exceeded the maximum execution time of 45m0s",
+      "raw_details": ""
+    },
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+      "start_line": 75,
+      "start_column": null,
+      "end_line": 75,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "The operation was canceled.",
+      "raw_details": ""
+    }
+  ],
+  "gate_annotations": [
+    {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+      "start_line": 39,
+      "start_column": null,
+      "end_line": 39,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "Process completed with exit code 1.",
+      "raw_details": ""
+    }
+  ],
+  "jobs": [
+    {
+      "id": 121638384566,
+      "name": "Detect Changes",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:40:52Z",
+      "completed_at": "2026-10-26T14:41:00Z"
+    },
+    {
+      "id": 121638385183,
+      "name": "CI Policy",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:40:53Z",
+      "completed_at": "2026-10-26T14:43:54Z"
+    },
+    {
+      "id": 121638482906,
+      "name": "Clippy and Coverage",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:47:10Z"
+    },
+    {
+      "id": 121638482982,
+      "name": "Cargo Audit",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:44:26Z"
+    },
+    {
+      "id": 121638483058,
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:46:51Z"
+    },
+    {
+      "id": 121638483300,
+      "name": "Windows GNU Updater Build",
+      "conclusion": "cancelled",
+      "started_at": "2026-10-26T14:41:04Z",
+      "completed_at": "2026-10-26T15:26:25Z"
+    },
+    {
+      "id": 121638483337,
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:46:07Z",
+      "completed_at": "2026-10-26T14:59:51Z"
+    },
+    {
+      "id": 121638483700,
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success",
+      "started_at": "2026-10-26T14:41:03Z",
+      "completed_at": "2026-10-26T14:52:17Z"
+    },
+    {
+      "id": 121664710360,
+      "name": "CI Gate",
+      "conclusion": "failure",
+      "started_at": "2026-10-26T15:26:29Z",
+      "completed_at": "2026-10-26T15:26:33Z"
+    },
+    {
+      "id": 121664711356,
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "skipped",
+      "started_at": "2026-10-26T15:26:26Z",
+      "completed_at": "2026-10-26T15:26:25Z"
+    }
+  ],
+  "retry": "One selected build-job rerun plus dependent E2E/Gate; same source/commands/timeouts/thresholds; no source/policy change",
+  "publication": "HOLD until retry completes and result/diagnosis reviewed"
+}

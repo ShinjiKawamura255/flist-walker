@@ -1,0 +1,216 @@
+{
+  "version": "v0.31.1",
+  "source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "run": 40348832993,
+  "attempt": 1,
+  "event": "push",
+  "status": "PROPOSED MINOR; independent exact-run review pending",
+  "all_required_jobs_pass": true,
+  "draft_job": "success",
+  "all_log_files": 130,
+  "logs_zip_sha256": "2c06bfe537b2fb2675af80e62b4ff9ccb600be47ff53b78579bcb8618fbb358d",
+  "aggregate_log_identities": [
+    {
+      "file": "0_Create Draft Release.txt",
+      "bytes": 7251,
+      "sha256": "bcda6ed8dc4f37a4724b51fcfa8bf0e09d9f41843f41e10af4b54bcd51f33228",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "bytes": 53442,
+      "sha256": "d3ab9ef302ff8187c1317a7714b0be82c1724e53d358949e1cd86cc0881269b2",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "2_Build Release Assets (macos-x86_64).txt",
+      "bytes": 62900,
+      "sha256": "12b1877714e4f7be13a2e826fc245883568ed3c072bcf39fe124013f91c021b2",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "3_Build Release Assets (windows-x86_64).txt",
+      "bytes": 74128,
+      "sha256": "9c34d5582b739e7b12266c34dbceac87906267c9b253e9ce156da7b4f8ef22b7",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "4_Build Release Assets (linux-x86_64).txt",
+      "bytes": 61945,
+      "sha256": "8e0b289a8d0b9d786e42b015261cb71d7e43237252251ff8cb74f5483747d64c",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "5_Build Release Assets (macos-arm64).txt",
+      "bytes": 62489,
+      "sha256": "558a19a1e03cde3aec23943b75dcf78c2b3211e0d7a270e4b2b6d972d6089cc6",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "bytes": 80245,
+      "sha256": "0eff03a5ca4c4d981e01f13be7c6232f04b147ef1b01764c62f8622656d6862f",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "7_Release Preflight (linux-native).txt",
+      "bytes": 312242,
+      "sha256": "db5ba2e852bb35b01211b372a1c302fd027a285cf9458e6f29286f532e10d391",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "8_Release Preflight (macos-native).txt",
+      "bytes": 309103,
+      "sha256": "6820f4f5a8796162a5e076fc187cf9d59dcebe549d71afd57765c22041c130bf",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "9_Release Preflight (windows-native).txt",
+      "bytes": 315053,
+      "sha256": "4fbc4a31dc47d3ab82ff6ee02dba2d9bcf500faf42e218ee64096c397d01fcff",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "10_Resolve Release Context.txt",
+      "bytes": 17723,
+      "sha256": "f0903891694d010720c5532812248330f88c836c58276c0d445a26219c35dabe",
+      "runners": [
+        "2.338.0"
+      ]
+    }
+  ],
+  "actual_external_action_emissions": [
+    {
+      "file": "Create Draft Release/4_Download validated candidate bundle.txt",
+      "line": 20,
+      "text": "2026-10-26T15:55:12.3233452Z (node:2163) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    },
+    {
+      "file": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "line": 32,
+      "text": "2026-10-26T15:53:13.2151415Z (node:2370) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead."
+    }
+  ],
+  "actual_warning_count": 2,
+  "exported_occurrences": 4,
+  "duplicate_reason": "one aggregate and one step export per actual emission; same node/message/step, timestamps differ by export microseconds",
+  "product_rust_test_clippy_audit_warnings": 0,
+  "warning_error_annotations": 0,
+  "notices": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "check_run": "121663185517",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "check_run": "121667914446",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "check_run": "121667914446",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/b1febf364457db9feb99a5b0f745b97a99816591/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    }
+  ],
+  "actual_download_steps": [
+    {
+      "file": "Create Draft Release/4_Download validated candidate bundle.txt",
+      "sha256": "ef4ea2def5deeca1bfc05ab844fad0fbe5385ada87fa482bcaf10c3067e46ead",
+      "selected_artifact_ids": [
+        12665351283
+      ],
+      "api_expected_computed_actual_hashes_equal": true,
+      "digest_mismatch": "error",
+      "skip_decompress": false
+    },
+    {
+      "file": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "sha256": "7068b28891a00d1da57e9fe9ef7a9490084c8736f8eacfd737497b78b4c11a37",
+      "selected_artifact_ids": [
+        12665480061,
+        12664562598,
+        12663742457,
+        12663547109
+      ],
+      "api_expected_computed_actual_hashes_equal": true,
+      "digest_mismatch": "error",
+      "skip_decompress": false
+    }
+  ],
+  "official_action": {
+    "observed_utc": "2026-10-26T15:49:59.725795+00:00",
+    "latest_stable": "v8.0.2",
+    "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "runtime": "node24",
+    "action_yml_sha256": "e98559b7a31ba31be4709f20d22102dc2737fa630f69a339eb89981151e505fe",
+    "bundle_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+    "bundle_bytes": 4432922,
+    "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "diagnosed_bundle_identical": true,
+    "minimum_runner": "2.327.1",
+    "support_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+    "result": "PASS official latest identity/code/runtime support; exact hosted run still separately reviewed"
+  },
+  "causal_evidence": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+  "callsite": "unchanged full bundle UnzipStream dist67720 new Buffer(empty string), numeric4 dist67982 immediately filled by writeUInt32LE67983",
+  "observation_inference_boundary": "Hosted pin/runtime/input/emission/digests/success observed; actual producer/final bytes independently checked. Unchanged full official Action bounded causal diagnosis reused. No hosted stack/argument count/HTTPS/parallel reproduction claimed; no prior exception inherited.",
+  "fresh_artifact_checks": "ARTIFACT-INTEGRITY.json and BUNDLE-VALIDATION.json; real N-1 separately required",
+  "operator": "release owner",
+  "followup_owner": "repository maintainer",
+  "re_evaluate": "Every candidate/tagged run; any new code/callsite/message/count/input/security/integrity/function uncertainty stops. No general DEP0005 allowance."
+}

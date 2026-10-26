@@ -1,0 +1,13 @@
+"""Fetch every published asset over its unauthenticated browser download URL."""
+import concurrent.futures,json,pathlib,subprocess,sys
+metadata=pathlib.Path(sys.argv[1]);destination=pathlib.Path(sys.argv[2]);helper=pathlib.Path(__file__).with_name('download_artifact.py')
+r=json.loads(metadata.read_text());assert r['tag_name']=='v0.31.1' and not r['draft'] and not r['prerelease'];assert len(r['assets'])==28
+assert not destination.exists();destination.mkdir()
+def download(asset):
+ name=asset['name'];assert '/' not in name and '\\' not in name and name not in ('.','..')
+ p=subprocess.run([sys.executable,str(helper),'--release-asset',str(asset['id']),str(destination/name)],capture_output=True,text=True)
+ return {'id':asset['id'],'name':name,'exit':p.returncode,'output':p.stdout.strip(),'stderr':p.stderr.strip()}
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:results=list(pool.map(download,r['assets']))
+report={'release_id':r['id'],'tag':r['tag_name'],'unauthenticated_public_browser_url':True,'assets':results,'result':'PASS' if all(x['exit']==0 for x in results) else 'FAIL'}
+destination.with_name(destination.name+'-transport.json').write_text(json.dumps(report,indent=2)+'\n')
+print(report['result'],len(results),'public downloads');raise SystemExit(0 if report['result']=='PASS' else 1)
