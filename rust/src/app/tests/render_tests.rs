@@ -1432,6 +1432,7 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
                 "Help"
             ],
             "status_line": "idle status",
+            "disabled_top_actions": [],
             "help_dialogs": [],
             "preset_picker_dialogs": [],
             "filelist_dialogs": [],
@@ -1839,6 +1840,7 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
                 "Help"
             ],
             "status_line": "dialog status",
+            "disabled_top_actions": [],
             "help_dialogs": [],
             "preset_picker_dialogs": [],
             "filelist_dialogs": [

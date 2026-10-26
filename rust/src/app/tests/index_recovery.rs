@@ -1,6 +1,301 @@
 use super::*;
 
 #[test]
+fn tc_236_stop_actions_ignore_completed_index_at_dispatch() {
+    use crate::app::render::{RenderCommand, RenderTopActionCommand};
+
+    for command in [
+        RenderTopActionCommand::StopIndexing,
+        RenderTopActionCommand::StopAllIndexing,
+    ] {
+        let root = test_root("tc236-stop-completed");
+        fs::create_dir_all(&root).unwrap();
+        let mut app = FlistWalkerApp::new(root, 50, String::new());
+        let tab = app.current_tab_id().unwrap();
+        // The click was collected while indexing; completion wins before dispatch.
+        app.queue_render_command(RenderCommand::TopAction(command));
+        app.shell.indexing.settle_active_terminal_state();
+        app.shell.indexing.pending_queue.clear();
+        app.shell.indexing.inflight_requests.clear();
+        let notice = app.shell.runtime.notice.clone();
+        app.dispatch_render_commands(&egui::Context::default());
+        assert!(app.shell.indexing.index_admitted(tab));
+        assert_eq!(app.shell.runtime.notice, notice);
+        app.create_new_tab();
+        assert!(app
+            .shell
+            .indexing
+            .index_admitted(app.current_tab_id().unwrap()));
+    }
+}
+
+#[test]
+fn tc_236_stop_action_availability_covers_active_pending_and_deferred_work() {
+    for phase in 0..8 {
+        let root = test_root(&format!("tc236-stop-availability-{phase}"));
+        fs::create_dir_all(&root).unwrap();
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        reset_index_request_state_for_test(&mut app);
+        let tab = app.current_tab_id().unwrap();
+        // A stale active-tab slot must not keep either action enabled.
+        app.shell
+            .tabs
+            .get_mut(0)
+            .unwrap()
+            .index_state
+            .index_in_progress = true;
+        assert_eq!(
+            app.gui_surface_snapshot().disabled_top_actions,
+            ["Stop Indexing", "Stop All Indexing"]
+        );
+        let request = app.shell.indexing.allocate_request_id(Some(tab));
+        match phase {
+            0 => app.shell.indexing.in_progress = true,
+            1 => app.shell.indexing.pending_request_id = Some(request),
+            2 => app.shell.indexing.pending_entries_request_id = Some(request),
+            3 => {
+                app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+                    request_id: request,
+                    source: IndexSource::Walker,
+                });
+            }
+            4 => {
+                app.shell.indexing.refresh_after_pending_finish =
+                    Some(PendingIndexRefreshMode::Normal);
+            }
+            5 => app.shell.indexing.root_after_pending_finish = Some(root),
+            6 => {
+                app.shell.indexing.inflight_requests.insert(request);
+            }
+            7 => app.shell.indexing.pending_queue.push_back(IndexRequest {
+                request_id: request,
+                tab_id: tab,
+                root,
+                use_filelist: false,
+                include_files: true,
+                include_dirs: true,
+                max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
+                complete_walker_snapshot: false,
+            }),
+            _ => unreachable!(),
+        }
+        assert!(
+            app.gui_surface_snapshot().disabled_top_actions.is_empty(),
+            "phase {phase}"
+        );
+        app.queue_render_command(crate::app::render::RenderCommand::TopAction(
+            crate::app::render::RenderTopActionCommand::StopIndexing,
+        ));
+        app.dispatch_render_commands(&egui::Context::default());
+        assert!(!app.shell.indexing.index_admitted(tab), "phase {phase}");
+        assert_eq!(
+            app.gui_surface_snapshot().disabled_top_actions,
+            ["Stop Indexing", "Stop All Indexing"],
+            "phase {phase}"
+        );
+    }
+}
+
+#[test]
+fn tc_236_stop_all_available_for_background_work_only() {
+    use crate::app::render::{RenderCommand, RenderTopActionCommand};
+
+    for phase in 0..8 {
+        let root = test_root(&format!("tc236-stop-background-{phase}"));
+        fs::create_dir_all(&root).unwrap();
+        let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+        reset_index_request_state_for_test(&mut app);
+        app.create_new_tab();
+        reset_index_request_state_for_test(&mut app);
+        let background = app.shell.tabs.get(0).unwrap().id;
+        let request = app.shell.indexing.allocate_request_id(Some(background));
+        let state = &mut app.shell.tabs.get_mut(0).unwrap().index_state;
+        state.clear_index_request_state();
+        match phase {
+            0 => state.index_in_progress = true,
+            1 => state.pending_index_request_id = Some(request),
+            2 => state.pending_index_entries_request_id = Some(request),
+            3 => {
+                state.pending_index_finish = Some(PendingActiveIndexFinish {
+                    request_id: request,
+                    source: IndexSource::Walker,
+                });
+            }
+            4 => state.refresh_after_pending_finish = Some(PendingIndexRefreshMode::Normal),
+            5 => state.root_after_pending_finish = Some(root),
+            6 => {
+                app.shell.indexing.inflight_requests.insert(request);
+            }
+            7 => app.shell.indexing.pending_queue.push_back(IndexRequest {
+                request_id: request,
+                tab_id: background,
+                root,
+                use_filelist: false,
+                include_files: true,
+                include_dirs: true,
+                max_depth: crate::indexer::MaxDepth::unlimited(),
+                follow_links: false,
+                complete_walker_snapshot: false,
+            }),
+            _ => unreachable!(),
+        }
+        assert_eq!(
+            app.gui_surface_snapshot().disabled_top_actions,
+            ["Stop Indexing"],
+            "phase {phase}"
+        );
+        app.queue_render_command(RenderCommand::TopAction(
+            RenderTopActionCommand::StopIndexing,
+        ));
+        app.dispatch_render_commands(&egui::Context::default());
+        assert!(app
+            .shell
+            .indexing
+            .index_admitted(app.current_tab_id().unwrap()));
+        assert!(app.top_action_enabled("Stop All Indexing"));
+        app.queue_render_command(RenderCommand::TopAction(
+            RenderTopActionCommand::StopAllIndexing,
+        ));
+        app.dispatch_render_commands(&egui::Context::default());
+        assert!(!app.shell.indexing.index_admitted(background));
+        assert_eq!(
+            app.gui_surface_snapshot().disabled_top_actions,
+            ["Stop Indexing", "Stop All Indexing"]
+        );
+        let notice = app.shell.runtime.notice.clone();
+        app.queue_render_command(RenderCommand::TopAction(
+            RenderTopActionCommand::StopAllIndexing,
+        ));
+        app.dispatch_render_commands(&egui::Context::default());
+        assert_eq!(app.shell.runtime.notice, notice);
+        app.restart_current_index();
+        assert!(app.gui_surface_snapshot().disabled_top_actions.is_empty());
+        assert!(!app.shell.indexing.index_admitted(background));
+    }
+}
+
+#[test]
+fn tc_236_stop_buttons_render_and_pointer_follow_availability() {
+    fn button_rect(output: &egui::FullOutput, label: &str) -> egui::Rect {
+        output
+            .shapes
+            .iter()
+            .find_map(|shape| match &shape.shape {
+                egui::Shape::Text(text) if text.galley.text() == label => {
+                    Some(text.galley.rect.translate(text.pos.to_vec2()))
+                }
+                _ => None,
+            })
+            .expect("stop button stays visible")
+    }
+    for dark in [true, false] {
+        for width in [560.0, 1000.0] {
+            for label in ["Stop Indexing", "Stop All Indexing"] {
+                let root = test_root("tc236-stop-pointer");
+                fs::create_dir_all(&root).unwrap();
+                let mut app = FlistWalkerApp::new(root, 50, String::new());
+                reset_index_request_state_for_test(&mut app);
+                let tab = app.current_tab_id().unwrap();
+                let ctx = egui::Context::default();
+                ctx.set_visuals(if dark {
+                    egui::Visuals::dark()
+                } else {
+                    egui::Visuals::light()
+                });
+                let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(width, 900.0));
+                let mut frame = |app: &mut FlistWalkerApp, events| {
+                    ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(screen),
+                            events,
+                            ..Default::default()
+                        },
+                        |ui| app.run_ui_frame(ui),
+                    )
+                };
+                for _ in 0..3 {
+                    let _ = frame(&mut app, vec![]);
+                }
+                let idle = frame(&mut app, vec![]);
+                let rect = button_rect(&idle, label);
+                assert!(screen.contains_rect(rect));
+                let click = |app: &mut FlistWalkerApp,
+                             frame: &mut dyn FnMut(
+                    &mut FlistWalkerApp,
+                    Vec<egui::Event>,
+                ) -> egui::FullOutput| {
+                    for pressed in [true, false] {
+                        let _ = frame(
+                            app,
+                            vec![
+                                egui::Event::PointerMoved(rect.center()),
+                                egui::Event::PointerButton {
+                                    pos: rect.center(),
+                                    button: egui::PointerButton::Primary,
+                                    pressed,
+                                    modifiers: egui::Modifiers::default(),
+                                },
+                            ],
+                        );
+                    }
+                };
+                click(&mut app, &mut frame);
+                assert!(
+                    app.shell.indexing.index_admitted(tab),
+                    "disabled click: {label}"
+                );
+                app.shell.indexing.in_progress = true;
+                let busy = frame(&mut app, vec![]);
+                assert_eq!(
+                    button_rect(&busy, label),
+                    rect,
+                    "button position stays fixed"
+                );
+                click(&mut app, &mut frame);
+                assert!(
+                    !app.shell.indexing.index_admitted(tab),
+                    "enabled click: {label}"
+                );
+                let stopped = frame(&mut app, vec![]);
+                assert_eq!(button_rect(&stopped, label), rect);
+                assert_eq!(
+                    app.gui_surface_snapshot().disabled_top_actions,
+                    ["Stop Indexing", "Stop All Indexing"]
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn tc_236_superseded_work_does_not_enable_stop_actions() {
+    let root = test_root("tc236-stop-superseded");
+    fs::create_dir_all(&root).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    reset_index_request_state_for_test(&mut app);
+    let tab = app.current_tab_id().unwrap();
+    let request = app.shell.indexing.allocate_request_id(Some(tab));
+    app.shell.indexing.inflight_requests.insert(request);
+    app.shell.indexing.pending_queue.push_back(IndexRequest {
+        request_id: request,
+        tab_id: tab,
+        root,
+        use_filelist: false,
+        include_files: true,
+        include_dirs: true,
+        max_depth: crate::indexer::MaxDepth::unlimited(),
+        follow_links: false,
+        complete_walker_snapshot: false,
+    });
+    app.shell.indexing.superseded_request_ids.insert(request);
+    assert_eq!(
+        app.gui_surface_snapshot().disabled_top_actions,
+        ["Stop Indexing", "Stop All Indexing"]
+    );
+}
+
+#[test]
 fn tc_236_stop_current_invalidates_terminal_and_retains_committed_snapshot() {
     let root = test_root("tc236-stop-current");
     fs::create_dir_all(&root).unwrap();
@@ -97,6 +392,10 @@ fn tc_236_failed_request_suspends_auto_retry_until_explicit_refresh() {
         from_shared_response_queue: false,
     });
     assert!(!app.shell.indexing.index_admitted(tab));
+    assert_eq!(
+        app.gui_surface_snapshot().disabled_top_actions,
+        ["Stop Indexing", "Stop All Indexing"]
+    );
     app.request_index_refresh();
     assert!(app.shell.indexing.pending_request_id.is_none());
     app.restart_current_index();
@@ -207,6 +506,10 @@ fn tc_236_stop_full_reclaimer_retains_payload_but_invalidates_pending_finish() {
     assert!(app.shell.indexing.pending_finish.is_none());
     assert!(!app.try_finish_active_index_after_pending_drain());
     assert!(!app.shell.indexing.index_start_admitted(tab));
+    assert_eq!(
+        app.gui_surface_snapshot().disabled_top_actions,
+        ["Stop Indexing", "Stop All Indexing"]
+    );
     assert!(matches!(
         app.shell.indexing.route_response(request),
         IndexResponseRoute::Stale
@@ -217,6 +520,7 @@ fn tc_236_stop_full_reclaimer_retains_payload_but_invalidates_pending_finish() {
     assert!(app.shell.indexing.index_admitted(tab));
     assert!(!app.shell.indexing.index_start_admitted(tab));
     assert!(app.shell.indexing.pending_request_id.is_none());
+    assert!(app.gui_surface_snapshot().disabled_top_actions.is_empty());
     app.shell.tabs.resume_resource_reclaimer();
     app.poll_index_response();
     let restarted = index_rx

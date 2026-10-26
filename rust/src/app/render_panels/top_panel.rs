@@ -602,7 +602,16 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         ui.visuals().dark_mode,
                     ));
                 }
-                let mut response = ui.add(button);
+                let mut response = ui.add_enabled(app.top_action_enabled(label), button);
+                response = match label {
+                    "Stop Indexing" => response.on_disabled_hover_text(
+                        "No indexing is running or waiting in this tab.",
+                    ),
+                    "Stop All Indexing" => response.on_disabled_hover_text(
+                        "No indexing is running or waiting in any tab.",
+                    ),
+                    _ => response,
+                };
                 if label == "Presets..." {
                     response = response.on_hover_text(FlistWalkerApp::preset_top_action_tooltip());
                 }
