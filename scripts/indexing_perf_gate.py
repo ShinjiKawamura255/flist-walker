@@ -28,7 +28,23 @@ ENFORCE_TIMING = True
 ROLES = ("reference-before", "candidate", "reference-after")
 ENDPOINTS = ("index_ready_ms", "results_ready_ms")
 STATISTICS = ("median", "max")
-WORK_FILES = {p for p in collector.REQUIRED_SOURCES if p.startswith("rust/src/")}
+WORK_PREFIX = "rust/src/app/tests/indexing_perf/"
+
+
+def validate_work_contract(source, executor):
+    """Compare the complete tracked harness inventory, including future leaves.
+
+    REQUIRED_SOURCES is a schema minimum, not an inventory. Product Rust files
+    remain source-bound in receipts but may differ for regression comparisons.
+    """
+    select = lambda record: {p: digest for p, digest in record["files"].items()
+                             if p.startswith(WORK_PREFIX)}
+    observed, expected = select(source), select(executor)
+    changed = sorted(p for p in observed.keys() | expected.keys()
+                     if observed.get(p) != expected.get(p))
+    contract.require(not changed, "benchmark work contract changed: " + ", ".join(changed))
+    collector.validate_source_record(source)
+    collector.validate_source_record(executor)
 
 
 class Budget:
@@ -81,8 +97,7 @@ def validate_triplet(sessions, group):
         for key in ("toolchain", "hardware", "cargo_config_before", "build_profile"):
             contract.require(receipt[key] == candidate[key], "different comparison " + key)
         contract.require(_execution_runner(receipt) == _execution_runner(candidate), "different job/image/workflow context")
-        for path in WORK_FILES:
-            contract.require(source["files"][path] == executor["files"][path], "benchmark work contract changed: " + path)
+        validate_work_contract(source, executor)
         # The package's displayed version is not an execution/build setting.
         for field in ("environment_identity", "runtime_settings"):
             ignore = {"crate_version"} if field == "environment_identity" else {"window_trace_path"}
@@ -234,6 +249,10 @@ def collect_triplet(args):
         # Explicitly fetch the admitted object from that owned source, not a ref.
         prepare("reference-object-fetch", ["git","fetch","--no-tags","--depth=1","origin",REFERENCE], reference)
         prepare("reference-checkout", ["git","checkout","--detach",REFERENCE], reference)
+        # Reject incompatible harnesses before even the first reference build.
+        # Repeat at final receipt admission: preflight cannot certify later drift.
+        reference_source = collector.source_identity(reference, REFERENCE)
+        validate_work_contract(reference_source, source)
         legs = {}
         for index, role in enumerate(ROLES, 1):
             candidate = role == "candidate"

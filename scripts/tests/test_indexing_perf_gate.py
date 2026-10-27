@@ -75,6 +75,40 @@ class GateTests(unittest.TestCase):
         self.assertEqual(gate.REFERENCE, "6edfb599d69fc31657032a1419bdd255a165fe80")
         self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v9")
 
+    def test_complete_harness_inventory_rejects_changes_additions_and_removals(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.sessions(Path(name), "f1")
+            prefix = "rust/src/app/tests/indexing_perf/"
+            leaves = sorted(p.relative_to(ROOT).as_posix()
+                            for p in (ROOT / prefix).rglob("*") if p.is_file())
+            for path in leaves + [prefix + "extensions/future_oracle.rs"]:
+                for side in ("reference-before", "candidate"):
+                    for operation in ("modify", "remove", "add"):
+                        mutant = copy.deepcopy(sessions)
+                        files = mutant[side][0]["source_before"]["files"]
+                        # Actual on-disk harness inventory makes omissions visible.
+                        for source, _ in mutant.values():
+                            source["source_before"]["files"].update({p:"c"*64 for p in leaves})
+                        if operation == "remove":
+                            files.pop(path, None)
+                            if path not in leaves:
+                                continue
+                        else:
+                            files[path] = "d" * 64
+                        executor = mutant["candidate"][0]["source_before"]
+                        for receipt, _ in mutant.values():
+                            receipt["collector_source"] = copy.deepcopy(executor)
+                        with self.subTest(path=path, side=side, operation=operation):
+                            with self.assertRaisesRegex(contract.ValidationError, "work contract"):
+                                gate.validate_triplet(mutant, "f1")
+
+    def test_product_differences_remain_comparable(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.sessions(Path(name), "f1")
+            sessions["reference-before"][0]["source_before"]["files"]["rust/src/indexer/mod.rs"] = "d"*64
+            sessions["reference-after"][0]["source_before"]["files"]["rust/src/indexer/mod.rs"] = "d"*64
+            self.assertEqual(gate.evaluate_triplet(sessions, "f1")["status"], "pass")
+
     def test_rejected_v8_protocol_cannot_admit_current_runtime_defaults(self):
         with tempfile.TemporaryDirectory() as name:
             folder = Path(name)
@@ -408,7 +442,7 @@ class GateTests(unittest.TestCase):
                 lambda s:s["reference-before"][0]["runner"].update(GITHUB_RUN_ID="124"),
                 lambda s:s["reference-before"][0]["runner"].update(GITHUB_SHA=REFERENCE),
                 lambda s:s["reference-before"][0]["hardware"].update(cpu_model="other"),
-                lambda s:s["reference-before"][0]["source_before"]["files"].update({next(iter(gate.WORK_FILES)):"0"*64}),
+                lambda s:s["reference-before"][0]["source_before"]["files"].update({"rust/src/app/tests/indexing_perf/extensions/driver.rs":"0"*64}),
                 lambda s:s["reference-before"][0]["collection_interval_ns"].update(finished=100),
                 lambda s:s["reference-after"][0].update(collector_source=None)]
             for change in changes:
@@ -471,6 +505,98 @@ class OrchestrationTests(unittest.TestCase):
                  mock.patch.object(gate.Budget,"run",setup),
                  mock.patch.object(collector,"collect_once",side_effect=collect)]
         return options, calls, mocks
+
+    def test_work_mismatch_stops_after_checkout_before_any_build(self):
+        for mutation in ("modify", "add", "remove"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as name:
+                folder = Path(name)
+                options, calls, mocks = self.simulate(folder)
+                source = json.loads((folder/"controls"/"receipt.json").read_text())["source_before"]
+                reference = copy.deepcopy(source)
+                reference["head"] = REFERENCE
+                path = "rust/src/app/tests/indexing_perf/extensions/mod.rs"
+                reference["files"][path] = "c"*64
+                source["files"][path] = "c"*64
+                if mutation == "modify":
+                    reference["files"][path] = "d"*64
+                elif mutation == "add":
+                    source["files"]["rust/src/app/tests/indexing_perf/extensions/new.rs"] = "d"*64
+                else:
+                    reference["files"].pop(path)
+                events = []
+                def identity(root, expected):
+                    events.append((str(root), expected))
+                    return reference if expected == REFERENCE else source
+                def setup(_budget, kind, argv, cwd, env, log):
+                    events.append(argv[1])
+                    log.write_text("synthetic setup; no Git or build\n")
+                    return dict(success=True)
+                with ExitStack() as stack:
+                    for patch in mocks:
+                        stack.enter_context(patch)
+                    stack.enter_context(mock.patch.object(collector, "source_identity", side_effect=identity))
+                    stack.enter_context(mock.patch.object(gate.Budget, "run", setup))
+                    with self.assertRaisesRegex(contract.ValidationError, "work contract"):
+                        gate.collect_triplet(options)
+                self.assertEqual(calls, [], "no collector/build may start before preflight")
+                self.assertIn("checkout", events)
+                self.assertEqual(events[-1][1], REFERENCE)
+                out = Path(options.output)
+                self.assertEqual(json.loads((out/"receipt.json").read_text())["status"], "invalid")
+                self.assertFalse((out/"summary.json").exists())
+                self.assertEqual(len(list(out.glob("reference-*.log"))), 4)
+
+    def test_real_shallow_checkout_preflights_contract_without_building(self):
+        with tempfile.TemporaryDirectory() as name:
+            directory = Path(name)
+            remote = directory/"remote"
+            remote.mkdir()
+            def git(cwd, *argv):
+                run = subprocess.run(["git", *argv], cwd=cwd, text=True,
+                                     capture_output=True, timeout=20)
+                self.assertEqual(run.returncode, 0, run.stderr)
+                return run.stdout.strip()
+            git(remote, "init", "-q")
+            for path in collector.REQUIRED_SOURCES:
+                file = remote/path
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_text("synthetic source; never compiled\n")
+            git(remote, "add", ".")
+            git(remote, "-c", "user.name=Synthetic Test", "-c", "user.email=test@example.invalid",
+                "commit", "-qm", "healthy product and old harness")
+            reference = git(remote, "rev-parse", "HEAD")
+            changed = "rust/src/app/tests/indexing_perf/extensions/finished_offer.rs"
+            (remote/changed).write_text("synthetic changed work contract\n")
+            git(remote, "-c", "user.name=Synthetic Test", "-c", "user.email=test@example.invalid",
+                "commit", "-qam", "candidate harness")
+            source = directory/"source"
+            git(directory, "clone", "--depth=1", remote.as_uri(), str(source))
+            head = git(source, "rev-parse", "HEAD")
+            blueprint = synthetic_receipt(control_log())
+            runner = dict(blueprint["runner"], kind="intended-ubuntu-24.04", ImageOS="ubuntu24",
+                ImageVersion="synthetic", GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1",
+                GITHUB_JOB="synthetic", GITHUB_SHA=head, GITHUB_WORKFLOW_SHA=head,
+                GITHUB_WORKFLOW_REF="synthetic/repo/.github/workflows/perf-regression.yml@refs/heads/control")
+            options = SimpleNamespace(root=str(source), output=str(directory/"out"), group="f1",
+                revision=head, allow_local_controls=False, local_observation=False,
+                build_timeout=10, measurement_timeout=10)
+            with mock.patch.object(gate, "REFERENCE", reference), \
+                 mock.patch.object(collector, "runner_identity", return_value=runner), \
+                 mock.patch.object(collector, "validate_runner_record"), \
+                 mock.patch.object(collector, "hardware_identity", return_value={}), \
+                 mock.patch.object(collector, "collect_once") as collect:
+                with self.assertRaisesRegex(contract.ValidationError, changed):
+                    gate.collect_triplet(options)
+            collect.assert_not_called()
+            self.assertEqual(git(source, "rev-parse", "HEAD"), head)
+            self.assertEqual(git(source, "status", "--porcelain"), "")
+            self.assertEqual(git(directory/"out"/"reference-source", "rev-parse", "HEAD"), reference)
+            receipt = json.loads((directory/"out"/"receipt.json").read_text())
+            self.assertEqual(receipt["status"], "invalid")
+            self.assertEqual(len(receipt["setup"]), 4)
+            self.assertTrue(all(item["success"] for item in receipt["setup"].values()))
+            self.assertFalse((directory/"out"/"reference-build").exists())
+            self.assertFalse((directory/"out"/"summary.json").exists())
 
     def test_numeric_failure_keeps_valid_legs_and_flat_upload_replay(self):
         from contextlib import ExitStack
