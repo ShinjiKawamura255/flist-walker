@@ -1,8 +1,5 @@
 use super::*;
 
-#[path = "text_geometry.rs"]
-mod text_geometry;
-
 #[test]
 fn query_search_hints_tooltip_uses_english_application_copy() {
     for tooltip in [
@@ -749,8 +746,6 @@ fn top_action_labels_show_default_create_label_when_idle() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
-            "Stop Indexing",
-            "Stop All Indexing",
             "Presets...",
             "Help",
         ]
@@ -1426,13 +1421,10 @@ fn gui_surface_snapshot_for_idle_app_is_stable() {
                 "Clear Selected",
                 "Create File List",
                 "Refresh Index",
-                "Stop Indexing",
-                "Stop All Indexing",
                 "Presets...",
                 "Help"
             ],
             "status_line": "idle status",
-            "disabled_top_actions": [],
             "help_dialogs": [],
             "preset_picker_dialogs": [],
             "filelist_dialogs": [],
@@ -1524,8 +1516,6 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
             "Clear Selected",
             "Create File List",
             "Refresh Index",
-            "Stop Indexing",
-            "Stop All Indexing",
             "Presets...",
             "Help"
         ])
@@ -1834,13 +1824,10 @@ fn gui_surface_snapshot_for_dialog_state_is_stable() {
                 "Clear Selected",
                 "Create File List",
                 "Refresh Index",
-                "Stop Indexing",
-                "Stop All Indexing",
                 "Presets...",
                 "Help"
             ],
             "status_line": "dialog status",
-            "disabled_top_actions": [],
             "help_dialogs": [],
             "preset_picker_dialogs": [],
             "filelist_dialogs": [

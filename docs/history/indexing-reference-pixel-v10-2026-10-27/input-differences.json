@@ -1,0 +1,55 @@
+{
+  "status": "WORKTREE_CANDIDATE_NOT_ADMITTED",
+  "healthy_product": "6edfb599d69fc31657032a1419bdd255a165fe80",
+  "reference_predecessor": "81f1a4e059c6ccff7bf706a598257a631fb18e3c",
+  "upstream_gui_fix": "2d32faaf03c56c12bd6f0c9ec94fa9962af41639",
+  "master_parent": "43f7b462e9a2f4b8edb8bc7231ac344725bcb59b",
+  "all_rust_input_changes": {
+    "rust/Cargo.lock": {
+      "healthy": "74d1d7eafaf920906bb1a63d25e83e96cd7afbb4523a2f6ea5092e7096edce3a",
+      "reference_candidate": "4f3c5ba5b4fa25a3f5d529c74393103ded32d6985b344dd1c9e1fafbc43a3bfe"
+    },
+    "rust/src/app/render_tabs.rs": {
+      "healthy": "6f16812a08b2dc55b207b06b6849fbb90a675f090e3c891deb2e245fdf5b3d29",
+      "reference_candidate": "1a67cad7395a955bb845815dfe621edb18703e2bfc68139e200c3308c0903b9e"
+    },
+    "rust/src/app/tests/indexing_perf/extensions/driver.rs": {
+      "healthy": "c51ab75fbe5822bb9c6179a356c88973c4113380971256439bf14fa814a09b9f",
+      "reference_candidate": "4413eec8bdc2026cbf2288de99beb9662058d560bf08908bf24f622080f78390"
+    },
+    "rust/src/app/tests/indexing_perf/extensions/finished_offer.rs": {
+      "healthy": null,
+      "reference_candidate": "a0dbfeb01cc7b082c553d7e5baf485573d06a8d9ed09224b9b5711ed24d65d4b"
+    },
+    "rust/src/app/tests/indexing_perf/extensions/mod.rs": {
+      "healthy": "c36085a5f91a0f1e28490c4f785d5c7deb394b3c61a304bf9686fc4295686993",
+      "reference_candidate": "a3e800d29fa34f2d7855e498479a592a01e970edf846f3b449f72c2c6bcfd8de"
+    },
+    "rust/src/app/tests/indexing_perf/extensions/runner.rs": {
+      "healthy": "482c0ed1addcc4c42a8df283d96eb72d993cc2653fb948ff1e300a24c355c41b",
+      "reference_candidate": "5797bf9d655fca7d1c1f0debd79e6765a37cbeb2db0bdb441aa311420cc5b45c"
+    },
+    "rust/src/app/tests/tab_drag.rs": {
+      "healthy": "7d6f33bb5cb6a8ead1745aaadedb7b12b816b22a1649118312509cf7cbaf204e",
+      "reference_candidate": "16e75d4eaa6262bb3873674f5a600c4b6f8a97f22b98341351cd49a834538e7b"
+    }
+  },
+  "identical_rust_inputs": 234,
+  "harness_equal_to_reviewed_application": {
+    "rust/src/app/tests/indexing_perf/extensions/fixture.rs": "1fd860be6349f2ad7565c7a2e6f657ae1dbdc89176b0656b318a930150ddd3ff",
+    "rust/src/app/tests/indexing_perf/extensions/mod.rs": "a3e800d29fa34f2d7855e498479a592a01e970edf846f3b449f72c2c6bcfd8de",
+    "rust/src/app/tests/indexing_perf/mod.rs": "87e0403ba78701c9635a0c94f271f67118dcbcaf4b84bb23f7fcb2213cc2410a",
+    "rust/src/app/tests/indexing_perf/extensions/oracle.rs": "b4298bafc5445a4e51f02d064dbd514ae80b7adbd0b100bf233940048caaa5dc",
+    "rust/src/app/tests/indexing_perf/extensions/finished_offer.rs": "a0dbfeb01cc7b082c553d7e5baf485573d06a8d9ed09224b9b5711ed24d65d4b",
+    "rust/src/app/tests/indexing_perf/extensions/driver.rs": "4413eec8bdc2026cbf2288de99beb9662058d560bf08908bf24f622080f78390",
+    "rust/src/app/tests/indexing_perf/harness.rs": "e1bcc529e554b98ffaf384250e0105ffe206d74d7b3a20d2178b4efc597657a7",
+    "rust/src/app/tests/indexing_perf/extensions/supplementary.rs": "d2f20ef9008bf802c0bea7d96661fc8d9461562cabbb45abc00497293a8af6ae",
+    "rust/src/app/tests/indexing_perf/extensions/runner.rs": "5797bf9d655fca7d1c1f0debd79e6765a37cbeb2db0bdb441aa311420cc5b45c",
+    "rust/src/app/tests/indexing_perf/child_process.rs": "1811c3cec2402528754c7bfc12bd6fecf155aa2a45e9786d6dadd1c409951fa1",
+    "rust/src/app/tests/indexing_perf/extensions/cases.rs": "0bdee561b352d7e8bfd90ca993daff5e09e8b20e980386345ded46904f2d509a"
+  },
+  "new_product_delta_from_predecessor": "exact upstream render_tabs3line hunk only; separate exact upstream tab_drag43line regression",
+  "measured_frame_includes_tab_render": true,
+  "no_zero_performance_cost_claim": true,
+  "null_source_and_prospective_campaign_required": true
+}

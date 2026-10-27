@@ -885,37 +885,12 @@ pub(in crate::app) fn spawn_action_worker(
     Vec<thread::JoinHandle<()>>,
     Arc<ActionFreshnessRegistry>,
 ) {
-    spawn_action_worker_with_reveal(
-        shutdown,
-        Arc::new(run_action_target),
-        Arc::new(run_reveal_target),
-    )
+    spawn_action_worker_with(shutdown, Arc::new(run_action_target))
 }
 
-#[cfg(test)]
 pub(crate) fn spawn_action_worker_with(
     shutdown: Arc<AtomicBool>,
     execute: SharedActionExecutor,
-) -> (
-    BoundedSender<ActionRequest>,
-    Receiver<ActionResponse>,
-    Vec<thread::JoinHandle<()>>,
-    Arc<ActionFreshnessRegistry>,
-) {
-    let reveal_execute = Arc::clone(&execute);
-    spawn_action_worker_with_reveal(
-        shutdown,
-        execute,
-        Arc::new(move |parent, _items| reveal_execute(parent)),
-    )
-}
-
-type SharedRevealExecutor = Arc<dyn Fn(&Path, &[PathBuf]) -> anyhow::Result<()> + Send + Sync>;
-
-fn spawn_action_worker_with_reveal(
-    shutdown: Arc<AtomicBool>,
-    execute: SharedActionExecutor,
-    reveal: SharedRevealExecutor,
 ) -> (
     BoundedSender<ActionRequest>,
     Receiver<ActionResponse>,
@@ -933,7 +908,6 @@ fn spawn_action_worker_with_reveal(
     for worker_index in 0..ACTION_WORKERS {
         let shutdown = Arc::clone(&shutdown);
         let execute = Arc::clone(&execute);
-        let reveal = Arc::clone(&reveal);
         let tx_res = tx_res.clone();
         let rx_req = Arc::clone(&rx_req);
         let freshness = Arc::clone(&freshness);
@@ -981,7 +955,6 @@ fn spawn_action_worker_with_reveal(
                     req,
                     &tx_res,
                     execute.as_ref(),
-                    reveal.as_ref(),
                     &shutdown,
                     freshness.as_ref(),
                 );
@@ -1021,7 +994,6 @@ fn run_action_request_with(
     req: ActionRequest,
     tx_res: &Sender<ActionResponse>,
     execute: &(dyn Fn(&Path) -> anyhow::Result<()> + Send + Sync),
-    reveal: &RevealExecutor,
     shutdown: &Arc<AtomicBool>,
     freshness: &ActionFreshnessRegistry,
 ) -> &'static str {
@@ -1029,7 +1001,6 @@ fn run_action_request_with(
     let (response, outcome) = process_action_request_with_outcome_and_cancellation(
         req,
         |path| execute(path),
-        Some(reveal),
         Arc::clone(shutdown),
         &WorkerActionGuard { freshness },
     );
@@ -1080,7 +1051,6 @@ pub(crate) fn process_action_request_with_outcome(
     process_action_request_with_outcome_and_cancellation(
         req,
         execute,
-        None,
         Arc::new(AtomicBool::new(false)),
         &AlwaysCurrentActionGuard,
     )
@@ -1089,7 +1059,6 @@ pub(crate) fn process_action_request_with_outcome(
 fn process_action_request_with_outcome_and_cancellation(
     req: ActionRequest,
     execute: impl FnMut(&Path) -> anyhow::Result<()>,
-    reveal: Option<&RevealExecutor>,
     cancellation: Arc<AtomicBool>,
     guard: &dyn AuthorizedActionGuard,
 ) -> (ActionResponse, ActionTerminalOutcome) {
@@ -1106,10 +1075,7 @@ fn process_action_request_with_outcome_and_cancellation(
         mode,
         cancellation,
     );
-    let backend = WorkerActionBackend {
-        execute: Mutex::new(execute),
-        reveal,
-    };
+    let backend = WorkerActionBackend::new(execute);
     let report = execute_authorized_action_request(&request, guard, &backend);
     let outcome = if report.outcome == AuthorizedActionOutcome::Completed {
         ActionTerminalOutcome::Completed
@@ -1145,13 +1111,17 @@ impl AuthorizedActionGuard for AlwaysCurrentActionGuard {
     }
 }
 
-type RevealExecutor = dyn Fn(&Path, &[PathBuf]) -> anyhow::Result<()> + Send + Sync;
-struct WorkerActionBackend<'a, F> {
+struct WorkerActionBackend<F> {
     execute: Mutex<F>,
-    reveal: Option<&'a RevealExecutor>,
 }
 
-impl<F> WorkerActionBackend<'_, F> {
+impl<F> WorkerActionBackend<F> {
+    fn new(execute: F) -> Self {
+        Self {
+            execute: Mutex::new(execute),
+        }
+    }
+
     fn dispatch(&self, path: &Path) -> anyhow::Result<()>
     where
         F: FnMut(&Path) -> anyhow::Result<()>,
@@ -1160,7 +1130,7 @@ impl<F> WorkerActionBackend<'_, F> {
     }
 }
 
-impl<F> AuthorizedActionBackend for WorkerActionBackend<'_, F>
+impl<F> AuthorizedActionBackend for WorkerActionBackend<F>
 where
     F: FnMut(&Path) -> anyhow::Result<()>,
 {
@@ -1170,12 +1140,6 @@ where
 
     fn reveal(&self, path: &Path) -> anyhow::Result<()> {
         self.dispatch(path)
-    }
-    fn reveal_items(&self, parent: &Path, items: &[PathBuf]) -> anyhow::Result<()> {
-        match self.reveal {
-            Some(reveal) => reveal(parent, items),
-            None => self.dispatch(parent),
-        }
     }
 }
 
@@ -1764,74 +1728,5 @@ mod preview_cancellation_tests {
         shutdown.store(true, Ordering::Release);
         drop(tx);
         handle.join().unwrap();
-    }
-}
-
-#[cfg(not(test))]
-fn run_reveal_target(parent: &Path, items: &[PathBuf]) -> anyhow::Result<()> {
-    crate::actions::reveal_items(parent, items)
-}
-#[cfg(test)]
-fn run_reveal_target(_parent: &Path, _items: &[PathBuf]) -> anyhow::Result<()> {
-    Ok(())
-}
-
-#[cfg(test)]
-mod reveal_dispatch_tests {
-    use super::*;
-    #[test]
-    fn tc_050_worker_dispatches_reveal_with_all_items_and_keeps_open_separate() {
-        let root = std::env::temp_dir().join("flistwalker-worker-reveal-dispatch");
-        std::fs::create_dir_all(root.join("folder")).unwrap();
-        let files = vec![root.join("a 日本語 &.txt"), root.join("b,%.txt")];
-        for file in &files {
-            std::fs::write(file, "x").unwrap();
-        }
-        let selections = Arc::new(Mutex::new(Vec::new()));
-        let recorded_selections = Arc::clone(&selections);
-        let reveal = move |parent: &Path, items: &[PathBuf]| {
-            recorded_selections
-                .lock()
-                .unwrap()
-                .push((parent.to_path_buf(), items.to_vec()));
-            Ok(())
-        };
-        let mut opens = Vec::new();
-        let mut paths = files.clone();
-        paths.push(root.join("folder"));
-        let (response, outcome) = process_action_request_with_outcome_and_cancellation(
-            ActionRequest {
-                request_id: 850,
-                root: root.clone(),
-                paths,
-                open_parent_for_files: true,
-            },
-            |path| {
-                opens.push(path.to_path_buf());
-                Ok(())
-            },
-            Some(&reveal),
-            Arc::new(AtomicBool::new(false)),
-            &AlwaysCurrentActionGuard,
-        );
-        assert_eq!(
-            outcome,
-            ActionTerminalOutcome::Completed,
-            "{}",
-            response.notice
-        );
-        let canonical = root.canonicalize().unwrap();
-        assert_eq!(
-            *selections.lock().unwrap(),
-            vec![(
-                canonical.clone(),
-                files
-                    .iter()
-                    .map(|p| canonical.join(p.file_name().unwrap()))
-                    .collect()
-            )]
-        );
-        assert_eq!(opens, vec![canonical.join("folder")]);
-        std::fs::remove_dir_all(root).unwrap();
     }
 }

@@ -1,0 +1,21 @@
+{
+  "status": "WORKTREE_NULL_SOURCE_NOT_PUBLISHED_NOT_NATIVE_ADMITTED",
+  "reference": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+  "master_parent": "43f7b462e9a2f4b8edb8bc7231ac344725bcb59b",
+  "allowed_source_delta": [
+    "scripts/indexing_perf_gate.py",
+    "scripts/tests/test_indexing_perf_gate.py"
+  ],
+  "identical_rust_inputs": 241,
+  "null_product_rust_and_cargo_exact": true,
+  "protocol": "same-job-RCR-f1-matched-21-observer-v10",
+  "policy_unchanged": {
+    "id": "rcr-median-v3",
+    "slowdown_ratio": 1.5,
+    "reference_drift_ratio": 1.25,
+    "enforced": true
+  },
+  "identical_collected_inputs": 299,
+  "identical_non_rust_collected_inputs": 58,
+  "only_reference_protocol_assignments_and_fixed_pin_test_literals_changed": true
+}

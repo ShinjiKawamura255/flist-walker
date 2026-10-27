@@ -66,8 +66,6 @@ struct MailboxState {
     terminal: Option<SequencedResponse>,
     closed: bool,
     snapshot: Option<super::freshness::SnapshotFreshness>,
-    worker_phase: Option<(String, std::time::Instant)>,
-    worker_activity: Option<std::time::Instant>,
 }
 
 pub(super) enum IndexMailboxPublishError {
@@ -91,8 +89,6 @@ pub(super) struct IndexResponseMailbox {
     state: Mutex<MailboxState>,
     #[cfg(test)]
     perf_enabled: std::sync::atomic::AtomicBool,
-    #[cfg(all(test, unix))]
-    full_observed: std::sync::atomic::AtomicBool,
     #[cfg(test)]
     perf_state: std::sync::OnceLock<IndexPerfHandle>,
 }
@@ -108,17 +104,9 @@ impl IndexResponseMailbox {
             state: Mutex::new(MailboxState::default()),
             #[cfg(test)]
             perf_enabled: std::sync::atomic::AtomicBool::new(false),
-            #[cfg(all(test, unix))]
-            full_observed: std::sync::atomic::AtomicBool::new(false),
             #[cfg(test)]
             perf_state: std::sync::OnceLock::new(),
         }
-    }
-
-    #[cfg(all(test, unix))]
-    pub(super) fn full_observed(&self) -> bool {
-        self.full_observed
-            .load(std::sync::atomic::Ordering::Acquire)
     }
 
     #[cfg(test)]
@@ -249,53 +237,6 @@ impl IndexResponseMailbox {
         }
     }
 
-    // Only child-acquired scalar metadata crosses this boundary; no filesystem I/O.
-    pub(super) fn set_snapshot(&self, mut snapshot: super::freshness::SnapshotFreshness) {
-        // Keep the loaded root FileList in the user's lexical namespace even
-        // when discovery resolved an alias; this is a lexical projection only.
-        if let crate::indexer::IndexSource::FileList(path) = &snapshot.source {
-            if let Some(name) = path
-                .file_name()
-                .filter(|name| *name == "FileList.txt" || *name == "filelist.txt")
-            {
-                snapshot.source = crate::indexer::IndexSource::FileList(snapshot.root.join(name));
-            }
-        }
-        if let Ok(mut state) = self.state.lock() {
-            state.snapshot = Some(snapshot);
-        }
-    }
-
-    pub(super) fn record_worker_phase(&self, phase: &str) {
-        if let Ok(mut state) = self.state.lock() {
-            state.worker_activity = Some(std::time::Instant::now());
-            let phase = phase.chars().take(80).collect::<String>();
-            if state
-                .worker_phase
-                .as_ref()
-                .is_none_or(|(old, _)| old != &phase)
-            {
-                state.worker_phase = Some((phase, std::time::Instant::now()));
-            }
-        }
-    }
-
-    pub(super) fn record_worker_activity(&self) {
-        if let Ok(mut state) = self.state.lock() {
-            state.worker_activity = Some(std::time::Instant::now());
-        }
-    }
-
-    pub(super) fn worker_phase(&self) -> Option<(String, std::time::Duration)> {
-        let state = self.state.lock().ok()?;
-        state.worker_phase.as_ref().map(|(phase, since)| {
-            (
-                phase.clone(),
-                state.worker_activity.unwrap_or(*since).elapsed(),
-            )
-        })
-    }
-
     pub(super) fn snapshot(&self) -> Option<super::freshness::SnapshotFreshness> {
         self.state.lock().ok()?.snapshot.clone()
     }
@@ -315,9 +256,6 @@ impl IndexResponseMailbox {
             IndexResponse::Batch { .. } | IndexResponse::ReplaceAll { .. }
         ) && state.data.len() >= self.data_capacity
         {
-            #[cfg(all(test, unix))]
-            self.full_observed
-                .store(true, std::sync::atomic::Ordering::Release);
             return Err(IndexMailboxPublishError::Full(response));
         }
 

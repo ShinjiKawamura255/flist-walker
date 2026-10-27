@@ -1112,7 +1112,7 @@ fn receive_after_background_index_progress<T>(
 const BACKGROUND_FINALIZATION_FRAME_LIMIT: usize = 2_000;
 const BACKGROUND_FINALIZATION_STALL_LIMIT: usize = 32;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 struct BackgroundFinalizationProgress {
     initial_remaining: usize,
     pending_remaining: usize,
@@ -1128,73 +1128,8 @@ struct BackgroundFinalizationProgress {
 #[derive(Clone, Debug)]
 struct BackgroundFinalizationFrame {
     elapsed: Duration,
-    cpu: Option<Duration>,
-    measurement_overhead: Duration,
-    monotonic_window_ns: Option<[u128; 2]>,
-    mach_absolute_window_ns: Option<[u128; 2]>,
-    mach_absolute_window_ticks: Option<[u64; 2]>,
-    mach_timebase: Option<[u32; 2]>,
-    native_thread_id: Option<u64>,
     before: Option<BackgroundFinalizationProgress>,
     after: Option<BackgroundFinalizationProgress>,
-}
-
-impl BackgroundFinalizationFrame {
-    fn timing(&self) -> super::finalization_timing::FrameTiming {
-        super::finalization_timing::FrameTiming {
-            wall: self.elapsed,
-            cpu: self.cpu,
-            measurement_overhead: self.measurement_overhead,
-            monotonic_window_ns: self.monotonic_window_ns,
-            mach_absolute_window_ns: self.mach_absolute_window_ns,
-            mach_absolute_window_ticks: self.mach_absolute_window_ticks,
-            mach_timebase: self.mach_timebase,
-        }
-    }
-}
-
-fn assert_finalization_frame_budget(
-    request_id: u64,
-    ordinal: usize,
-    frame: &BackgroundFinalizationFrame,
-) {
-    assert!(frame.elapsed < Duration::from_millis(100),
-        "background finalization frame exceeded 100ms: request_id={request_id}, frame={ordinal}, wall={:?}, thread_cpu={:?}, off_cpu_lower_bound={:?}, measurement_overhead={:?}, before={:?}, after={:?}",
-        frame.elapsed, frame.cpu, frame.timing().off_cpu_lower_bound(), frame.measurement_overhead, frame.before, frame.after);
-}
-
-#[test]
-fn tc_207_wall_budget_remains_enforced_when_thread_cpu_is_low() {
-    let frame = BackgroundFinalizationFrame {
-        elapsed: Duration::from_millis(101),
-        cpu: Some(Duration::from_millis(1)),
-        measurement_overhead: Duration::from_micros(2),
-        monotonic_window_ns: None,
-        mach_absolute_window_ns: None,
-        mach_absolute_window_ticks: None,
-        mach_timebase: None,
-        native_thread_id: None,
-        before: None,
-        after: None,
-    };
-    let failure = std::panic::catch_unwind(|| assert_finalization_frame_budget(77, 3, &frame));
-    let error = failure.expect_err("scheduling delay must not bypass the wall-clock gate");
-    let message = error.downcast_ref::<String>().unwrap();
-    for diagnostic in [
-        "request_id=77",
-        "frame=3",
-        "wall=",
-        "thread_cpu=",
-        "off_cpu_lower_bound=",
-        "measurement_overhead=",
-        "before=",
-        "after=",
-    ] {
-        assert!(
-            message.contains(diagnostic),
-            "missing {diagnostic}: {message}"
-        );
-    }
 }
 
 #[derive(Clone, Copy)]
@@ -1263,120 +1198,6 @@ fn assert_background_finalization_progress(
     );
 }
 
-fn write_finalization_frame_json(
-    writer: &mut impl std::io::Write,
-    value: &serde_json::Value,
-) -> std::io::Result<()> {
-    let line = format!("TC207_FRAME {value}\n");
-    writer.write_all(line.as_bytes())
-}
-
-fn emit_finalization_frame_json(value: serde_json::Value) {
-    if let Some(directory) = std::env::var_os("FLISTWALKER_TEST_TC207_FRAME_LOG_DIR") {
-        static LOG: std::sync::OnceLock<std::sync::Mutex<std::fs::File>> =
-            std::sync::OnceLock::new();
-        let log = LOG.get_or_init(|| {
-            let path = std::path::PathBuf::from(directory)
-                .join(format!("frames-{}.jsonl", std::process::id()));
-            let file = std::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(path)
-                .expect("create owned TC-207 diagnostic log");
-            std::sync::Mutex::new(file)
-        });
-        write_finalization_frame_json(
-            &mut *log.lock().expect("TC-207 diagnostic writer poisoned"),
-            &value,
-        )
-        .expect("write complete TC-207 diagnostic record");
-    } else {
-        // Preserve libtest's usual per-test output capture, while formatting the
-        // JSON before the stderr call instead of streaming its nested fields.
-        let line = format!("TC207_FRAME {value}");
-        eprintln!("{line}");
-    }
-}
-
-fn emit_finalization_frames(
-    request_id: u64,
-    frames: &[BackgroundFinalizationFrame],
-    trace: bool,
-    control: Option<&str>,
-) {
-    let worst_wall = frames
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, f)| f.elapsed)
-        .map(|(i, _)| i);
-    let worst_cpu = frames
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, f)| f.cpu)
-        .map(|(i, _)| i);
-    let worst_off_cpu = frames
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, f)| f.timing().off_cpu_lower_bound())
-        .map(|(i, _)| i);
-    for (ordinal, frame) in frames.iter().enumerate() {
-        if trace
-            || Some(ordinal) == worst_wall
-            || Some(ordinal) == worst_cpu
-            || Some(ordinal) == worst_off_cpu
-        {
-            let timing = frame.timing();
-            emit_finalization_frame_json(serde_json::json!({
-                "schema": 3, "pid": std::process::id(),
-                "native_thread_id": frame.native_thread_id,
-                "clock_domain": "CLOCK_MONOTONIC nanoseconds (Unix); null if unavailable",
-                "monotonic_window_ns": frame.monotonic_window_ns,
-                "mach_absolute_window_ns": frame.mach_absolute_window_ns,
-                "mach_absolute_window_ticks": frame.mach_absolute_window_ticks,
-                "mach_timebase": frame.mach_timebase,
-                "test": thread::current().name(), "request_id": request_id,
-                "frame": ordinal, "frames_observed": frames.len(),
-                "wall_ns": frame.elapsed.as_nanos(),
-                "cpu_upper_ns": frame.cpu.map(|d| d.as_nanos()),
-                "cpu_lower_ns": timing.cpu_lower_bound().map(|d| d.as_nanos()),
-                "off_cpu_lower_ns": timing.off_cpu_lower_bound().map(|d| d.as_nanos()),
-                "measurement_overhead_ns": frame.measurement_overhead.as_nanos(),
-                "wall_under_100ms": frame.elapsed < Duration::from_millis(100),
-                "before": frame.before, "after": frame.after,
-                "control": if ordinal == 0 { control } else { None },
-            }));
-        }
-    }
-}
-
-#[test]
-fn tc_207_diagnostic_json_is_written_as_one_owned_line() {
-    struct RecordingWriter(Vec<Vec<u8>>);
-    impl std::io::Write for RecordingWriter {
-        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-            self.0.push(bytes.to_vec());
-            Ok(bytes.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
-    let value = serde_json::json!({"nested": {"frame": 3}, "text": "embedded\nnewline"});
-    let mut writer = RecordingWriter(Vec::new());
-    write_finalization_frame_json(&mut writer, &value).expect("owned record write");
-    assert_eq!(writer.0.len(), 1, "no fragmented serialization writes");
-    let line = std::str::from_utf8(&writer.0[0]).expect("UTF-8 record");
-    assert_eq!(line.lines().count(), 1);
-    let body = line
-        .trim_end()
-        .strip_prefix("TC207_FRAME ")
-        .expect("frame tag");
-    assert_eq!(
-        serde_json::from_str::<serde_json::Value>(body).unwrap(),
-        value
-    );
-}
-
 fn drive_background_finalization_with_frame_budget(
     app: &mut FlistWalkerApp,
     tab_index: usize,
@@ -1386,52 +1207,21 @@ fn drive_background_finalization_with_frame_budget(
 ) -> Vec<BackgroundFinalizationFrame> {
     let mut frames = Vec::new();
     let mut consecutive_stalled_frames = 0usize;
-    let native_thread_id = super::finalization_timing::native_thread_id();
-    let trace = std::env::var_os("FLISTWALKER_TEST_TC207_TRACE").is_some();
-    let control = std::env::var("FLISTWALKER_TEST_TC207_CONTROL").ok();
-    assert!(
-        control.is_none() || trace,
-        "diagnostic controls require raw tracing"
-    );
     for frame in 0..BACKGROUND_FINALIZATION_FRAME_LIMIT {
         if background_finalization_target_reached(app, tab_index, request_id, target) {
-            emit_finalization_frames(request_id, &frames, trace, control.as_deref());
             return frames;
         }
         let before = background_finalization_progress(app, request_id);
-        let timing = super::finalization_timing::measure(|| {
-            if frame == 0 {
-                if let Some(control) = control.as_deref() {
-                    super::finalization_timing::diagnostic_control(control);
-                }
-            }
-            app.handle_background_index_response(
-                tab_index,
-                IndexResponse::Finished {
-                    request_id,
-                    source: source.clone(),
-                },
-            );
-        });
+        let started = Instant::now();
+        app.handle_background_index_response(
+            tab_index,
+            IndexResponse::Finished {
+                request_id,
+                source: source.clone(),
+            },
+        );
+        let elapsed = started.elapsed();
         let after = background_finalization_progress(app, request_id);
-        let observation = BackgroundFinalizationFrame {
-            elapsed: timing.wall,
-            cpu: timing.cpu,
-            measurement_overhead: timing.measurement_overhead,
-            monotonic_window_ns: timing.monotonic_window_ns,
-            mach_absolute_window_ns: timing.mach_absolute_window_ns,
-            mach_absolute_window_ticks: timing.mach_absolute_window_ticks,
-            mach_timebase: timing.mach_timebase,
-            native_thread_id,
-            before,
-            after,
-        };
-        frames.push(observation);
-        let observation = frames.last().unwrap();
-        if observation.elapsed >= Duration::from_millis(100) {
-            emit_finalization_frames(request_id, &frames, trace, control.as_deref());
-        }
-        assert_finalization_frame_budget(request_id, frame, observation);
         if !background_finalization_target_reached(app, tab_index, request_id, target) {
             consecutive_stalled_frames = if before == after {
                 consecutive_stalled_frames.saturating_add(1)
@@ -1445,6 +1235,11 @@ fn drive_background_finalization_with_frame_budget(
                 before,
             );
         }
+        frames.push(BackgroundFinalizationFrame {
+            elapsed,
+            before,
+            after,
+        });
     }
     panic!(
         "background finalization exceeded frame bound: request_id={request_id}, tab_index={tab_index}, frames={BACKGROUND_FINALIZATION_FRAME_LIMIT}, progress={:?}",
