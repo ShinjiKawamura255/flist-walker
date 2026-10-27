@@ -335,36 +335,6 @@ pub fn set_process_runtime_config(config: RuntimeConfig) {
     }
 }
 
-#[cfg(test)]
-struct RuntimeConfigTestRestore(Option<RuntimeConfig>);
-
-#[cfg(test)]
-impl Drop for RuntimeConfigTestRestore {
-    fn drop(&mut self) {
-        if let Some(original) = self.0.take() {
-            set_process_runtime_config(original);
-        }
-    }
-}
-
-#[cfg(test)]
-pub(crate) struct RuntimeConfigTestGuard {
-    // Fields drop in declaration order: restore while the shared test lock is held.
-    _restore: RuntimeConfigTestRestore,
-    _env_lock: std::sync::MutexGuard<'static, ()>,
-}
-
-#[cfg(test)]
-pub(crate) fn runtime_config_test_guard() -> RuntimeConfigTestGuard {
-    let env_lock = crate::env_var_test_lock()
-        .lock()
-        .expect("env/config test lock");
-    RuntimeConfigTestGuard {
-        _restore: RuntimeConfigTestRestore(Some(current_runtime_config())),
-        _env_lock: env_lock,
-    }
-}
-
 impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {

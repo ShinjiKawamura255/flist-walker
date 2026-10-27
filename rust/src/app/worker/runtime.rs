@@ -171,10 +171,6 @@ impl FlistWalkerApp {
 
     /// worker request sender を dummy channel へ差し替えて shutdown を開始する。
     fn disconnect_worker_channels(&mut self) {
-        if let Some(service) = &mut self.shell.features.root_browser.browse.service {
-            service.disconnect();
-        }
-        self.cancel_root_browse();
         self.freshness_monitor.disconnect();
         self.shell.worker_bus.config_open.disconnect();
         self.shell.worker_bus.config_settings.disconnect();
@@ -359,7 +355,6 @@ impl FlistWalkerApp {
         self.poll_catalog_response();
         self.poll_config_open_response();
         self.poll_config_settings_response();
-        self.poll_root_browse();
         self.poll_root_validation_response();
         self.poll_settings_commit_response();
     }

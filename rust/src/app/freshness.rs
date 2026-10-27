@@ -7,7 +7,7 @@ use std::time::{Duration, Instant, SystemTime};
 pub(super) mod worker;
 pub(super) use worker::FreshnessMonitor;
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct FileFingerprint {
     size: u64,
     modified: SystemTime,
@@ -17,7 +17,7 @@ pub(super) struct FileFingerprint {
     identity: (u32, u64),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum FileObservation {
     Present(FileFingerprint),
     Missing,
@@ -203,20 +203,6 @@ impl FlistWalkerApp {
 
     pub(super) fn freshness_source_text(&self) -> String {
         let Some(snapshot) = self.shell.runtime.freshness.as_ref() else {
-            if self.shell.indexing.in_progress
-                || self.shell.indexing.pending_request_id.is_some()
-                || self.shell.indexing.pending_finish.is_some()
-            {
-                let source = match &self.shell.indexing.build.index.source {
-                    IndexSource::FileList(path) => format!(
-                        "FileList ({})",
-                        path.file_name().unwrap_or_default().to_string_lossy()
-                    ),
-                    IndexSource::Walker => "Walker".into(),
-                    IndexSource::None => "Detecting…".into(),
-                };
-                return format!("Source: {source} · Indexing…");
-            }
             return "Source: None · Not loaded".into();
         };
         let age = age_label(snapshot.acquired_at.elapsed().unwrap_or_default());

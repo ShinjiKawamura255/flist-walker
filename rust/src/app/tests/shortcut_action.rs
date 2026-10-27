@@ -98,7 +98,6 @@ fn ctrl_o_browses_and_changes_root() {
             modifiers: gui_shortcut_modifiers(false),
         }],
     );
-    super::support::settle_root_browse(&mut app);
 
     assert_eq!(app.shell.runtime.root, new_root);
     assert_eq!(app.shell.tabs.len(), 1);
@@ -128,7 +127,6 @@ fn ctrl_o_browse_uses_existing_parent_when_current_root_is_missing() {
             modifiers: gui_shortcut_modifiers(false),
         }],
     );
-    super::support::settle_root_browse(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.last_browse_dialog_root,
@@ -160,7 +158,6 @@ fn ctrl_shift_o_browses_in_new_tab() {
             modifiers: gui_shortcut_modifiers(true),
         }],
     );
-    super::support::settle_root_browse(&mut app);
 
     assert_eq!(app.shell.tabs.len(), 2);
     assert_eq!(app.shell.tabs.active_tab, 1);
@@ -194,7 +191,6 @@ fn ctrl_shift_o_browse_falls_back_when_current_root_is_missing() {
             modifiers: gui_shortcut_modifiers(true),
         }],
     );
-    super::support::settle_root_browse(&mut app);
 
     assert_eq!(
         app.shell.features.root_browser.last_browse_dialog_root,

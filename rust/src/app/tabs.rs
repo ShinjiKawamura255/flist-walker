@@ -180,15 +180,6 @@ impl FlistWalkerApp {
     }
 
     fn trigger_lifecycle_activation_refresh(&mut self) {
-        if self
-            .current_tab_id()
-            .is_some_and(|tab| !self.shell.indexing.index_admitted(tab))
-        {
-            // A tab stopped while inactive may have displayed a partial live
-            // search before deactivation. Restore from its committed all_entries.
-            self.update_results();
-            return;
-        }
         if self.shell.indexing.pending_request_id.is_none()
             && self.shell.indexing.pending_finish.is_none()
         {
@@ -226,7 +217,6 @@ impl FlistWalkerApp {
     }
 
     fn clear_closed_tab_state(&mut self, tab_id: u64) {
-        self.shell.indexing.forget_index_recovery_tab(tab_id);
         let prepared_request_ids = self.shell.features.filelist.clear_pending_for_tab(tab_id);
         for prepared_request_id in prepared_request_ids {
             self.discard_prepared_filelist_snapshot(prepared_request_id);
@@ -992,7 +982,6 @@ impl FlistWalkerApp {
                     effect.cleanup_request_id = Some(request_id);
                     return effect;
                 }
-                indexing.suspend_index_retry(tab.id);
                 Self::settle_background_tab_index_failure(
                     tab,
                     Some(format!("Indexing failed: {}", error)),
@@ -1017,7 +1006,6 @@ impl FlistWalkerApp {
         effect
     }
     pub(super) fn apply_root_change_direct(&mut self, new_root: PathBuf) {
-        self.cancel_root_browse();
         self.invalidate_filter_undo();
         let normalized = normalize_windows_path_buf(new_root);
         if self.shell.indexing.pending_finish.is_some() {
@@ -1304,7 +1292,6 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn switch_to_tab_index_at(&mut self, next_index: usize, now: Instant) {
-        self.cancel_root_browse();
         if next_index >= self.shell.tabs.len() {
             return;
         }

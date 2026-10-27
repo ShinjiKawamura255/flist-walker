@@ -622,112 +622,12 @@ fn tc_151_large_active_filter_keeps_last_good_snapshot_and_bounds_unknown_queue(
 }
 
 fn finish_budgeted_filter(app: &mut FlistWalkerApp) {
-    finish_budgeted_filter_with_clock(app, Instant::now);
-}
-
-fn finish_budgeted_filter_with_clock(app: &mut FlistWalkerApp, mut now: impl FnMut() -> Instant) {
-    // These are logical continuation tests, not a total-time benchmark. Keep
-    // production-budget assertions in the caller, then drain with the unchanged
-    // item caps so scheduler preemption cannot consume the fixture's work slice.
-    // Bound repeated restarts separately from a stalled async retirement.
-    const MAX_PROGRESS_TURNS: usize = 64;
-    let mut last_progress = now();
-    let mut progress_turns = 0;
+    let deadline = Instant::now() + Duration::from_secs(3);
     while app.active_entry_filter_pending() {
-        let before = app
-            .shell
-            .indexing
-            .build
-            .active_filter
-            .as_ref()
-            .unwrap()
-            .cursor;
-        app.poll_active_entry_filter_with_budget(Duration::MAX);
-        let Some(pending) = app.shell.indexing.build.active_filter.as_ref() else {
-            return;
-        };
-        let current = now();
-        if pending.cursor != before {
-            progress_turns += 1;
-            assert!(
-                progress_turns <= MAX_PROGRESS_TURNS,
-                "filter continuation exhausted work-turn bound: cursor={}, turns={progress_turns}",
-                pending.cursor,
-            );
-            last_progress = current;
-        } else {
-            assert!(
-                current.saturating_duration_since(last_progress) < Duration::from_secs(3),
-                "filter continuation made no progress: cursor={}, turns={progress_turns}, pending_kind={}, in_flight_kind={}",
-                pending.cursor,
-                app.shell.indexing.build.pending_kind_paths.len(),
-                app.shell.indexing.build.in_flight_kind_paths.len(),
-            );
-        }
+        assert!(Instant::now() < deadline, "filter continuation must finish");
+        app.poll_active_entry_filter();
         thread::yield_now();
     }
-}
-
-#[test]
-fn tc_151_filter_completion_is_not_a_total_wall_clock_performance_gate() {
-    let started = Instant::now();
-    let mut tick = 0;
-    assert_kind_batch_replay_completion(|| {
-        let current = started + Duration::from_secs(tick * 4);
-        tick += 1;
-        current
-    });
-}
-
-#[test]
-fn tc_151_filter_completion_stalled_retirement_still_times_out() {
-    let root = test_root("filter-completion-stalled-retirement");
-    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
-    reset_index_request_state_for_test(&mut app);
-    app.shell.runtime.include_dirs = false;
-    app.shell.runtime.committed_for_test_mut().all_entries = Arc::new(
-        (0..1024)
-            .map(|i| file_entry(root.join(format!("file-{i}"))))
-            .collect(),
-    );
-    let last_good = Arc::clone(&app.shell.runtime.entries);
-    app.shell.tabs.pause_resource_reclaimer();
-    for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
-        let mut retired = RetiredIndexBuildResources::empty();
-        retired.set_stale_index_entries(vec![IndexEntry {
-            path: root.join("retired"),
-            kind: EntryKind::file(),
-            kind_known: true,
-        }]);
-        assert!(app
-            .shell
-            .tabs
-            .try_retire_index_build_resources(retired)
-            .is_ok());
-    }
-    app.apply_entry_filters(true);
-    let started = Instant::now();
-    let mut tick = 0;
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        finish_budgeted_filter_with_clock(&mut app, || {
-            let current = started + Duration::from_secs(tick * 4);
-            tick += 1;
-            current
-        });
-    }));
-    app.shell.tabs.resume_resource_reclaimer();
-    let error = result.expect_err("a stalled continuation must still fail");
-    let message = error
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| error.downcast_ref::<&str>().copied())
-        .expect("string panic");
-    assert!(
-        message.contains("made no progress: cursor=1024"),
-        "{message}"
-    );
-    assert!(app.active_entry_filter_pending());
-    assert!(Arc::ptr_eq(&last_good, &app.shell.runtime.entries));
 }
 
 #[test]
@@ -868,10 +768,6 @@ fn tc_151_active_filter_full_retirement_retains_previous_owner() {
 
 #[test]
 fn tc_151_kind_batch_replays_completed_discovery_without_prefix_starvation() {
-    assert_kind_batch_replay_completion(Instant::now);
-}
-
-fn assert_kind_batch_replay_completion(now: impl FnMut() -> Instant) {
     let root = test_root("filter-kind-replay");
     let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
     reset_index_request_state_for_test(&mut app);
@@ -923,7 +819,7 @@ fn assert_kind_batch_replay_completion(now: impl FnMut() -> Instant) {
         "kind response must not restart the prefix"
     );
     assert!(next_cursor - first_cursor <= 32_768);
-    finish_budgeted_filter_with_clock(&mut app, now);
+    finish_budgeted_filter(&mut app);
     assert_eq!(app.shell.runtime.entries.len(), 100_000);
     assert!(app
         .shell

@@ -51,8 +51,8 @@ mod support;
 pub(super) use support::{
     commit_query_history_for_test, emacs_shortcut_modifiers, entries_count_from_status,
     gui_shortcut_modifiers, is_action_notice, reset_index_request_state_for_test,
-    run_shortcuts_frame, run_shortcuts_frame_with_modifiers, settle_root_browse,
-    tab_switch_shortcut_modifiers, test_root, test_settings_scope,
+    run_shortcuts_frame, run_shortcuts_frame_with_modifiers, tab_switch_shortcut_modifiers,
+    test_root, test_settings_scope,
 };
 
 pub(super) fn unknown_entry(path: PathBuf) -> Entry {
@@ -73,7 +73,6 @@ mod app_core;
 mod autosave;
 mod cache_tests;
 mod empty_query_progress;
-mod finalization_timing;
 mod index_pipeline;
 mod indexing_perf;
 mod paged_preview;
@@ -105,5 +104,3 @@ mod window_ime;
 
 mod freshness;
 mod freshness_refresh;
-
-mod index_recovery;

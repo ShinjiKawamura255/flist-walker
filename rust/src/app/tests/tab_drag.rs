@@ -369,49 +369,6 @@ fn regression_gui_tabs_overflow_keeps_settings_and_active_tab_visible() {
 }
 
 #[test]
-fn regression_gui_tabs_overflow_keeps_add_horizontally_visible_at_fractional_widths() {
-    let scope = test_settings_scope("tab-overflow-fractional-widths");
-    let mut app = scope.app(PathBuf::from("/root/initial"), 50, String::new());
-    for i in 0..14 {
-        app.create_new_tab();
-        app.shell.runtime.root = PathBuf::from(format!("/root/long-directory-label-{i}"));
-        app.sync_active_tab_state();
-    }
-    for (width, pixels_per_point) in [640.0, 640.125, 640.25, 640.5, 640.75, 641.0]
-        .into_iter()
-        .flat_map(|width| [1.0, 1.25, 1.5, 2.0].map(|scale| (width, scale)))
-    {
-        let ctx = egui::Context::default();
-        ctx.all_styles_mut(|style| style.scroll_animation = egui::style::ScrollAnimation::none());
-        for _ in 0..3 {
-            let mut input = egui::RawInput {
-                screen_rect: Some(egui::Rect::from_min_size(
-                    egui::Pos2::ZERO,
-                    egui::vec2(width, 400.0),
-                )),
-                ..Default::default()
-            };
-            input
-                .viewports
-                .get_mut(&egui::ViewportId::ROOT)
-                .unwrap()
-                .native_pixels_per_point = Some(pixels_per_point);
-            let _ = ctx.run_ui(input, |ui| render_tabs::render_tab_bar(&mut app, ui));
-        }
-        let probe = ctx
-            .data(|data| {
-                data.get_temp::<render_tabs::TabBarRenderProbe>(egui::Id::new("tab-bar-probe"))
-            })
-            .unwrap();
-        assert!(
-            probe.viewport.left() <= probe.add.left()
-                && probe.add.right() <= probe.viewport.right(),
-            "width {width}, scale {pixels_per_point}: {probe:?}"
-        );
-    }
-}
-
-#[test]
 fn regression_gui_add_button_follows_last_tab_with_spare_space() {
     let mut app = FlistWalkerApp::new(test_root("tab-add-position"), 50, String::new());
     let ctx = egui::Context::default();
