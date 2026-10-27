@@ -1,3 +1,5 @@
+#[cfg(test)]
+use crate::persistence::{record_test_writer_io_checkpoint, WriterIoCheckpoint};
 use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
@@ -49,15 +51,21 @@ pub struct SidecarFileLock {
 pub fn acquire_sidecar_lock(path: &Path, timeout: Duration) -> std::io::Result<SidecarFileLock> {
     let lock_path = sidecar_lock_path(path);
     let parent = lock_path.parent().unwrap_or_else(|| Path::new("."));
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::SidecarParent);
     fs::create_dir_all(parent)?;
     let deadline = Instant::now() + timeout;
     loop {
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::SidecarOpen);
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .truncate(false)
             .open(&lock_path)?;
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::SidecarLock);
         match file.try_lock() {
             Ok(()) => return Ok(SidecarFileLock { _file: file }),
             Err(std::fs::TryLockError::WouldBlock) => {
@@ -67,6 +75,8 @@ pub fn acquire_sidecar_lock(path: &Path, timeout: Duration) -> std::io::Result<S
                         format!("timed out waiting for sidecar lock {}", lock_path.display()),
                     ));
                 }
+                #[cfg(test)]
+                record_test_writer_io_checkpoint(WriterIoCheckpoint::SidecarRetry);
                 thread::sleep(Duration::from_millis(5));
             }
             Err(std::fs::TryLockError::Error(err)) => return Err(err),
@@ -133,13 +143,23 @@ where
     S: FnMut(&Path) -> std::io::Result<()>,
 {
     let parent = parent_directory(path);
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicAncestors);
     let directory_sync_targets = directory_sync_targets(parent)?;
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicParent);
     fs::create_dir_all(parent)?;
     let tmp = build_temp_path(path);
     let result = (|| {
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicOpen);
         let mut file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicWrite);
         file.write_all(bytes)?;
         if let Some(permissions) = metadata.permissions {
+            #[cfg(test)]
+            record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicPermissions);
             file.set_permissions(permissions)?;
         }
         if metadata.accessed.is_some() || metadata.modified.is_some() {
@@ -150,13 +170,25 @@ where
             if let Some(modified) = metadata.modified {
                 times = times.set_modified(modified);
             }
+            #[cfg(test)]
+            record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicTimes);
             file.set_times(times)?;
         }
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicFileSync);
         file.sync_all()?;
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicBeforeReplace);
         before_replace(&tmp)?;
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicClose);
         drop(file);
+        #[cfg(test)]
+        record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicReplace);
         replace_file(&tmp, path)?;
         for directory in &directory_sync_targets {
+            #[cfg(test)]
+            record_test_writer_io_checkpoint(WriterIoCheckpoint::AtomicParentSync);
             sync_directory(directory).map_err(post_replace_sync_error)?;
         }
         Ok(())

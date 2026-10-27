@@ -3,6 +3,9 @@ mod paths;
 mod schema;
 mod worker;
 
+#[cfg(test)]
+pub(crate) use worker::io_diagnostics::{record_test_writer_io_checkpoint, WriterIoCheckpoint};
+
 use crate::path_utils::normalize_windows_path_buf;
 use crate::query_history::MAX_QUERY_HISTORY_ENTRIES;
 pub(crate) use paths::{

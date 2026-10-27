@@ -20,6 +20,9 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
 
+#[cfg(test)]
+pub(crate) mod io_diagnostics;
+
 static UI_STATE_PERSISTENCE: OnceLock<Mutex<UiStatePersistenceRegistry>> = OnceLock::new();
 
 // Permits cover queued AND retrying autosaves. Extra channel slots admit ordered
@@ -53,6 +56,9 @@ struct PersistenceSender {
 struct TestWorkerProgress {
     started: std::time::Instant,
     phase: std::sync::atomic::AtomicU8,
+    last_io_checkpoint: std::sync::atomic::AtomicU8,
+    worker_thread_fingerprint: std::sync::atomic::AtomicU64,
+    path_fingerprint: Option<u64>,
     last_wait_failure: Mutex<Option<Value>>,
 }
 
@@ -62,7 +68,16 @@ impl TestWorkerProgress {
         Self {
             started: std::time::Instant::now(),
             phase: std::sync::atomic::AtomicU8::new(0),
+            last_io_checkpoint: std::sync::atomic::AtomicU8::new(0),
+            worker_thread_fingerprint: std::sync::atomic::AtomicU64::new(0),
+            path_fingerprint: None,
             last_wait_failure: Mutex::new(None),
+        }
+    }
+    fn for_path(path: &Path) -> Self {
+        Self {
+            path_fingerprint: Some(io_diagnostics::path_fingerprint(path)),
+            ..Self::new()
         }
     }
     fn set_phase(&self, phase: u8) {
@@ -108,6 +123,10 @@ fn record_test_worker_wait_failure(
     let diagnostic = serde_json::json!({
         "stage": stage,
         "phase": sender.progress.phase(),
+        "last_io_checkpoint": io_diagnostics::checkpoint_name(sender.progress.last_io_checkpoint.load(std::sync::atomic::Ordering::Relaxed)),
+        "observation_kind": "last-checkpoint-nontransactional",
+        "writer_path_fingerprint": sender.progress.path_fingerprint.map(|v| format!("{v:016x}")),
+        "worker_rust_thread_fingerprint": sender.progress.worker_thread_fingerprint.load(std::sync::atomic::Ordering::Relaxed),
         "worker_age_ms": sender.progress.started.elapsed().as_secs_f64() * 1000.0,
         "elapsed_ms": started.elapsed().as_secs_f64() * 1000.0,
         "registry_acquisition_ms": registry_elapsed.as_secs_f64() * 1000.0,
@@ -389,7 +408,7 @@ fn spawn_ui_state_persistence_worker(
     }));
     let worker_state = Arc::clone(&state);
     #[cfg(test)]
-    let progress = Arc::new(TestWorkerProgress::new());
+    let progress = Arc::new(TestWorkerProgress::for_path(&path));
     #[cfg(test)]
     let worker_progress = Arc::clone(&progress);
     let handle = thread::spawn(move || {
@@ -678,6 +697,8 @@ fn run_ui_state_persistence_worker(
     state: Arc<Mutex<AdmissionState>>,
     #[cfg(test)] progress: Arc<TestWorkerProgress>,
 ) {
+    #[cfg(test)]
+    let _io_observation = io_diagnostics::WriterIoScope::bind(&progress);
     let mut pending = Vec::<PendingUiStateWrite>::new();
     loop {
         #[cfg(test)]
@@ -813,6 +834,10 @@ fn publish_write_result(
     if !attempted {
         return;
     }
+    #[cfg(test)]
+    io_diagnostics::record_test_writer_io_checkpoint(
+        io_diagnostics::WriterIoCheckpoint::PublishResult,
+    );
     if let Ok(mut state) = state.lock() {
         match result {
             Ok(()) => {

@@ -2,6 +2,8 @@
 use super::{PendingUiStateWrite, UiStatePatch};
 use crate::fs_atomic::{acquire_sidecar_lock, write_text_atomic};
 use crate::persistence::schema::UiState;
+#[cfg(test)]
+use crate::persistence::{record_test_writer_io_checkpoint, WriterIoCheckpoint};
 use crate::query_history::MAX_QUERY_HISTORY_ENTRIES;
 use serde_json::Value;
 use std::fs;
@@ -16,8 +18,12 @@ pub(super) fn build_ui_state_document(
 ) -> std::io::Result<Value> {
     // Startup may fall back to defaults, but a writer must not turn a failed
     // read into permission to replace existing data. Only absence permits seed.
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::DocumentRead);
     let mut document = match fs::read_to_string(path) {
         Ok(text) => {
+            #[cfg(test)]
+            record_test_writer_io_checkpoint(WriterIoCheckpoint::DocumentDecode);
             let document = serde_json::from_str::<Value>(&text).map_err(|error| {
                 std::io::Error::new(
                     std::io::ErrorKind::InvalidData,
@@ -100,6 +106,8 @@ pub(super) fn write_pending_ui_state(
         .all(|writes| writes[0].generation < writes[1].generation));
     let _lock = acquire_sidecar_lock(path, lock_timeout)?;
     let document = build_ui_state_document(path, pending, None, history_persist_disabled)?;
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::DocumentSerialize);
     let text = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
     write_text_atomic(path, &text)
 }
@@ -112,6 +120,8 @@ pub(crate) fn canonicalize_last_root_for_persistence(document: &mut Value) {
     else {
         return;
     };
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::CanonicalLastRoot);
     let canonical = PathBuf::from(last_root)
         .canonicalize()
         .unwrap_or_else(|_| PathBuf::from(last_root));
@@ -131,6 +141,8 @@ fn canonicalize_default_root_for_persistence(document: &mut Value) {
     else {
         return;
     };
+    #[cfg(test)]
+    record_test_writer_io_checkpoint(WriterIoCheckpoint::CanonicalDefaultRoot);
     let canonical = PathBuf::from(default_root)
         .canonicalize()
         .unwrap_or_else(|_| PathBuf::from(default_root));
