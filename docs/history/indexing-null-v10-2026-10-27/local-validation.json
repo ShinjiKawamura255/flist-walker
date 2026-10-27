@@ -1,0 +1,42 @@
+{
+  "status": "LOCAL_NULL_SOURCE_VALIDATED;FRESH_C0_NATIVE_NOT_RUN;NO_CALIBRATION",
+  "reference": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+  "protocol_proposed": "same-job-RCR-f1-matched-21-observer-v10",
+  "collected_input_boundary": "301 total;241Rust/Cargo identical;299 inputs identical;only2gate assignments and2matching hard-coded expected pin literals differ",
+  "tests": {
+    "first_python165": "FAIL1 old6ed/v9 literal expectation;164PASS;retained",
+    "operator_path_error_followup": "No edit occurred; unchanged pin check FAIL in misleadingly named green.log; not GREEN",
+    "correct_pin_focused": "PASS1,hard-codedfcde/v10 expectations retained",
+    "corrected_python": "PASS165",
+    "old_controller_actual_null_gate_before_pin_literal_update": "PASS71synthetic;notnumeric",
+    "corrected_controller_actual_null_source": "PASS72synthetic;notnumeric",
+    "repo_contract": "PASS",
+    "guardian": "PASS"
+  },
+  "unchanged_compilation_input_regression_reuse": {
+    "source": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+    "all241Rust_inputs_and_Cargo_equal": true,
+    "R_native_local": "PASS1624/19ignored+integrations",
+    "R_fmt_clippy_audit_vm003": "PASS",
+    "claim_limit": "R regression evidence for identical input contents only; notC0exact-source-native admission. C0fresh3OSCI mandatory before any slot."
+  },
+  "native_C0": "NOT RUN pending publication",
+  "headful_GUI": "NOT RUN",
+  "calibration_slots_reserved": 0,
+  "calibration_slots_dispatched": 0,
+  "policy_enforcement": {
+    "median_slowdown": 1.5,
+    "reference_median_drift": 1.25,
+    "enforce_timing": true
+  },
+  "logs_sha256": {
+    "v10-null-python-all.log": "5b4f9f5cecb0a0bbb76ca358056eec2b32f3c1f5031eff7adb35b0c9b4c9e374",
+    "v10-null-pin-expected-green.log": "171a31d2e4cd2018f064f19da59dfdc73de3b44a447b2f3eda3a0b7dbc36cdcf",
+    "v10-null-pin-expected-green-corrected.log": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+    "v10-null-python-all-corrected.log": "40d6c967d041d2c8dd5d10f528b958834ac4931b217f06b44c2e3d8689cb92db",
+    "v10-controller-actual-null-source-tests.log": "a888641c3fb34111427e2d35b81910152ff5bfd5b5d2b7957c7737dfa22830b8",
+    "v10-controller-actual-null-source-tests-corrected.log": "e453734069f82ad302b1421137eabd7e80cfb8a9c188afc2935a04e1f0e9a774",
+    "v10-null-repo-contract.log": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3",
+    "v10-null-guardian.log": "ced96b901ca8094bdc05a8359c9305171a3227d0ae3dd97ccf60a51f61949505"
+  }
+}

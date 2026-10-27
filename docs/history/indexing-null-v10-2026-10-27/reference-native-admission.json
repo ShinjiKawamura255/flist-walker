@@ -1,0 +1,177 @@
+{
+  "status": "FRESH_EXACT_SOURCE_NATIVE_PASS;INDEPENDENT_NATIVE_GO_FOR_NULL_STAGE",
+  "source": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+  "run": 40543471307,
+  "guardian": 40543471293,
+  "pr": 217,
+  "attempt": 1,
+  "tree": "947632e4526b5095cc7162f61268845f96e0bb11",
+  "actual_checkout": {
+    "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b",
+    "tree": "947632e4526b5095cc7162f61268845f96e0bb11",
+    "parents": [
+      "43f7b462e9a2f4b8edb8bc7231ac344725bcb59b",
+      "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645"
+    ]
+  },
+  "actual_checkouts": [
+    {
+      "log": "Windows GNU Updater E2E/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Rust Test and Build (windows-native)/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Rust Test and Build (macos-native)/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Rust Test and Build (linux-native)/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Clippy and Coverage/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Windows GNU Updater Build/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Cargo Audit/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "Detect Changes/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    },
+    {
+      "log": "CI Policy/2_Checkout.txt",
+      "sha": "2054bfa26665876d75b7088c5a9c65fefb76fc5b"
+    }
+  ],
+  "expected_log_hashes": {
+    "Windows GNU Updater E2E/2_Checkout.txt": "be7fdbcf7e24f39de00a26233a07f637702bf78a9f2d55b2816e1942904686bd",
+    "Rust Test and Build (windows-native)/2_Checkout.txt": "ed830958f580f7db922cb8a59941a2e104df060cdf86150cff3762f563464c7f",
+    "Rust Test and Build (windows-native)/6_Run tests.txt": "b9230bfaa953b6cfcf4bba8708c789c543dbd74bd2df538c8f7e27e0d82e6729",
+    "Rust Test and Build (macos-native)/2_Checkout.txt": "108766b02aeed07d8d1a82af2229127adbad0635f8e6b09621b924b679ca8b37",
+    "Rust Test and Build (macos-native)/6_Run tests.txt": "87a1e698ea01450d72566a9b496fef9506a83deb9224aafacea57ea905b3a432",
+    "Rust Test and Build (linux-native)/2_Checkout.txt": "add36c365dc5280607e0c8e5f777f6326903fcfc932bda370de72c8349b33cec",
+    "Rust Test and Build (linux-native)/6_Run tests.txt": "4078308cf07ebab7fc1ebc9d2c304ec8e66930c24bf2c3da237642c524ee7480",
+    "Clippy and Coverage/2_Checkout.txt": "a915d19cd81c94c41560046d34e527c42d8845ce164122e41f7ab9c99a6a1796",
+    "Clippy and Coverage/11_Generate coverage report.txt": "214970f6d9922caa7b5fcba14c8d8c8bf857926a667b44679e04edd1c21b4dc3",
+    "Windows GNU Updater Build/2_Checkout.txt": "985db4059b48547e591733095578e57926a3fc380a4184217805c01c6e5a6ddc",
+    "Cargo Audit/2_Checkout.txt": "5e9e32b0a907b4fc8d3abf7abf30b9ec209c9b8f7ba1f3422b018201200bffa9",
+    "Detect Changes/2_Checkout.txt": "377f386dc71e5e5628d0a740b8056967c851c24e35e2daf0a9945ce622befbe3",
+    "CI Policy/2_Checkout.txt": "c644defe6f9742e1d725122957064607944d38608f198275f7909edb7f6766fe"
+  },
+  "native_library_counts": {
+    "Rust Test and Build (windows-native)/6_Run tests.txt": [
+      1654,
+      20
+    ],
+    "Rust Test and Build (macos-native)/6_Run tests.txt": [
+      1624,
+      19
+    ],
+    "Rust Test and Build (linux-native)/6_Run tests.txt": [
+      1633,
+      19
+    ],
+    "Clippy and Coverage/11_Generate coverage report.txt": [
+      1633,
+      19
+    ]
+  },
+  "original_smokes_and_both_GUI_guards_all_four_axes": true,
+  "pr_readback": {
+    "autoMergeRequest": null,
+    "baseRefOid": "43f7b462e9a2f4b8edb8bc7231ac344725bcb59b",
+    "headRefOid": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+    "isDraft": true,
+    "state": "OPEN",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/pull/217"
+  },
+  "jobs": [
+    {
+      "name": "CI Policy",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122327723176,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122327723176"
+    },
+    {
+      "name": "Detect Changes",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122327723189,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122327723189"
+    },
+    {
+      "name": "Clippy and Coverage",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328221784,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328221784"
+    },
+    {
+      "name": "Windows GNU Updater Build",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328221874,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328221874"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328221923,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328221923"
+    },
+    {
+      "name": "Cargo Audit",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328221943,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328221943"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328222108,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328222108"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122328222171,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122328222171"
+    },
+    {
+      "name": "Windows GNU Updater E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122345070950,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122345070950"
+    },
+    {
+      "name": "CI Gate",
+      "status": "completed",
+      "conclusion": "success",
+      "databaseId": 122349656378,
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40543471307/job/122349656378"
+    }
+  ],
+  "reference-pixel-ci-original-logs.zip": {
+    "sha256": "56c34c342b5d30cdae7d6724a4c2e835fe67736c4d05d3f4e05589dd4fd69d94",
+    "crc": "PASS"
+  },
+  "reference-pixel-guardian-original-logs.zip": {
+    "sha256": "ebab7d94c693d54bd8bf0b790ff575e39ae84c13d64aeaa7603cdbd7a28facad",
+    "crc": "PASS"
+  }
+}

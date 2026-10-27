@@ -1,0 +1,52 @@
+{
+  "status": "LOCAL_VALIDATED;FRESH_EXACT_SOURCE_NATIVE_AND_CAMPAIGN_NOT_RUN",
+  "new_code_delta_sha256": "2b5b4024d583ddca0883ccd5218b461bb208b9f7a37800c7752b66d1515005de",
+  "tdd": {
+    "initial_short_exact_selector": "0 selected; NOT TESTED; not counted as RED",
+    "qualified_upstream_regression_before_fix": "1 FAIL; width640 scale1; add614.3>viewport614.0",
+    "after_unchanged_upstream_padding": "tab_drag10 PASS incl24 fractional combinations"
+  },
+  "local_context": {
+    "sandbox_full_native": "FAIL1622passed/2UnixSocketEPERM/19ignored; original retained",
+    "host_minimal_socket_diagnostics": "both2PASS; context restriction demonstrated",
+    "host_full_native": "PASS1624/19ignored+integrations and native menu harness",
+    "fmt": "PASS",
+    "clippy": "PASS",
+    "audit": "PASS;1378advisories452crates; deny-yanked, no policy changes",
+    "python_distinct_tests": "64+101=165PASS",
+    "repo_contract": "PASS",
+    "guardian": "PASS",
+    "gui_fixture": "PASS canonical hashes/counts",
+    "native_visual_GUI": "NOT RUN; no user GUI session or personal Windows operation authorized/performed",
+    "vm003": "both standalone guards PASS once; not RCR calibration",
+    "workflow_yaml": "PASS 8 files; existing validation-venv PyYAML; workflow source unchanged"
+  },
+  "logs_sha256": {
+    "reference-pixel-test-red.log": "a0bdab7b4a82d47c58bc272f6093ded48aed8e515bf329abb10e16a95b85eb6b",
+    "reference-pixel-test-red-qualified.log": "512f6d38725f0bd75aeb7d822008913c9de260b76922f14b879768c4a6d99978",
+    "reference-pixel-tab-drag-green.log": "edb56efa28af266eca76ab4be13f106e79cefd9e1056665690d4e74781708e1b",
+    "reference-pixel-native.log": "9a039ef3375dc60bc2311bfb7275aac1f67ccda378e394ab5de8d7e6df0987e0",
+    "reference-pixel-host-socket-1.log": "1ce5bb85526ceadc681110af8e50be4fe290417f60ad8eb5508b42ccedfed090",
+    "reference-pixel-host-socket-2.log": "0aefaf2e81f55de69c3aae2eadc91811c734a76cb1291bcec5419503197e409c",
+    "reference-pixel-host-native.log": "a6d0c08e71e2c916274da29d50a7825b325d591a97939c859497ce90fd31b34e",
+    "reference-pixel-host-fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "reference-pixel-host-clippy.log": "6f25a8fa80ffc10fad5969588a3c1ae431676ed4d22df947daa7c3d4be0e8391",
+    "reference-pixel-host-audit.log": "f37c397dcb07dcde9ed2691ac791e58b6cee3e6bc97f6ee08d98e12a3d5e23a7",
+    "reference-pixel-python.log": "2ec3b797f1b9dec6a5dba02a8365832a1128fbb017aa44ebfb90f6e5cec29176",
+    "reference-pixel-python-tooling.log": "50ebd0ae9552dc28a00092a0b1093a2dcde9fd50691449612b6a8e8207dea109",
+    "reference-pixel-repo-contract.log": "39b2e2597716aeacd6eac2d86bc3c28f62d9ead3257c3e0f019094d436585ed3",
+    "reference-pixel-guardian.log": "ced96b901ca8094bdc05a8359c9305171a3227d0ae3dd97ccf60a51f61949505",
+    "reference-pixel-gui-fixture.log": "dd83775983ff928309ef85c907aacac9f834caab7a75407da1092f3e9a50ca0f",
+    "reference-pixel-vm003-1.log": "f1b8d30f869ac969444ab373abb44c0881e35151100d5f1d5876e30b0adfaf85",
+    "reference-pixel-vm003-2.log": "4fa4ec3458f0529373155a4afd8e9f7c4be2e82aff6c2a95faf7e856b726de2a"
+  },
+  "old_failures_preserved": [
+    40409432092,
+    40524763835,
+    40525384416,
+    40529680719
+  ],
+  "calibration_slots_reserved": 0,
+  "reference_pin_changed": false,
+  "policy_changed": false
+}

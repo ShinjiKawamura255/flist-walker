@@ -72,8 +72,8 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
-        self.assertEqual(gate.REFERENCE, "6edfb599d69fc31657032a1419bdd255a165fe80")
-        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v9")
+        self.assertEqual(gate.REFERENCE, "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645")
+        self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v10")
 
     def test_complete_harness_inventory_rejects_changes_additions_and_removals(self):
         with tempfile.TemporaryDirectory() as name:
