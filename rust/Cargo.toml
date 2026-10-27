@@ -1,6 +1,6 @@
 [package]
 name = "flist-walker"
-version = "0.31.1"
+version = "0.30.2"
 edition = "2021"
 license = "MIT"
 default-run = "flistwalker"
@@ -65,8 +65,8 @@ libc = "0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSMenu", "NSMenuItem", "NSWorkspace"] }
-objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSString", "NSURL"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSMenu", "NSMenuItem"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSString"] }
 
 [build-dependencies]
 ico = "0.5"

@@ -1,4 +1,3 @@
-pub(in crate::app) mod browse;
 pub(in crate::app) mod bus;
 pub(in crate::app) mod channel;
 pub(in crate::app) mod config_open;

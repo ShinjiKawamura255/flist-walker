@@ -27,7 +27,6 @@ impl FlistWalkerApp {
     pub(in crate::app) const PRESET_PICKER_QUERY_ID: &'static str = "preset-picker-query";
 
     pub(in crate::app) fn open_preset_picker(&mut self, ctx: &egui::Context) {
-        self.cancel_root_browse();
         let restore_query_focus =
             ctx.memory(|memory| memory.has_focus(self.shell.ui.query_input_id));
         let picker = &mut self.shell.features.presets.picker;
@@ -48,7 +47,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn close_preset_picker(&mut self) {
-        self.cancel_root_browse();
         let picker = &mut self.shell.features.presets.picker;
         let restore_query_focus = picker.restore_query_focus;
         picker.open = false;
@@ -309,7 +307,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn start_selected_preset_edit(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -340,7 +337,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn start_add_preset(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -373,7 +369,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn cancel_preset_edit(&mut self) {
-        self.cancel_root_browse();
         if self
             .shell
             .features
@@ -387,6 +382,26 @@ impl FlistWalkerApp {
         }
         self.shell.features.presets.picker.editor = Default::default();
         self.shell.features.presets.picker.focus_requested = true;
+    }
+
+    pub(in crate::app) fn browse_for_preset_editor_root(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress
+            || !self.shell.features.presets.picker.editor.open
+        {
+            return;
+        }
+        let input = self.shell.features.presets.picker.editor.root_path.clone();
+        match self.select_root_for_path_input(&input) {
+            Ok(Some(path)) => {
+                let editor = &mut self.shell.features.presets.picker.editor;
+                editor.root_path = normalize_path_for_display(&path);
+                editor.error.clear();
+            }
+            Ok(None) => {}
+            Err(error) => {
+                self.shell.features.presets.picker.editor.error = format!("Browse failed: {error}");
+            }
+        }
     }
 
     pub(in crate::app) fn request_save_preset_edit(&mut self) {
@@ -510,7 +525,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn open_named_root_manager(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -524,7 +538,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn close_named_root_manager(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -562,7 +575,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn start_add_named_root(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -585,7 +597,6 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn start_selected_named_root_edit(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
@@ -610,11 +621,39 @@ impl FlistWalkerApp {
     }
 
     pub(in crate::app) fn cancel_named_root_edit(&mut self) {
-        self.cancel_root_browse();
         if self.shell.worker_bus.catalog.in_progress {
             return;
         }
         self.shell.features.presets.picker.named_roots.editor = Default::default();
+    }
+
+    pub(in crate::app) fn browse_for_named_root_editor_path(&mut self) {
+        if self.shell.worker_bus.catalog.in_progress
+            || !self.shell.features.presets.picker.named_roots.editor.open
+        {
+            return;
+        }
+        let input = self
+            .shell
+            .features
+            .presets
+            .picker
+            .named_roots
+            .editor
+            .path
+            .clone();
+        match self.select_root_for_path_input(&input) {
+            Ok(Some(path)) => {
+                let editor = &mut self.shell.features.presets.picker.named_roots.editor;
+                editor.path = normalize_path_for_display(&path);
+                editor.error.clear();
+            }
+            Ok(None) => {}
+            Err(error) => {
+                self.shell.features.presets.picker.named_roots.editor.error =
+                    format!("Browse failed: {error}");
+            }
+        }
     }
 
     pub(in crate::app) fn request_save_named_root(&mut self) {

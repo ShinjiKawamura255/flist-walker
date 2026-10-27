@@ -1,5 +1,7 @@
 use super::*;
+use crate::env_var_test_lock;
 use std::ffi::OsString;
+use std::sync::MutexGuard;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 struct EnvRestore {
@@ -148,46 +150,7 @@ fn editable_filelist_auto_check_opt_out_preserves_unknowns_and_detects_conflict(
 }
 
 #[test]
-fn process_config_test_scope_restores_the_process_snapshot() {
-    let original;
-    {
-        let _scope = locked_env();
-        original = current_runtime_config();
-        let mut changed = original.clone();
-        changed.walker_max_entries = original.walker_max_entries.saturating_add(37);
-        set_process_runtime_config(changed);
-    }
-    let _scope = locked_env();
-    let observed = current_runtime_config();
-    // Restore before asserting so a broken test scope keeps explicit cleanup.
-    set_process_runtime_config(original.clone());
-    assert_eq!(
-        observed, original,
-        "test-scoped process config must be restored"
-    );
-}
-
-#[test]
-fn process_config_restore_runs_when_a_test_operation_unwinds() {
-    let _scope = locked_env();
-    let original = current_runtime_config();
-    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        // Keep the outer mutex guard outside the caught unwind. The restoration
-        // component unwinds here without poisoning the shared test lock.
-        let _restore = RuntimeConfigTestRestore(Some(original.clone()));
-        let mut changed = original.clone();
-        changed.walker_max_entries = original.walker_max_entries.saturating_add(53);
-        set_process_runtime_config(changed);
-        panic!("controlled config test unwind");
-    }));
-    assert!(result.is_err());
-    assert_eq!(current_runtime_config(), original);
-}
-
-#[test]
 fn editable_settings_save_preserves_unknown_json_and_defers_effective_config() {
-    // The before/after process snapshot must exclude concurrent config writers.
-    let _scope = locked_env();
     let base = test_home("editable-preserve");
     fs::create_dir_all(&base).expect("create fixture directory");
     let path = base.join("settings.json");
@@ -403,8 +366,8 @@ fn editable_settings_pre_replace_permission_failure_preserves_original() {
     fs::remove_dir_all(base).expect("cleanup fixture");
 }
 
-fn locked_env() -> RuntimeConfigTestGuard {
-    runtime_config_test_guard()
+fn locked_env() -> MutexGuard<'static, ()> {
+    env_var_test_lock().lock().expect("env lock")
 }
 
 #[test]
