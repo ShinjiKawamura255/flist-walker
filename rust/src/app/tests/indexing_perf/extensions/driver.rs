@@ -206,12 +206,12 @@ fn capture_deferred(
 
 #[test]
 fn tc_229_background_refresh_allocation_waits_for_bounded_reclaimer() {
-    assert_background_refresh_allocation(true);
+    assert_background_refresh_allocation(true, false);
 }
 
 #[test]
 fn tc_229_background_refresh_allocation_records_immediate_request() {
-    assert_background_refresh_allocation(false);
+    assert_background_refresh_allocation(false, false);
 }
 
 #[test]
@@ -225,7 +225,16 @@ fn tc_229_background_refresh_allocation_rejects_missing_deferred_flag() {
     background_refresh_allocation(&driver, &mut Vec::new(), &mut HashMap::new(), tab);
 }
 
-fn assert_background_refresh_allocation(reclaimer_full: bool) {
+#[test]
+fn tc_229_promotion_missing_generation_keeps_deferred_input_and_ack() {
+    assert_background_refresh_allocation(true, true);
+}
+#[test]
+fn tc_229_promotion_immediate_generation_keeps_inputs_and_ack() {
+    assert_background_refresh_allocation(false, true);
+}
+
+fn assert_background_refresh_allocation(reclaimer_full: bool, promotion: bool) {
     use crate::app::tab_resources::{RetiredIndexBuildResources, TAB_RESOURCE_RECLAIMER_CAPACITY};
     let fixture = ExtendedFixture::new(8, super::fixture::Shape::FlatFiles);
     let mut driver = Driver::new();
@@ -257,6 +266,20 @@ fn assert_background_refresh_allocation(reclaimer_full: bool) {
                 .is_ok());
         }
     }
+    if promotion {
+        driver.app.shell.runtime.root = fixture.root.clone();
+        driver.app.sync_active_tab_state();
+    }
+    let trace_tabs = driver
+        .app
+        .shell
+        .tabs
+        .iter()
+        .map(|t| t.id)
+        .collect::<Vec<_>>();
+    let roots = vec![&fixture, &fixture];
+    let mut switches = Vec::new();
+    let input_at = Instant::now();
     let mut plans = Vec::new();
     let mut deferred = HashMap::new();
     driver.app.request_background_index_refresh_for_tab(0);
@@ -275,19 +298,201 @@ fn assert_background_refresh_allocation(reclaimer_full: bool) {
         background_refresh_allocation(&driver, &mut plans, &mut deferred, tab);
         assert!(plans.is_empty());
         assert_eq!(deferred.len(), 1);
+        if promotion {
+            let declared = declare_promotion_pressure(&driver, &plans, &trace_tabs, &roots, 0, 0);
+            assert_eq!(declared.request, None);
+            assert!(!declared.eligible);
+            assert!(promotion_owned_requests(&plans, &trace_tabs).is_none());
+            switches.push(declared);
+            acknowledge_promotion_pressure(
+                &driver,
+                &mut switches,
+                &trace_tabs,
+                &roots,
+                Source::FileList,
+                input_at,
+            );
+            assert!(
+                switches[0].observed.is_none(),
+                "cannot acknowledge inactive target"
+            );
+            for invalid in 0..3 {
+                let flag = if invalid == 2 {
+                    driver
+                        .app
+                        .shell
+                        .tabs
+                        .get_mut(0)
+                        .unwrap()
+                        .index_state
+                        .refresh_after_pending_finish
+                        .take()
+                } else {
+                    None
+                };
+                if invalid == 0 {
+                    assert_eq!(deferred.remove(&tab), Some(1));
+                }
+                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    promotion_switch(
+                        &mut driver,
+                        0,
+                        &mut plans,
+                        &mut deferred,
+                        if invalid == 1 {
+                            std::path::Path::new("wrong-root")
+                        } else {
+                            &fixture.root
+                        },
+                    )
+                }));
+                assert!(
+                    result.is_err(),
+                    "unowned/mismatched deferred input {invalid}"
+                );
+                if invalid == 0 {
+                    assert!(deferred.insert(tab, 1).is_none());
+                }
+                if invalid == 2 {
+                    driver
+                        .app
+                        .shell
+                        .tabs
+                        .get_mut(0)
+                        .unwrap()
+                        .index_state
+                        .refresh_after_pending_finish = flag;
+                }
+                assert!(plans.is_empty());
+                assert_eq!(deferred.get(&tab), Some(&1));
+            }
+            let activated =
+                promotion_switch(&mut driver, 0, &mut plans, &mut deferred, &fixture.root);
+            if !activated {
+                assert_eq!(driver.app.shell.tabs.pending_activation_tab_id, Some(tab));
+                acknowledge_promotion_pressure(
+                    &driver,
+                    &mut switches,
+                    &trace_tabs,
+                    &roots,
+                    Source::FileList,
+                    input_at,
+                );
+                assert!(
+                    switches[0].observed.is_none(),
+                    "pending activation cannot acknowledge"
+                );
+            }
+        }
         driver.app.shell.tabs.resume_resource_reclaimer();
     } else {
         assert_eq!(plans.len(), 1);
         assert!(deferred.is_empty());
     }
+    if promotion {
+        if switches.is_empty() {
+            switches.push(declare_promotion_pressure(
+                &driver,
+                &plans,
+                &trace_tabs,
+                &roots,
+                0,
+                0,
+            ));
+            assert!(promotion_switch(
+                &mut driver,
+                0,
+                &mut plans,
+                &mut deferred,
+                &fixture.root
+            ));
+        }
+        if driver.app.current_tab_id() == Some(tab) {
+            // Controlled acknowledgement boundary: even an active target is
+            // not acknowledged while a production pending marker is present.
+            driver.app.shell.tabs.pending_activation_tab_id = Some(tab);
+            acknowledge_promotion_pressure(
+                &driver,
+                &mut switches,
+                &trace_tabs,
+                &roots,
+                Source::FileList,
+                input_at,
+            );
+            assert!(switches[0].observed.is_none());
+            driver.app.shell.tabs.pending_activation_tab_id = None;
+        }
+        acknowledge_promotion_pressure(
+            &driver,
+            &mut switches,
+            &trace_tabs,
+            &roots,
+            Source::FileList,
+            input_at,
+        );
+    }
     let start = Instant::now();
     loop {
         driver.paced_frame();
         capture_deferred(&driver, &mut plans, &mut deferred);
+        if promotion {
+            acknowledge_promotion_pressure(
+                &driver,
+                &mut switches,
+                &trace_tabs,
+                &roots,
+                Source::FileList,
+                input_at,
+            );
+        }
         if !all_index_debt(&driver) && !result_debt(&driver) && deferred.is_empty() {
             break;
         }
         assert!(start.elapsed() < Duration::from_secs(5));
+    }
+    if promotion {
+        acknowledge_promotion_pressure(
+            &driver,
+            &mut switches,
+            &trace_tabs,
+            &roots,
+            Source::FileList,
+            input_at,
+        );
+        assert_eq!(
+            switches[0].observed.as_ref().unwrap()["request_id"],
+            if reclaimer_full {
+                serde_json::Value::Null
+            } else {
+                plans[0].id.into()
+            }
+        );
+        if reclaimer_full {
+            assert!(
+                !switches[0].eligible,
+                "post-deferred generation cannot backfill original pressure proof"
+            );
+        }
+        switches.push(declare_promotion_pressure(
+            &driver,
+            &plans,
+            &trace_tabs,
+            &roots,
+            1,
+            1,
+        ));
+        assert!(planned_switch(&mut driver, 1, &mut plans, &mut deferred));
+        acknowledge_promotion_pressure(
+            &driver,
+            &mut switches,
+            &trace_tabs,
+            &roots,
+            Source::FileList,
+            input_at,
+        );
+        assert!(switches.iter().all(|s| s.observed.is_some()));
+        assert_eq!(switches.len(), 2);
+        assert!(deferred.is_empty());
     }
     assert_eq!(plans.len(), 1);
     assert_eq!(plans[0].tab, tab);
@@ -1140,7 +1345,7 @@ pub(super) fn default_filter() -> Filter {
         ignore_case: true,
     }
 }
-fn tab_debt(tab: &crate::app::AppTabState) -> bool {
+fn tab_index_core_debt(tab: &crate::app::AppTabState) -> bool {
     let i = &tab.index_state;
     i.index_in_progress
         || i.pending_index_request_id.is_some()
@@ -1151,11 +1356,441 @@ fn tab_debt(tab: &crate::app::AppTabState) -> bool {
         || i.root_after_pending_finish.is_some()
         || !i.build.pending_entries.is_empty()
         || i.build.active_filter.is_some()
-        || i.kind_resolution_in_progress
-        || !i.build.pending_kind_paths.is_empty()
-        || !i.build.in_flight_kind_paths.is_empty()
         || i.search_resume_pending
         || i.search_rerun_pending
+}
+fn tab_debt(tab: &crate::app::AppTabState) -> bool {
+    tab_index_core_debt(tab)
+        || tab.index_state.kind_resolution_in_progress
+        || !tab.index_state.build.pending_kind_paths.is_empty()
+        || !tab.index_state.build.in_flight_kind_paths.is_empty()
+}
+
+// This frontier permits a *new measured input*, never completion. TC-207 can
+// commit an inactive snapshot while retaining unsent kind intents. The existing
+// all_index_debt/result_debt predicates still decide the final endpoints.
+fn promotion_index_frontier(driver: &Driver) -> bool {
+    let i = &driver.app.shell.indexing;
+    !i.in_progress
+        && i.pending_request_id.is_none()
+        && i.pending_entries_request_id.is_none()
+        && i.pending_finish.is_none()
+        && !i.build_reclaim_pending
+        && i.pending_stale_build_reclaim.is_none()
+        && i.pending_replace_all.is_none()
+        && i.refresh_after_pending_finish.is_none()
+        && i.root_after_pending_finish.is_none()
+        && i.build.pending_entries.is_empty()
+        && i.build.active_filter.is_none()
+        && !i.search_resume_pending
+        && !i.search_rerun_pending
+        && i.tx.load().queued == 0
+        && i.tx.load().inflight == 0
+        && i.pending_queue.is_empty()
+        && i.inflight_requests.is_empty()
+        && i.request_tabs.is_empty()
+        && i.background_states.is_empty()
+        && i.background_finalizations.keys().next().is_none()
+        && i.deferred_response.is_none()
+        && i.deferred_non_active_responses.is_empty()
+        && driver.app.shell.tabs.pending_activation_tab_id.is_none()
+        && driver.app.shell.tabs.reclaimer_pending() == 0
+        && driver
+            .app
+            .shell
+            .tabs
+            .iter()
+            .enumerate()
+            .all(|(n, t)| n == driver.app.shell.tabs.active_tab_index() || !tab_index_core_debt(t))
+}
+
+pub(super) const PROMOTION_COMPLETION_POLICY: &str =
+    "unchanged-two-pressure-inputs; physical-owned-commit; measured-Ready-B-kind-A; all-debt-zero-v1";
+
+struct PromotionSwitch {
+    stage: usize,
+    target: usize,
+    request: Option<u64>,
+    was_owned_warm: bool,
+    observed: Option<serde_json::Value>,
+    eligible: bool,
+}
+
+fn promotion_owned_requests(plans: &[PlannedRequest], tabs: &[u64]) -> Option<[u64; 2]> {
+    assert!(plans.len() <= 2, "unexpected promotion allocation");
+    let a = plans.iter().find(|p| p.tab == tabs[0])?;
+    let b = plans.iter().find(|p| p.tab == tabs[1])?;
+    (a.id != b.id).then_some([a.id, b.id])
+}
+fn declare_promotion_pressure(
+    driver: &Driver,
+    plans: &[PlannedRequest],
+    tabs: &[u64],
+    roots: &[&ExtendedFixture],
+    n: usize,
+    stage: usize,
+) -> PromotionSwitch {
+    let request = plans.iter().rev().find(|p| p.tab == tabs[n]).map(|p| p.id);
+    PromotionSwitch {
+        stage,
+        target: n,
+        request,
+        was_owned_warm: request.is_some_and(|request| {
+            driver.app.shell.indexing.warm_tab_id == Some(tabs[n])
+                && request_for(driver, tabs[n]) == Some(request)
+                && driver.app.shell.indexing.request_tabs.get(&request) == Some(&tabs[n])
+                && driver.app.shell.tabs.get(n).unwrap().root == roots[n].root
+                && driver
+                    .app
+                    .shell
+                    .tabs
+                    .get(n)
+                    .unwrap()
+                    .index_state
+                    .pending_index_request_id
+                    == Some(request)
+                && driver
+                    .app
+                    .shell
+                    .tabs
+                    .get(n)
+                    .unwrap()
+                    .result_state
+                    .committed
+                    .freshness
+                    .as_ref()
+                    .is_none_or(|f| f.request_id != request)
+        }),
+        observed: None,
+        eligible: false,
+    }
+}
+
+fn promotion_switch(
+    driver: &mut Driver,
+    n: usize,
+    plans: &mut Vec<PlannedRequest>,
+    future: &mut HashMap<u64, usize>,
+    root: &std::path::Path,
+) -> bool {
+    let tab = driver.app.shell.tabs.get(n).unwrap();
+    if plans.iter().any(|p| p.tab == tab.id) {
+        return planned_switch(driver, n, plans, future);
+    }
+    // A deferred background refresh and activating that same tab are one
+    // coalesced production intent, not two future index allocations. Its
+    // missing generation can never be retroactively used as pressure proof.
+    let id = tab.id;
+    assert_eq!(&tab.root, root, "deferred promotion root");
+    assert!(tab.index_state.pending_index_request_id.is_none());
+    assert!(tab.index_state.refresh_after_pending_finish.is_some());
+    assert_eq!(
+        future.get(&id),
+        Some(&1),
+        "missing owned deferred promotion"
+    );
+    assert!(
+        !driver
+            .app
+            .shell
+            .indexing
+            .perf_allocations
+            .iter()
+            .any(|a| a.tab == Some(id)),
+        "untracked promotion generation"
+    );
+    let epoch = tab.index_state.kind_resolution_epoch;
+    assert!(epoch > 0, "owned deferred kind epoch");
+    assert_eq!(future.remove(&id), Some(1));
+    driver.app.switch_to_tab_index(n);
+    let active = driver.app.current_tab_id() == Some(id);
+    if active {
+        assert_eq!(&driver.app.shell.runtime.root, root);
+        // Activation may be immediate while allocation still awaits reclaim.
+        refresh_allocation(driver, plans, future, id);
+    } else {
+        assert_eq!(driver.app.shell.tabs.pending_activation_tab_id, Some(id));
+        record_planned_new(driver, plans, id, 0);
+        assert!(future.insert(id, 1).is_none());
+    }
+    active
+}
+
+fn promotion_pressure_eligible(
+    owned_warm: bool,
+    request: u64,
+    active_request: Option<u64>,
+    o: &crate::app::index_mailbox::IndexPerfObservation,
+    root: &std::path::Path,
+    source: Source,
+    acknowledged: Instant,
+) -> bool {
+    owned_warm
+        && request > 0
+        && active_request == Some(request)
+        && o.allocation_observed
+        && o.admitted_at.is_some_and(|at| at <= acknowledged)
+        && o.admitted_root.as_deref() == Some(root)
+        && request_acquisition_owned(o, root, source)
+        && o.started_source == Some(source.name())
+        && o.started_published.is_some_and(|at| at <= acknowledged)
+        && !matches!(o.terminal_kind, Some("failed" | "canceled"))
+        && !matches!(o.terminal_offer_kind, Some("failed" | "canceled"))
+        && o.stale_full_data_abort.is_none()
+}
+
+fn acknowledge_promotion_pressure(
+    driver: &Driver,
+    switches: &mut [PromotionSwitch],
+    tabs: &[u64],
+    roots: &[&ExtendedFixture],
+    source: Source,
+    start: Instant,
+) {
+    for switch in switches.iter_mut().filter(|s| s.observed.is_none()) {
+        let n = switch.target;
+        if driver.app.current_tab_id() != Some(tabs[n])
+            || driver.app.shell.tabs.pending_activation_tab_id.is_some()
+        {
+            continue;
+        }
+        assert_eq!(driver.app.shell.runtime.root, roots[n].root);
+        let at = Instant::now();
+        let allocation = switch.request.and_then(|id| {
+            driver
+                .app
+                .shell
+                .indexing
+                .perf_allocations
+                .iter()
+                .find(|a| a.id == id && a.tab == Some(tabs[n]))
+        });
+        let observation = allocation.map(|a| a.observation.lock().unwrap());
+        switch.eligible = switch
+            .request
+            .zip(observation.as_deref())
+            .is_some_and(|(id, o)| {
+                promotion_pressure_eligible(
+                    switch.was_owned_warm,
+                    id,
+                    driver.app.shell.indexing.pending_request_id,
+                    o,
+                    &roots[n].root,
+                    source,
+                    at,
+                )
+            })
+            && driver
+                .app
+                .shell
+                .runtime
+                .freshness
+                .as_ref()
+                .is_none_or(|f| Some(f.request_id) != switch.request)
+            && driver
+                .app
+                .shell
+                .indexing
+                .perf_allocations
+                .iter()
+                .filter(|a| a.tab == Some(tabs[n]))
+                .count()
+                == 1;
+        switch.observed = Some(
+            serde_json::json!({"stage":switch.stage,"target_tab":tabs[n],
+            "request_id":switch.request,"root":roots[n].root,"source":source.name(),
+            "actual_activated_ms":ms(at.duration_since(start)),"owned_Warm_before_switch":switch.was_owned_warm,
+            "active_request_id":driver.app.shell.indexing.pending_request_id,
+            "active_committed_request_id":driver.app.shell.runtime.freshness.as_ref().map(|f|f.request_id),
+            "pending_activation_tab_id":driver.app.shell.tabs.pending_activation_tab_id,
+            "GUI_ingested":driver.ingested(),"eligible_uncommitted_Warm_promotion":switch.eligible,
+            "producer_data_end_ms":observation.as_ref().and_then(|o|o.data_publish_end).map(|v|ms(v.duration_since(start))),
+            "terminal_offer_ms":observation.as_ref().and_then(|o|o.terminal_offered).map(|v|ms(v.duration_since(start)))}),
+        );
+    }
+}
+
+struct PromotionCompletion {
+    start: Instant,
+    phase: u8,
+    epochs: [u64; 2],
+    allocation_count: usize,
+    trace: Vec<serde_json::Value>,
+}
+
+fn promotion_snapshot_owned(
+    driver: &Driver,
+    tab: u64,
+    request: u64,
+    root: &std::path::Path,
+    source: Source,
+    count: usize,
+) -> bool {
+    let active = driver.app.current_tab_id() == Some(tab);
+    let Some(slot) = driver.app.shell.tabs.iter().find(|t| t.id == tab) else {
+        return false;
+    };
+    let (all_count, visible_count, freshness, lifecycle, actual_root) = if active {
+        (
+            driver.app.shell.runtime.all_entries.len(),
+            driver.app.shell.runtime.entries.len(),
+            driver.app.shell.runtime.freshness.as_ref(),
+            driver.app.shell.indexing.lifecycle(),
+            &driver.app.shell.runtime.root,
+        )
+    } else {
+        let snapshot = &slot.result_state.committed;
+        (
+            snapshot.all_entries.len(),
+            snapshot.entries.len(),
+            snapshot.freshness.as_ref(),
+            slot.index_state.lifecycle(),
+            &slot.root,
+        )
+    };
+    actual_root == root
+        && lifecycle == crate::app::TabResourceLifecycle::Ready
+        && all_count == count
+        && visible_count == count
+        && freshness.is_some_and(|f| {
+            f.request_id == request
+                && f.root == root
+                && match (&f.source, source) {
+                    (IndexSource::Walker, Source::Walker) => true,
+                    (IndexSource::FileList(path), Source::FileList) => {
+                        path == &root.join("FileList.txt")
+                    }
+                    _ => false,
+                }
+        })
+}
+
+impl PromotionCompletion {
+    fn new(start: Instant) -> Self {
+        Self {
+            start,
+            phase: 0,
+            epochs: [0; 2],
+            allocation_count: 0,
+            trace: Vec::with_capacity(4),
+        }
+    }
+    fn advance(
+        &mut self,
+        driver: &mut Driver,
+        tabs: &[u64],
+        requests: &[u64; 2],
+        roots: &[&ExtendedFixture],
+        source: Source,
+        physical_owned_and_released: bool,
+    ) -> bool {
+        let start = self.start;
+        assert_eq!(tabs.len(), 2);
+        assert_eq!(roots.len(), 2);
+        let owned = |driver: &Driver| {
+            (0..2).all(|n| {
+                promotion_snapshot_owned(
+                    driver,
+                    tabs[n],
+                    requests[n],
+                    &roots[n].root,
+                    source,
+                    roots[n].expected.len(),
+                )
+            })
+        };
+        let epoch = |driver: &Driver, n: usize| {
+            if driver.app.current_tab_id() == Some(tabs[n]) {
+                driver.app.shell.indexing.kind_resolution_epoch
+            } else {
+                driver
+                    .app
+                    .shell
+                    .tabs
+                    .iter()
+                    .find(|t| t.id == tabs[n])
+                    .unwrap()
+                    .index_state
+                    .kind_resolution_epoch
+            }
+        };
+        if self.phase == 0 {
+            if !physical_owned_and_released || !promotion_index_frontier(driver) || !owned(driver) {
+                return false;
+            }
+            assert_eq!(driver.app.current_tab_id(), Some(tabs[0]));
+            self.epochs = [epoch(driver, 0), epoch(driver, 1)];
+            self.allocation_count = driver.app.shell.indexing.perf_allocations.len();
+            self.trace.push(
+                serde_json::json!({"phase":"request-B","at_ms":ms(start.elapsed()),
+                "tab_id":tabs[1],"request_id":requests[1],"kind_epoch":self.epochs[1]}),
+            );
+            driver.app.switch_to_tab_index(1);
+            self.phase = 1;
+        }
+        assert_eq!(
+            driver.app.shell.indexing.perf_allocations.len(),
+            self.allocation_count,
+            "Ready completion must not allocate an index request"
+        );
+        assert!(
+            physical_owned_and_released && owned(driver),
+            "completion owner changed"
+        );
+        assert_eq!(
+            [epoch(driver, 0), epoch(driver, 1)],
+            self.epochs,
+            "completion kind generation changed"
+        );
+        match self.phase {
+            1 | 3 => {
+                let n = usize::from(self.phase == 1);
+                if driver.app.shell.tabs.pending_activation_tab_id.is_some() {
+                    assert_eq!(
+                        driver.app.shell.tabs.pending_activation_tab_id,
+                        Some(tabs[n])
+                    );
+                    return false;
+                }
+                assert_eq!(driver.app.current_tab_id(), Some(tabs[n]));
+                assert_eq!(driver.app.shell.runtime.root, roots[n].root);
+                self.trace.push(
+                    serde_json::json!({"phase":if n==1 {"activated-B"} else {"activated-A"},
+                    "at_ms":ms(start.elapsed()),"tab_id":tabs[n],"request_id":requests[n],
+                    "kind_epoch":self.epochs[n],"index_allocations":self.allocation_count}),
+                );
+                self.phase += 1;
+                false
+            }
+            2 => {
+                assert_eq!(driver.app.current_tab_id(), Some(tabs[1]));
+                let i = &driver.app.shell.indexing;
+                if i.kind_resolution_in_progress
+                    || !i.build.pending_kind_paths.is_empty()
+                    || !i.build.in_flight_kind_paths.is_empty()
+                    || result_debt(driver)
+                {
+                    return false;
+                }
+                self.trace.push(
+                    serde_json::json!({"phase":"request-A","at_ms":ms(start.elapsed()),
+                    "tab_id":tabs[0],"request_id":requests[0],"kind_epoch":self.epochs[0]}),
+                );
+                driver.app.switch_to_tab_index(0);
+                assert_eq!(
+                    driver.app.shell.indexing.perf_allocations.len(),
+                    self.allocation_count
+                );
+                self.phase = 3;
+                false
+            }
+            4 => {
+                assert_eq!(driver.app.current_tab_id(), Some(tabs[0]));
+                !all_index_debt(driver) && !result_debt(driver)
+            }
+            _ => unreachable!("fixed finite completion phases"),
+        }
+    }
 }
 pub(super) fn all_index_debt(driver: &Driver) -> bool {
     let i = &driver.app.shell.indexing;
@@ -1926,6 +2561,9 @@ pub(super) fn run(
     let mut events = Vec::<serde_json::Value>::new();
     let mut transition_events = Vec::<serde_json::Value>::new();
     let mut finished_warm_waits = Vec::<serde_json::Value>::new();
+    let mut promotion_switches = Vec::<PromotionSwitch>::with_capacity(2);
+    let mut promotion_completion = PromotionCompletion::new(start);
+    let mut promotion_completion_ready = profile != Profile::Promotion || !condition;
     let mut pending_transition: Option<(usize, usize)> = None;
     let mut gui_sort_completions = Vec::new();
     let mut driver_overhead = Duration::ZERO;
@@ -2148,7 +2786,16 @@ pub(super) fn run(
                     }
                     Profile::Promotion => {
                         let n = if stage == 0 { 1 } else { 0 };
-                        if planned_switch(&mut driver, n, &mut plans, &mut deferred_allocations) {
+                        promotion_switches.push(declare_promotion_pressure(
+                            &driver, &plans, &tabs, &roots, n, stage,
+                        ));
+                        if promotion_switch(
+                            &mut driver,
+                            n,
+                            &mut plans,
+                            &mut deferred_allocations,
+                            &roots[n].root,
+                        ) {
                             transition_events.push(serde_json::json!({"stage":stage,"actual_activated_ms":ms(start.elapsed()),"tab_id":tabs[n],"root":roots[n].root}));
                             if stage == 1 {
                                 done_inputs = true;
@@ -2156,6 +2803,14 @@ pub(super) fn run(
                         } else {
                             pending_transition = Some((n, stage));
                         }
+                        acknowledge_promotion_pressure(
+                            &driver,
+                            &mut promotion_switches,
+                            &tabs,
+                            &roots,
+                            source,
+                            start,
+                        );
                         collect_requests(&driver, &mut ledger);
                     }
                     Profile::TabChain => {
@@ -2251,6 +2906,30 @@ pub(super) fn run(
                 }
             }
         }
+        if profile == Profile::Promotion && condition && done_inputs && pending_transition.is_none()
+        {
+            if let Some(requests) = promotion_owned_requests(&plans, &tabs) {
+                let physical = deferred_allocations.is_empty()
+                    && ledger.len() == 2
+                    && ledger.iter().all(|r| {
+                        physical_request_complete(&r.observation())
+                            && driver
+                                .app
+                                .shell
+                                .indexing
+                                .perf_released_requests
+                                .contains_key(&r.id)
+                    });
+                promotion_completion_ready = promotion_completion.advance(
+                    &mut driver,
+                    &tabs,
+                    &requests,
+                    &roots,
+                    source,
+                    physical,
+                );
+            }
+        }
         if all_index_debt(&driver) || ledger.iter().any(|r| !request_complete(&driver, r, &plans)) {
             cutoff = start.elapsed();
         }
@@ -2261,6 +2940,16 @@ pub(super) fn run(
         record_planned_new(&driver, &mut plans, primary_tab, 0);
         let now = driver.last_frame_end.duration_since(start);
         collect_requests(&driver, &mut ledger);
+        if profile == Profile::Promotion && condition {
+            acknowledge_promotion_pressure(
+                &driver,
+                &mut promotion_switches,
+                &tabs,
+                &roots,
+                source,
+                start,
+            );
+        }
         if profile == Profile::TabChain {
             if let Some((n, input_stage)) = pending_transition {
                 // Activation may finish inside this frame: acknowledge now, before
@@ -2568,7 +3257,7 @@ pub(super) fn run(
                 })
                 && !pending_results,
         };
-        if truth.index_ready() && done_inputs && t2.is_none() {
+        if truth.index_ready() && done_inputs && promotion_completion_ready && t2.is_none() {
             let candidate_t2_load = driver.app.shell.indexing.tx.load();
             for p in plans
                 .iter()
@@ -2635,7 +3324,7 @@ pub(super) fn run(
             t2 = Some(now);
             t2_load = Some(candidate_t2_load);
         }
-        if truth.results_ready() && done_inputs {
+        if truth.results_ready() && done_inputs && promotion_completion_ready {
             if profile == Profile::Preview && condition {
                 let path = &driver.app.shell.runtime.results
                     [driver.app.shell.runtime.current_row.unwrap()]
@@ -2934,7 +3623,11 @@ pub(super) fn run(
             Profile::Preview => aux_count("preview") > 0,
             Profile::Warm | Profile::WarmReclaim => concurrent_index_producers,
             Profile::Promotion => {
-                concurrent_index_producers && events.len() == 2 && index_input_progress
+                concurrent_index_producers
+                    && events.len() == 2
+                    && index_input_progress
+                    && promotion_switches.len() == 2
+                    && promotion_switches.iter().all(|s| s.eligible)
             }
             Profile::TabChain => events.len() == 3 && index_input_progress && ledger.len() >= 4,
             Profile::NameShown => gui_sort_completions
@@ -3016,6 +3709,7 @@ pub(super) fn run(
     row["fixture_scans_before_t0"] = fixture_scans_before_t0.into();
     row["frame_diagnostics"] = frame_diagnostics.report();
     row.as_object_mut().unwrap().extend(serde_json::json!({"measurement_kind":"headless-GUI-actual-workers","comparison_kind":profile.comparison_kind(),"condition_description":profile.condition_description(condition),"driver_overhead_ms":ms(driver_overhead),"GUI_sort_completed_ms":gui_sort_completions.iter().map(|at|ms(at.duration_since(start))).collect::<Vec<_>>(),"search_dispatch_bindings":binding_rows,"nested_input_reused":observation.nested_input_reused,"initial_state":initial,"input_trace":events,"tab_transition_trace":transition_events,"finished_warm_commit_waits":finished_warm_waits,"tabchain_input_policy":tabchain_input_policy(full),"stable_edit_input_policy":if full{STABLE_EDIT_INPUT_POLICY}else{"sub100k diagnostic: checkpoint-only; not full-pressure evidence"},"stable_edit_input_admissions":stable_input_admissions,"index_requests":records,"unmeasured_tab_observations":unmeasured_tab_observations,"allocated_request_ids":allocated,"planned_request_ids":planned,"released_request_ids":released,"worker_observations":worker_rows,"overlap_executions":genuine.len(),"index_sender_load_at_t2":{"queued":t2_load.as_ref().unwrap().queued,"inflight":t2_load.as_ref().unwrap().inflight,"capacity":t2_load.as_ref().unwrap().capacity},"final_index_sender_load":{"queued":driver.app.shell.indexing.tx.load().queued,"inflight":driver.app.shell.indexing.tx.load().inflight,"capacity":driver.app.shell.indexing.tx.load().capacity},"search_sort_worker_completed_while_index_unsettled":sort_rx_completed,"full_candidate_evaluations":full_evaluations.len(),"actual_index_producer_interval_overlap":concurrent_index_producers,"aux_completed_while_index_unsettled":{"kind":aux_count("kind"),"sort":aux_count("sort"),"preview":aux_count("preview")},"aux_observations":aux_rows,"aux_observer_limit_per_flow":256,"aux_known_flows":["kind","sort","preview","search-sort"],"strict_kind_sort_preview_cpu_duration":"NOT_OBSERVED","aux_proof_counts":"sampled-owned-successful-received; search-sort may route Background/Stale","settings":{"files":filter.files,"folders":filter.dirs,"ignore_enabled":filter.ignore_enabled,"ignore_case":filter.ignore_case,"sort_mode":format!("{mode:?}"),"sort_scope":format!("{scope:?}"),"query":profile.query(condition),"follow_links":profile==Profile::Links},"expected_final_logical_entries":roots[target].expected.iter().filter(|r|if r.is_dir{filter.dirs}else{filter.files}).count(),"expected_query_match_count":expected.expected_count(),"intended_extra_index_requests":if condition&&matches!(profile,Profile::Warm|Profile::Promotion|Profile::WarmReclaim){1}else{0},"native":false}).as_object().unwrap().clone());
+    row.as_object_mut().unwrap().extend(serde_json::json!({"promotion_completion_policy":PROMOTION_COMPLETION_POLICY,"promotion_completion_trace":promotion_completion.trace,"promotion_pressure_observations":promotion_switches.iter().filter_map(|s|s.observed.as_ref()).collect::<Vec<_>>()}).as_object().unwrap().clone());
     row.as_object_mut().unwrap().extend(serde_json::json!({"declared_retained_victims":victim_rows,"declared_eviction_edges":declared_edges,"actual_preemption_events":preemption_rows,"actual_warm_removal_events":warm_removal_rows,"warm_removal_observer_limit":128,"warm_removal_observer_overflow":driver.app.shell.indexing.perf_warm_removal_overflow,"active_at_removal":"NOT_DIRECTLY_OBSERVED; fixed switch source ordering and actual switch acknowledgement binding only","preemption_observer_limit":128,"preemption_observer_overflow":driver.app.shell.indexing.perf_preemption_overflow,"retained_seed_validation_policy":"full independent oracle after tentative t3; no extra frame/input before output"}).as_object().unwrap().clone());
     drop(driver);
     drop(roots);
@@ -4345,4 +5039,310 @@ fn tc_229_stable_edit_admission_waits_for_actual_owned_handoff_progress() {
         );
     }
     assert_eq!(owned_count(&driver, b_tab, None), 100000);
+}
+
+#[test]
+fn tc_229_promotion_completion_reactivates_retained_kind_without_new_index() {
+    use crate::app::worker::channel::bounded_request_channel;
+    // Controlled scheduling replay, not the unknown original natural chronology.
+    let fixtures = [
+        ExtendedFixture::new(1000, super::fixture::Shape::FlatFiles),
+        ExtendedFixture::new(1000, super::fixture::Shape::FlatFiles),
+    ];
+    for fixture in &fixtures {
+        fixture.prepare_source(Source::Walker);
+    }
+    let roots = fixtures.iter().collect::<Vec<_>>();
+    let mut driver = Driver::new();
+    driver.settle_startup();
+    driver.app.shell.indexing.perf_observe_requests = true;
+    driver.app.shell.indexing.perf_observe_history = true;
+    let mut tabs = Vec::new();
+    let mut requests = [0; 2];
+    for n in 0..2 {
+        if n == 1 {
+            driver.app.create_new_tab();
+        }
+        tabs.push(driver.app.current_tab_id().unwrap());
+        configure(
+            &mut driver,
+            roots[n],
+            Source::Walker,
+            default_filter(),
+            false,
+        );
+        driver.app.request_index_refresh();
+        requests[n] = driver.app.shell.indexing.pending_request_id.unwrap();
+        settle_setup(&mut driver);
+    }
+    let (kind_tx, kind_requests) = bounded_request_channel(257);
+    let (kind_responses, kind_rx) = mpsc::channel();
+    driver.app.shell.worker_bus.kind.tx = kind_tx;
+    driver.app.shell.worker_bus.kind.rx = kind_rx;
+    for record in &fixtures[1].records {
+        driver
+            .app
+            .shell
+            .indexing
+            .build
+            .pending_kind_paths
+            .push_back(record.path.clone());
+        driver
+            .app
+            .shell
+            .indexing
+            .build
+            .pending_kind_paths_set
+            .insert(record.path.clone());
+    }
+    driver.app.shell.indexing.kind_resolution_in_progress = true;
+    driver.app.pump_kind_resolution_requests();
+    assert_eq!(
+        driver.app.shell.indexing.build.pending_kind_paths.len(),
+        872
+    );
+    driver.app.switch_to_tab_index(0);
+    let allocations = driver.app.shell.indexing.perf_allocations.len();
+    let start = Instant::now();
+    let mut completion = PromotionCompletion::new(start);
+    assert!(
+        all_index_debt(&driver),
+        "the original final debt guard remains strict"
+    );
+    assert!(!completion.advance(&mut driver, &tabs, &requests, &roots, Source::Walker, false));
+    assert_eq!(
+        completion.phase, 0,
+        "no activation before physical completion"
+    );
+    let wrong = [requests[0], requests[1] + 1];
+    assert!(!completion.advance(&mut driver, &tabs, &wrong, &roots, Source::Walker, true));
+    assert!(completion.trace.is_empty());
+    assert!(!promotion_snapshot_owned(
+        &driver,
+        tabs[1],
+        requests[0],
+        &roots[1].root,
+        Source::Walker,
+        1000
+    ));
+    assert!(!promotion_snapshot_owned(
+        &driver,
+        tabs[1],
+        requests[1],
+        &roots[0].root,
+        Source::Walker,
+        1000
+    ));
+    assert!(!promotion_snapshot_owned(
+        &driver,
+        tabs[1],
+        requests[1],
+        &roots[1].root,
+        Source::FileList,
+        1000
+    ));
+    assert!(!promotion_snapshot_owned(
+        &driver,
+        u64::MAX,
+        requests[1],
+        &roots[1].root,
+        Source::Walker,
+        1000
+    ));
+    let mut held = None;
+    let mut done = false;
+    for frame in 0..32 {
+        while let Ok(request) = kind_requests.try_recv() {
+            if held.is_none() && frame == 0 {
+                // Neither a foreign owner nor a stale epoch may settle this request.
+                for (tab_id, epoch) in [
+                    (u64::MAX, request.epoch),
+                    (request.tab_id, request.epoch + 1),
+                ] {
+                    kind_responses
+                        .send(KindResolveResponse {
+                            tab_id,
+                            epoch,
+                            path: request.path.clone(),
+                            kind: Some(EntryKind::dir()),
+                        })
+                        .unwrap();
+                }
+                held = Some(request);
+                continue;
+            }
+            kind_responses
+                .send(KindResolveResponse {
+                    tab_id: request.tab_id,
+                    epoch: request.epoch,
+                    path: request.path,
+                    kind: Some(EntryKind::file()),
+                })
+                .unwrap();
+        }
+        if frame == 4 {
+            let previous_epoch = driver.app.shell.indexing.kind_resolution_epoch;
+            driver.app.shell.indexing.kind_resolution_epoch += 1;
+            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                completion.advance(&mut driver, &tabs, &requests, &roots, Source::Walker, true)
+            }));
+            assert!(
+                result.is_err(),
+                "another kind epoch cannot certify completion"
+            );
+            driver.app.shell.indexing.kind_resolution_epoch = previous_epoch;
+            assert_eq!(completion.phase, 2);
+        }
+        if frame == 12 {
+            assert_eq!(
+                completion.phase, 2,
+                "late response prevents return and completion"
+            );
+            assert_eq!(driver.app.current_tab_id(), Some(tabs[1]));
+            let request = held.take().unwrap();
+            assert!(driver
+                .app
+                .shell
+                .indexing
+                .build
+                .in_flight_kind_paths
+                .contains(&request.path));
+            kind_responses
+                .send(KindResolveResponse {
+                    tab_id: request.tab_id,
+                    epoch: request.epoch,
+                    path: request.path,
+                    kind: Some(EntryKind::file()),
+                })
+                .unwrap();
+        }
+        done = completion.advance(&mut driver, &tabs, &requests, &roots, Source::Walker, true);
+        driver.frame();
+        if done {
+            break;
+        }
+    }
+    if !done {
+        eprintln!(
+            "COMPLETION_CONTROL phase={} owned={:?} core={} trace={:?} debt={}",
+            completion.phase,
+            (0..2)
+                .map(|n| promotion_snapshot_owned(
+                    &driver,
+                    tabs[n],
+                    requests[n],
+                    &roots[n].root,
+                    Source::Walker,
+                    1000
+                ))
+                .collect::<Vec<_>>(),
+            promotion_index_frontier(&driver),
+            completion.trace,
+            index_debt_diagnostics(&driver)
+        );
+    }
+    assert!(
+        done,
+        "retained kind intent must resume through the measured completion inputs"
+    );
+    assert_eq!(driver.app.current_tab_id(), Some(tabs[0]));
+    assert_eq!(
+        driver.app.shell.indexing.perf_allocations.len(),
+        allocations
+    );
+    assert!(!all_index_debt(&driver));
+    assert!(!result_debt(&driver));
+    assert_eq!(
+        completion.trace.len(),
+        4,
+        "fixed B request/ack then A request/ack"
+    );
+    assert_eq!(completion.trace[0]["phase"], "request-B");
+    assert_eq!(completion.trace[1]["phase"], "activated-B");
+    assert_eq!(completion.trace[2]["phase"], "request-A");
+    assert_eq!(completion.trace[3]["phase"], "activated-A");
+    // A late retained intent after return must reject, not trigger an unbounded
+    // extra activation loop or silently disappear from the final debt oracle.
+    let path = fixtures[1].records[0].path.clone();
+    let slot = driver.app.shell.tabs.get_mut(1).unwrap();
+    slot.index_state
+        .build
+        .pending_kind_paths
+        .push_back(path.clone());
+    slot.index_state.build.pending_kind_paths_set.insert(path);
+    slot.index_state.kind_resolution_in_progress = true;
+    assert!(!completion.advance(&mut driver, &tabs, &requests, &roots, Source::Walker, true));
+    assert!(all_index_debt(&driver));
+    assert_eq!(completion.trace.len(), 4);
+}
+
+#[test]
+fn tc_229_promotion_pressure_requires_exact_uncommitted_owned_warm() {
+    let root = std::path::Path::new("owned-root");
+    let at = Instant::now();
+    let original = crate::app::index_mailbox::IndexPerfObservation {
+        allocation_observed: true,
+        admitted_at: Some(at - Duration::from_millis(2)),
+        admitted_root: Some(root.into()),
+        started_published: Some(at - Duration::from_millis(1)),
+        started_root: Some(root.into()),
+        started_source: Some("Walker"),
+        ..Default::default()
+    };
+    let accepts = |o: &crate::app::index_mailbox::IndexPerfObservation| {
+        promotion_pressure_eligible(true, 7, Some(7), o, root, Source::Walker, at)
+    };
+    assert!(accepts(&original));
+    let mut returned = original.clone();
+    returned.data_publish_end = Some(at - Duration::from_micros(400));
+    returned.terminal_offered = Some(at - Duration::from_micros(300));
+    returned.terminal_kind = Some("finished");
+    returned.terminal_offer_kind = Some("finished");
+    returned.request_processing_returned = Some(at - Duration::from_micros(100));
+    assert!(
+        accepts(&returned),
+        "physical completion does not imply GUI commit"
+    );
+    for mutation in 0..9 {
+        let mut o = original.clone();
+        match mutation {
+            0 => o.terminal_kind = Some("canceled"),
+            1 => o.terminal_kind = Some("failed"),
+            2 => o.terminal_offer_kind = Some("canceled"),
+            3 => o.started_root = Some("foreign-root".into()),
+            4 => o.admitted_root = Some("foreign-root".into()),
+            5 => o.started_source = Some("FileList"),
+            6 => o.started_published = None,
+            7 => o.admitted_at = None,
+            _ => o.allocation_observed = false,
+        }
+        assert!(!accepts(&o), "invalid promotion proof {mutation}");
+    }
+    assert!(!promotion_pressure_eligible(
+        false,
+        7,
+        Some(7),
+        &original,
+        root,
+        Source::Walker,
+        at
+    ));
+    assert!(!promotion_pressure_eligible(
+        true,
+        7,
+        Some(8),
+        &original,
+        root,
+        Source::Walker,
+        at
+    ));
+    assert!(!promotion_pressure_eligible(
+        true,
+        7,
+        None,
+        &original,
+        root,
+        Source::Walker,
+        at
+    ));
 }
