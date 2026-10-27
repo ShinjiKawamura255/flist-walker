@@ -103,6 +103,7 @@
 - direct action では選択 path、open-containing-folder では通常ファイル/file link の字句的な親または directory/directory link/junction 自身を raw effective target とする。表示用 path と execution path は別に保持する。
 - 複数選択は全 target を事前認可してから dispatch を開始し、解決失敗、root 外、mixed valid/invalid のいずれも backend call 0 件で fail closed とする。解決済み execution path の重複は display 情報を維持したまま除く。
 - Action worker は各 backend call の直前に raw effective target を再解決し、字句的 root または解決済み root のいずれかに対する containment を再確認して、最後に認可した解決済み execution path だけを OS leaf へ渡す。途中の再検証失敗では残件を停止し、完了件数を含む partial completion を notice と trace に残す。
+- reveal は source ごとの解決先と親配下の選択 path を保持する。同一親の複数ファイルを1要求で選択し、file link はリンク自身の basename を使う。Linux fallback は再認可と freshness/cancel 確認後に実行する。
 - open-containing-folder の対象種別は worker で `symlink_metadata` と追跡 metadata を使って明示判定し、broken link、metadata error、特殊種別を fail closed とする。deduplicate された target も対応する全 source path から effective target を直前に再導出し、種別変更または解決先変更を検出する。
 - rejected notice は選択時の display path または effective display path を用い、root 外の canonical destination を漏らさない。trusted root または target の解決失敗も同じく action error とする。
 - executor error の詳細は内部 trace に限定し、利用者向け notice は display path と結果区分だけから構築する。trace は `request_id`、`result`（success / blocked / failed / partial）、`completed`、`total`、失敗段階を構造化 field として残す。

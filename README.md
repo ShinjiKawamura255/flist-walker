@@ -47,6 +47,8 @@ cargo run --bin flistwalker -- --root ..
 5. Press `Ctrl+Shift+C` to copy the selected path (`Cmd+Shift+C` on macOS).
 6. Press `Ctrl+R` to fuzzy-search query history, then `Enter` / `Ctrl+J` / `Ctrl+M` to load it into the search box.
 
+Shift+Enter / Shift+double-click selects the original files in Explorer or Finder. Linux uses FileManager1 when available and otherwise opens the parent folder. Selected folders still open their contents. Multiple files in one folder are revealed together.
+
 ### Main Shortcuts
 
 - `F1`: open or close the in-app help for keyboard shortcuts and query syntax (also available from `Help`)

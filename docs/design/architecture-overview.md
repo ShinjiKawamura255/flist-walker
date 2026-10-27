@@ -25,6 +25,7 @@
 - 実装: `rust/src/query.rs`, `rust/src/search/mod.rs`, `rust/src/search/match_eval.rs`, `rust/src/search/cache.rs`, `rust/src/search/config.rs`, `rust/src/search/execute.rs`, `rust/src/search/rank.rs`, `rust/src/ui_model/highlight.rs`, `rust/src/app/cache.rs`, `rust/src/app/preview_flow.rs`
 
 - DES-004 Action Executor
+- Reveal leaf: `actions/reveal.rs` は認可済み親と全選択項目を受け取り、Windows の COM/PIDL、macOS の filesystem NSURL、Linux の percent-encoded file URI で各 OS API に渡す。Linux の bounded D-Bus 応答失敗は shared lifecycle に返し、再認可・freshness/cancel 確認後に親を通常 open する。GUI と CLI/TUI は同じ leaf を使用する。
 - 役割: UI の action intent、worker の root confinement、OS 固有の open/execute leaf を分離し、認可済み path だけが OS 境界へ到達する testable seam を保つ。
 - 役割補足: UI は同期 filesystem I/O を行わない `Reject` / `Defer` の字句的 precheck と trusted root を含む request 構築だけを担当する。`Defer` は許可を意味せず、worker の権威的な判定へ必ず送る。
 - 役割補足: action authorization module は action mode から raw effective target と display path を導出し、字句的 root と解決済み root の両 scope に対する component containment、解決済み execution path の deduplication、execution/display path の分離を担当する。raw target が字句的 root 配下、または解決先が解決済み root 配下なら許可するため、root 自体および root 配下の symlink/junction を OS 間で同じ契約として扱う。

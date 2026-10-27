@@ -678,9 +678,10 @@ impl AuthorizedActionBackend for CliActionBackend {
     }
 
     fn reveal(&self, path: &Path) -> Result<()> {
-        // The shared authorization lifecycle has already converted files to their parent
-        // directories for reveal mode and reauthorized the resulting execution path.
         execute_or_open(path)
+    }
+    fn reveal_items(&self, parent: &Path, items: &[PathBuf]) -> Result<()> {
+        crate::actions::reveal_items(parent, items)
     }
 }
 
