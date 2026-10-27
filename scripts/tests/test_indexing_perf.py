@@ -136,7 +136,11 @@ def synthetic_receipt(text, group="f1", ident="synthetic-1"):
         "rust/src/app/tests/indexing_perf/mod.rs","rust/src/app/tests/indexing_perf/harness.rs",
         "rust/src/app/tests/indexing_perf/extensions/runner.rs","rust/src/app/tests/indexing_perf/extensions/driver.rs",
         "rust/src/app/tests/indexing_perf/extensions/fixture.rs","rust/src/app/tests/indexing_perf/extensions/oracle.rs",
-        "rust/src/app/tests/indexing_perf/extensions/cases.rs","scripts/indexing_perf.py","scripts/indexing_perf_contract.py"]
+        "rust/src/app/tests/indexing_perf/extensions/cases.rs",
+        "rust/src/app/tests/indexing_perf/extensions/mod.rs",
+        "rust/src/app/tests/indexing_perf/extensions/finished_offer.rs",
+        "rust/src/app/tests/indexing_perf/extensions/supplementary.rs",
+        "rust/src/app/tests/indexing_perf/child_process.rs","scripts/indexing_perf.py","scripts/indexing_perf_contract.py"]
     source=dict(head="a"*40,tree="b"*40,files={p:"c"*64 for p in required_sources},local_controls=[])
     process=dict(success=True,leader_reaped=True,group_absent=True,returncode=0,
                  timed_out=False,orphan_detected=False,pid=123,process_group=123,cwd="/synthetic/rust",

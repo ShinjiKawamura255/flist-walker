@@ -1,0 +1,96 @@
+{
+  "host": "Tsukuyomi",
+  "date": "2026-10-27",
+  "candidate_rust_source": "4cc35b451a46578cadaff024ac62b4e4a207f121",
+  "results": [
+    {
+      "log": "python-suite.log",
+      "sha256": "691b0ec4f1bd3976e12391ce6bd9513e40fe5ff0309993c89db148638fa2bdc2",
+      "status": "PASS",
+      "command": "python3 -m unittest discover -s scripts/tests",
+      "exit_code": 0,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "candidate-cargo-test.log",
+      "sha256": "898fd1a7033c5a5a2d460c7ddb9dbb3dd3d11964666fc96e8e55a485041a8b20",
+      "status": "FAIL-sandbox",
+      "command": "cargo test --locked --target-dir <owned-target>",
+      "exit_code": 101,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "candidate-cargo-test-native.log",
+      "sha256": "2893ae11baaed48f14d787c3acda42efb1074e8220c48b5ed221100aeba2682a",
+      "status": "PASS",
+      "command": "cargo test --locked --target-dir <owned-target> (native retry)",
+      "exit_code": 0,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "candidate-clippy.log",
+      "sha256": "870211a8a41dbf42a3e84792e2015a54150711b249604e7bb05c857d3ff03f68",
+      "status": "PASS",
+      "command": "cargo clippy --locked --all-targets --target-dir <owned-target> -- -D warnings",
+      "exit_code": 0,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "candidate-audit-fresh.log",
+      "sha256": "9075d30c3beb1562e79624c0051f575c81b0d6606223b0c581995f11333672d5",
+      "status": "PASS",
+      "command": "cargo audit --db <owned-db>",
+      "exit_code": 0,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "reference-indexing-perf.log",
+      "sha256": "6d4e16c8f9e9c04c3a273fac4e9c822e828b28d824731c4f69f8ba2efa2f55b9",
+      "status": "PASS",
+      "command": "cargo test --locked --lib indexing_perf --target-dir <owned-target>",
+      "exit_code": 0,
+      "limitation": "Local verification; not a new source-bound CI admission or numeric campaign."
+    },
+    {
+      "log": "reference-cargo-test-native.log",
+      "sha256": "53739df2ea762da0e88e19e3d0e38b726f5e2ea11c415e9055c527e60ad0a7bc",
+      "status": "PASS",
+      "command": "cargo test --locked --target-dir <owned-target> (native)",
+      "exit_code": 0,
+      "limitation": "Local verification; not source-bound native CI admission."
+    },
+    {
+      "log": "reference-clippy.log",
+      "sha256": "0456ad08af7130f8ff656637e20a76149f8b652e86989424518990a858a03827",
+      "status": "PASS",
+      "command": "cargo clippy --locked --all-targets --target-dir <owned-target> -- -D warnings",
+      "exit_code": 0,
+      "limitation": "Local verification; not source-bound native CI admission."
+    },
+    {
+      "log": "reference-audit-native.log",
+      "sha256": "3d677ef2716c2ed1f02e8967db0b8775fb080fd4bb20b58dff3a7aa4d9871921",
+      "status": "FAIL",
+      "command": "cargo audit --db <owned-db> (fresh native)",
+      "exit_code": 1,
+      "limitation": "Local verification; not source-bound native CI admission."
+    }
+  ],
+  "not_run": [
+    "new reference native Linux/Windows CI",
+    "exact collector-source native CI",
+    "full performance campaign",
+    "native GUI",
+    "Windows host operations"
+  ],
+  "sandbox_failure": "Two Unix socket tests denied by sandbox; full native retry passed.",
+  "reference_audit_blocker": {
+    "database": "3279c99911354c400e1d41e47c7d60e39258b147",
+    "advisories": 1378,
+    "vulnerabilities": [
+      "RUSTSEC-2026-0382",
+      "RUSTSEC-2026-0381"
+    ],
+    "warning": "clipboard-win 5.4.1 yanked"
+  }
+}
