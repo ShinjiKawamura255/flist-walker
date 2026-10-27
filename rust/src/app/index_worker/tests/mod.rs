@@ -486,7 +486,6 @@ fn adaptive_walker_can_stop_from_consumer_callback() {
 
 #[test]
 fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
-    let _config_scope = crate::runtime_config::runtime_config_test_guard();
     set_process_runtime_config(RuntimeConfig {
         developer: DeveloperRuntimeConfig {
             walker_adaptive_initial_limit: Some(1),
@@ -518,6 +517,7 @@ fn adaptive_walker_returns_superseded_when_canceled_before_entry() {
     let result = stream_walker_index(&tx_res, &req, &root, &shutdown, &latest_request_ids);
 
     assert_eq!(result, Err("superseded".to_string()));
+    set_process_runtime_config(RuntimeConfig::default());
     let _ = std::fs::remove_dir_all(&root);
 }
 
@@ -1138,7 +1138,6 @@ fn tc_153_index_shutdown_drains_accepted_queue_with_terminal_cancellation() {
 
 #[test]
 fn index_worker_trace_smoke_emits_canonical_fields() {
-    let _config_scope = crate::runtime_config::runtime_config_test_guard();
     init_test_tracing();
     set_process_runtime_config(RuntimeConfig::default());
     let root = test_root("trace-smoke");
@@ -2473,43 +2472,4 @@ fn visit_std_walker_entries(root: &Path, on_entry: &mut impl FnMut(&Path, FileTy
             visit_std_walker_entries(&path, on_entry);
         }
     }
-}
-
-#[test]
-fn tc_235_process_sink_keeps_child_freshness_without_parent_probe() {
-    use crate::app::freshness::{FileObservation, SnapshotFreshness};
-    let mailbox = Arc::new(IndexResponseMailbox::new());
-    let root = PathBuf::from("child-observation-only");
-    let source = IndexSource::FileList(PathBuf::from("resolved/physical/FileList.txt"));
-    mailbox.set_snapshot(SnapshotFreshness::acquired(
-        230,
-        root.clone(),
-        source.clone(),
-        FileObservation::Unavailable,
-        FileObservation::Unavailable,
-    ));
-    let sink = MailboxResponseSink {
-        request_id: 230,
-        tab_id: 1,
-        root,
-        mailbox: Arc::clone(&mailbox),
-        shutdown: Arc::new(AtomicBool::new(false)),
-        latest_request_ids: Arc::new(Mutex::new(HashMap::from([(1, 230)]))),
-    };
-    sink.publish(
-        IndexResponse::Started {
-            request_id: 230,
-            source,
-        },
-        false,
-    )
-    .unwrap();
-    assert_eq!(
-        mailbox.snapshot().unwrap().baseline,
-        FileObservation::Unavailable
-    );
-    assert_eq!(
-        mailbox.snapshot().unwrap().source,
-        IndexSource::FileList(PathBuf::from("child-observation-only/FileList.txt"))
-    );
 }

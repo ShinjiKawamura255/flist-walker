@@ -167,6 +167,7 @@ GROUPS = {
 }
 PAIR_COUNTS = {"f1": 21, "matched": 21, "stable": 7}
 FULL_POLICY = "observed-completion (data-end/Finished-offer/publication) waits for own committed snapshot before eviction; t0-included production frames; final unobserved publication/removal race remains strict failure"
+PROMOTION_COMPLETION_POLICY = "unchanged-two-pressure-inputs; physical-owned-commit; measured-Ready-B-kind-A; all-debt-zero-v1"
 STABLE_EDIT_INPUT_POLICY = "full-scale stable-A previous owned query evaluated in full before next input; actual owned indexing checkpoint must reach previous admitted actual count; normal production frames/indexing continue; all three inputs must overlap unsettled indexing"
 PHASES = ("data_publish_end_ms", "terminal_publish_ms", "index_ready_ms", "results_ready_ms", "full_wait_ms", "max_frame_ms", "max_ingest_gap_ms", "max_no_work_progress_ms", "driver_overhead_ms")
 
@@ -220,6 +221,8 @@ def validate_numeric_fields(value, label="sample"):
                            "search_sort_worker_completed_while_index_unsettled", "stale_full_data_abort_limit",
                            "previous_stage", "next_stage", "latest_request_id", "seed_request_id", "actual_seed_request_id", "victim_request_id",
                            "removed_request_id", "replacement_request_id", "response_request_id"})
+    integer_fields.update({"target_tab", "active_request_id", "active_committed_request_id",
+                           "pending_activation_tab_id", "kind_epoch", "index_allocations"})
     if isinstance(value, dict):
         for key, item in value.items():
             if key in boolean_fields and item is not None:
@@ -290,6 +293,89 @@ def validate_frame_diagnostics(row):
                         "producer state observed before its event")
 
 
+def validate_completed_owned_request(q, source, logical, endpoint):
+    """Basic chronology and complete work for a latest successful generation."""
+    require(q["allocation_observed"] is True and q["admitted_root_matches"] is True, "missing actual request admission")
+    require(q["actual_admitted_root"] == q["actual_started_root"] == q["expected_root"]
+            and q["started_source"] == q["terminal_source"] == source, "completed request root/source")
+    times = [number(q[field], field) for field in ("allocated_ms", "admitted_ms", "started_ms",
+             "data_publish_end_ms", "terminal_offered_ms", "terminal_publish_ms", "request_processing_returned_ms")]
+    require(all(a <= b for a, b in zip(times, times[1:])) and times[-1] <= endpoint, "completed request chronology")
+    require(number(q["bookkeeping_released_ms"], "request release") <= endpoint
+            and q["mailbox_closed"] is True, "completed request release")
+    require(q["latest_generation_required"] is True and q["terminal_kind"] == q["actual_terminal_offer_kind"] == "finished",
+            "latest successful generation")
+    require(integer(q["entries_emitted"], "complete request work") == logical, "complete request count")
+
+
+def validate_promotion_completion(row):
+    """Validate the finite trace; membership/debt assertions remain source-bound Rust.
+
+    Promotion is outside the weekly 17 cells. This also validates its separately
+    selected 100k qualification observations, without admitting them as RCR data.
+    """
+    validate_numeric_fields(row)
+    require(row.get("promotion_completion_policy") == PROMOTION_COMPLETION_POLICY, "promotion policy drift")
+    visits = row.get("promotion_completion_trace")
+    pressure = row.get("promotion_pressure_observations")
+    if row["comparison"] != "T1-promotion" or row["case"] == "B0":
+        require(visits == [] and pressure == [], "unexpected promotion trace")
+        return
+    require(row["case"] == "T1-promotion" and row["sample_entries"] == 100000, "promotion qualification scale")
+    require(row["correct"] is True and row["contention_eligible"] is True, "promotion not eligible")
+    require(row["actual_index_producer_interval_overlap"] is True, "promotion producer overlap")
+    require(len(visits) == 4 and [v["phase"] for v in visits] ==
+            ["request-B", "activated-B", "request-A", "activated-A"], "fixed promotion completion visits")
+    require(len(pressure) == len(row["input_trace"]) == 2, "original promotion input count")
+    requests = {q["request_id"]: q for q in row["index_requests"]}
+    require(len(requests) == len(row["index_requests"]) == 2, "promotion request count")
+    for field in ("allocated_request_ids", "planned_request_ids", "released_request_ids"):
+        require(len(row[field]) == 2 and set(row[field]) == set(requests), "promotion allocation identity")
+    beginning = number(visits[0]["at_ms"], "completion begin")
+    previous = 0
+    for stage, (p, event) in enumerate(zip(pressure, row["input_trace"])):
+        request = integer(p["request_id"], "promotion request", 1)
+        q = requests[request]
+        require(p["stage"] == event["stage"] == stage, "promotion pressure stage")
+        require(p["target_tab"] == event["requested_tab"] == q["tab_id"], "promotion tab owner")
+        require(p["root"] == event["requested_root"] == q["expected_root"], "promotion root owner")
+        require(p["source"] == row["source"] == q["started_source"], "promotion source owner")
+        require(p["owned_Warm_before_switch"] is True and p["eligible_uncommitted_Warm_promotion"] is True,
+                "promotion needs original uncommitted Warm")
+        require(p["active_request_id"] == request and p["active_committed_request_id"] != request
+                and p["pending_activation_tab_id"] is None, "promotion actual activation identity")
+        at = number(p["actual_activated_ms"], "promotion actual activation")
+        require(previous <= number(event["at_ms"], "promotion input") <= at <= beginning, "promotion chronology")
+        previous = at
+        count = integer(event["GUI_ingested"], "promotion checkpoint")
+        require((10000, 25000)[stage] <= count <= 100000, "original promotion checkpoint")
+        validate_completed_owned_request(q, row["source"], 100000, beginning)
+        require(q["terminal_kind"] == "finished" and q["started_source"] == q["terminal_source"], "promotion terminal")
+        require(q["actual_started_root"] == q["expected_root"] == q["actual_admitted_root"], "promotion acquired owner")
+        require(number(q["request_processing_returned_ms"], "promotion physical return") <= beginning
+                and number(q["bookkeeping_released_ms"], "promotion release") <= beginning
+                and number(q["terminal_publish_ms"], "promotion terminal publish") <= beginning,
+                "completion starts after physical owned requests")
+    intervals = [(number(q["started_ms"], "producer start"), number(q["data_publish_end_ms"], "producer end"))
+                 for q in requests.values()]
+    require(intervals[0][0] < intervals[1][1] and intervals[1][0] < intervals[0][1], "actual producer intervals")
+    initial_a = integer(row["initial_state"]["active_tab"], "initial promotion A", 1)
+    require(pressure[1]["target_tab"] == initial_a and pressure[0]["target_tab"] != initial_a,
+            "original A-B-A promotion owners")
+    epochs = {}
+    for n, visit in enumerate(visits):
+        p = pressure[0 if n < 2 else 1]
+        require(visit["tab_id"] == p["target_tab"] and visit["request_id"] == p["request_id"], "completion owner")
+        epoch = integer(visit["kind_epoch"], "completion kind epoch", 1)
+        require(epochs.setdefault(visit["tab_id"], epoch) == epoch, "completion epoch changed")
+        at = number(visit["at_ms"], "completion visit")
+        require(previous <= at <= row["index_ready_ms"] <= row["results_ready_ms"], "measured completion chronology")
+        previous = at
+        if n in (1, 3):
+            require(visit["index_allocations"] == 2, "Ready completion allocated index")
+    require(row["request_id"] == pressure[1]["request_id"], "final active generation")
+
+
 def validate_sample(row, case, source, condition):
     require(row["schema_version"] == 1 and type(row["schema_version"]) is int, "sample schema")
     require(row["profile_family"] == "extension" and row["measurement_kind"] == "headless-GUI-actual-workers", "sample kind")
@@ -297,6 +383,7 @@ def validate_sample(row, case, source, condition):
     require(row["correct"] is True and row["contention_eligible"] is True, "incorrect/noneligible sample")
     require(row["sample_entries"] == 100000 and type(row["sample_entries"]) is int, "sample scale")
     require(row["tabchain_input_policy"] == FULL_POLICY, "trace policy drift")
+    validate_promotion_completion(row)
     stable = case.startswith("T1-")
     require(row["comparison_kind"] == ("AA-variability" if case in ("F1-files", "F1-folders") else "AB-operation-cost"), "comparison kind")
     require(row["fixture_shape"] == ("FlatFiles" if stable else "FlatMixed"), "fixture shape")
@@ -458,6 +545,7 @@ def validate_log(text, group):
         require(meta["selected_cases"] == list(GROUPS[group]) and meta["selected_sources"] == ["FileList", "Walker"], "requested selection")
         require(meta["supported_cells"] == [{"case":c,"source":s} for c,s in cells] and not meta["unsupported_cells"] and meta["selected_source_cells"] == len(cells) and meta["expected_rows"] == len(cells)*2*PAIR_COUNTS[group], "metadata cell count")
         require(meta["tabchain_input_policy"] == FULL_POLICY and meta["coverage_kind"] == "selected-subset", "metadata trace identity")
+        require(meta.get("promotion_completion_policy") == PROMOTION_COMPLETION_POLICY, "promotion metadata policy drift")
         if group == "stable":
             require(meta["stable_edit_input_policy"] == STABLE_EDIT_INPUT_POLICY, "stable edit metadata policy drift")
         environment = meta["environment_identity"]

@@ -1,4 +1,3 @@
-use crate::app::render::{single_line_display_text, single_line_text_bounds};
 use crate::app::search_assist::FilterValue;
 use crate::app::{render_tabs, FlistWalkerApp};
 use crate::text_editing::char_count;
@@ -13,7 +12,7 @@ fn paint_root_selector_button(
     ui: &egui::Ui,
     rect: egui::Rect,
     response: &egui::Response,
-    galley: std::sync::Arc<egui::Galley>,
+    text: &str,
     popup_open: bool,
 ) {
     let visuals = if popup_open {
@@ -51,20 +50,16 @@ fn paint_root_selector_button(
         inner_rect.left_top(),
         egui::pos2(text_right.max(inner_rect.left()), inner_rect.bottom()),
     );
-    let bounds = single_line_text_bounds(&galley);
-    let text_pos = egui::pos2(
-        text_rect.left() - bounds.left(),
-        text_rect.center().y - bounds.center().y,
+    let galley = egui::WidgetText::from(text.to_owned()).into_galley(
+        ui,
+        Some(egui::TextWrapMode::Extend),
+        f32::INFINITY,
+        egui::TextStyle::Button,
     );
-    // Only the horizontal limit excludes the arrow. Keep the vertical padding
-    // available for raster rounding at fractional display scales.
-    let text_clip = egui::Rect::from_min_max(
-        egui::pos2(text_rect.left(), rect.top()),
-        egui::pos2(text_rect.right(), rect.bottom()),
-    );
+    let text_pos = egui::Align2::LEFT_CENTER.align_size_within_rect(galley.size(), text_rect);
     ui.painter()
-        .with_clip_rect(text_clip.intersect(ui.clip_rect()))
-        .galley(text_pos, galley, visuals.text_color());
+        .with_clip_rect(text_rect.intersect(ui.clip_rect()))
+        .galley(text_pos.min, galley, visuals.text_color());
 }
 
 pub(super) fn centered_checkbox_layout(
@@ -168,18 +163,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         render_tabs::render_tab_bar(app, ui);
         ui.separator();
         ui.horizontal(|ui| {
-            let selected_text = app.root_display_text();
-            let selected_text = single_line_display_text(&selected_text);
-            let galley = egui::WidgetText::from(selected_text.as_ref()).into_galley(
-                ui,
-                Some(egui::TextWrapMode::Extend),
-                f32::INFINITY,
-                egui::TextStyle::Button,
-            );
-            let row_height = ui.spacing().interact_size.y.max(
-                single_line_text_bounds(&galley).height().max(ui.spacing().icon_width)
-                    + 2.0 * ui.spacing().button_padding.y,
-            );
+            let row_height = ui.spacing().interact_size.y;
             ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
             let button_width = 96.0;
             let set_default_width = 130.0;
@@ -190,6 +174,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 - manage_width
                 - (ui.spacing().item_spacing.x * 3.0))
                 .max(120.0);
+            let selected_text = app.root_display_text();
             let mut next_root: Option<PathBuf> = None;
             ui.allocate_ui_with_layout(
                 egui::vec2(field_width, row_height),
@@ -201,7 +186,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         egui::vec2(field_width, row_height),
                         egui::Sense::click(),
                     );
-                    paint_root_selector_button(ui, rect, &response, galley, popup_open);
+                    paint_root_selector_button(ui, rect, &response, &selected_text, popup_open);
                     if response.clicked() {
                         if popup_open {
                             app.close_root_dropdown(ui.ctx());
@@ -449,7 +434,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(message).color(ui.visuals().warn_fg_color))
                     .on_hover_text("Only the loaded root FileList is checked. Refresh is manual.");
-                if ui.button("Refresh Index").clicked() {
+                if ui.add_enabled(
+                    !app.shell.indexing.in_progress && app.shell.indexing.pending_finish.is_none(),
+                    egui::Button::new("Refresh Index"),
+                ).clicked() {
                     app.refresh_changed_filelist();
                 }
             });
@@ -602,16 +590,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         ui.visuals().dark_mode,
                     ));
                 }
-                let mut response = ui.add_enabled(app.top_action_enabled(label), button);
-                response = match label {
-                    "Stop Indexing" => response.on_disabled_hover_text(
-                        "No indexing is running or waiting in this tab.",
-                    ),
-                    "Stop All Indexing" => response.on_disabled_hover_text(
-                        "No indexing is running or waiting in any tab.",
-                    ),
-                    _ => response,
-                };
+                let mut response = ui.add(button);
                 if label == "Presets..." {
                     response = response.on_hover_text(FlistWalkerApp::preset_top_action_tooltip());
                 }

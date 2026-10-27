@@ -127,10 +127,9 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                             .get(i)
                                             .map(|tab| app.tab_title(tab, i))
                                             .unwrap_or_else(|| format!("Tab {}", i + 1));
-                                        let title = super::render::single_line_display_text(&title);
                                         let title_response = ui.add(
                                             egui::Button::new(
-                                                egui::RichText::new(title.as_ref()).strong().color(
+                                                egui::RichText::new(title).strong().color(
                                                     if let Some(palette) = accent_palette {
                                                         if is_active {
                                                             palette.foreground
@@ -225,9 +224,6 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                             {
                                 add_rect = new_tab_response.rect;
                             }
-                            // ScrollArea rounds the content origin to pixels. Keep one
-                            // physical pixel after the button so that rounding cannot clip it.
-                            ui.add_space(ui.pixels_per_point().recip());
                             if follow_active
                                 && app.shell.tabs.active_tab_index() + 1 == app.shell.tabs.len()
                             {

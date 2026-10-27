@@ -37,7 +37,6 @@ fn walker_entry_limit(complete_walker_snapshot: bool, configured_limit: usize) -
     }
 }
 
-pub(crate) mod process;
 mod root_projection;
 
 trait IndexResponseSink {
@@ -161,13 +160,7 @@ impl IndexResponseSink for MailboxResponseSink {
     fn observe_nested_input(&self, reused: bool) {
         self.mailbox.record_nested_input_reused(reused);
     }
-    fn send(&self, response: IndexResponse) -> Result<(), ()> {
-        self.publish(response, true)
-    }
-}
-
-impl MailboxResponseSink {
-    fn publish(&self, mut response: IndexResponse, capture_snapshot: bool) -> Result<(), ()> {
+    fn send(&self, mut response: IndexResponse) -> Result<(), ()> {
         #[cfg(test)]
         if matches!(&response, IndexResponse::Finished { .. }) {
             // All data sends have succeeded. Includes producer Full waits and
@@ -188,16 +181,14 @@ impl MailboxResponseSink {
         } else {
             TerminalPerfSendGuard(None)
         };
-        if capture_snapshot {
-            match &response {
-                IndexResponse::Started { source, .. } => self.mailbox.record_snapshot_started(
-                    self.request_id,
-                    self.root.clone(),
-                    source.clone(),
-                ),
-                IndexResponse::Finished { .. } => self.mailbox.record_snapshot_completed(),
-                _ => {}
-            }
+        match &response {
+            IndexResponse::Started { source, .. } => self.mailbox.record_snapshot_started(
+                self.request_id,
+                self.root.clone(),
+                source.clone(),
+            ),
+            IndexResponse::Finished { .. } => self.mailbox.record_snapshot_completed(),
+            _ => {}
         }
         #[cfg(test)]
         let mut full_wait_started: Option<Instant> = None;
@@ -715,21 +706,6 @@ fn stream_walker_index(
     shutdown: &AtomicBool,
     latest_request_ids: &Mutex<HashMap<u64, u64>>,
 ) -> std::result::Result<IndexSource, String> {
-    // Walker skips unreadable descendants, but an unreadable root must not
-    // replace the last committed snapshot with an empty successful index.
-    // Keep this probe after source selection so a readable root FileList does
-    // not acquire an additional directory-listing permission requirement.
-    if shutdown.load(Ordering::Relaxed)
-        || latest_request_ids
-            .lock()
-            .ok()
-            .and_then(|ids| ids.get(&req.tab_id).copied())
-            != Some(req.request_id)
-    {
-        return Err("superseded".into());
-    }
-    std::fs::read_dir(root)
-        .map_err(|error| format!("cannot read index root {}: {error}", root.display()))?;
     let source = IndexSource::Walker;
     info!(
         flow = "index",
@@ -896,58 +872,6 @@ fn stream_walker_index(
     Ok(source)
 }
 
-fn build_index_request(
-    sink: &impl IndexResponseSink,
-    req: &IndexRequest,
-    shutdown: &AtomicBool,
-    latest_request_ids: &Mutex<HashMap<u64, u64>>,
-    resolve_root: &dyn Fn(&Path) -> PathBuf,
-) -> Result<IndexSource, String> {
-    let request_is_current = || {
-        !shutdown.load(Ordering::Relaxed)
-            && latest_request_ids
-                .lock()
-                .ok()
-                .and_then(|latest| latest.get(&req.tab_id).copied())
-                == Some(req.request_id)
-    };
-    if !request_is_current() {
-        return Err("superseded".into());
-    }
-    if !req.include_files && !req.include_dirs {
-        sink.send(IndexResponse::Started {
-            request_id: req.request_id,
-            source: IndexSource::None,
-        })
-        .map_err(|_| "index receiver closed".to_string())?;
-        return Ok(IndexSource::None);
-    }
-    let root = resolve_root(&req.root);
-    let projected = root_projection::RootProjectionSink::new(sink, &root, &req.root);
-    // Discovery uses the inverse of the freshness predicate. Recheck after
-    // potentially blocking canonicalization before entering any further I/O.
-    if !request_is_current() {
-        return Err("superseded".into());
-    }
-    if req.use_filelist {
-        match find_filelist_in_first_level_cancellable(&root, || !request_is_current()) {
-            Err(_) => Err("superseded".into()),
-            Ok(Some(filelist)) => stream_filelist_index(
-                &projected,
-                req,
-                &root,
-                filelist,
-                shutdown,
-                latest_request_ids,
-            ),
-            Ok(None) if !request_is_current() => Err("superseded".into()),
-            Ok(None) => stream_walker_index(&projected, req, &root, shutdown, latest_request_ids),
-        }
-    } else {
-        stream_walker_index(&projected, req, &root, shutdown, latest_request_ids)
-    }
-}
-
 type SpawnedIndexWorkers = (
     BoundedSender<IndexRequest>,
     Receiver<IndexResponse>,
@@ -960,79 +884,24 @@ pub(super) fn spawn_index_worker(
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
 ) -> SpawnedIndexWorkers {
     let response_mailboxes = Arc::new(Mutex::new(HashMap::new()));
-    spawn_index_workers(
+    spawn_index_worker_with(
         shutdown,
         latest_request_ids,
         response_mailboxes,
         Arc::new(|root| root.canonicalize().unwrap_or_else(|_| root.to_path_buf())),
-        !cfg!(test),
     )
 }
 
-#[cfg(test)]
 fn spawn_index_worker_with(
     shutdown: Arc<AtomicBool>,
     latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
     response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
 ) -> SpawnedIndexWorkers {
-    spawn_index_workers(
-        shutdown,
-        latest_request_ids,
-        response_mailboxes,
-        resolve_root,
-        false,
-    )
-}
-
-fn spawn_index_workers(
-    shutdown: Arc<AtomicBool>,
-    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-    response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
-    resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
-    isolated: bool,
-) -> SpawnedIndexWorkers {
-    let pool = isolated.then(|| process::ProcessPool::new(Arc::clone(&shutdown)));
-    spawn_index_workers_with_pool(
-        shutdown,
-        latest_request_ids,
-        response_mailboxes,
-        resolve_root,
-        pool,
-    )
-}
-
-#[cfg(test)]
-pub(super) fn spawn_isolated_index_workers_for_test(
-    shutdown: Arc<AtomicBool>,
-    latest: Arc<Mutex<HashMap<u64, u64>>>,
-    executable: PathBuf,
-) -> SpawnedIndexWorkers {
-    let pool = process::ProcessPool::new_with_executable(Arc::clone(&shutdown), executable);
-    spawn_index_workers_with_pool(
-        shutdown,
-        latest,
-        Arc::new(Mutex::new(HashMap::new())),
-        Arc::new(|root| root.canonicalize().unwrap_or_else(|_| root.to_path_buf())),
-        Some(pool),
-    )
-}
-
-fn spawn_index_workers_with_pool(
-    shutdown: Arc<AtomicBool>,
-    latest_request_ids: Arc<Mutex<HashMap<u64, u64>>>,
-    response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
-    resolve_root: Arc<dyn Fn(&Path) -> PathBuf + Send + Sync>,
-    pool: Option<(Arc<process::ProcessPool>, thread::JoinHandle<()>)>,
-) -> SpawnedIndexWorkers {
     let (tx_req, rx_req) = bounded_request_channel::<IndexRequest>(2);
     let (_tx_res, rx_res) = mpsc::channel::<IndexResponse>();
     let rx_req = Arc::new(Mutex::new(rx_req));
     let mut handles = Vec::new();
-    let process_pool = pool.map(|(pool, reaper)| {
-        handles.push(reaper);
-        pool
-    });
 
     for worker_index in 0..2 {
         let rx_req_worker = Arc::clone(&rx_req);
@@ -1040,7 +909,6 @@ fn spawn_index_workers_with_pool(
         let response_mailboxes_worker = Arc::clone(&response_mailboxes);
         let shutdown_worker = Arc::clone(&shutdown);
         let resolve_root_worker = Arc::clone(&resolve_root);
-        let process_pool_worker = process_pool.clone();
         let worker_id = format!("flistwalker-index-{worker_index}");
         let handle = thread::Builder::new()
             .name(worker_id.clone())
@@ -1184,45 +1052,53 @@ fn spawn_index_workers_with_pool(
                     continue;
                 }
 
-                let result = if let Some(pool) = &process_pool_worker {
-                    match pool.run(&req, &tx_res_worker) {
-                        Ok(outcome) => {
-                            let outcome = outcome.label();
-                            let snapshot = tx_res_worker.mailbox.snapshot();
-                            let source_kind = snapshot
-                                .as_ref()
-                                .map_or("none", |snapshot| index_source_kind(&snapshot.source));
-                            info!(
-                                flow = "index",
-                                source_kind,
-                                event = outcome,
-                                request_id = req.request_id,
-                                tab_id = req.tab_id,
-                                "isolated worker lifecycle completed"
-                            );
-                            trace_worker_snapshot(
-                                inflight.load(),
-                                "index",
-                                "terminal",
-                                WorkerTraceContext {
-                                    worker_id: &worker_id,
-                                    request_id: Some(req.request_id),
-                                    tab_id: Some(req.tab_id),
-                                    epoch: None,
-                                    outcome,
-                                },
-                            );
-                            continue;
-                        }
-                        Err(error) => Err(error),
+                let root = resolve_root_worker(&req.root);
+                let tx_res_worker =
+                    root_projection::RootProjectionSink::new(&tx_res_worker, &root, &req.root);
+                let request_is_current = || {
+                    !shutdown_worker.load(Ordering::Relaxed)
+                        && latest_request_ids_worker
+                            .lock()
+                            .ok()
+                            .and_then(|latest| latest.get(&req.tab_id).copied())
+                            == Some(req.request_id)
+                };
+                // Restore-tab prioritization can stale a background request while root
+                // resolution is returning; do not enter FileList discovery because a
+                // large root scan would otherwise delay the newly active tab.
+                let result = if !request_is_current() {
+                    Err("superseded".to_string())
+                } else if req.use_filelist {
+                    // Regression guard: discovery's callback means "cancel now",
+                    // whereas request_is_current reports the inverse freshness state.
+                    // Passing it through directly cancels every healthy startup/refresh.
+                    match find_filelist_in_first_level_cancellable(&root, || !request_is_current())
+                    {
+                        Err(_) => Err("superseded".to_string()),
+                        Ok(Some(filelist)) => stream_filelist_index(
+                            &tx_res_worker,
+                            &req,
+                            &root,
+                            filelist,
+                            shutdown_worker.as_ref(),
+                            latest_request_ids_worker.as_ref(),
+                        ),
+                        Ok(None) if !request_is_current() => Err("superseded".to_string()),
+                        Ok(None) => stream_walker_index(
+                            &tx_res_worker,
+                            &req,
+                            &root,
+                            shutdown_worker.as_ref(),
+                            latest_request_ids_worker.as_ref(),
+                        ),
                     }
                 } else {
-                    build_index_request(
+                    stream_walker_index(
                         &tx_res_worker,
                         &req,
+                        &root,
                         shutdown_worker.as_ref(),
                         latest_request_ids_worker.as_ref(),
-                        resolve_root_worker.as_ref(),
                     )
                 };
 

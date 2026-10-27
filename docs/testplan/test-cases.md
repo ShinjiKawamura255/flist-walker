@@ -10,7 +10,7 @@
 | TC-003B | unit | 同じ unanchored 完全一致 token を複数回指定した場合は、指定回数以上のリテラル出現を含む候補だけが一致する | SP-003 |
 | TC-004 | unit | 実行可能ファイルで execute 分岐 | SP-004 |
 | TC-004A | unit | open / execute helper seam が open/execute handler を適切に呼び分ける | SP-004, SP-005 |
-| TC-005 | unit | フォルダで open 分岐; reveal は同一親の複数ファイルと重複、空白・Unicode・特殊文字、file/directory link、削除・種別/リンク先変更、通常 open 不変、Linux URI/argv と非対応 fallback の再認可・取消を recording backend で確認。Windows/macOS/Linux の実選択状態は native 軸として別記し、未実行を PASS にしない | SP-005 |
+| TC-005 | unit | フォルダで open 分岐 | SP-005 |
 | TC-006 | integration | legacy `--cli`/`--root`/`--limit` invocation と既定 no-match exit 0を維持し、承認済みの `[score] absolute-path` からroot相対path-only改行出力へのmigration、およびCLI-only optionと`--interactive`が`--cli`を要求することを検証する | SP-006 |
 | TC-006A | integration | CLI の `--limit` は 1000 件へ暗黙丸めせず、absolute/NUL/no-match/type/regex/case/source/ignore/progress option と conflict/error を規範どおり扱う | SP-006 |
 | TC-007 | perf | 10万件検索の遅延計測 | SP-007 |
