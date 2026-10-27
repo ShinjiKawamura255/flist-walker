@@ -333,6 +333,9 @@ impl AuthorizedActionBackend for TuiActionBackend {
     fn reveal(&self, path: &Path) -> Result<()> {
         execute_or_open(path)
     }
+    fn reveal_items(&self, parent: &Path, items: &[PathBuf]) -> Result<()> {
+        crate::actions::reveal_items(parent, items)
+    }
 }
 
 pub(super) struct EventLoopContext<'a> {

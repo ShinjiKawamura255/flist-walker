@@ -71,6 +71,9 @@
 
 ## SP-005 フォルダオープン
 ### Requirements
+- MUST: Shift+Enter / Shift+ダブルクリックおよび共有 reveal action は、通常 file / file link の字句的な親を開き、元項目を選択表示する。同一親の複数項目は1つの一覧として渡し、重複項目を除去する。directory / directory link は従来どおり中を開く。通常 Enter / ダブルクリックは変更しない。
+- MUST: Windows は `SHOpenFolderAndSelectItems`、macOS は `NSWorkspace.activateFileViewerSelectingURLs`、Linux は session D-Bus の `org.freedesktop.FileManager1.ShowItems` を使う。Linux の非対応・不在・応答失敗では、親フォルダを再認可し freshness/cancellation を再確認して通常 open にフォールバックする。
+- MUST: worker は親の解決済み path と選択項目一覧を実行まで保持する。選択項目は解決済み親と元 basename から構成し、file link のリンク先を選択しない。全 source の存在、種別、解決先、親、選択一覧を直前に再確認する。OS の非同期要求の受理は表示完了や厳密な focus を保証しない。
 - MUST: 選択フォルダを OS 既定のファイルマネージャで開く。
 - MUST: 存在しないパスには操作しない。
 - MUST: Windows でフォルダを開く際も、パス中の特殊記号をシェル解釈させずに処理する。

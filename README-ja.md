@@ -44,6 +44,8 @@ cargo run -- --root ..
 5. `Ctrl+Shift+C` で選択パスをコピー（macOS は `Cmd+Shift+C`）
 6. `Ctrl+R` で検索履歴をファジー検索し、`Enter` / `Ctrl+J` / `Ctrl+M` で検索欄へ展開
 
+Shift+Enter / Shift+ダブルクリックは Explorer / Finder で元ファイルを選択表示します。Linux は FileManager1 対応時に選択し、非対応時は親フォルダを開きます。フォルダを選んだ場合は従来どおりその中を開き、同じ親の複数ファイルはまとめて選択表示します。
+
 ### 主なショートカット
 
 - `F1`: キーボードショートカットと query 構文のアプリ内 help を開閉（`Help` からも利用可能）

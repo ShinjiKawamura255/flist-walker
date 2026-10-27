@@ -1,7 +1,9 @@
+mod reveal;
 use crate::path_utils::normalize_path_for_display;
 #[cfg(target_os = "windows")]
 use crate::path_utils::normalize_windows_shell_path;
 use anyhow::{Context, Result};
+pub use reveal::reveal_items;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
@@ -73,6 +75,11 @@ pub trait AuthorizedActionGuard {
 pub trait AuthorizedActionBackend {
     fn execute_or_open(&self, path: &Path) -> Result<()>;
     fn reveal(&self, path: &Path) -> Result<()>;
+    /// One authorized folder and all its selected children. Legacy recording
+    /// backends can observe the folder; OS adapters must override this method.
+    fn reveal_items(&self, parent: &Path, _items: &[PathBuf]) -> Result<()> {
+        self.reveal(parent)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -216,10 +223,48 @@ pub fn execute_authorized_action_request(
                 Some(target.display_path.clone()),
             );
         }
-        let action_result = match request.mode {
+        let mut action_result = match request.mode {
             AuthorizedActionMode::ExecuteOrOpen => backend.execute_or_open(&execution_path),
-            AuthorizedActionMode::Reveal => backend.reveal(&execution_path),
+            AuthorizedActionMode::Reveal if !target.selection_paths.is_empty() => {
+                backend.reveal_items(&execution_path, &target.selection_paths)
+            }
+            AuthorizedActionMode::Reveal => backend.execute_or_open(&execution_path),
         };
+        if action_result
+            .as_ref()
+            .is_err_and(|error| error.is::<reveal::RevealUnavailable>())
+        {
+            // A failed ShowItems attempt may have waited for D-Bus. Never use
+            // the earlier authorization/freshness snapshot for a second action.
+            match reauthorize_action_target(&batch.canonical_root, &batch.lexical_root, target) {
+                Ok(parent) => {
+                    if let Some(outcome) = observed_request_outcome(request, guard) {
+                        return AuthorizedActionReport::new(
+                            request,
+                            outcome,
+                            completed,
+                            total,
+                            Some(target.display_path.clone()),
+                        );
+                    }
+                    action_result = backend.execute_or_open(&parent);
+                }
+                Err(error) => {
+                    return AuthorizedActionReport::new(
+                        request,
+                        if completed == 0 {
+                            AuthorizedActionOutcome::Blocked
+                        } else {
+                            AuthorizedActionOutcome::PartialFailure
+                        },
+                        completed,
+                        total,
+                        Some(target.display_path.clone()),
+                    )
+                    .with_diagnostic(error.to_string());
+                }
+            }
+        }
         if let Err(error) = action_result {
             let outcome = if completed == 0 {
                 AuthorizedActionOutcome::Failed
@@ -264,6 +309,8 @@ pub(crate) struct AuthorizedActionTarget {
     pub(crate) display_path: PathBuf,
     pub(crate) execution_path: PathBuf,
     source_paths: Vec<PathBuf>,
+    source_resolved_paths: Vec<PathBuf>,
+    pub(crate) selection_paths: Vec<PathBuf>,
     open_parent_for_files: bool,
 }
 
@@ -459,8 +506,33 @@ pub(crate) fn authorize_action_targets(
     for source_path in paths {
         let raw_path = raw_action_target(source_path, open_parent_for_files)?;
         let execution_path = resolve_authorized_target(&canonical_root, &lexical_root, &raw_path)?;
+        // Resolve the selected object as well as its effective parent. Keep the
+        // link's own basename for reveal, but detect link retargeting at recheck.
+        let source_resolved = source_path.canonicalize().map_err(|_| {
+            ActionAuthorizationFailure::new(
+                Some(source_path.clone()),
+                "selected path could not be resolved",
+            )
+        })?;
+        let selection = if open_parent_for_files && raw_path != *source_path {
+            Some(execution_path.join(source_path.file_name().ok_or_else(|| {
+                ActionAuthorizationFailure::new(
+                    Some(source_path.clone()),
+                    "selected filename is unavailable",
+                )
+            })?))
+        } else {
+            None
+        };
         if let Some(index) = target_indices.get(&execution_path).copied() {
-            targets[index].source_paths.push(source_path.clone());
+            let target = &mut targets[index];
+            target.source_paths.push(source_path.clone());
+            target.source_resolved_paths.push(source_resolved);
+            if let Some(selection) = selection {
+                if !target.selection_paths.contains(&selection) {
+                    target.selection_paths.push(selection);
+                }
+            }
             continue;
         }
         target_indices.insert(execution_path.clone(), targets.len());
@@ -468,6 +540,8 @@ pub(crate) fn authorize_action_targets(
             display_path: raw_path,
             execution_path,
             source_paths: vec![source_path.clone()],
+            source_resolved_paths: vec![source_resolved],
+            selection_paths: selection.into_iter().collect(),
             open_parent_for_files,
         });
     }
@@ -485,16 +559,44 @@ pub(crate) fn reauthorize_action_target(
     target: &AuthorizedActionTarget,
 ) -> Result<PathBuf, ActionAuthorizationFailure> {
     let mut final_execution_path = None;
-    for source_path in &target.source_paths {
+    let mut selection_paths = Vec::new();
+    for (source_path, source_resolved) in target
+        .source_paths
+        .iter()
+        .zip(&target.source_resolved_paths)
+    {
         let raw_path = raw_action_target(source_path, target.open_parent_for_files)?;
         let execution_path = resolve_authorized_target(canonical_root, lexical_root, &raw_path)?;
-        if execution_path != target.execution_path {
+        let current_source = source_path.canonicalize().map_err(|_| {
+            ActionAuthorizationFailure::new(
+                Some(target.display_path.clone()),
+                "selected path could not be resolved",
+            )
+        })?;
+        if target.open_parent_for_files && raw_path != *source_path {
+            let selection = execution_path.join(source_path.file_name().ok_or_else(|| {
+                ActionAuthorizationFailure::new(
+                    Some(target.display_path.clone()),
+                    "selected filename is unavailable",
+                )
+            })?);
+            if !selection_paths.contains(&selection) {
+                selection_paths.push(selection);
+            }
+        }
+        if execution_path != target.execution_path || current_source != *source_resolved {
             return Err(ActionAuthorizationFailure::new(
                 Some(target.display_path.clone()),
                 "authorization changed",
             ));
         }
         final_execution_path = Some(execution_path);
+    }
+    if selection_paths != target.selection_paths {
+        return Err(ActionAuthorizationFailure::new(
+            Some(target.display_path.clone()),
+            "authorization changed",
+        ));
     }
     final_execution_path.ok_or_else(|| {
         ActionAuthorizationFailure::new(
@@ -1035,6 +1137,186 @@ mod tests {
             (self.on_call)(call_index);
             Ok(())
         }
+    }
+
+    struct SelectionBackend(Mutex<Vec<(PathBuf, Vec<PathBuf>)>>);
+
+    impl AuthorizedActionBackend for SelectionBackend {
+        fn execute_or_open(&self, path: &Path) -> Result<()> {
+            self.0.lock().unwrap().push((path.into(), Vec::new()));
+            Ok(())
+        }
+        fn reveal(&self, _path: &Path) -> Result<()> {
+            panic!("file reveal must retain its item list");
+        }
+        fn reveal_items(&self, parent: &Path, items: &[PathBuf]) -> Result<()> {
+            self.0.lock().unwrap().push((parent.into(), items.into()));
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn tc_050_reveal_retains_all_siblings_and_opens_directories() {
+        let root = std::env::temp_dir().join("flistwalker-reveal-siblings");
+        fs::create_dir_all(root.join("folder")).unwrap();
+        let files: Vec<_> = ["space 日本語 & [1] #%.txt", "quote' & [2],%.txt"]
+            .iter()
+            .map(|name| root.join(name))
+            .collect();
+        for file in &files {
+            fs::write(file, "x").unwrap();
+        }
+        let backend = SelectionBackend(Mutex::new(Vec::new()));
+        let mut selected = files.clone();
+        selected.push(files[0].clone());
+        selected.push(root.join("folder"));
+        let request =
+            AuthorizedActionRequest::new(801, root.clone(), selected, AuthorizedActionMode::Reveal);
+        let report =
+            execute_authorized_action_request(&request, &TestActionGuard::current(), &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Completed);
+        let parent = root.canonicalize().unwrap();
+        assert_eq!(
+            *backend.0.lock().unwrap(),
+            vec![
+                (
+                    parent.clone(),
+                    files
+                        .iter()
+                        .map(|p| parent.join(p.file_name().unwrap()))
+                        .collect()
+                ),
+                (parent.join("folder"), Vec::new())
+            ]
+        );
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn tc_051_reveal_selects_link_in_its_parent_and_rejects_retarget() {
+        use std::os::unix::fs::symlink;
+        let root = std::env::temp_dir().join("flistwalker-reveal-link");
+        let outside = std::env::temp_dir().join("flistwalker-reveal-link-outside");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("a"), "a").unwrap();
+        fs::write(outside.join("b"), "b").unwrap();
+        let link = root.join("link");
+        let _ = fs::remove_file(&link);
+        symlink(outside.join("a"), &link).unwrap();
+        let batch = authorize_action_targets(&root, std::slice::from_ref(&link), true).unwrap();
+        assert_eq!(
+            batch.targets[0].selection_paths,
+            vec![root.canonicalize().unwrap().join("link")]
+        );
+        fs::remove_file(&link).unwrap();
+        symlink(outside.join("b"), &link).unwrap();
+        assert!(reauthorize_action_target(
+            &batch.canonical_root,
+            &batch.lexical_root,
+            &batch.targets[0]
+        )
+        .is_err());
+        fs::remove_dir_all(root).unwrap();
+        fs::remove_dir_all(outside).unwrap();
+    }
+
+    struct UnavailableSelectionBackend {
+        calls: Mutex<Vec<PathBuf>>,
+        on_reveal: Box<dyn Fn()>,
+    }
+    impl AuthorizedActionBackend for UnavailableSelectionBackend {
+        fn execute_or_open(&self, path: &Path) -> Result<()> {
+            self.calls.lock().unwrap().push(path.into());
+            Ok(())
+        }
+        fn reveal(&self, _path: &Path) -> Result<()> {
+            unreachable!()
+        }
+        fn reveal_items(&self, _parent: &Path, _items: &[PathBuf]) -> Result<()> {
+            (self.on_reveal)();
+            Err(reveal::RevealUnavailable.into())
+        }
+    }
+
+    #[test]
+    fn tc_050_reveal_fallback_rechecks_deleted_items_and_cancellation() {
+        for scenario in ["supported-fallback", "delete", "cancel", "supersede"] {
+            let root = std::env::temp_dir().join(format!("flistwalker-reveal-fallback-{scenario}"));
+            fs::create_dir_all(&root).unwrap();
+            let file = root.join("file.txt");
+            fs::write(&file, "x").unwrap();
+            let cancellation = Arc::new(AtomicBool::new(false));
+            let guard = Arc::new(TestActionGuard::current());
+            let c = cancellation.clone();
+            let g = guard.clone();
+            let f = file.clone();
+            let backend = UnavailableSelectionBackend {
+                calls: Mutex::new(Vec::new()),
+                on_reveal: Box::new(move || match scenario {
+                    "delete" => fs::remove_file(&f).unwrap(),
+                    "cancel" => c.store(true, Ordering::SeqCst),
+                    "supersede" => g.current.store(false, Ordering::SeqCst),
+                    _ => (),
+                }),
+            };
+            let request = AuthorizedActionRequest::new_with_cancellation(
+                802,
+                root.clone(),
+                vec![file],
+                AuthorizedActionMode::Reveal,
+                cancellation,
+            );
+            let report = execute_authorized_action_request(&request, guard.as_ref(), &backend);
+            let expected = match scenario {
+                "delete" => AuthorizedActionOutcome::Blocked,
+                "cancel" => AuthorizedActionOutcome::Canceled,
+                "supersede" => AuthorizedActionOutcome::Superseded,
+                _ => AuthorizedActionOutcome::Completed,
+            };
+            assert_eq!(report.outcome, expected);
+            assert_eq!(
+                backend.calls.lock().unwrap().len(),
+                usize::from(scenario == "supported-fallback")
+            );
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
+
+    #[test]
+    fn tc_050_direct_open_keeps_each_file_and_reveal_missing_blocks_whole_batch() {
+        let root = std::env::temp_dir().join("flistwalker-reveal-direct-unchanged");
+        fs::create_dir_all(&root).unwrap();
+        let a = root.join("a");
+        let b = root.join("b");
+        fs::write(&a, "a").unwrap();
+        fs::write(&b, "b").unwrap();
+        let backend = SelectionBackend(Mutex::new(Vec::new()));
+        let mut request = AuthorizedActionRequest::new(
+            803,
+            root.clone(),
+            vec![a.clone(), b.clone()],
+            AuthorizedActionMode::ExecuteOrOpen,
+        );
+        let report =
+            execute_authorized_action_request(&request, &TestActionGuard::current(), &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Completed);
+        assert_eq!(
+            *backend.0.lock().unwrap(),
+            vec![
+                (a.canonicalize().unwrap(), vec![]),
+                (b.canonicalize().unwrap(), vec![])
+            ]
+        );
+        backend.0.lock().unwrap().clear();
+        fs::remove_file(b).unwrap();
+        request.mode = AuthorizedActionMode::Reveal;
+        let report =
+            execute_authorized_action_request(&request, &TestActionGuard::current(), &backend);
+        assert_eq!(report.outcome, AuthorizedActionOutcome::Blocked);
+        assert!(backend.0.lock().unwrap().is_empty());
+        fs::remove_dir_all(root).unwrap();
     }
 
     struct FailingActionBackend;
