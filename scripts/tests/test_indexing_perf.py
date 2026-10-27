@@ -273,6 +273,17 @@ class ReceiptTests(unittest.TestCase):
             (folders[0]/"measurement.log").write_text(text+"changed",encoding="utf-8",newline="")
             with self.assertRaises(contract.ValidationError):collector.summarize_runs([folders[0]],"f1")
 
+    def test_promotion_policy_identity_and_nonpromotion_traces_fail_closed(self):
+        original = control_log("matched")
+        mutants = [
+            mutate_record(original,"INDEX_PERF_META",lambda r:r.update(promotion_completion_policy="wrong")),
+            mutate_record(original,"INDEX_PERF_SAMPLE",lambda r:r.update(promotion_completion_policy="wrong")),
+            mutate_record(original,"INDEX_PERF_SAMPLE",lambda r:r.update(promotion_completion_trace=[{"phase":"request-B"}])),
+            mutate_record(original,"INDEX_PERF_SAMPLE",lambda r:r.update(promotion_pressure_observations=[{"stage":0}])),
+        ]
+        for mutant in mutants:
+            with self.assertRaises(contract.ValidationError):contract.validate_log(mutant,"matched")
+
     def test_unknown_comparison_input_sequence_and_runtime_override_fail_closed(self):
         text=control_log("matched")
         mutants=[mutate_record(text,"INDEX_PERF_SAMPLE",lambda r:r.update(comparison_kind="unknown")),
@@ -318,7 +329,8 @@ def control_log(group="f1"):
     meta.update(selected_cases=list(contract.GROUPS[group]), selected_sources=["FileList", "Walker"],
                 supported_cells=[{"case":c,"source":s} for c,s in cells], selected_source_cells=len(cells),
                 unsupported_cells=[], coverage_kind="selected-subset", pairs=pairs, expected_rows=2*pairs*len(cells),
-                tabchain_input_policy=contract.FULL_POLICY, stable_edit_input_policy=contract.STABLE_EDIT_INPUT_POLICY)
+                tabchain_input_policy=contract.FULL_POLICY, stable_edit_input_policy=contract.STABLE_EDIT_INPUT_POLICY,
+                promotion_completion_policy=contract.PROMOTION_COMPLETION_POLICY)
     # A Rust unit test checks this witness against actual Default serialization.
     # Only this explicitly synthetic projection is modernized; historical raw
     # measurements keep their original metadata and admission outcome.
@@ -344,6 +356,8 @@ def control_log(group="f1"):
             row.update(timed_fixture_scan_passes=0, fixture_scans_before_t0=1,
                        frame_diagnostics=synthetic_frame_diagnostics(row))
             row["tabchain_input_policy"] = contract.FULL_POLICY
+            row.update(promotion_completion_policy=contract.PROMOTION_COMPLETION_POLICY,
+                       promotion_completion_trace=[],promotion_pressure_observations=[])
             if case == "T1-S2":
                 # Synthetic admission controls: project timings into the preceding
                 # input interval. These are never retained measurement evidence.
@@ -577,3 +591,73 @@ class ObserverContractTests(unittest.TestCase):
         text = mutate_record(text, "INDEX_PERF_SAMPLE",
                              lambda r:r["frame_diagnostics"].update(truncated_frames=0))
         with self.assertRaises(contract.ValidationError):contract.validate_log(text, "f1")
+
+class PromotionCompletionContractTests(unittest.TestCase):
+    def fixture(self):
+        # Deliberately invented clocks/owners; validator controls, not timings.
+        requests = [dict(request_id=n,tab_id=n,expected_root=f"/{n}",started_source="Walker",
+                         terminal_source="Walker",terminal_kind="finished",actual_started_root=f"/{n}",
+                         actual_admitted_root=f"/{n}",request_processing_returned_ms=35,
+                         bookkeeping_released_ms=36,terminal_publish_ms=34,started_ms=n,
+                         data_publish_end_ms=30+n,entries_emitted=100000,allocated_ms=0,admitted_ms=.5,
+                         allocation_observed=True,admitted_root_matches=True,terminal_offered_ms=33,
+                         mailbox_closed=True,latest_generation_required=True,actual_terminal_offer_kind="finished") for n in (1,2)]
+        pressure = [dict(stage=stage,target_tab=n,request_id=n,root=f"/{n}",source="Walker",
+                         owned_Warm_before_switch=True,eligible_uncommitted_Warm_promotion=True,
+                         active_request_id=n,active_committed_request_id=None,pending_activation_tab_id=None,
+                         actual_activated_ms=11+stage*10) for stage,n in enumerate((2,1))]
+        return dict(comparison="T1-promotion",case="T1-promotion",sample_entries=100000,
+                    source="Walker",correct=True,contention_eligible=True,request_id=1,initial_state={"active_tab":1},
+                    actual_index_producer_interval_overlap=True,index_ready_ms=50,results_ready_ms=60,
+                    promotion_completion_policy=contract.PROMOTION_COMPLETION_POLICY,
+                    allocated_request_ids=[1,2],planned_request_ids=[1,2],released_request_ids=[1,2],
+                    index_requests=requests,promotion_pressure_observations=pressure,
+                    input_trace=[dict(stage=stage,requested_tab=n,requested_root=f"/{n}",
+                                      at_ms=10+stage*10,GUI_ingested=(10000,25000)[stage])
+                                 for stage,n in enumerate((2,1))],
+                    promotion_completion_trace=[dict(phase=phase,tab_id=n,request_id=n,kind_epoch=3,
+                                                     at_ms=at,index_allocations=2)
+                        for phase,n,at in [("request-B",2,40),("activated-B",2,41),
+                                           ("request-A",1,45),("activated-A",1,46)]])
+
+    def test_valid_trace_includes_physical_finish_before_gui_commit(self):
+        row=self.fixture()
+        contract.validate_promotion_completion(row)
+        row["index_requests"][0].update(data_publish_end_ms=8,terminal_offered_ms=8.5,terminal_publish_ms=9,
+                                       request_processing_returned_ms=10,bookkeeping_released_ms=10)
+        row["input_trace"][0]["GUI_ingested"]=100000
+        row["input_trace"][1]["GUI_ingested"]=100000
+        contract.validate_promotion_completion(row)
+
+    def test_owner_epoch_late_input_extra_work_and_pressure_substitution_reject(self):
+        mutations=[
+            lambda r:r.update(promotion_completion_policy="old"),
+            lambda r:r["promotion_pressure_observations"][0].update(eligible_uncommitted_Warm_promotion=False),
+            lambda r:r["promotion_pressure_observations"][0].update(active_committed_request_id=2),
+            lambda r:r["promotion_pressure_observations"][0].update(pending_activation_tab_id=2),
+            lambda r:r["promotion_pressure_observations"][0].update(root="/wrong"),
+            lambda r:r["promotion_pressure_observations"][0].update(request_id=1),
+            lambda r:r["promotion_completion_trace"][1].update(kind_epoch=4),
+            lambda r:r["promotion_completion_trace"][1].update(index_allocations=3),
+            lambda r:r["promotion_completion_trace"][0].update(at_ms=32),
+            lambda r:r["index_requests"][0].update(request_processing_returned_ms=42),
+            lambda r:r["index_requests"][0].update(terminal_kind="failed"),
+            lambda r:r["index_requests"][0].update(data_publish_end_ms=1),
+            lambda r:r["index_requests"][0].update(started_ms=10,data_publish_end_ms=5),
+            lambda r:r["index_requests"][0].update(entries_emitted=99999),
+            lambda r:r["index_requests"][0].update(allocation_observed=False),
+            lambda r:r["input_trace"][1].update(at_ms=44),
+            lambda r:r["input_trace"][0].update(GUI_ingested=100001),
+            lambda r:r["promotion_completion_trace"].append(copy.deepcopy(r["promotion_completion_trace"][-1])),
+            lambda r:r.update(index_ready_ms=44),
+            lambda r:r.update(index_ready_ms=float("inf"),results_ready_ms=float("inf")),
+            lambda r:r["initial_state"].update(active_tab=2),
+            lambda r:r["promotion_completion_trace"][1].update(index_allocations=2.0),
+        ]
+        for mutate in mutations:
+            with self.subTest(mutation=mutate):
+                row=self.fixture();mutate(row)
+                with self.assertRaises(contract.ValidationError):contract.validate_promotion_completion(row)
+        encoded=json.dumps(self.fixture()).replace('"index_ready_ms": 50','"index_ready_ms": 1e999').replace('"results_ready_ms": 60','"results_ready_ms": 1e999')
+        with self.assertRaises(contract.ValidationError):
+            contract.validate_promotion_completion(contract.parse_json(encoded))
