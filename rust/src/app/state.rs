@@ -513,7 +513,6 @@ pub struct AppShellState {
 }
 
 pub(super) struct RootBrowserState {
-    pub(super) browse: super::root_browse::BrowseState,
     #[cfg(test)]
     pub(super) browse_dialog_result: Option<Result<Option<PathBuf>, String>>,
     #[cfg(test)]

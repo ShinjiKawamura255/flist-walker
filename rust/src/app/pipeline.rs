@@ -118,7 +118,7 @@ impl FlistWalkerApp {
             .current_row
             .and_then(|row| self.shell.runtime.results.get(row))
             .map(|(path, _)| path.clone());
-        self.restart_current_index_with_mode(super::PendingIndexRefreshMode::PreserveSort);
+        self.request_index_refresh_preserving_sort();
     }
 
     fn request_index_refresh_preserving_sort(&mut self) {
@@ -153,12 +153,6 @@ impl FlistWalkerApp {
     }
 
     fn request_index_refresh_with_mode(&mut self, mode: super::PendingIndexRefreshMode) {
-        if self
-            .current_tab_id()
-            .is_some_and(|tab| !self.shell.indexing.index_start_admitted(tab))
-        {
-            return;
-        }
         debug_assert!(!matches!(
             mode,
             super::PendingIndexRefreshMode::CreateFileListWalker
@@ -208,14 +202,6 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_create_filelist_walker_refresh(&mut self) {
-        if self
-            .current_tab_id()
-            .is_some_and(|tab| !self.shell.indexing.index_start_admitted(tab))
-        {
-            self.shell.features.filelist.workflow.pending_after_index = None;
-            self.set_notice("Indexing paused; Refresh Index to resume before Create File List");
-            return;
-        }
         if self.shell.indexing.pending_finish.is_some() {
             self.shell.indexing.refresh_after_pending_finish =
                 Some(super::PendingIndexRefreshMode::CreateFileListWalker);
@@ -284,9 +270,6 @@ impl FlistWalkerApp {
         let Some(tab_id) = self.shell.tabs.get(tab_index).map(|tab| tab.id) else {
             return;
         };
-        if !self.shell.indexing.index_start_admitted(tab_id) {
-            return;
-        }
         let pending_root = self
             .shell
             .tabs
@@ -414,8 +397,6 @@ impl FlistWalkerApp {
                 if affected_tab_ids.contains(&tab.id)
                     || tab.index_state.pending_index_request_id.is_some()
                 {
-                    indexing.suspend_index_retry(tab.id);
-                    tab.index_state.refresh_after_pending_finish = None;
                     tab.index_state.index_in_progress = false;
                     tab.index_state.build_reclaim_pending = true;
                     tab.index_state.build_reclaim_request_id =
@@ -474,9 +455,6 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn enqueue_index_request(&mut self, req: IndexRequest) {
-        if !self.shell.indexing.index_start_admitted(req.tab_id) {
-            return;
-        }
         self.shell
             .features
             .filelist
@@ -656,9 +634,6 @@ impl FlistWalkerApp {
             let Some(req) = next_request else {
                 break;
             };
-            if !self.shell.indexing.index_start_admitted(req.tab_id) {
-                continue;
-            }
             let req_id = req.request_id;
             let req_tab_id = req.tab_id;
             #[cfg(test)]

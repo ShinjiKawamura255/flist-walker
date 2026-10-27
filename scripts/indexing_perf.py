@@ -32,8 +32,9 @@ REVISION = re.compile(r"[0-9a-f]{40}")
 REQUIRED_SOURCES = {
     "rust/Cargo.toml", "rust/Cargo.lock", "rust/rust-toolchain.toml",
     "rust/src/app/tests/indexing_perf/mod.rs", "rust/src/app/tests/indexing_perf/harness.rs",
+    "rust/src/app/tests/indexing_perf/child_process.rs",
     *{"rust/src/app/tests/indexing_perf/extensions/"+name+".rs"
-      for name in ("runner", "driver", "fixture", "oracle", "cases")},
+      for name in ("mod", "runner", "driver", "fixture", "oracle", "cases", "finished_offer", "supplementary")},
     "scripts/indexing_perf.py", "scripts/indexing_perf_contract.py",
 }
 CONTROLS = {"AGENTS.md", "docs/EXECUTION-PLAN-20261004-roadmap-indexing-perf-rollout.md",
