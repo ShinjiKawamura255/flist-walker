@@ -1,30 +1,6 @@
 use super::{render_dialogs, render_panels, render_theme, FlistWalkerApp, TabAccentColor};
 use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
-use std::borrow::Cow;
-
-pub(super) fn single_line_display_text(text: &str) -> Cow<'_, str> {
-    if !text.contains(['\r', '\n', '\u{85}', '\u{2028}', '\u{2029}']) {
-        return Cow::Borrowed(text);
-    }
-    let mut escaped = String::with_capacity(text.len());
-    for character in text.chars() {
-        match character {
-            '\r' => escaped.push_str("\\r"),
-            '\n' => escaped.push_str("\\n"),
-            '\u{85}' => escaped.push_str("\\u{85}"),
-            '\u{2028}' => escaped.push_str("\\u{2028}"),
-            '\u{2029}' => escaped.push_str("\\u{2029}"),
-            _ => escaped.push(character),
-        }
-    }
-    Cow::Owned(escaped)
-}
-
-pub(super) fn single_line_text_bounds(galley: &egui::Galley) -> egui::Rect {
-    // Platform fonts can draw accents/descenders outside their nominal line box.
-    galley.rect.union(galley.mesh_bounds)
-}
 
 // Render command surface. Render.rs stays focused on drawing and input
 // collection while FlistWalkerApp dispatches the resulting commands.
@@ -37,8 +13,6 @@ pub(super) enum RenderTopActionCommand {
     ClearPinned,
     CreateFileList,
     RefreshIndex,
-    StopIndexing,
-    StopAllIndexing,
     OpenPresetPicker,
     OpenHelp,
 }
@@ -217,35 +191,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn selectable_row(ui: &mut egui::Ui, selected: bool, label: &str) -> egui::Response {
-        let font_id = egui::FontSelection::Default
-            .resolve_with_fallback(ui.style(), egui::TextStyle::Button.into());
-        let line_height = ui.fonts_mut(|fonts| fonts.row_height(&font_id));
-        let padding = ui.spacing().button_padding;
-        // A font-based row height stays stable as rows enter/leave the viewport.
-        // Offscreen labels must not populate the text layout cache.
-        let desired_size = egui::vec2(
-            ui.available_width(),
-            ui.spacing()
-                .interact_size
-                .y
-                .max(line_height + 2.0 * padding.y),
-        );
+        let desired_size = egui::vec2(ui.available_width(), ui.spacing().interact_size.y);
         let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
         if ui.is_rect_visible(rect) {
-            let label = single_line_display_text(label);
-            let galley = egui::WidgetText::from(label.as_ref()).into_galley(
-                ui,
-                Some(egui::TextWrapMode::Extend),
-                f32::INFINITY,
-                egui::TextStyle::Button,
-            );
-            // Center the visible ink, including accents and font-specific offsets,
-            // rather than centering a nominal line box that may exclude them.
-            let bounds = if galley.mesh_bounds.is_positive() {
-                galley.mesh_bounds
-            } else {
-                galley.rect
-            };
             let visuals = ui.style().interact_selectable(&response, selected);
             if selected || response.hovered() || response.has_focus() {
                 ui.painter().rect(
@@ -256,16 +204,13 @@ impl FlistWalkerApp {
                     egui::StrokeKind::Inside,
                 );
             }
-            ui.painter()
-                .with_clip_rect(rect.intersect(ui.clip_rect()))
-                .galley(
-                    egui::pos2(
-                        rect.left() + padding.x - bounds.left(),
-                        rect.center().y - bounds.center().y,
-                    ),
-                    galley,
-                    visuals.text_color(),
-                );
+            ui.painter().with_clip_rect(rect).text(
+                egui::pos2(rect.left() + ui.spacing().button_padding.x, rect.center().y),
+                egui::Align2::LEFT_CENTER,
+                label,
+                egui::TextStyle::Button.resolve(ui.style()),
+                visuals.text_color(),
+            );
         }
         if response.hovered() {
             ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
@@ -433,8 +378,6 @@ impl FlistWalkerApp {
             "Clear Selected",
             create_label,
             "Refresh Index",
-            "Stop Indexing",
-            "Stop All Indexing",
             "Presets...",
             "Help",
         ]
@@ -451,62 +394,9 @@ impl FlistWalkerApp {
                 Some(RenderTopActionCommand::CreateFileList)
             }
             "Refresh Index" => Some(RenderTopActionCommand::RefreshIndex),
-            "Stop Indexing" => Some(RenderTopActionCommand::StopIndexing),
-            "Stop All Indexing" => Some(RenderTopActionCommand::StopAllIndexing),
             "Presets..." => Some(RenderTopActionCommand::OpenPresetPicker),
             "Help" => Some(RenderTopActionCommand::OpenHelp),
             _ => None,
-        }
-    }
-
-    fn tab_has_stoppable_indexing(&self, tab: &super::AppTabState) -> bool {
-        let tab_id = tab.id;
-        if !self.shell.indexing.index_admitted(tab_id) {
-            return false;
-        }
-        let indexing = &self.shell.indexing;
-        if indexing.pending_queue.iter().any(|request| {
-            request.tab_id == tab_id
-                && !indexing
-                    .superseded_request_ids
-                    .contains(&request.request_id)
-        }) || indexing.inflight_requests.iter().any(|request| {
-            indexing.request_tabs.get(request) == Some(&tab_id)
-                && !indexing.superseded_request_ids.contains(request)
-        }) {
-            return true;
-        }
-        // The active tab's saved slot is not its live state.
-        if self.current_tab_id() == Some(tab_id) {
-            self.shell.indexing.in_progress
-                || self.shell.indexing.pending_request_id.is_some()
-                || self.shell.indexing.pending_entries_request_id.is_some()
-                || self.shell.indexing.pending_finish.is_some()
-                || self.shell.indexing.refresh_after_pending_finish.is_some()
-                || self.shell.indexing.root_after_pending_finish.is_some()
-        } else {
-            tab.index_state.index_in_progress
-                || tab.index_state.pending_index_request_id.is_some()
-                || tab.index_state.pending_index_entries_request_id.is_some()
-                || tab.index_state.pending_index_finish.is_some()
-                || tab.index_state.refresh_after_pending_finish.is_some()
-                || tab.index_state.root_after_pending_finish.is_some()
-        }
-    }
-
-    pub(super) fn top_action_enabled(&self, label: &str) -> bool {
-        match label {
-            "Stop Indexing" => self
-                .shell
-                .tabs
-                .get(self.shell.tabs.active_tab_index())
-                .is_some_and(|tab| self.tab_has_stoppable_indexing(tab)),
-            "Stop All Indexing" => self
-                .shell
-                .tabs
-                .iter()
-                .any(|tab| self.tab_has_stoppable_indexing(tab)),
-            _ => true,
         }
     }
 
@@ -536,14 +426,6 @@ impl FlistWalkerApp {
             || self.shell.worker_bus.catalog.in_progress
             || self.shell.worker_bus.config_open.in_progress()
             || self.shell.worker_bus.config_settings.in_progress()
-            || self
-                .shell
-                .features
-                .root_browser
-                .browse
-                .service
-                .as_ref()
-                .is_some_and(|service| service.in_progress())
             || self.paged_preview_view.busy
             || self.settings_commit_in_progress()
             || (self.shell.ui.persistence.saving() && self.shell.ui.persistence.error().is_none())
@@ -716,17 +598,7 @@ impl FlistWalkerApp {
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::RefreshIndex) => {
                     self.shell.tabs.mark_active_tab_meaningfully_engaged();
-                    self.restart_current_index();
-                }
-                RenderCommand::TopAction(RenderTopActionCommand::StopIndexing) => {
-                    if self.top_action_enabled("Stop Indexing") {
-                        self.stop_current_indexing();
-                    }
-                }
-                RenderCommand::TopAction(RenderTopActionCommand::StopAllIndexing) => {
-                    if self.top_action_enabled("Stop All Indexing") {
-                        self.stop_all_indexing();
-                    }
+                    self.request_index_refresh();
                 }
                 RenderCommand::TopAction(RenderTopActionCommand::OpenPresetPicker) => {
                     self.open_preset_picker(ctx);

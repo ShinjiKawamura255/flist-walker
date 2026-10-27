@@ -360,24 +360,3 @@ fn perf_settings_cleanup_reports_removal_failure_and_retains_the_fixture() {
     fs::remove_file(&settings.base).unwrap();
     settings.cleaned = true;
 }
-
-// Drive only folder-picker preparation; completion is a state condition, not a delay.
-pub(crate) fn settle_root_browse(app: &mut FlistWalkerApp) {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
-    while app
-        .shell
-        .features
-        .root_browser
-        .browse
-        .service
-        .as_ref()
-        .is_some_and(|s| s.in_progress())
-    {
-        app.poll_root_browse();
-        assert!(
-            std::time::Instant::now() < deadline,
-            "Browse preparation did not settle"
-        );
-        std::thread::yield_now();
-    }
-}

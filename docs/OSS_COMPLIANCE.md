@@ -195,5 +195,3 @@
 - Review cadence: recheck on each `Cargo.lock` refresh and during every release preflight.
 - Re-evaluation trigger: `wayland-scanner` updates to a `quick-xml >=0.41.0` dependency, `eframe` / `winit` / Wayland stack refresh, or any new runtime exposure.
 - Central configuration: cargo-auditのproject-local探索規則に従う`rust/.cargo/audit.toml` contains only `RUSTSEC-2026-0194` and `RUSTSEC-2026-0195`; the required command is `cd rust && cargo audit`.
-
-- Reveal additionally enables `NSWorkspace` and `NSURL` in the existing macOS objc2 crates. No crate versions or license expressions change; existing MIT and Zlib/Apache-2.0/MIT notices cover these APIs. Windows uses system Shell32/Ole32; Linux invokes the installed `dbus-send` client (not bundled).

@@ -195,7 +195,6 @@ pub(super) struct IndexCoordinator {
     pub(super) perf_search_bindings: Vec<SearchDispatchBinding>,
     pub(super) response_mailboxes: Arc<Mutex<HashMap<u64, Arc<IndexResponseMailbox>>>>,
     pub(super) latest_kind_epochs: Arc<Mutex<HashMap<u64, u64>>>,
-    pub(super) recovery: super::index_recovery::IndexRecoveryState,
     pub(super) pending_queue: VecDeque<IndexRequest>,
     pub(super) inflight_requests: HashSet<u64>,
     pub(super) superseded_request_ids: HashSet<u64>,
@@ -422,7 +421,6 @@ impl IndexCoordinator {
             #[cfg(test)]
             perf_search_bindings: Vec::new(),
             latest_kind_epochs,
-            recovery: super::index_recovery::IndexRecoveryState::default(),
             pending_queue: VecDeque::new(),
             inflight_requests: HashSet::new(),
             superseded_request_ids: HashSet::new(),

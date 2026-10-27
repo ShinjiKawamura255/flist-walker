@@ -48,64 +48,6 @@ fn freshness_new_session_starts_without_acquisition_time() {
     );
 }
 
-#[test]
-fn freshness_initial_indexing_reports_pending_and_started_source_until_commit() {
-    for source in [
-        IndexSource::Walker,
-        IndexSource::FileList(PathBuf::from("fixture/FileList.txt")),
-        IndexSource::FileList(PathBuf::from("fixture/filelist.txt")),
-    ] {
-        let scope = test_settings_scope("freshness-initial-indexing");
-        let mut app = scope.app(test_root("freshness-initial-indexing"), 50, String::new());
-        reset_index_request_state_for_test(&mut app);
-        let (tx, rx) = bounded_request_channel::<IndexRequest>(2);
-        app.shell.indexing.tx = tx;
-        app.request_index_refresh();
-        let request = rx.try_recv().expect("initial request");
-        assert_eq!(app.source_text(), "Source: Detecting… · Indexing…");
-        assert!(app.shell.runtime.freshness.is_none());
-
-        let mailbox = app
-            .shell
-            .indexing
-            .response_mailboxes
-            .lock()
-            .unwrap()
-            .get(&request.request_id)
-            .cloned()
-            .expect("request mailbox");
-        mailbox
-            .try_publish(IndexResponse::Started {
-                request_id: request.request_id,
-                source: source.clone(),
-            })
-            .unwrap();
-        app.poll_index_response();
-        let expected = match &source {
-            IndexSource::Walker => "Source: Walker · Indexing…".to_string(),
-            IndexSource::FileList(path) => format!(
-                "Source: FileList ({}) · Indexing…",
-                path.file_name().unwrap().to_string_lossy()
-            ),
-            IndexSource::None => unreachable!(),
-        };
-        assert_eq!(app.source_text(), expected);
-        assert!(
-            app.shell.runtime.freshness.is_none(),
-            "Started is not a successful acquisition"
-        );
-
-        // Receiving Finished does not commit the snapshot until finalization settles.
-        app.shell.indexing.in_progress = false;
-        app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
-            request_id: request.request_id,
-            source,
-        });
-        assert_eq!(app.source_text(), expected);
-        assert!(app.shell.runtime.freshness.is_none());
-    }
-}
-
 use crate::app::freshness::worker::FreshnessMonitor;
 use crate::app::freshness::{observe_file, FileListChange, FileObservation, SnapshotFreshness};
 use std::sync::atomic::AtomicBool;
