@@ -1,0 +1,40 @@
+{
+  "utc": "2026-10-27T22:37:02.961426+00:00",
+  "reviewer": "contract_repair_review",
+  "prior_involvement": "Independent read-only checkpoints and finding reviews only; no implementation, dispatch, measurement or source edits",
+  "decision": "GO_NUMERICAL_CALIBRATION_ACCEPTANCE_AND_AUTHORIZED_ADOPTION_DRAFT_ONLY",
+  "source": "597a7d4dd48ffca67b9529a3afcec5459c3a9276",
+  "reference": "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645",
+  "archive_sha256": "fcbbc25cccbfae0211075ff03756048dc880e3ab86b31046d4304837731c6263",
+  "archive_manifest_sha256": "6172c120812ed4e2731df98088c9831f7f2d1e5fcd76efd002d6637448667a61",
+  "independent_recount": {
+    "leg_rows": 8190,
+    "observations": 680,
+    "mandatory_medians": 340,
+    "MAX_diagnostics": 340,
+    "unique_UUIDs": 45,
+    "whole_original_attempt1_sessions": 5,
+    "normal_actual_source_CLI_groups": 15,
+    "worst_median_ratio": 1.0893616122746574,
+    "worst_reference_median_drift": 1.1758614789597952
+  },
+  "original_budget_seconds": 21600,
+  "including_interruptions_seconds": 14676.844927,
+  "findings": [],
+  "verified": [
+    "all5attempt1 whole/raw/source/physical/resource admitted",
+    "first3freeze then2heldouts, exact final5inventory",
+    "originalSHA/source/policy/all5UUID/caps preserved",
+    "post-outcome wrapper provenance explicit, duplicate restoration not new samples",
+    "all727archive members SHA/canonical and all5workflowZIP CRC/SHA",
+    "oldFAIL identities preserved, childexitcode unobserved not claimed0"
+  ],
+  "not_admitted": [
+    "adoption exact-source native/required CI",
+    "actual-current-product RCR",
+    "adoption merge",
+    "carrier merge",
+    "release/tag",
+    "process startup/IPC/supervision or whole-product/p95 guarantees"
+  ]
+}
