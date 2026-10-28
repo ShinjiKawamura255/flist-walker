@@ -103,6 +103,33 @@ pub(crate) fn write_bytes_atomic_with_metadata(
     write_bytes_atomic_inner(path, bytes, metadata, |_| Ok(()), sync_directory)
 }
 
+pub(crate) fn write_bytes_atomic_with_metadata_observed<B>(
+    path: &Path,
+    bytes: &[u8],
+    metadata: AtomicWriteMetadata,
+    before_replace: B,
+) -> std::io::Result<()>
+where
+    B: FnMut(&Path) -> std::io::Result<()>,
+{
+    write_bytes_atomic_inner(path, bytes, metadata, before_replace, sync_directory)
+}
+
+#[cfg(test)]
+pub(crate) fn write_bytes_atomic_observed_with_sync_for_test<B, S>(
+    path: &Path,
+    bytes: &[u8],
+    metadata: AtomicWriteMetadata,
+    before_replace: B,
+    sync_directory: S,
+) -> std::io::Result<()>
+where
+    B: FnMut(&Path) -> std::io::Result<()>,
+    S: FnMut(&Path) -> std::io::Result<()>,
+{
+    write_bytes_atomic_inner(path, bytes, metadata, before_replace, sync_directory)
+}
+
 #[cfg(test)]
 pub(crate) fn write_bytes_atomic_with_sync_for_test<S>(
     path: &Path,
@@ -153,8 +180,10 @@ where
             file.set_times(times)?;
         }
         file.sync_all()?;
-        before_replace(&tmp)?;
+        // In particular on Windows, write timestamps are only guaranteed
+        // final after the writing handle closes. Observe the closed object.
         drop(file);
+        before_replace(&tmp)?;
         replace_file(&tmp, path)?;
         for directory in &directory_sync_targets {
             sync_directory(directory).map_err(post_replace_sync_error)?;
@@ -339,6 +368,40 @@ mod tests {
         assert_eq!(fs::read_to_string(&path).expect("read destination"), "old");
         assert_eq!(fs::read_dir(&root).expect("read root").count(), 1);
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn atomic_write_observer_sees_closed_prepared_file_before_rename() {
+        let root = test_root("closed-prepared-observer");
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("state.json");
+        fs::write(&path, b"old").unwrap();
+        let observed_modified = RefCell::new(None);
+        write_bytes_atomic_with_metadata_observed(
+            &path,
+            b"new",
+            AtomicWriteMetadata::default(),
+            |tmp| {
+                assert_eq!(fs::read(&path)?, b"old", "observer still precedes rename");
+                #[cfg(windows)]
+                {
+                    use std::os::windows::fs::OpenOptionsExt;
+                    // This fails if the primitive still owns its writing handle.
+                    let exclusive = OpenOptions::new().read(true).share_mode(0).open(tmp)?;
+                    assert_eq!(exclusive.metadata()?.len(), 3);
+                    drop(exclusive);
+                }
+                *observed_modified.borrow_mut() = Some(fs::metadata(tmp)?.modified()?);
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert_eq!(fs::read(&path).unwrap(), b"new");
+        assert_eq!(
+            fs::metadata(&path).unwrap().modified().unwrap(),
+            observed_modified.borrow().unwrap()
+        );
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]
