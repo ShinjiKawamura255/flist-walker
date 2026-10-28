@@ -381,3 +381,140 @@ pub(crate) fn settle_root_browse(app: &mut FlistWalkerApp) {
         std::thread::yield_now();
     }
 }
+
+// Diagnostic-only causal controls, never a reproduction or acceptance of a
+// historical Windows deadline failure. No indexing input lives under settings.
+#[test]
+fn causal_control_writer_separate_fixture_cleanup() {
+    use crate::persistence::{
+        enqueue_ui_state_patch, finish_ui_state_persistence_for_test, flush_ui_state_persistence,
+        ui_state_persistence_status, UiStatePatch, WriteGate,
+    };
+    use std::time::Duration;
+    let mut a = TestSettingsScope::new("causal-same-name").with_strict_cleanup();
+    let mut b = TestSettingsScope::new("causal-same-name").with_strict_cleanup();
+    let a_path = FlistWalkerApp::ui_state_file_path_in(&a.base);
+    let b_path = FlistWalkerApp::ui_state_file_path_in(&b.base);
+    // a was declared before its gate, so unwind releases the gate before the
+    // strict owner destructor attempts a bounded physical join.
+    let gate = WriteGate::new(a_path.clone());
+    let a_generation =
+        enqueue_ui_state_patch(a_path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    gate.wait_entered();
+    let a_before = ui_state_persistence_status(&a_path);
+    let b_generation =
+        enqueue_ui_state_patch(b_path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    let b_flush = flush_ui_state_persistence(&b_path, Duration::from_secs(2));
+    let b_status = ui_state_persistence_status(&b_path);
+    let b_file = b_path.is_file();
+    let b_cleanup = b.cleanup(Duration::from_secs(2));
+    let a_after = ui_state_persistence_status(&a_path);
+    let a_still_owned = finish_ui_state_persistence_for_test(&a_path, Duration::from_millis(1));
+    let a_root_retained = a.base.is_dir();
+    gate.release();
+    // An absent owner is never physical-return proof: keep A's evidence in
+    // that unexpected branch instead of asking a no-owner cleanup to delete it.
+    let a_cleanup = if a_still_owned.is_err() {
+        a.cleanup(Duration::from_secs(2))
+    } else {
+        a.cleaned = true;
+        Err("held A writer lost its registered ownership; root retained".into())
+    };
+    assert_ne!(a_path, b_path);
+    b_flush.unwrap();
+    assert_eq!(b_status.accepted_generation, b_generation);
+    assert_eq!(b_status.persisted_generation, b_generation);
+    assert!(b_file);
+    b_cleanup.unwrap();
+    assert_eq!(a_before.accepted_generation, a_generation);
+    assert_eq!(a_before.persisted_generation, 0);
+    assert_eq!(a_after, a_before);
+    assert_eq!(
+        a_still_owned.unwrap_err(),
+        "test settings writer did not physically stop before deadline"
+    );
+    assert!(a_root_retained);
+    a_cleanup.unwrap();
+    assert!(!a.base.exists() && !b.base.exists());
+    eprintln!("CAUSAL_WRITER_SEPARATE_SCOPES accepted_A={a_generation} saved_B={b_generation} A_retained_then_physically_joined=true");
+}
+
+#[test]
+fn causal_control_writer_fixture_lifetime_counterfactual() {
+    use crate::persistence::finish_ui_state_persistence_for_test;
+    use std::time::Duration;
+    let input = test_root("causal-lifetime-input");
+    fs::create_dir_all(&input).unwrap();
+    let mut correct = TestSettingsScope::new("causal-lifetime-correct").with_strict_cleanup();
+    let correct_path = FlistWalkerApp::ui_state_file_path_in(&correct.base);
+    let app = correct.app(input.clone(), 1000, String::new());
+    drop(app);
+    let correct_join = finish_ui_state_persistence_for_test(&correct_path, Duration::from_secs(2));
+    let correct_file = correct_join.is_ok() && correct_path.is_file();
+    let correct_saved: Option<serde_json::Value> = correct_join
+        .as_ref()
+        .ok()
+        .and_then(|_| fs::read(&correct_path).ok())
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok());
+    let saved_root = correct_saved
+        .as_ref()
+        .and_then(|value| value["last_root"].as_str())
+        .and_then(|path| fs::canonicalize(path).ok());
+    let expected_root = fs::canonicalize(&input).ok();
+    let correct_cleanup = if correct_join.is_ok() {
+        correct.cleanup(Duration::from_secs(2))
+    } else {
+        correct.cleaned = true; // preserve first failure and unconfirmed root
+        Err("correct lifecycle writer not physically confirmed".into())
+    };
+    let correct_removed = !correct.base.exists();
+    correct_join.unwrap();
+    correct_cleanup.unwrap();
+    assert!(
+        correct_removed && correct_file && expected_root.is_some() && saved_root == expected_root,
+        "normal lifecycle requires a real autosave with the expected root, then physical join and cleanup"
+    );
+
+    let mut premature = TestSettingsScope::new("causal-lifetime-premature").with_strict_cleanup();
+    let path = FlistWalkerApp::ui_state_file_path_in(&premature.base);
+    // Standby ownership precedes App construction; unwind drops App first.
+    // It becomes active only after the deliberately premature owner finished.
+    let mut final_owner = TestSettingsScope {
+        base: premature.base.clone(),
+        strict_cleanup: true,
+        cleaned: true,
+        auxiliary_writer_path: None,
+    };
+    let app = premature.app(input.clone(), 1000, String::new());
+    let premature_cleanup = premature.cleanup(Duration::from_secs(2));
+    let removed_before_app = !premature.base.exists();
+    if premature_cleanup.is_ok() {
+        final_owner.cleaned = false;
+    }
+    drop(app); // forced autosave after the deliberate unsupported cleanup
+    let last_join = finish_ui_state_persistence_for_test(&path, Duration::from_secs(2));
+    let recreated_after_app = premature.base.is_dir() && path.is_file();
+    let final_cleanup = if last_join.is_ok() {
+        if premature_cleanup.is_ok() {
+            final_owner.cleanup(Duration::from_secs(2))
+        } else {
+            premature.cleanup(Duration::from_secs(2))
+        }
+    } else {
+        final_owner.cleaned = true;
+        premature.cleaned = true;
+        Err("counterfactual writer not physically confirmed; root retained".into())
+    };
+    // This input root was never an early-cleanup target and stayed live through
+    // both App drops. No setting-writer evidence is deleted on an unconfirmed join.
+    let input_retained = input.is_dir();
+    if last_join.is_ok() {
+        fs::remove_dir_all(&input).unwrap();
+    }
+    premature_cleanup.unwrap();
+    last_join.unwrap();
+    final_cleanup.unwrap();
+    assert!(correct_removed && removed_before_app && recreated_after_app && input_retained);
+    assert!(!premature.base.exists());
+    eprintln!("CAUSAL_WRITER_LIFETIME correct_order_removed=true premature_scope_then_App_recreated=true final_physical_join=true; unsupported_counterfactual_not_natural_reproduction");
+}
