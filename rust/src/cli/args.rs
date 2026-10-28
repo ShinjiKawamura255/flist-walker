@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 use crate::actions::AuthorizedActionMode;
 use crate::command_exec::CommandTemplate;
 use crate::search::SearchSortMode as RuntimeSortMode;
+use crate::search_catalog::validate_catalog_name;
 
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 pub(super) enum CliEntryType {
@@ -540,6 +541,17 @@ fn validate_catalog_args(args: &Args) -> std::result::Result<(), String> {
     if args.preset.is_some() && management_count > 0 {
         return Err("--preset cannot be combined with catalog management options".to_string());
     }
+    for (option, name) in [
+        ("--named-root", args.named_root.as_deref()),
+        ("--preset", args.preset.as_deref()),
+        ("--save-preset", args.save_preset.as_deref()),
+        ("--remove-preset", args.remove_preset.as_deref()),
+        ("--remove-named-root", args.remove_named_root.as_deref()),
+    ] {
+        if let Some(name) = name {
+            validate_catalog_name(name).map_err(|error| format!("{option}: {error}"))?;
+        }
+    }
     if let Some(spec) = args.add_named_root.as_deref() {
         let Some((name, path)) = spec.split_once('=') else {
             return Err("--add-named-root requires NAME=PATH".to_string());
@@ -547,6 +559,7 @@ fn validate_catalog_args(args: &Args) -> std::result::Result<(), String> {
         if name.trim().is_empty() || path.trim().is_empty() {
             return Err("--add-named-root requires non-empty NAME and PATH".to_string());
         }
+        validate_catalog_name(name).map_err(|error| format!("--add-named-root: {error}"))?;
     }
     if management_count > 0 && args.interactive {
         return Err("catalog management options cannot be combined with --interactive".to_string());
