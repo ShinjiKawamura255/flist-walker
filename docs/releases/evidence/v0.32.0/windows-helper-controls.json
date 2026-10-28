@@ -1,0 +1,10 @@
+{
+  "result": "PASS_FIVE_MOCKED_REGRESSIONS_ONLY",
+  "returncode": 0,
+  "script_sha256": "e2c935351da123537cc057c241a88b11e70624b5bfb7ebea9bcb67c9efa904b6",
+  "tests_sha256": "fc51b839d324197b565ccc936376d761ee89ffb6b14dec349c9ba5da51a2f696",
+  "log_sha256": "3b27e4eda29f9f8693067e7be6836d20cbe9eb7b876166f0ed47fb4aa405f5ae",
+  "controls": "timeoutpartialoutput retained; synthetic60timings preserved; unchanged0.70 fails; firstbadoutput retained; overwrite refused; nonWindows refused",
+  "Windows_actual_TC193": "NOT RUN",
+  "candidate_binaries_executed": 0
+}

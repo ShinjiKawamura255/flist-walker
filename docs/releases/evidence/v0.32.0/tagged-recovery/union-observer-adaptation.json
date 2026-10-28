@@ -1,0 +1,24 @@
+{
+  "utc": "2026-10-28T16:14:15.803200+00:00",
+  "reason": "Actualglobal latestmetadata includes4carryclones butactualrawattempt2archiveonly7newjobs88members/6checkouts; do not claimcarriedlogsarefresh",
+  "raw_attempt1": {
+    "bytes": 331239,
+    "members": 42,
+    "sha256": "1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638"
+  },
+  "raw_attempt2": {
+    "bytes": 313347,
+    "members": 88,
+    "sha256": "ca888c5192159002376b1af26afb45e2217918608c73301aab2438a9abf01ad8"
+  },
+  "change": "rawZIPs untouched; separate derivedunionzip alloriginalmemberbytes+permemberattempt/job/rawsha; unauthorizedrole/duplicatepath/alteredraw/checkoutmismatch rejected; current11jobmetadata4carry7new unchanged; inspect130members/10checkouts usingexplicitunion",
+  "source_run_attempt_filters": "unchangedrun40712264203/source77/tag32/authorizedattempt2only; noCI/source/threshold/oracle/permission changes",
+  "frozen_observers": {
+    "reconcile_tagged_recovery.py": "d57d1a87d7b33d2d4d39e43179db6a1fc213b8eb48c5e02ea7204fe404b90e57",
+    "review_recovery_release_run.py": "b799464537a8d987d8965827e69cd4fef3c4968f0ad81a7ea1556057423ed870",
+    "test_recovery_job_identity.py": "7d3b5e460e98fdd0096acd7cd359a050b172f23ef3bb3e1f0714a78f81b43b4f"
+  },
+  "controls": "12syntheticPASS including4union tests; observer-union-controls-first.log; initial6/remediated8 retained",
+  "actual_operator_reconciliation": "PASS_EXPLICIT_ATTEMPT1_CARRY_AND_ATTEMPT2_NEW_JOB_UNION; rawsourcebyteprovenancepresent",
+  "independent_admission": "PENDING focusedunionreview beforefreshartifactacquisition"
+}

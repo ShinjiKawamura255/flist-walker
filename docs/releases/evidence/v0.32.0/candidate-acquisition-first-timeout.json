@@ -1,0 +1,47 @@
+{
+  "utc": "2026-10-28T14:01:03.324869+00:00",
+  "status": "ACQUISITION_TRANSPORT_TIMEOUT_NOT_CI_OR_NUMERIC_GATE_FAILURE",
+  "run": 40696126066,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "action": "read-only gh api artifact12820479504/zip",
+  "error": "subprocess.TimeoutExpired after180seconds",
+  "outcome": "read attempted/partial transfer; final completebytes not saved; no local finalinventory/signature/N1decision exists; fourotheroriginals retained+rechecked",
+  "partial_final_bytes": "not retained by inherited check_output exception path; limitationexplicit",
+  "saved_originals": [
+    {
+      "id": 12820861011,
+      "name": "release-linux-x86_64",
+      "size_in_bytes": 20126336,
+      "digest": "sha256:44a9ceb544e1410c3e0a6c9b28f6b9c602bda6a91dfe65a661351defd5b95a90"
+    },
+    {
+      "id": 12820811722,
+      "name": "release-windows-x86_64",
+      "size_in_bytes": 18272951,
+      "digest": "sha256:c1a7738a75b0ab38e512b632287e4813b701ca74ff5e969c1b11343eadb08fd1"
+    },
+    {
+      "id": 12820418729,
+      "name": "release-macos-x86_64",
+      "size_in_bytes": 25373526,
+      "digest": "sha256:72a61472e01123379b9dd520c231bf2dda958c106bbb8eceb978751340a57736"
+    },
+    {
+      "id": 12820268383,
+      "name": "release-macos-arm64",
+      "size_in_bytes": 23076869,
+      "digest": "sha256:1e381be244f9561d4e5d10ca4920349011340d828125d000e49f6dfdb7211b36"
+    }
+  ],
+  "missing_complete_input": [
+    {
+      "id": 12820479504,
+      "name": "validated-release-bundle-v0.32.0-77e36c4eef21b5047747d04b3983835a50d92f06",
+      "size_in_bytes": 86848960,
+      "digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6"
+    }
+  ],
+  "candidate_workflow": "SUCCESS unchanged, no redispatch/rerun",
+  "next_proposed": "one immutablefinal artifactREAD only withstream-to-owned-file and600stransportcap; fouroriginalsnotredownloaded; fullall5byteverification samefrozenIDs/source/digests afterward; this doesnotchangeTC193 deadline/conditions; independentreviewpending"
+}

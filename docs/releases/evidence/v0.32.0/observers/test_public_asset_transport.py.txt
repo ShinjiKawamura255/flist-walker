@@ -1,0 +1,83 @@
+"""Synthetic public-read transport controls: no credential or network access."""
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+from unittest.mock import Mock, patch
+
+SOURCE = Path(__file__).with_name('download_public_release_v0320.py')
+SPEC = importlib.util.spec_from_file_location('public_download', SOURCE)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+
+
+class PublicTransport(unittest.TestCase):
+    def run_case(self, data=b'payload', code=0, timeout=False):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        directory = Path(temporary.name)
+        asset = dict(id=100, name='asset.exe', size=7,
+                     digest='sha256:' + hashlib.sha256(b'payload').hexdigest(),
+                     browser_download_url='https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/asset.exe')
+        child = Mock(pid=123)
+        child.wait.side_effect = [subprocess.TimeoutExpired('curl', 630), 0] if timeout else [code]
+        def start(command, **kwargs):
+            kwargs['stdout'].write(data)
+            return child
+        with patch.object(subprocess, 'Popen', side_effect=start) as creation:
+            try:
+                result = MODULE.receive(asset, directory)
+                error = None
+            except Exception as exc:
+                result, error = None, exc
+        return directory, asset, child, creation, result, error
+
+    def test_fixed_public_read_has_no_auth_and_disables_curlrc(self):
+        _, _, _, creation, result, error = self.run_case()
+        self.assertIsNone(error)
+        self.assertEqual(result['status'], 'PASS_TRANSPORT_AND_API_DIGEST')
+        command = creation.call_args.args[0]
+        self.assertEqual(command[:2], ['curl', '--disable'])
+        self.assertIn('--fail', command)
+        self.assertIn('=https', command)
+        self.assertFalse(any(x in command for x in ['--retry', '--user', '--netrc', '--cookie', '--header']))
+        creation.assert_called_once()
+
+    def test_corrupt_bytes_are_retained_not_admitted(self):
+        directory, _, _, creation, _, error = self.run_case(data=b'partial')
+        self.assertIsInstance(error, RuntimeError)
+        self.assertEqual((directory / 'asset.exe').read_bytes(), b'partial')
+        self.assertEqual(json.loads((directory / 'asset.exe.transport.json').read_text())['status'], 'FAIL')
+        creation.assert_called_once()
+
+    def test_transport_exit_failure_even_with_matching_content(self):
+        directory, _, _, _, _, error = self.run_case(code=22)
+        self.assertIsInstance(error, RuntimeError)
+        self.assertEqual(json.loads((directory / 'asset.exe.transport.json').read_text())['exit_code'], 22)
+
+    def test_timeout_retains_original_partial_and_kills_only_child(self):
+        directory, _, child, creation, _, error = self.run_case(data=b'part', timeout=True)
+        self.assertIsInstance(error, TimeoutError)
+        self.assertEqual((directory / 'asset.exe').read_bytes(), b'part')
+        child.kill.assert_called_once()
+        self.assertEqual(child.wait.call_count, 2)
+        creation.assert_called_once()
+
+    def test_duplicate_has_no_second_read(self):
+        directory, asset, _, _, _, _ = self.run_case()
+        with patch.object(subprocess, 'Popen') as creation:
+            with self.assertRaisesRegex(RuntimeError, 'duplicate'):
+                MODULE.receive(asset, directory)
+        creation.assert_not_called()
+
+    def test_optimization_refused_before_inputs(self):
+        run = subprocess.run(['python3', '-O', str(SOURCE)], capture_output=True)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn(b'optimization is forbidden', run.stderr)
+
+
+if __name__ == '__main__':
+    unittest.main()

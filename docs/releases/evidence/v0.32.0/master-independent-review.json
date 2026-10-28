@@ -1,0 +1,14 @@
+{
+  "utc": "2026-10-28T13:19:47.414970+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "GO_FIRST_MERGED_MASTER_CI",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "run": 40691274200,
+  "attempt": 1,
+  "findings_master_CI": [],
+  "warning": "minor onlynormalmasterrun; nofuture releaseexception",
+  "originals": "112members/9checkouts/all4axes/TC229/index/GNU/audit verified",
+  "candidate_dispatch": "HOLD until separatefetchobservermajor/minorsclosed",
+  "GitHubApprove": false
+}

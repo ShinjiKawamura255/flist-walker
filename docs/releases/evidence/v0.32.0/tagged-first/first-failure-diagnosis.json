@@ -1,0 +1,88 @@
+{
+  "utc": "2026-10-28T15:24:39.624699+00:00",
+  "status": "DIAGNOSED_FIRST_TAGGED_INFRA_FAILURE_PUBLICATION_HOLD",
+  "run": 40712264203,
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "tag": "v0.32.0",
+  "tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "run_conclusion": "failure",
+  "macos_job": {
+    "id": 122900573976,
+    "conclusion": "cancelled",
+    "runner_name": "",
+    "steps": [],
+    "start": "2026-10-28T15:04:54Z",
+    "completed": "2026-10-28T15:19:56Z",
+    "annotation_failure": "The job was not acquired by Runner of type hosted even after multiple attempts",
+    "capacity_notices": 3,
+    "native_tests_clippy": "NOT RUN no runner/checkout/setup/commands"
+  },
+  "classification": "externalhosted runnerallocation failure beforeproductexecution; exactbackendrootcause/transience notproven",
+  "product_test_failure_observed": false,
+  "unaffected_first_attempt_evidence": {
+    "linux-native": {
+      "tests": "PASS",
+      "passed": 1694,
+      "failed": 0,
+      "ignored": 20,
+      "lockedClippy": "PASS",
+      "TC229": "PASS once",
+      "raw_aggregate_sha256": "fe9795842c4f3627ac8da42093622200b494dab8cb14c3241d4503e540fbd51e"
+    },
+    "windows-native": {
+      "tests": "PASS",
+      "passed": 1712,
+      "failed": 0,
+      "ignored": 21,
+      "lockedClippy": "PASS",
+      "TC229": "PASS once",
+      "raw_aggregate_sha256": "b1ca756661f5aadc30737f48a2463a091ad1fed7e0504816e2b1b962cd6807cd"
+    }
+  },
+  "cargo_audit": "PASS exactsource77",
+  "actual_checkouts": 4,
+  "actual_checkout_source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "logs": {
+    "zip_bytes": 331239,
+    "zip_sha256": "1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638",
+    "members": 42,
+    "all_member_hashes_crc": "PASS"
+  },
+  "assets": 0,
+  "builds_assembly_draft": "SKIPPED; no newlygenerated distribution/manifest/signature/realN1 evidence",
+  "public_state": {
+    "utc": "2026-10-28T15:22:51.005439+00:00",
+    "status": "STOP_FIRST_REQUIRED_TAGGED_RUN_FAILURE",
+    "master": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "annotated_tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+    "tag_target": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "v0320_release": "ABSENT_NO_DRAFT",
+    "latest_public": "v0.31.1",
+    "latest_release_id": 424455243,
+    "reruns": 0,
+    "tag_deletion_or_overwrite": false,
+    "public_assets_uploaded": 0,
+    "closure_PR_created": false
+  },
+  "candidate_Windows_TC193": "retained firstcandidatePASS 0.39935620927732224; cannot replace missingtaggedmac/assetgates",
+  "old219_220": "UNKNOWN unchanged; no causefixclaim",
+  "executed_retries": 0,
+  "new_keys_credentials_settings": false,
+  "recovery_option_NOT_AUTHORIZED_OR_EXECUTED": {
+    "purpose": "first actualmacOSexecution plusfirst dependentbuilds afterknownhostedallocationfailure; notproducttestretryuntilpass",
+    "target_run": 40712264203,
+    "target_job_databaseId": 122900573976,
+    "expected_next_attempt": 2,
+    "max_targeted_reruns": 1,
+    "interface": "specific job and dependent jobs only: POST repos/ShinjiKawamura255/flist-walker/actions/jobs/122900573976/rerun ; CLI equivalent gh run rerun 40712264203 --job 122900573976 --repo ShinjiKawamura255/flist-walker",
+    "official_doc": "https://docs.github.com/en/rest/actions/workflow-runs#re-run-a-job-from-a-workflow-run",
+    "source_tag_workflow_commands_timeouts_thresholds_keys": "unchanged; originaltagobjectac6/source77; no tagdelete/recreate/overwrite",
+    "unaffected_evidence_reuse": "attempt1 LinuxWindowsAuditContext remainexactoriginalidentities; attempt2notclaimallrerun; explicitunion/provenance reconciliation required",
+    "new_evidence": "newjobattempt IDs/actualcheckouts +fresh5artifacts/28assets/signature/actualN1/fullwarnings/draftbinding/independentpublicationGO/readbackclosure",
+    "stop": "anynewFAIL/runnerfailure/sourceorpreviouschanged/signaturedigestN1warningunknown; no secondrecoveryrerun",
+    "authority": "repoCI_OPERATIONS allowsdocumentedexternaltransientrecovery, butlatestuserspecifiedstoponrequiredFAIL governs; additionalhumandecision required beforeexecution"
+  }
+}

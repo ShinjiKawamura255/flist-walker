@@ -1,0 +1,133 @@
+{
+  "status": "TECHNICAL_PASS_PENDING_INDEPENDENT_REVIEW",
+  "run": 40687822996,
+  "attempt": 1,
+  "source": "7dcf6565359f86ecfe4262516990be750f611604",
+  "event": "pull_request",
+  "actual_checkout": "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d",
+  "actual_tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "actual_checkout_count": 9,
+  "jobs": [
+    {
+      "id": 122814641066,
+      "name": "Detect Changes",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814641335,
+      "name": "CI Policy",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772237,
+      "name": "Cargo Audit",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772269,
+      "name": "Rust Test and Build (windows-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772331,
+      "name": "Windows GNU Updater Build",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772348,
+      "name": "Clippy and Coverage",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772361,
+      "name": "Rust Test and Build (linux-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 122814772480,
+      "name": "Rust Test and Build (macos-native)",
+      "conclusion": "success"
+    },
+    {
+      "id": 122816729470,
+      "name": "Windows GNU Updater E2E",
+      "conclusion": "success"
+    },
+    {
+      "id": 122822905901,
+      "name": "CI Gate",
+      "conclusion": "success"
+    }
+  ],
+  "library_suites": {
+    "linux-native": {
+      "passed": 1694,
+      "failed": 0,
+      "ignored": 20,
+      "normal_TC229": "PASS once exactleaf",
+      "ordinary_index_process_passed": 6,
+      "aggregate_sha256": "1844caab1e13db8aa32dcdf4a87491c86c282be5b5bd9bfb20cd88a7e95f9e89"
+    },
+    "macos-native": {
+      "passed": 1685,
+      "failed": 0,
+      "ignored": 20,
+      "normal_TC229": "PASS once exactleaf",
+      "ordinary_index_process_passed": 5,
+      "aggregate_sha256": "7e38f90072a85deb1dbabfee2bad48f46154b2174cb13448828340d114479fd3"
+    },
+    "windows-native": {
+      "passed": 1712,
+      "failed": 0,
+      "ignored": 21,
+      "normal_TC229": "PASS once exactleaf",
+      "ordinary_index_process_passed": 5,
+      "aggregate_sha256": "7f9abf26bbbd37099f45c994f34ef5d6956e5b811eee36583b531360b57e86f8"
+    },
+    "Clippy and Coverage": {
+      "passed": 1694,
+      "failed": 0,
+      "ignored": 20,
+      "normal_TC229": "PASS once exactleaf",
+      "ordinary_index_process_passed": 6,
+      "aggregate_sha256": "cfbccda5a27bb6deea5347e7e9fe1e041db696fb4a51919b055a23bbde65a85b"
+    }
+  },
+  "GNU_E2E": {
+    "Universal": "PASS ordinary SameVersion",
+    "Fw": "PASS ordinary SameVersion",
+    "aggregate_sha256": "754433260467fbf0068f0dd39b39061e98ceefebab965fd2a486342caa986b74"
+  },
+  "audit": "PASS actual fresh job",
+  "actual_warning_count": 1,
+  "warnings": [
+    {
+      "file": "1_Windows GNU Updater E2E.txt",
+      "line": 396,
+      "text": "2026-10-28T12:31:27.9252018Z (node:3532) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": true
+    }
+  ],
+  "annotations": [
+    {
+      "job": "Rust Test and Build (macos-native)",
+      "check_run": "122814772480",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/7dcf6565359f86ecfe4262516990be750f611604/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    }
+  ],
+  "raw_archive_sha256": "3303c99a3a0be8b433c2ad70926a041adbe5028831c37c4ce192a9e8a421585d",
+  "product_warnings": 0,
+  "tag_release_candidate_Windows_TC193": "NOT RUN in this CI",
+  "old219220": "UNKNOWN retained; current success is not causal repair"
+}

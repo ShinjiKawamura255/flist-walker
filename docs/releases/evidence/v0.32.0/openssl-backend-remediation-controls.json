@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "observer_sha256": "2f9cf751c4fa45d6306959ee06f76884e49c494ccbee5216cd3159ac22bc1038",
+  "cases": [
+    "actual predecessor positive PASS",
+    "message onebit exact crypto rejection PASS",
+    "signature onebit exact crypto rejection PASS",
+    "wrong key exact crypto rejection PASS",
+    "missing-key exit1 classified operational PASS",
+    "invalid-key exit1 classified operational PASS",
+    "missing-message exit1 classified operational PASS",
+    "missing-signature exit1 classified operational PASS",
+    "invalid-provider exit1 classified operational PASS",
+    "synthetic operational/unclassified 1 rejected PASS",
+    "synthetic operational/unclassified 0 rejected PASS",
+    "synthetic operational/unclassified 2 rejected PASS"
+  ],
+  "candidate": "NOT GENERATED / NOT VERIFIED",
+  "tools_installed": 0,
+  "private_keys": 0
+}

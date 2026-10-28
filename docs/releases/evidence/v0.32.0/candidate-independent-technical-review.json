@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-28T14:27:56.897770+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "ACCEPT_CANDIDATE_TECHNICAL_EVIDENCE_GO_FIRST_WINDOWS_SESSION_AFTER_METHOD_CONFIRMED",
+  "findings": [],
+  "run": 40696126066,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "raw_log_members": 122,
+  "raw_logs_sha256": "33825ee8f69f38646acb16927ee16584502e3c6b4aa60d014b7dd38f204de4e5",
+  "actual_checkouts": 10,
+  "independently_checked": "all122rawmemberSHA/CRC;10actualcheckouts;3nativecounts/TC229/Clippy/audit/4build;5artifactAPIhash/size/CRC;28files/26producer-finalbytes/6archives/8binaries;signature+controls+actualN1records;packet/helper/binding hashes",
+  "warning": "oneactual/twoexports DEP0005 limitedminorclassification technicallyvalid; notformalpublicationGO/futuretaggedexception",
+  "Windows_transfer": "18MBsameproducerpairplusfinalsignedmanifest/signature validbyall26producer-finalbyteequality; recipientmustcheckallhashes/CRC",
+  "remaining": [
+    "explicitnewtaskrequestoridentifiedexistingtaskauthorization",
+    "formalLOSGATOSroute/loadcheck",
+    "fixedUUID TC193onebatch+raw/cleanup",
+    "finalallgates/pretagreview",
+    "separatefirsttaggedrun/newartifacts/warnings/review",
+    "publishreadback",
+    "closurePR"
+  ],
+  "actual_Windows_TC193": "NOT RUN",
+  "tag_release_GO": false,
+  "initial_transfer_timeout": "retained; initialpartialbytesunavailable; onereadonlyrecovery sameimmutableinput notCI/measurementretry"
+}

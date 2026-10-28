@@ -1,0 +1,26 @@
+{
+  "result": "PASS",
+  "script_sha256": "379a9bdb0c982ea6083b8aaa7e962dae4823d47f3156a4679306cfe9518620a9",
+  "cases": [
+    "fetch_verify_artifacts.py default assertions enabled --help PASS",
+    "fetch_verify_artifacts.py -O refused before imports/IO PASS",
+    "fetch_verify_artifacts.py PYTHONOPTIMIZE refused before imports/IO PASS",
+    "release_v0320_collect_run.py default assertions enabled --help PASS",
+    "release_v0320_collect_run.py -O refused before imports/IO PASS",
+    "release_v0320_collect_run.py PYTHONOPTIMIZE refused before imports/IO PASS",
+    "release_v0320_ci_admit.py default assertions enabled --help PASS",
+    "release_v0320_ci_admit.py -O refused before imports/IO PASS",
+    "release_v0320_ci_admit.py PYTHONOPTIMIZE refused before imports/IO PASS",
+    "strictproducer valid exact inventory PASS",
+    "strictproducer duplicate rejected PASS",
+    "strictproducer extra-column rejected PASS",
+    "strictproducer extra-entry rejected PASS",
+    "strictproducer missing-entry rejected PASS",
+    "strictproducer malformed-digest rejected PASS",
+    "validouter original retained+accepted PASS",
+    "bad-size original bytes retained/rejected/noextract PASS",
+    "bad-digest original bytes retained/rejected/noextract PASS"
+  ],
+  "network_CI_or_candidate_runs": 0,
+  "controls": "owned synthetic ZIP/manifests only; AST-extracted exact runtime helper definitions; whole scripts real -O/env refusal"
+}

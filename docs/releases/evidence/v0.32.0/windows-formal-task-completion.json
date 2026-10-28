@@ -1,0 +1,17 @@
+{
+  "threadId": "<private-native-task-id>",
+  "hostId": "LOSGATOS (formal Codex Remote; private host identity omitted)",
+  "title": "v0.32.0 Windows TC-193 初回検証",
+  "status": "completed",
+  "turnId": "<private-turn-id>",
+  "startedAt": 1793198856,
+  "completedAt": 1793199462,
+  "durationMs": 606429,
+  "error": null,
+  "finalMessage": {
+    "type": "agentMessage",
+    "id": "msg_05c66980d514e255016ae20d575ac8819197aa2633c79e8245",
+    "text": "**TC-193 初回native検証は PASS** です。実行は1回、再試行なしです。\n\n| 項目 | 結果 |\n|---|---|\n| source | `77e36c4eef21b5047747d04b3983835a50d92f06` |\n| run / attempt | `40696126066` / `1` |\n| session UUID | `360e101d-a5ec-4603-bdb0-87227792dfaa` |\n| 環境 | LOSGATOS、Windows 11 Pro 10.0.26300、native AMD64、Python 3.12.10 |\n| 中央値 | universal **77.1990 ms**、fw **30.8299 ms** |\n| ratio | **0.3993562093 ≤ 0.70** |\n| 実行UTC | 2026-10-28 14:53:41.283208 ～ 14:53:47.882200 |\n| プロセス | exit **0**、elapsed **6.594秒** |\n| raw | **102行**、200出力完全一致 |\n\nartifact取得は1回。ZIP・binary・helper・metadataのSHA、CRC、既存公開鍵署名は検証済みで、事後hashも不変です。所有プロセス残留なし、fixture/profile削除済み、全worktreeのHEAD・未コミット状態も不変です。\n\n設定ファイルmetadataは不変でした。ディレクトリsize報告値だけの差（0→12288）は、原記録と `provenance-supplement.json` に保持しています。ユーザー設定内容は読んでいません。\n\n証跡は [所有staging](<Windows-user-root>/.codex/visualizations/2026/10/28/<private-native-task-id>/tc193-360e101d-a5ec-4603-bdb0-87227792dfaa) に保存しています。\n\n| 原本 | bytes | SHA256 |\n|---|---:|---|\n| `first-result.json` | 39134 | `efc145fcc917b7add9cf8d5eee390a9dc6bfdefd061118c0cc9b797a45c88d1d` |\n| `first-result.raw.jsonl` | 197524 | `b8a929e9e2706667f24eff6af79768c4261b0ffeab336839a4e4526ee53df594` |\n| `provenance.json` | 15169 | `54cbae13a4e60bf9a8d4d0afc53eb77b8e514667b667bccd83cc0b90cf49f0c0` |\n| `process.stdout` | 989 | `0944cf6aff56c9da31b69f66bde0a07c75cf8f5c9dd962520def863afa5e88e5` |\n| `process.stderr` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |\n\n全証跡の絶対path・SHA・サイズは同梱の `complete-evidence-inventory.json`（18391 bytes、SHA `889b5e645e004f7129e6a8fc0c381479d352da1cbb50bd041c12db52bef8996e`）にあります。\n\n[転送ZIP](<Windows-user-root>/.codex/visualizations/2026/10/28/<private-native-task-id>/tc193-360e101d-a5ec-4603-bdb0-87227792dfaa/tc193-transfer.zip) は **15265 bytes**、SHA256：\n\n`4aa154f521ec965ffd4f35ea12d9566441980d47fd4d0e5e09250478491d12d5`\n\n完全なbase64 **20356文字**を、直前のツール出力 `TC193_TRANSFER_BASE64_PART_01_OF_03` ～ `03_OF_03` に記録済みです。marker間を順番に連結して復号してください。親はこのchatの `read_thread`（`threadId=<private-native-task-id>`、`includeOutputs=true`、`maxOutputCharsPerItem=20000`）から取得できます。\n\nTC-219/220 UNKNOWN、未実行GUI/Open/Reveal/UNCの状態は変更していません。製品変更・ビルド・Git変更・公開操作は実施していません。",
+    "phase": "final_answer"
+  }
+}

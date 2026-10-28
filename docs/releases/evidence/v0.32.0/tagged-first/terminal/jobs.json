@@ -1,0 +1,492 @@
+[
+  {
+    "id": 122900386406,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnW8SZg",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122900386406",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122900386406",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-28T15:04:35Z",
+    "started_at": "2026-10-28T15:04:38Z",
+    "completed_at": "2026-10-28T15:04:54Z",
+    "name": "Resolve Release Context",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-28T15:04:39Z",
+        "completed_at": "2026-10-28T15:04:40Z"
+      },
+      {
+        "name": "Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-28T15:04:40Z",
+        "completed_at": "2026-10-28T15:04:50Z"
+      },
+      {
+        "name": "Record runner image",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-28T15:04:50Z",
+        "completed_at": "2026-10-28T15:04:50Z"
+      },
+      {
+        "name": "Resolve and validate version",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-28T15:04:50Z",
+        "completed_at": "2026-10-28T15:04:50Z"
+      },
+      {
+        "name": "Post Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8,
+        "started_at": "2026-10-28T15:04:50Z",
+        "completed_at": "2026-10-28T15:04:50Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9,
+        "started_at": "2026-10-28T15:04:50Z",
+        "completed_at": "2026-10-28T15:04:50Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122900386406",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000007004,
+    "runner_name": "GitHub Actions 1000007004",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 122900573869,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnXHurQ",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122900573869",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122900573869",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-28T15:04:54Z",
+    "started_at": "2026-10-28T15:04:57Z",
+    "completed_at": "2026-10-28T15:08:44Z",
+    "name": "Release Cargo Audit",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-28T15:04:58Z",
+        "completed_at": "2026-10-28T15:04:59Z"
+      },
+      {
+        "name": "Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-28T15:04:59Z",
+        "completed_at": "2026-10-28T15:05:13Z"
+      },
+      {
+        "name": "Record runner image",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-28T15:05:13Z",
+        "completed_at": "2026-10-28T15:05:13Z"
+      },
+      {
+        "name": "Install Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-28T15:05:13Z",
+        "completed_at": "2026-10-28T15:05:22Z"
+      },
+      {
+        "name": "Install cargo-audit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-28T15:05:22Z",
+        "completed_at": "2026-10-28T15:08:31Z"
+      },
+      {
+        "name": "Run cargo audit",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-28T15:08:31Z",
+        "completed_at": "2026-10-28T15:08:41Z"
+      },
+      {
+        "name": "Post Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12,
+        "started_at": "2026-10-28T15:08:41Z",
+        "completed_at": "2026-10-28T15:08:41Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-10-28T15:08:41Z",
+        "completed_at": "2026-10-28T15:08:41Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122900573869",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000007006,
+    "runner_name": "GitHub Actions 1000007006",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 122900573976,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnXHvGA",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122900573976",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122900573976",
+    "status": "completed",
+    "conclusion": "cancelled",
+    "created_at": "2026-10-28T15:04:54Z",
+    "started_at": "2026-10-28T15:04:54Z",
+    "completed_at": "2026-10-28T15:19:56Z",
+    "name": "Release Preflight (macos-native)",
+    "steps": [],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122900573976",
+    "labels": [
+      "macos-26"
+    ],
+    "runner_id": 0,
+    "runner_name": "",
+    "runner_group_id": 0,
+    "runner_group_name": ""
+  },
+  {
+    "id": 122900574139,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnXHvuw",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122900574139",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122900574139",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-28T15:04:54Z",
+    "started_at": "2026-10-28T15:04:59Z",
+    "completed_at": "2026-10-28T15:15:54Z",
+    "name": "Release Preflight (windows-native)",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-28T15:05:00Z",
+        "completed_at": "2026-10-28T15:05:01Z"
+      },
+      {
+        "name": "Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-28T15:05:01Z",
+        "completed_at": "2026-10-28T15:05:23Z"
+      },
+      {
+        "name": "Record runner image",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-28T15:05:23Z",
+        "completed_at": "2026-10-28T15:05:24Z"
+      },
+      {
+        "name": "Install Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-28T15:05:24Z",
+        "completed_at": "2026-10-28T15:05:37Z"
+      },
+      {
+        "name": "Cache Cargo downloads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-28T15:05:37Z",
+        "completed_at": "2026-10-28T15:05:41Z"
+      },
+      {
+        "name": "Run tests",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-28T15:05:41Z",
+        "completed_at": "2026-10-28T15:13:41Z"
+      },
+      {
+        "name": "Run clippy",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-10-28T15:13:41Z",
+        "completed_at": "2026-10-28T15:15:49Z"
+      },
+      {
+        "name": "Post Cache Cargo downloads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-10-28T15:15:49Z",
+        "completed_at": "2026-10-28T15:15:49Z"
+      },
+      {
+        "name": "Post Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14,
+        "started_at": "2026-10-28T15:15:49Z",
+        "completed_at": "2026-10-28T15:15:52Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15,
+        "started_at": "2026-10-28T15:15:52Z",
+        "completed_at": "2026-10-28T15:15:53Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122900574139",
+    "labels": [
+      "windows-2025-vs2026"
+    ],
+    "runner_id": 1000007008,
+    "runner_name": "GitHub Actions 1000007008",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 122900574142,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnXHvvg",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122900574142",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122900574142",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-10-28T15:04:54Z",
+    "started_at": "2026-10-28T15:04:57Z",
+    "completed_at": "2026-10-28T15:08:16Z",
+    "name": "Release Preflight (linux-native)",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1,
+        "started_at": "2026-10-28T15:04:57Z",
+        "completed_at": "2026-10-28T15:04:58Z"
+      },
+      {
+        "name": "Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2,
+        "started_at": "2026-10-28T15:04:58Z",
+        "completed_at": "2026-10-28T15:05:09Z"
+      },
+      {
+        "name": "Record runner image",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3,
+        "started_at": "2026-10-28T15:05:09Z",
+        "completed_at": "2026-10-28T15:05:09Z"
+      },
+      {
+        "name": "Install Rust",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4,
+        "started_at": "2026-10-28T15:05:09Z",
+        "completed_at": "2026-10-28T15:05:16Z"
+      },
+      {
+        "name": "Cache Cargo downloads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5,
+        "started_at": "2026-10-28T15:05:16Z",
+        "completed_at": "2026-10-28T15:05:18Z"
+      },
+      {
+        "name": "Run tests",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6,
+        "started_at": "2026-10-28T15:05:18Z",
+        "completed_at": "2026-10-28T15:07:28Z"
+      },
+      {
+        "name": "Run clippy",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7,
+        "started_at": "2026-10-28T15:07:28Z",
+        "completed_at": "2026-10-28T15:08:14Z"
+      },
+      {
+        "name": "Post Cache Cargo downloads",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13,
+        "started_at": "2026-10-28T15:08:14Z",
+        "completed_at": "2026-10-28T15:08:14Z"
+      },
+      {
+        "name": "Post Checkout",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 14,
+        "started_at": "2026-10-28T15:08:14Z",
+        "completed_at": "2026-10-28T15:08:14Z"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 15,
+        "started_at": "2026-10-28T15:08:14Z",
+        "completed_at": "2026-10-28T15:08:14Z"
+      }
+    ],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122900574142",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": 1000007007,
+    "runner_name": "GitHub Actions 1000007007",
+    "runner_group_id": 0,
+    "runner_group_name": "GitHub Actions"
+  },
+  {
+    "id": 122909632557,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnfwoLQ",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122909632557",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122909632557",
+    "status": "completed",
+    "conclusion": "skipped",
+    "created_at": "2026-10-28T15:19:57Z",
+    "started_at": "2026-10-28T15:19:57Z",
+    "completed_at": "2026-10-28T15:19:57Z",
+    "name": "Build Release Assets (${{ matrix.label }})",
+    "steps": [],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122909632557",
+    "labels": [],
+    "runner_id": null,
+    "runner_name": null,
+    "runner_group_id": null,
+    "runner_group_name": null
+  },
+  {
+    "id": 122909635112,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnfwyKA",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122909635112",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122909635112",
+    "status": "completed",
+    "conclusion": "skipped",
+    "created_at": "2026-10-28T15:19:57Z",
+    "started_at": "2026-10-28T15:19:57Z",
+    "completed_at": "2026-10-28T15:19:57Z",
+    "name": "Create Draft Release",
+    "steps": [],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122909635112",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": null,
+    "runner_name": null,
+    "runner_group_id": null,
+    "runner_group_name": null
+  },
+  {
+    "id": 122909636068,
+    "run_id": 40712264203,
+    "workflow_name": "Release Tagged Build",
+    "head_branch": "v0.32.0",
+    "run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/runs/40712264203",
+    "run_attempt": 1,
+    "node_id": "CR_kwDORSYbJ88AAAAcnfw15A",
+    "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/jobs/122909636068",
+    "html_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/40712264203/job/122909636068",
+    "status": "completed",
+    "conclusion": "skipped",
+    "created_at": "2026-10-28T15:19:57Z",
+    "started_at": "2026-10-28T15:19:57Z",
+    "completed_at": "2026-10-28T15:19:57Z",
+    "name": "Assemble Release Bundle",
+    "steps": [],
+    "check_run_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/check-runs/122909636068",
+    "labels": [
+      "ubuntu-24.04"
+    ],
+    "runner_id": null,
+    "runner_name": null,
+    "runner_group_id": null,
+    "runner_group_name": null
+  }
+]

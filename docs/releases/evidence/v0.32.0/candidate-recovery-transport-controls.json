@@ -1,0 +1,25 @@
+{
+  "result": "PASS_SYNTHETIC_TRANSPORT_CONTROLS_ONLY",
+  "source_sha256": "a45e5d397b0551255b74f2b4f5b92b4d1ac97c377a48270471121d05af80b07e",
+  "cases": [
+    {
+      "case": "success",
+      "result": "PASS_CONTROL",
+      "raw_received_bytes_retained": true,
+      "recovery_returncode": 0
+    },
+    {
+      "case": "digest-mismatch",
+      "result": "PASS_CONTROL",
+      "raw_received_bytes_retained": true,
+      "recovery_returncode": 1
+    },
+    {
+      "case": "transport-timeout",
+      "result": "PASS_CONTROL",
+      "raw_received_bytes_retained": true,
+      "recovery_returncode": 1
+    }
+  ],
+  "network_CI_measurement_calls": 0
+}

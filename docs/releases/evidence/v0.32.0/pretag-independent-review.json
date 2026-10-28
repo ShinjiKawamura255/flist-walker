@@ -1,0 +1,24 @@
+{
+  "utc": "2026-10-28T15:03:42.125272+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "PRETAG_GO_CONDITIONAL_FRESH_IMMEDIATE_READONLY_GUARD",
+  "version": "v0.32.0",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "candidate_run": 40696126066,
+  "attempt": 1,
+  "findings": [],
+  "Windows": "independent ZIPCRC/10fileSHA/102raw/200files/5warmup25samples/order/output/ratio0.39935620927732224/6.406s/ownedcleanup/posthash accepted",
+  "packet_serialization": "CLOSED exactcompact+LF reproducesWindowsSHA",
+  "profile_limitation": "original auditfalse retained; directory st_size0to12288 causeUNKNOWN; recordedfilemetadataunchanged, profilecontentunchanged NOTPROVEN; notnumericFAIL/newproductdefectdetermination",
+  "warning_disposition": "ACCEPT_DEP0005_MINOR_EXCEPTION_ONLY_v0320_source77_candidate40696126066_attempt1; oneactual/twoexports; officiallatest/runtime/fullcallsite/integrity/allrequiredgates independentlyaccepted; no futuretaggedinheritance",
+  "tag_authority": "existingUserSentinel57b56conditionalfullv0320; annotatedtag77create/push eachonce; noGithubApprove",
+  "risk_disposition": "old219/220UNKNOWN,stress/SIGSEGVversion32onlyaccepted,omissionsNOTRUN maintained",
+  "fresh_guard": [
+    "master77/treef928/clean",
+    "latestpublic31ID424455243/sourceb1",
+    "local/remotetagandreleaseabsent",
+    "packet/artifactsameandunexpired"
+  ],
+  "release_publication_GO": false
+}

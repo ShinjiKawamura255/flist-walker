@@ -1,0 +1,499 @@
+{
+  "result": "PASS",
+  "version": "0.32.0",
+  "assets": [
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64",
+      "bytes": 19583280,
+      "sha256": "c9527ef88aa2beaf6c811370a4ac4e6658d94224845a90c81c15f56b40c3e2f0"
+    },
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64.LICENSE.txt",
+      "bytes": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64.README.txt",
+      "bytes": 6871,
+      "sha256": "b4690c975e0d7ed21cc2a7fcadcca7c37a840e1240ae63dee0a807b507e758dc"
+    },
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "bytes": 5156,
+      "sha256": "8c2880230debb7cb0ccd9587a8b6590a8e2ae8ad740fb4a92286699e426a1b92"
+    },
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64.tar.gz",
+      "bytes": 8493522,
+      "sha256": "b8bd1e4490fd31c85936e7284f498e63f637b4b146caa229bbce0560dcd11d52"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64",
+      "bytes": 13634256,
+      "sha256": "532f48bb26d182def30691acd7cac20b35172f0494eb0de74d46621a7eb31dcc"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64-app.zip",
+      "bytes": 6804838,
+      "sha256": "1769c25828e53dddae80cde2245bf68a4ac47c5694ba646360d0bf028ffeb738"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64.LICENSE.txt",
+      "bytes": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64.README.txt",
+      "bytes": 6798,
+      "sha256": "18a99038dca1e720f6f726ea806ae1e01731915b6887cfb41234ce168120032a"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "bytes": 5156,
+      "sha256": "8c2880230debb7cb0ccd9587a8b6590a8e2ae8ad740fb4a92286699e426a1b92"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64.tar.gz",
+      "bytes": 6706163,
+      "sha256": "500e1d1f50836f4f02cb22c69b83d26cbe137b46ad9b5806018a8f2f530be4a9"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64",
+      "bytes": 15934824,
+      "sha256": "514a716b8e01ceabb78dbd406eac34407c7e8f1431c274afd1eacb001c0ad525"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64-app.zip",
+      "bytes": 7540336,
+      "sha256": "790675dd629299845f0b107b814635309edbd351468f4deb4f638a0fc1643bfe"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64.LICENSE.txt",
+      "bytes": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64.README.txt",
+      "bytes": 6802,
+      "sha256": "ce799636c1865e17c0a4ad0259fdc149248f707f7ea4cf37f2f3777d74c3ac75"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "bytes": 5156,
+      "sha256": "8c2880230debb7cb0ccd9587a8b6590a8e2ae8ad740fb4a92286699e426a1b92"
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64.tar.gz",
+      "bytes": 7441033,
+      "sha256": "2e8d42b2b1e36ba2b270caef5013949f222b2fdb4136e41c5b200f4facaa14a1"
+    },
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.LICENSE.txt",
+      "bytes": 1071,
+      "sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.README.txt",
+      "bytes": 7208,
+      "sha256": "fefd265e8f83ccd0ce0c71fcc9742a2b9abe97cfcbbde403214b91bd4c4900b7"
+    },
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "bytes": 5156,
+      "sha256": "8c2880230debb7cb0ccd9587a8b6590a8e2ae8ad740fb4a92286699e426a1b92"
+    },
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.exe",
+      "bytes": 16599040,
+      "sha256": "bae2c6c09c9d04c9d696ac77aecad0b98ce810a5c50bb5013035c861bc2a0eb6"
+    },
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.zip",
+      "bytes": 7575176,
+      "sha256": "61a4ea1745ab54e8b3e2d46b468168db7be4679559c902c34a121e955375bb15"
+    },
+    {
+      "name": "SHA256SUMS",
+      "bytes": 2754,
+      "sha256": "e2d013b6a24714ae422a33e609165d62139538a684e6a81a16035454022e3276"
+    },
+    {
+      "name": "SHA256SUMS.sig",
+      "bytes": 64,
+      "sha256": "44cc92e620b8dff64a6acd50e0fcbf9b96a59f1395a52e5bd3c8587fecd7b414"
+    },
+    {
+      "name": "fw-0.32.0-linux-x86_64",
+      "bytes": 6717344,
+      "sha256": "77fe0d293243854ac2665910a845052dbd42e302b7a1220234f8570d892e4b9f"
+    },
+    {
+      "name": "fw-0.32.0-macos-arm64",
+      "bytes": 5183296,
+      "sha256": "9a3b6539da25e1f631a3f3f0732b91d3d1d770f1131b90b04526c9ef1c9f1dbd"
+    },
+    {
+      "name": "fw-0.32.0-macos-x86_64",
+      "bytes": 5976612,
+      "sha256": "afbb6ad7371f7c843d8d76a929b5d19214526f5bcf15e64035c3bfbfc0db95c8"
+    },
+    {
+      "name": "fw-0.32.0-windows-x86_64.exe",
+      "bytes": 6272000,
+      "sha256": "f7aff8b2c7331a76247a9fe70a685fe7c053a5bf6fa9accd9dd7c807e56301cd"
+    }
+  ],
+  "binaries": {
+    "FlistWalker-0.32.0-windows-x86_64.exe": {
+      "sha256": "bae2c6c09c9d04c9d696ac77aecad0b98ce810a5c50bb5013035c861bc2a0eb6",
+      "bytes": 16599040,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "pe": {
+        "subsystem": 2,
+        "resource_types": [
+          3,
+          14,
+          16,
+          24
+        ],
+        "imports": [
+          "GDI32.dll",
+          "OPENGL32.dll",
+          "dwmapi.dll",
+          "imm32.dll",
+          "ntdll.dll",
+          "psapi.dll",
+          "uxtheme.dll",
+          "ws2_32.dll",
+          "kernel32.dll",
+          "kernel32.dll",
+          "bcryptprimitives.dll",
+          "advapi32.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "combase.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "ole32.dll",
+          "shell32.dll",
+          "shlwapi.dll",
+          "userenv.dll",
+          "ADVAPI32.dll",
+          "bcrypt.dll",
+          "KERNEL32.dll",
+          "msvcrt.dll",
+          "ntdll.dll",
+          "ole32.dll",
+          "SHELL32.dll",
+          "USER32.dll"
+        ],
+        "resource_paths": [
+          [
+            3,
+            1,
+            1033
+          ],
+          [
+            3,
+            2,
+            1033
+          ],
+          [
+            3,
+            3,
+            1033
+          ],
+          [
+            3,
+            4,
+            1033
+          ],
+          [
+            3,
+            5,
+            1033
+          ],
+          [
+            3,
+            6,
+            1033
+          ],
+          [
+            3,
+            7,
+            1033
+          ],
+          [
+            14,
+            1,
+            1033
+          ],
+          [
+            16,
+            1,
+            1033
+          ],
+          [
+            24,
+            1,
+            1033
+          ]
+        ],
+        "formal_versions": [
+          {
+            "ProductVersion": "0.32.0",
+            "FileVersion": "0.32.0"
+          }
+        ],
+        "version": "0.32.0",
+        "source_manifest_equivalent": true,
+        "asInvoker": true,
+        "authenticode_declared_table_bytes": 0,
+        "authenticode_verification": "NOT RUN; declaration observation only"
+      }
+    },
+    "fw-0.32.0-windows-x86_64.exe": {
+      "sha256": "f7aff8b2c7331a76247a9fe70a685fe7c053a5bf6fa9accd9dd7c807e56301cd",
+      "bytes": 6272000,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ],
+      "pe": {
+        "subsystem": 3,
+        "resource_types": [
+          3,
+          14,
+          16,
+          24
+        ],
+        "imports": [
+          "ntdll.dll",
+          "ws2_32.dll",
+          "kernel32.dll",
+          "kernel32.dll",
+          "bcryptprimitives.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "combase.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "ole32.dll",
+          "shell32.dll",
+          "user32.dll",
+          "ADVAPI32.dll",
+          "bcrypt.dll",
+          "KERNEL32.dll",
+          "msvcrt.dll",
+          "ntdll.dll",
+          "SHELL32.dll"
+        ],
+        "resource_paths": [
+          [
+            3,
+            1,
+            1033
+          ],
+          [
+            3,
+            2,
+            1033
+          ],
+          [
+            3,
+            3,
+            1033
+          ],
+          [
+            3,
+            4,
+            1033
+          ],
+          [
+            3,
+            5,
+            1033
+          ],
+          [
+            3,
+            6,
+            1033
+          ],
+          [
+            3,
+            7,
+            1033
+          ],
+          [
+            14,
+            1,
+            1033
+          ],
+          [
+            16,
+            1,
+            1033
+          ],
+          [
+            24,
+            1,
+            1033
+          ]
+        ],
+        "formal_versions": [
+          {
+            "ProductVersion": "0.32.0",
+            "FileVersion": "0.32.0"
+          }
+        ],
+        "version": "0.32.0",
+        "source_manifest_equivalent": true,
+        "asInvoker": true,
+        "authenticode_declared_table_bytes": 0,
+        "authenticode_verification": "NOT RUN; declaration observation only"
+      }
+    },
+    "FlistWalker-0.32.0-linux-x86_64": {
+      "sha256": "c9527ef88aa2beaf6c811370a4ac4e6658d94224845a90c81c15f56b40c3e2f0",
+      "bytes": 19583280,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    },
+    "fw-0.32.0-linux-x86_64": {
+      "sha256": "77fe0d293243854ac2665910a845052dbd42e302b7a1220234f8570d892e4b9f",
+      "bytes": 6717344,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    },
+    "FlistWalker-0.32.0-macos-arm64": {
+      "sha256": "532f48bb26d182def30691acd7cac20b35172f0494eb0de74d46621a7eb31dcc",
+      "bytes": 13634256,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    },
+    "fw-0.32.0-macos-arm64": {
+      "sha256": "9a3b6539da25e1f631a3f3f0732b91d3d1d770f1131b90b04526c9ef1c9f1dbd",
+      "bytes": 5183296,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    },
+    "FlistWalker-0.32.0-macos-x86_64": {
+      "sha256": "514a716b8e01ceabb78dbd406eac34407c7e8f1431c274afd1eacb001c0ad525",
+      "bytes": 15934824,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    },
+    "fw-0.32.0-macos-x86_64": {
+      "sha256": "afbb6ad7371f7c843d8d76a929b5d19214526f5bcf15e64035c3bfbfc0db95c8",
+      "bytes": 5976612,
+      "expected_key_bytes_present": true,
+      "rustc_commits": [
+        "8bab26f4f68e0e26f0bb7960be334d5b520ea452"
+      ]
+    }
+  },
+  "archives": [
+    {
+      "name": "FlistWalker-0.32.0-windows-x86_64.zip",
+      "exact_members": [
+        "LICENSE.txt",
+        "README.txt",
+        "THIRD_PARTY_NOTICES.txt",
+        "flistwalker.exe"
+      ],
+      "bytes_match": true
+    },
+    {
+      "name": "FlistWalker-0.32.0-linux-x86_64.tar.gz",
+      "exact_members": [
+        "LICENSE.txt",
+        "README.txt",
+        "THIRD_PARTY_NOTICES.txt",
+        "flistwalker"
+      ],
+      "bytes_match": true
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64.tar.gz",
+      "exact_members": [
+        "LICENSE.txt",
+        "README.txt",
+        "THIRD_PARTY_NOTICES.txt",
+        "flistwalker"
+      ],
+      "bytes_match": true
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-arm64-app.zip",
+      "exact_members": [
+        "FlistWalker-0.32.0-macos-arm64.app/Contents/Info.plist",
+        "FlistWalker-0.32.0-macos-arm64.app/Contents/MacOS/FlistWalker",
+        "FlistWalker-0.32.0-macos-arm64.app/Contents/Resources/FlistWalker.icns",
+        "FlistWalker-0.32.0-macos-arm64.app/Contents/Resources/LICENSE.txt",
+        "FlistWalker-0.32.0-macos-arm64.app/Contents/Resources/THIRD_PARTY_NOTICES.txt"
+      ],
+      "bytes_match": true,
+      "metadata": {
+        "CFBundleName": "FlistWalker",
+        "CFBundleDisplayName": "FlistWalker",
+        "CFBundleIdentifier": "com.flistwalker.app",
+        "CFBundleVersion": "0.32.0",
+        "CFBundleShortVersionString": "0.32.0",
+        "CFBundlePackageType": "APPL",
+        "CFBundleExecutable": "FlistWalker",
+        "CFBundleIconFile": "FlistWalker.icns",
+        "LSMinimumSystemVersion": "11.0"
+      }
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64.tar.gz",
+      "exact_members": [
+        "LICENSE.txt",
+        "README.txt",
+        "THIRD_PARTY_NOTICES.txt",
+        "flistwalker"
+      ],
+      "bytes_match": true
+    },
+    {
+      "name": "FlistWalker-0.32.0-macos-x86_64-app.zip",
+      "exact_members": [
+        "FlistWalker-0.32.0-macos-x86_64.app/Contents/Info.plist",
+        "FlistWalker-0.32.0-macos-x86_64.app/Contents/MacOS/FlistWalker",
+        "FlistWalker-0.32.0-macos-x86_64.app/Contents/Resources/FlistWalker.icns",
+        "FlistWalker-0.32.0-macos-x86_64.app/Contents/Resources/LICENSE.txt",
+        "FlistWalker-0.32.0-macos-x86_64.app/Contents/Resources/THIRD_PARTY_NOTICES.txt"
+      ],
+      "bytes_match": true,
+      "metadata": {
+        "CFBundleName": "FlistWalker",
+        "CFBundleDisplayName": "FlistWalker",
+        "CFBundleIdentifier": "com.flistwalker.app",
+        "CFBundleVersion": "0.32.0",
+        "CFBundleShortVersionString": "0.32.0",
+        "CFBundlePackageType": "APPL",
+        "CFBundleExecutable": "FlistWalker",
+        "CFBundleIconFile": "FlistWalker.icns",
+        "LSMinimumSystemVersion": "11.0"
+      }
+    }
+  ],
+  "signature_verified": true,
+  "controls": [
+    "one-bit signature tamper rejected",
+    "duplicate manifest row rejected",
+    "missing manifest row rejected"
+  ],
+  "trusted_key_hex": "6733c5e70dd31e1bd2e2f8eac7356e88b169f1355d0cbfac5e0cf9d1ac2a12e6"
+}

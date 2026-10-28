@@ -1,0 +1,23 @@
+{
+  "utc": "2026-10-28T14:07:33.638494+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "GO_FIXED_IMMUTABLE_FINAL_READ_ONCE_AND_FIVE_ORIGINAL_RECONCILIATION",
+  "blocking_major": [],
+  "minor": [
+    {
+      "issue": "600s notstrictwallcap because waittimeout+cleanup",
+      "disposition": "accepted clarifiedplan/record; notperformancecondition; no successwallcapclaim"
+    }
+  ],
+  "firsttimeout": "retained notoverwritten; initialpartialbytesnotpreserved limitation explicit",
+  "controls": "3syntheticonly",
+  "frozen_inputs": {
+    "run": 40696126066,
+    "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "artifact": 12820479504,
+    "digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6"
+  },
+  "acquirer_sha256": "a45e5d397b0551255b74f2b4f5b92b4d1ac97c377a48270471121d05af80b07e",
+  "reconciler_sha256": "437bb3b66733c1b10e7aa0ee0125bd9a2396f2f8689e0db5837b4a83d37f6f4c",
+  "stops": "failure/identitymismatch/unknowntermination -> nofurtherreads orCIreruns"
+}

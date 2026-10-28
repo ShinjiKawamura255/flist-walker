@@ -1,0 +1,13 @@
+{
+  "utc": "2026-10-28T12:49:40.712981+00:00",
+  "reviewer": "contract_repair_review",
+  "status": "GO_NORMAL_FIRST_CI_READY_GUARDIAN_AND_PROTECTED_REBASE_ONCE",
+  "findings": [],
+  "head": "7dcf6565359f86ecfe4262516990be750f611604",
+  "base": "447372ef0f579397988baec0c2dee5b29d9e40ab",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "evidence": "all112rawmembers/SHA/CRC/9checkouts/fourlibraryaxes/TC229/index_process/GNUboth/freshaudit/1actual2exportexternalwarning",
+  "warning": "normalPRCI minor accepted; candidate/tagged not inherited",
+  "reviewer_edits_runs_external_Approve": 0,
+  "conditions": "readynewGuardian success and exactliveguard in separatecallbeforemerge"
+}

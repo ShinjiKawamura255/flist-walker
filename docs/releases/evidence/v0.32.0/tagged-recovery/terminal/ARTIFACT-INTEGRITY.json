@@ -1,0 +1,115 @@
+{
+  "result": "PASS",
+  "run": 40712264203,
+  "attempt": 2,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "producers": [
+    {
+      "id": 12831206988,
+      "name": "release-macos-arm64",
+      "bytes": 23076935,
+      "sha256": "7c7b15c5dc56ea9c558aae6d78e7d6595bf5a28c906cb6be7c0749b7036add62",
+      "crc": "PASS",
+      "exact_members": [
+        "FlistWalker-0.32.0-macos-arm64",
+        "FlistWalker-0.32.0-macos-arm64-app.zip",
+        "FlistWalker-0.32.0-macos-arm64.LICENSE.txt",
+        "FlistWalker-0.32.0-macos-arm64.README.txt",
+        "FlistWalker-0.32.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+        "FlistWalker-0.32.0-macos-arm64.tar.gz",
+        "SHA256SUMS",
+        "fw-0.32.0-macos-arm64"
+      ],
+      "all_payloads_equal_final": true
+    },
+    {
+      "id": 12830750860,
+      "name": "release-linux-x86_64",
+      "bytes": 20126119,
+      "sha256": "1dc40abe0a887c150fe8f9c50be37ce322de40d00f41d6ff52f955857c5751cb",
+      "crc": "PASS",
+      "exact_members": [
+        "FlistWalker-0.32.0-linux-x86_64",
+        "FlistWalker-0.32.0-linux-x86_64.LICENSE.txt",
+        "FlistWalker-0.32.0-linux-x86_64.README.txt",
+        "FlistWalker-0.32.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+        "FlistWalker-0.32.0-linux-x86_64.tar.gz",
+        "SHA256SUMS",
+        "fw-0.32.0-linux-x86_64"
+      ],
+      "all_payloads_equal_final": true
+    },
+    {
+      "id": 12830358195,
+      "name": "release-macos-x86_64",
+      "bytes": 25373622,
+      "sha256": "8625038ca990a38b4cd36f398c110d9544fe1147d309f4ebeb8449b0520a90b1",
+      "crc": "PASS",
+      "exact_members": [
+        "FlistWalker-0.32.0-macos-x86_64",
+        "FlistWalker-0.32.0-macos-x86_64-app.zip",
+        "FlistWalker-0.32.0-macos-x86_64.LICENSE.txt",
+        "FlistWalker-0.32.0-macos-x86_64.README.txt",
+        "FlistWalker-0.32.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+        "FlistWalker-0.32.0-macos-x86_64.tar.gz",
+        "SHA256SUMS",
+        "fw-0.32.0-macos-x86_64"
+      ],
+      "all_payloads_equal_final": true
+    },
+    {
+      "id": 12830112693,
+      "name": "release-windows-x86_64",
+      "bytes": 18273006,
+      "sha256": "2950af18a1be1b5c32811f712b5ae179c1ad2edd0bfd77e86199fb62a55568aa",
+      "crc": "PASS",
+      "exact_members": [
+        "FlistWalker-0.32.0-windows-x86_64.LICENSE.txt",
+        "FlistWalker-0.32.0-windows-x86_64.README.txt",
+        "FlistWalker-0.32.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+        "FlistWalker-0.32.0-windows-x86_64.exe",
+        "FlistWalker-0.32.0-windows-x86_64.zip",
+        "SHA256SUMS",
+        "fw-0.32.0-windows-x86_64.exe"
+      ],
+      "all_payloads_equal_final": true
+    }
+  ],
+  "final_artifact": {
+    "id": 12830363979,
+    "name": "validated-release-bundle-v0.32.0-77e36c4eef21b5047747d04b3983835a50d92f06",
+    "size_in_bytes": 86848963,
+    "digest": "sha256:c4c223abcf471160a18e7c6baa95ad98b33aba4403447f18345899584127835f"
+  },
+  "exact_final_members": [
+    "FlistWalker-0.32.0-linux-x86_64",
+    "FlistWalker-0.32.0-linux-x86_64.LICENSE.txt",
+    "FlistWalker-0.32.0-linux-x86_64.README.txt",
+    "FlistWalker-0.32.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+    "FlistWalker-0.32.0-linux-x86_64.tar.gz",
+    "FlistWalker-0.32.0-macos-arm64",
+    "FlistWalker-0.32.0-macos-arm64-app.zip",
+    "FlistWalker-0.32.0-macos-arm64.LICENSE.txt",
+    "FlistWalker-0.32.0-macos-arm64.README.txt",
+    "FlistWalker-0.32.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+    "FlistWalker-0.32.0-macos-arm64.tar.gz",
+    "FlistWalker-0.32.0-macos-x86_64",
+    "FlistWalker-0.32.0-macos-x86_64-app.zip",
+    "FlistWalker-0.32.0-macos-x86_64.LICENSE.txt",
+    "FlistWalker-0.32.0-macos-x86_64.README.txt",
+    "FlistWalker-0.32.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+    "FlistWalker-0.32.0-macos-x86_64.tar.gz",
+    "FlistWalker-0.32.0-windows-x86_64.LICENSE.txt",
+    "FlistWalker-0.32.0-windows-x86_64.README.txt",
+    "FlistWalker-0.32.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+    "FlistWalker-0.32.0-windows-x86_64.exe",
+    "FlistWalker-0.32.0-windows-x86_64.zip",
+    "SHA256SUMS",
+    "SHA256SUMS.sig",
+    "fw-0.32.0-linux-x86_64",
+    "fw-0.32.0-macos-arm64",
+    "fw-0.32.0-macos-x86_64",
+    "fw-0.32.0-windows-x86_64.exe"
+  ],
+  "all26_producer_payloads_equal_final": true
+}

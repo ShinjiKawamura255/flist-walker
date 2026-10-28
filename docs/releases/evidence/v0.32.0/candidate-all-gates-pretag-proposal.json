@@ -1,0 +1,41 @@
+{
+  "utc": "2026-10-28T14:59:29.705609+00:00",
+  "version": "v0.32.0",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "candidate_run": 40696126066,
+  "attempt": 1,
+  "status": "OPERATOR_PROPOSES_ALL_CANDIDATE_GATES_ACCEPTED_FINAL_PRETAG_INDEPENDENT_REVIEW_PENDING",
+  "operator": "release execution owner",
+  "required_evidence": {
+    "protected_source": "PR2247dc reviewedtree==merged77; requiredchecks/Guardian/masterCI40691274200 accepted",
+    "native_audit_builds_artifacts": "candidate-independent-technical-review.json +candidate-first/BUNDLE-VALIDATION.json/ARTIFACT-INTEGRITY.json/real-n1-proof.json",
+    "Windows_TC193": "windows-native-technical-admission.json +windows-native-first 102raw/200fixture/5warmup25samples/6.406s/ratio0.39935620927732224; firstsession1, no retries; fullfixedbinary/source/binding/helperSHA unchanged",
+    "warnings": "candidate-first/LOG-WARNING-REVIEW.json +broad-aggregate-log-candidates.json; all122 logs reviewed; one actualexternalDEP0005/twoexports; officiallatest8.0.2/pin/runtime/callsite inputs/digests unchanged; productwarning0; no suppression; exactcandidateonly limitedminor accepted subjectindependentreview",
+    "N1": "real0.31.1\u21920.32.0 actual2754byte26rowmanifest, checker44b292d5\u2026 PASS; no waiver",
+    "reuse": "docs/releases/v0.32.0.md fullrange/VM001002003005009; unchangedproduct/native reveal andindexing proof identities retained; no newcalibration/RCR/GUIclaim"
+  },
+  "residual_risk": {
+    "authority": "User <private-conversation-reference> explicit v0.32.0 only acceptance",
+    "unknown": [
+      "PR219 Windows settings writer physicalstop timeout cause/userimpact UNKNOWN",
+      "PR220 GNU updater helperexit1/ACKunobserved cause/userimpact UNKNOWN",
+      "TC20748-thread100ms stress exceed andhistoricalcoverageSIGSEGV UNKNOWN"
+    ],
+    "omissions": "Shift+doubleclick/realUNC andexistingunverifiedLinuxdisplay/Macphysicalmodifier delivery remainNOTRUN; currentround/versionlimited disposition only; no standingwaiver/PASS",
+    "macOS": "unnotarized, mustdisclose",
+    "Windows_poststate": "Oneexistingdirectory st_size0to12288 rawdifference retained; directoryexistence/mtime andallrecordedfilemetadataunchanged; nocontentread/byteequality/causeclaim; no effect on102numeric rows"
+  },
+  "tag_plan": {
+    "type": "annotated",
+    "name": "v0.32.0",
+    "target": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "max_creations": 1,
+    "max_pushes": 1,
+    "existingtag_release": "mustbeabsentfreshimmediateguard",
+    "conditions": "independentGOthenpurefreshguardmaster/tree/clean/predecessorID/tagabsence/packet/artifact; noadmin/protectionchanges",
+    "downstream": "separatefirsttaggedrun/newartifacts/actualN1/independentwarnings+publicationGO; no candidate exceptioninheritance"
+  },
+  "publication_authority": "existingconditionalfullv0320 grant; no GitHubApprove authorized",
+  "release_publication_GO": false
+}

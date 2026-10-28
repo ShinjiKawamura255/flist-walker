@@ -1,0 +1,59 @@
+{
+  "purpose": "immutable input acquisition only; no CI/performance rerun",
+  "run": 40696126066,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "artifact_id": 12820479504,
+  "expected_bytes": 86848960,
+  "expected_digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6",
+  "transport_attempt": 2,
+  "max_recovery_reads": 1,
+  "transport_cap_seconds": 600,
+  "measurement_or_TC193_limits_changed": false,
+  "status": "PASS_IMMUTABLE_FINAL_INPUT_ACQUIRED_ONLY",
+  "metadata_before": {
+    "id": 12820479504,
+    "node_id": "MDg6QXJ0aWZhY3QxMjgyMDQ3OTUwNA==",
+    "name": "validated-release-bundle-v0.32.0-77e36c4eef21b5047747d04b3983835a50d92f06",
+    "size_in_bytes": 86848960,
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12820479504",
+    "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12820479504/zip",
+    "expired": false,
+    "digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6",
+    "created_at": "2026-10-28T13:52:05Z",
+    "updated_at": "2026-10-28T13:52:05Z",
+    "expires_at": "2026-11-11T13:52:00Z",
+    "workflow_run": {
+      "id": 40696126066,
+      "repository_id": 1160125223,
+      "head_repository_id": 1160125223,
+      "head_branch": "master",
+      "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06"
+    }
+  },
+  "owned_download_pid": 88601,
+  "download_elapsed_seconds": 354.82413204200566,
+  "download_exit_code": 0,
+  "observed_bytes": 86848960,
+  "observed_digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6",
+  "metadata_after": {
+    "id": 12820479504,
+    "node_id": "MDg6QXJ0aWZhY3QxMjgyMDQ3OTUwNA==",
+    "name": "validated-release-bundle-v0.32.0-77e36c4eef21b5047747d04b3983835a50d92f06",
+    "size_in_bytes": 86848960,
+    "url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12820479504",
+    "archive_download_url": "https://api.github.com/repos/ShinjiKawamura255/flist-walker/actions/artifacts/12820479504/zip",
+    "expired": false,
+    "digest": "sha256:2d8c6940b0ab0da60c8f112640cdd8ba97fd54a69978fedbc1d1a30c90038ff6",
+    "created_at": "2026-10-28T13:52:05Z",
+    "updated_at": "2026-10-28T13:52:05Z",
+    "expires_at": "2026-11-11T13:52:00Z",
+    "workflow_run": {
+      "id": 40696126066,
+      "repository_id": 1160125223,
+      "head_repository_id": 1160125223,
+      "head_branch": "master",
+      "head_sha": "77e36c4eef21b5047747d04b3983835a50d92f06"
+    }
+  }
+}

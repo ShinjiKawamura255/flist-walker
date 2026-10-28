@@ -1,0 +1,66 @@
+[
+  {
+    "job": "Release Preflight (macos-native)",
+    "check_run": "122900573976",
+    "annotation": {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "failure",
+      "title": "",
+      "message": "The job was not acquired by Runner of type hosted even after multiple attempts",
+      "raw_details": ""
+    }
+  },
+  {
+    "job": "Release Preflight (macos-native)",
+    "check_run": "122900573976",
+    "annotation": {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  },
+  {
+    "job": "Release Preflight (macos-native)",
+    "check_run": "122900573976",
+    "annotation": {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  },
+  {
+    "job": "Release Preflight (macos-native)",
+    "check_run": "122900573976",
+    "annotation": {
+      "path": ".github",
+      "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+      "start_line": 1,
+      "start_column": null,
+      "end_line": 1,
+      "end_column": null,
+      "annotation_level": "notice",
+      "title": "",
+      "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+      "raw_details": ""
+    }
+  }
+]

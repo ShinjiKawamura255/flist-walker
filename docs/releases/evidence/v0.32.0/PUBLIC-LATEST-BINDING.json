@@ -1,0 +1,9 @@
+{
+  "utc": "2026-10-28T16:40:03.177766+00:00",
+  "status": "PASS_UNAUTHENTICATED_PUBLIC_LATEST_API_AND_REDIRECT",
+  "release_id": 426893836,
+  "tag": "v0.32.0",
+  "api_authentication": "NONE curl--disable/noauth",
+  "Latest_redirect": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.32.0",
+  "HTTP_status": 200
+}
