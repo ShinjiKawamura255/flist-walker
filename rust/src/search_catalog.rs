@@ -1,4 +1,6 @@
-use crate::fs_atomic::{acquire_sidecar_lock, write_text_atomic};
+use crate::fs_atomic::{
+    acquire_sidecar_lock, atomic_write_replaced_destination, write_bytes_atomic,
+};
 use crate::indexer::MaxDepth;
 use crate::path_utils::normalize_windows_path_buf;
 use crate::runtime_config::settings_base_dir;
@@ -323,17 +325,24 @@ pub fn load_search_catalog() -> Result<SearchCatalog> {
 }
 
 pub fn load_search_catalog_from_path(path: &Path) -> Result<SearchCatalog> {
-    let text = match fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(SearchCatalog::default());
-        }
+    catalog_from_bytes(path, read_catalog_bytes(path)?.as_deref())
+}
+
+fn read_catalog_bytes(path: &Path) -> Result<Option<Vec<u8>>> {
+    match fs::read(path) {
+        Ok(bytes) => Ok(Some(bytes)),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => {
-            return Err(error)
-                .with_context(|| format!("failed to read search catalog: {}", path.display()));
+            Err(error).with_context(|| format!("failed to read search catalog: {}", path.display()))
         }
+    }
+}
+
+fn catalog_from_bytes(path: &Path, bytes: Option<&[u8]>) -> Result<SearchCatalog> {
+    let Some(bytes) = bytes else {
+        return Ok(SearchCatalog::default());
     };
-    let catalog: SearchCatalog = serde_json::from_str(&text)
+    let catalog: SearchCatalog = serde_json::from_slice(bytes)
         .with_context(|| format!("failed to parse search catalog: {}", path.display()))?;
     validate_catalog(&catalog)?;
     Ok(catalog)
@@ -343,15 +352,46 @@ pub fn update_search_catalog<F>(path: &Path, mutate: F) -> Result<SearchCatalog>
 where
     F: FnOnce(&mut SearchCatalog) -> Result<()>,
 {
+    update_search_catalog_with_writer(path, mutate, write_bytes_atomic)
+}
+
+fn update_search_catalog_with_writer<F, W>(
+    path: &Path,
+    mutate: F,
+    mut write_atomic: W,
+) -> Result<SearchCatalog>
+where
+    F: FnOnce(&mut SearchCatalog) -> Result<()>,
+    W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
+{
     let _lock = acquire_sidecar_lock(path, CATALOG_LOCK_TIMEOUT)
         .with_context(|| format!("failed to lock search catalog: {}", path.display()))?;
-    let mut catalog = load_search_catalog_from_path(path)?;
+    let previous = read_catalog_bytes(path)?;
+    let mut catalog = catalog_from_bytes(path, previous.as_deref())?;
     mutate(&mut catalog)?;
     validate_catalog(&catalog)?;
     let text =
         serde_json::to_string_pretty(&catalog).context("failed to serialize search catalog")?;
-    write_text_atomic(path, &text)
-        .with_context(|| format!("failed to write search catalog: {}", path.display()))?;
+    if let Err(error) = write_atomic(path, text.as_bytes()) {
+        if atomic_write_replaced_destination(&error) {
+            let restore = match previous.as_deref() {
+                Some(bytes) => write_atomic(path, bytes),
+                None => fs::remove_file(path).or_else(|error| {
+                    if error.kind() == std::io::ErrorKind::NotFound {
+                        Ok(())
+                    } else {
+                        Err(error)
+                    }
+                }),
+            };
+            if let Err(restore_error) = restore {
+                let context = format!("failed to write search catalog {}: {error}; rollback failed: {restore_error}; catalog may have changed; reload before retrying", path.display());
+                return Err(error).context(context);
+            }
+        }
+        return Err(error)
+            .with_context(|| format!("failed to write search catalog: {}", path.display()));
+    }
     Ok(catalog)
 }
 
@@ -502,6 +542,112 @@ mod tests {
             assert!(update_search_catalog(&path, |_| Ok(())).is_err());
             assert_eq!(fs::read_to_string(&path).unwrap(), text);
         }
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn catalog_pre_replace_failure_keeps_original_without_restore_write() {
+        let root = test_root("pre-replace-failure");
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join(SEARCH_CATALOG_FILE_NAME);
+        let original = b"{\"version\":1,\"unknown\":true}";
+        fs::write(&path, original).unwrap();
+        let mut calls = 0;
+        assert!(update_search_catalog_with_writer(
+            &path,
+            |catalog| catalog.save_preset(preset("new", &root)),
+            |_, _| {
+                calls += 1;
+                Err(std::io::Error::other("pre-replace failure"))
+            }
+        )
+        .is_err());
+        assert_eq!(calls, 1);
+        assert_eq!(fs::read(&path).unwrap(), original);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn catalog_postreplace_sync_failure_restores_original_bytes_or_absence() {
+        for existing in [false, true] {
+            let root = test_root("postreplace-restore");
+            fs::create_dir_all(&root).unwrap();
+            let path = root.join(SEARCH_CATALOG_FILE_NAME);
+            let original = b"{ \"version\":1, \"future\":{\"opaque\":42} }\n";
+            if existing {
+                fs::write(&path, original).unwrap();
+            }
+            let mut calls = 0;
+            let error = update_search_catalog_with_writer(
+                &path,
+                |catalog| catalog.save_preset(preset("new", &root)),
+                |path, bytes| {
+                    assert!(
+                        acquire_sidecar_lock(path, Duration::ZERO).is_err(),
+                        "lock held during write/restore"
+                    );
+                    calls += 1;
+                    if calls == 1 {
+                        crate::fs_atomic::write_bytes_atomic_with_sync_for_test(path, bytes, |_| {
+                            Err(std::io::Error::other("injected directory sync error"))
+                        })
+                    } else {
+                        write_bytes_atomic(path, bytes)
+                    }
+                },
+            )
+            .expect_err("durability error remains failure");
+            assert!(format!("{error:#}").contains("injected directory sync error"));
+            if existing {
+                assert_eq!(fs::read(&path).unwrap(), original);
+            } else {
+                assert!(!path.exists(), "previous absence restored");
+            }
+            assert!(load_search_catalog_from_path(&path)
+                .unwrap()
+                .presets
+                .is_empty());
+            update_search_catalog(&path, |catalog| catalog.save_preset(preset("new", &root)))
+                .expect("retry after restored failure");
+            assert!(load_search_catalog_from_path(&path)
+                .unwrap()
+                .preset("new")
+                .is_some());
+            let _ = fs::remove_dir_all(root);
+        }
+    }
+
+    #[test]
+    fn catalog_failed_postreplace_restore_preserves_both_errors_and_reports_uncertain_state() {
+        let root = test_root("postreplace-restore-error");
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join(SEARCH_CATALOG_FILE_NAME);
+        fs::write(&path, b"{\"version\":1}").unwrap();
+        let mut calls = 0;
+        let error = update_search_catalog_with_writer(
+            &path,
+            |catalog| catalog.save_preset(preset("new", &root)),
+            |path, bytes| {
+                calls += 1;
+                if calls == 1 {
+                    crate::fs_atomic::write_bytes_atomic_with_sync_for_test(path, bytes, |_| {
+                        Err(std::io::Error::other("first sync failure"))
+                    })
+                } else {
+                    Err(std::io::Error::other("second restore failure"))
+                }
+            },
+        )
+        .expect_err("both writes fail");
+        let message = format!("{error:#}");
+        assert!(message.contains("first sync failure"), "{message}");
+        assert!(message.contains("second restore failure"), "{message}");
+        assert!(message.contains("may have changed"), "{message}");
+        assert_eq!(calls, 2);
+        assert!(load_search_catalog_from_path(&path)
+            .unwrap()
+            .preset("new")
+            .is_some());
         let _ = fs::remove_dir_all(root);
     }
 
