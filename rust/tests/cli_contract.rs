@@ -284,6 +284,97 @@ fn tc_174_named_roots_and_search_presets_round_trip_without_reserving_query_word
 }
 
 #[test]
+fn tc_174_invalid_catalog_names_are_usage_errors_before_settings_bootstrap() {
+    let fixture = test_root("catalog-invalid-name");
+    fs::create_dir_all(&fixture).unwrap();
+    for (variant, binary) in [("fw", fw_bin_path()), ("universal", bin_path())] {
+        for option in [
+            "--save-preset",
+            "--remove-preset",
+            "--remove-named-root",
+            "--preset",
+            "--named-root",
+            "--add-named-root",
+        ] {
+            for (case, name) in ["bad=name", "  ", "bad\nname"].into_iter().enumerate() {
+                if option == "--add-named-root" && name.contains('=') {
+                    continue;
+                }
+                let settings = fixture.join(format!(
+                    "{variant}-{}-{case}",
+                    option.trim_start_matches('-')
+                ));
+                fs::create_dir_all(&settings).unwrap();
+                let value = if option == "--add-named-root" {
+                    format!("{name}={}", fixture.display())
+                } else {
+                    name.to_string()
+                };
+                let mut command = Command::new(&binary);
+                if variant == "universal" {
+                    command.arg("--cli");
+                }
+                let output = command
+                    .args([option, &value])
+                    .current_dir(&fixture)
+                    .env_remove("RUST_LOG")
+                    .env("HOME", &settings)
+                    .env("USERPROFILE", &settings)
+                    .env("LOCALAPPDATA", &settings)
+                    .env("APPDATA", &settings)
+                    .output()
+                    .unwrap();
+                assert_eq!(
+                    output.status.code(),
+                    Some(2),
+                    "{variant} {option} {name:?}: {}",
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                assert!(output.stdout.is_empty());
+                assert_eq!(
+                    fs::read_dir(&settings).unwrap().count(),
+                    0,
+                    "invalid name must fail before bootstrap"
+                );
+            }
+        }
+        let settings = fixture.join(format!("{variant}-lookup"));
+        fs::create_dir_all(&settings).unwrap();
+        for option in [
+            "--preset",
+            "--named-root",
+            "--remove-preset",
+            "--remove-named-root",
+        ] {
+            let mut command = Command::new(&binary);
+            if variant == "universal" {
+                command.arg("--cli");
+            }
+            let output = command
+                .args([option, "well-formed-missing"])
+                .current_dir(&fixture)
+                .env_remove("RUST_LOG")
+                .env("HOME", &settings)
+                .env("USERPROFILE", &settings)
+                .env("LOCALAPPDATA", &settings)
+                .env("APPDATA", &settings)
+                .output()
+                .unwrap();
+            // Named-root selection belongs to SP-006 root argument handling;
+            // catalog management and preset lookup retain SP-019 exit 1.
+            let expected = if option == "--named-root" { 2 } else { 1 };
+            assert_eq!(
+                output.status.code(),
+                Some(expected),
+                "{variant} {option}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+    let _ = fs::remove_dir_all(fixture);
+}
+
+#[test]
 fn tc_175_cli_applies_field_scoped_query_without_changing_plain_query_behavior() {
     let root = test_root("field-query");
     fs::create_dir_all(root.join("src/config")).expect("create fixture");
