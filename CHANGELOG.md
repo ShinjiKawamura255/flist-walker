@@ -24,6 +24,35 @@
 ### Known issues
 - なし。
 
+## [0.32.0] - 2026-10-28
+### Added
+- Shift+Enter / Shift+ダブルクリックでファイルの格納フォルダを開くとき、Windows / macOS と対応Linuxファイルマネージャーで元ファイルを選択表示する。同じフォルダの複数選択を保持し、Linuxの非対応環境では再検証後に親フォルダを開く。
+
+### Changed
+- インデックス性能テストの比較基準とテスト契約を整合させ、測定前後の検査と回帰テストを追加した。既存の性能閾値と正当性条件は維持する。
+- 公開版の検証記録を整理し、v0.31.1から次版への更新互換性を26件のchecksum inventoryで確認する事前検査を追加した。
+
+### Fixed
+- FileList作成の取消・失敗時、処理中に他の処理が変更した対象を保護し、安全に復元できない場合は失敗を明示する。
+- named root / presetの保存で置換後の同期に失敗したとき、旧内容または未作成状態への復元を試み、復元も失敗した場合は両方のエラーと状態未確定を報告する。
+- 不正なcatalog名をCLIの引数エラーとして設定読込前に拒否し、終了コード2を返す。管理処理や検索先取得の失敗とは区別する。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存バージョンと更新時の署名検証方式の変更はない。macOSの既存objc2依存でファイル選択表示に必要な機能を有効化し、ライセンス告知を更新した。
+
+### Known issues
+- macOS配布物は未notarized。
+- 過去のWindows検証で保存ワーカーの終了遅延と自己更新処理の失敗を観測したが、原因・発生条件・実利用への影響は未確定。新しいソースのCI成功を旧事象の原因解消とは扱わない。
+- TC-207の48並列ストレス条件での100ms超過と、過去のLinux coverage実行中のSIGSEGVは原因未確定。通常条件の成功とは区別し、閾値を緩和しない。
+- Shift+ダブルクリック、実UNC上での選択表示、Linuxの実表示には未確認の範囲が残る。
+- v0.24.3利用者は同じvariantのbinaryとSHA256SUMSを手動で取得・検証して一度置き換える必要がある。v0.24.4以降は通常の自動更新を利用できる。
+
 ## [0.31.1] - 2026-10-27
 ### Added
 - なし。
@@ -2270,6 +2299,7 @@
 - macOS アセットは未提供。
 
 [Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.1...HEAD
+[0.32.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.1...v0.32.0
 [0.31.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...v0.31.0
 [0.30.2]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.1...v0.30.2

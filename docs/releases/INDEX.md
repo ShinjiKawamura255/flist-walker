@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.32.0 Preparation Packet](v0.32.0.md) | Local preparation only; release selection, draft notes, pending exact-source artifact/signature/N-1 gates and approval operations |
 | [v0.31.1 Execution Packet](v0.31.1.md) | Published source/tag, Windows native verification, separate candidate/tagged/public gates and retained external-install CI failure/retry |
 | [v0.31.0 Regenerated Candidate39810727499](evidence/v0.31.0/regenerated-39810727499/REPORT.md) | Source d1bf330; fresh audit failed on two TLS dependencies, so distribution/signature/actual N-1 remain unverified; updated Windows preparation |
 | [v0.31.0 Linux Coverage Diagnosis](evidence/v0.31.0/LINUX-COVERAGE-DIAGNOSIS.md) | Unresolved SIGSEGV, exact diagnostic observations and merge hold |
