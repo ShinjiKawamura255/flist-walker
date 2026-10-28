@@ -1,0 +1,225 @@
+"""Synthetic controls for the single authorized retry's provenance boundary."""
+import copy
+import importlib.util
+import json
+from pathlib import Path
+import subprocess
+import tempfile
+import unittest
+import zipfile
+import hashlib
+import shutil
+
+ROOT = Path(__file__).resolve().parent
+SPEC = importlib.util.spec_from_file_location('retry', ROOT / 'reconcile_tagged_recovery.py')
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+PRIOR = json.loads((ROOT.parent / 'tagged-first/terminal/jobs.json').read_text())
+
+
+class RecoveryIdentity(unittest.TestCase):
+    def fixture(self):
+        original = copy.deepcopy(PRIOR)
+        reused = [dict(copy.deepcopy(j), id=900000 + i, run_attempt=2)
+                  for i, j in enumerate(original) if j['name'] in MODULE.REUSED]
+        new = [dict(name=name, id=910000+i, run_id=MODULE.RUN, run_attempt=2,
+                    conclusion='success', status='completed', head_sha=MODULE.SOURCE,
+                    head_branch='v0.32.0', started_at='2026-10-28T16:00:00Z',
+                    completed_at='2026-10-28T16:01:00Z', steps=[])
+               for i, name in enumerate(sorted(MODULE.NEW))]
+        return original, reused + new
+
+    def test_carried_new_api_ids_preserve_actual_original_execution(self):
+        original, latest = self.fixture()
+        carried, new = MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+        self.assertEqual((len(carried), len(new)), (4, 7))
+        self.assertTrue(all(x['actual_execution'] == 'attempt1 only' for x in carried))
+
+    def test_altered_carried_step_is_not_reuse(self):
+        original, latest = self.fixture()
+        latest[0]['steps'][0]['conclusion'] = 'failure'
+        with self.assertRaises(AssertionError):
+            MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+
+    def test_new_job_cannot_use_original_failed_identity(self):
+        original, latest = self.fixture()
+        next(j for j in latest if j['name'] == 'Release Preflight (macos-native)')['id'] = 122900573976
+        with self.assertRaises(AssertionError):
+            MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+
+    def test_attempt_three_is_rejected(self):
+        original, latest = self.fixture()
+        latest[-1]['run_attempt'] = 3
+        with self.assertRaises(AssertionError):
+            MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+
+    def test_prior_or_unknown_new_job_is_rejected(self):
+        for change in ('old_start', 'unknown_name', 'failed'):
+            with self.subTest(change=change):
+                original, latest = self.fixture()
+                latest[-1][{'old_start':'started_at', 'unknown_name':'name', 'failed':'conclusion'}[change]] = {
+                    'old_start':'2026-10-28T15:00:00Z', 'unknown_name':'Unexpected job', 'failed':'failure'}[change]
+                with self.assertRaises(AssertionError):
+                    MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+
+    def test_inconsistent_or_missing_job_metadata_is_rejected(self):
+        for field, value in [('head_sha', 'b' * 40), ('head_branch', 'master'), ('status', 'in_progress'), ('head_sha', None)]:
+            with self.subTest(field=field, value=value):
+                original, latest = self.fixture()
+                if value is None:
+                    del latest[-1][field]
+                else:
+                    latest[-1][field] = value
+                with self.assertRaises((AssertionError, KeyError)):
+                    MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59Z')
+
+    def test_UTC_representation_normalizes_but_naive_and_nonUTC_are_rejected(self):
+        original, latest = self.fixture()
+        MODULE.validate_jobs(original, latest, '2026-10-28T15:59:59+00:00')
+        self.assertEqual(MODULE.utc_stamp('2026-10-28T16:00:00Z'), MODULE.utc_stamp('2026-10-28T16:00:00+00:00'))
+        for value in ('2026-10-28T15:59:59', '2026-10-28T15:59:59+01:00'):
+            with self.subTest(value=value):
+                with self.assertRaises(AssertionError):
+                    MODULE.validate_jobs(original, latest, value)
+
+    def test_all_adapters_refuse_optimization_before_network_or_inputs(self):
+        for name in ('collect_tagged_recovery.py', 'fetch_verify_recovery_artifacts.py',
+                     'review_recovery_release_run.py', 'reconcile_tagged_recovery.py'):
+            with self.subTest(name=name):
+                r = subprocess.run(['python3', '-O', str(ROOT / name)], capture_output=True)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(b'optimization is forbidden', r.stderr)
+
+
+class RawUnionIdentity(unittest.TestCase):
+    def fixture(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name)
+        old, new = root / 'old', root / 'new'
+        for folder, attempt, names in ((old, 1, MODULE.REUSED), (new, 2, MODULE.NEW)):
+            folder.mkdir()
+            with zipfile.ZipFile(folder / 'logs.zip', 'x') as archive:
+                for i, name in enumerate(sorted(names)):
+                    archive.writestr(str(i) + '_' + name + '.txt', b'original aggregate bytes\n')
+                    if name != 'Create Draft Release':
+                        content = '2026-10-28T16:00:00Z log -1 --format=%H\n2026-10-28T16:00:00Z ' + MODULE.SOURCE + '\n'
+                        archive.writestr(name + '/2_Checkout.txt', content)
+            self.proof(folder, attempt)
+        return old, new
+
+    def proof(self, folder, attempt):
+        with zipfile.ZipFile(folder / 'logs.zip') as z:
+            members = [dict(name=n, bytes=len(z.read(n)), sha256=hashlib.sha256(z.read(n)).hexdigest()) for n in z.namelist()]
+        raw = (folder / 'logs.zip').read_bytes()
+        (folder / 'collection-proof.json').write_text(json.dumps(dict(run=MODULE.RUN, attempt=attempt,
+            source=MODULE.SOURCE, raw_archive_bytes=len(raw), raw_archive_sha256=hashlib.sha256(raw).hexdigest(), members=members)))
+
+    def test_separate_raw_archives_have_explicit_provenance_and_ten_checkouts(self):
+        old, new = self.fixture()
+        before = [(p / 'logs.zip').read_bytes() for p in (old, new)]
+        result = MODULE.build_log_union(old, new)
+        self.assertEqual(result['kind'], 'DERIVED_BYTE_PRESERVING_UNION_NOT_RAW_DOWNLOAD')
+        self.assertEqual(len(result['actual_checkout_observations']), 10)
+        self.assertEqual({x['source_attempt'] for x in result['members']}, {1, 2})
+        self.assertEqual(before, [(p / 'logs.zip').read_bytes() for p in (old, new)])
+        with self.assertRaises(AssertionError):
+            MODULE.build_log_union(old, new)
+
+    def test_received_archive_changed_after_proof_is_rejected(self):
+        old, new = self.fixture()
+        with (new / 'logs.zip').open('ab') as f:
+            f.write(b'changed')
+        with self.assertRaises(AssertionError):
+            MODULE.build_log_union(old, new)
+        self.assertFalse((new / 'union-logs.zip').exists())
+
+    def test_wrong_job_role_and_duplicate_member_path_are_rejected(self):
+        for filename in ('Unexpected job/2_Checkout.txt', 'Release Cargo Audit/2_Checkout.txt'):
+            with self.subTest(filename=filename):
+                old, new = self.fixture()
+                with zipfile.ZipFile(new / 'logs.zip', 'a') as z:
+                    z.writestr(filename, b'new unauthorized bytes')
+                self.proof(new, 2)
+                with self.assertRaises(AssertionError):
+                    MODULE.build_log_union(old, new)
+                self.assertFalse((new / 'union-logs.zip').exists())
+
+    def test_checkout_source_cannot_be_replaced_by_metadata(self):
+        old, new = self.fixture()
+        with zipfile.ZipFile(new / 'logs.zip') as z:
+            items = [(n, z.read(n)) for n in z.namelist()]
+        target = next(n for n, data in items if n.endswith('/2_Checkout.txt'))
+        with zipfile.ZipFile(new / 'logs.zip', 'w') as z:
+            for name, data in items:
+                z.writestr(name, data.replace(MODULE.SOURCE.encode(), b'b' * 40) if name == target else data)
+        self.proof(new, 2)
+        with self.assertRaises(AssertionError):
+            MODULE.build_log_union(old, new)
+
+
+class ActualUnionBinding(unittest.TestCase):
+    def fixture(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        base = Path(temporary.name)
+        old, current = base / 'old', base / 'new'
+        old.mkdir()
+        current.mkdir()
+        evidence = ROOT.parent
+        actual = evidence / 'tagged-recovery/terminal'
+        shutil.copyfile(evidence / 'tagged-first/terminal/logs.zip', old / 'logs.zip')
+        for name in ('logs.zip', 'union-logs.zip'):
+            shutil.copyfile(actual / name, current / name)
+        proof = json.loads((actual / 'union-collection-proof.json').read_text())
+        reconciled = json.loads((actual / 'RECONCILIATION.json').read_text())
+        return old, current, proof, reconciled
+
+    def test_actual_immutable_union_binding_passes(self):
+        old, current, proof, reconciled = self.fixture()
+        MODULE.validate_union_binding(current, proof, reconciled, old)
+
+    def test_changed_zip_rejects_stale_warning_receipt(self):
+        old, current, proof, reconciled = self.fixture()
+        with (current / 'union-logs.zip').open('ab') as f:
+            f.write(b'changed after proof')
+        with self.assertRaises(AssertionError):
+            MODULE.validate_union_binding(current, proof, reconciled, old)
+
+    def test_proof_mismatch_and_wrong_kind_are_rejected(self):
+        for change in ('proof', 'kind'):
+            with self.subTest(change=change):
+                old, current, proof, reconciled = self.fixture()
+                if change == 'proof':
+                    proof['warning_error_candidates'] = []
+                else:
+                    proof['kind'] = 'RAW_DOWNLOAD'
+                    reconciled['log_union'] = copy.deepcopy(proof)
+                with self.assertRaises(AssertionError):
+                    MODULE.validate_union_binding(current, proof, reconciled, old)
+
+    def test_matching_proofs_cannot_hide_warning_or_member_change(self):
+        for change in ('warnings', 'member'):
+            with self.subTest(change=change):
+                old, current, proof, reconciled = self.fixture()
+                if change == 'warnings':
+                    proof['warning_error_candidates'] = []
+                else:
+                    proof['members'][0]['sha256'] = '0' * 64
+                reconciled['log_union'] = copy.deepcopy(proof)
+                with self.assertRaises(AssertionError):
+                    MODULE.validate_union_binding(current, proof, reconciled, old)
+
+    def test_checkout_count_without_distinct_expected_jobs_is_rejected(self):
+        _, _, proof, _ = self.fixture()
+        checkouts = proof['actual_checkout_observations']
+        for attempt in (1, 2):
+            changed = copy.deepcopy(checkouts)
+            same_attempt = [x for x in changed if x['source_attempt'] == attempt]
+            same_attempt[1]['job'] = same_attempt[0]['job']
+            with self.assertRaises(AssertionError):
+                MODULE.validate_checkout_roles(changed)
+
+
+if __name__ == '__main__':
+    unittest.main()

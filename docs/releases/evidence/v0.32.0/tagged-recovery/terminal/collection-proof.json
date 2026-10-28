@@ -1,0 +1,519 @@
+{
+  "utc": "2026-10-28T16:09:22.991342+00:00",
+  "run": 40712264203,
+  "attempt": 2,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "event": "push",
+  "conclusion": "success",
+  "raw_archive_bytes": 313347,
+  "raw_archive_sha256": "ca888c5192159002376b1af26afb45e2217918608c73301aab2438a9abf01ad8",
+  "CRC": "PASS",
+  "members": [
+    {
+      "name": "0_Create Draft Release.txt",
+      "bytes": 7255,
+      "sha256": "c9f7a86043c81d600283360e5e9ac46b847d508d22ef21d33bf15f0e5159e185"
+    },
+    {
+      "name": "Create Draft Release/system.txt",
+      "bytes": 807,
+      "sha256": "8859fe0028d688d203409fc7d2af409d4eb0a4908f475e4ef8ccb4013dc4aa07"
+    },
+    {
+      "name": "Create Draft Release/1_Set up job.txt",
+      "bytes": 1957,
+      "sha256": "4ff1c770f11461f6d5a672f4dc9a9733c395718e3c0c3ef5a88f78e588a8935f"
+    },
+    {
+      "name": "Create Draft Release/2_Record runner image.txt",
+      "bytes": 669,
+      "sha256": "06e32b1f5e56bb27e86134f00f6415c6a6571f97550080e1ba2dc25c5056768c"
+    },
+    {
+      "name": "Create Draft Release/3_Reject an existing release.txt",
+      "bytes": 884,
+      "sha256": "b3813c9b55f5c93d2f12831b7449c61d70cca37e4d521b61da7ef35d6d830dea"
+    },
+    {
+      "name": "Create Draft Release/4_Download validated candidate bundle.txt",
+      "bytes": 2284,
+      "sha256": "f619b29dffcf177436615da553865c1f1a92714ef675346c552686f62853a546"
+    },
+    {
+      "name": "Create Draft Release/5_Create draft GitHub release.txt",
+      "bytes": 1415,
+      "sha256": "b5886ebb9f49283dda9d1ba2a13c1b09c238277c1f2f101bff57b1f0a5f496fb"
+    },
+    {
+      "name": "Create Draft Release/6_Complete job.txt",
+      "bytes": 61,
+      "sha256": "274c71395dbbc3ca0c8499bf811c5366c6dae2dfe44b8cfeb97282a776b46e9f"
+    },
+    {
+      "name": "1_Assemble Release Bundle.txt",
+      "bytes": 53449,
+      "sha256": "120eb21b239ea2d17d7488e9bd66a4b80fd03f969d42ba88964728585aba0835"
+    },
+    {
+      "name": "Assemble Release Bundle/system.txt",
+      "bytes": 610,
+      "sha256": "13a91dde3366ffde3052ce01d322e5ce03d5ecf94255a99e895780f201f23775"
+    },
+    {
+      "name": "Assemble Release Bundle/1_Set up job.txt",
+      "bytes": 2459,
+      "sha256": "478f2f694d74bdb70240b9295c3a4f086a73a0716cf88de0afa588b4cf5f56ff"
+    },
+    {
+      "name": "Assemble Release Bundle/2_Checkout.txt",
+      "bytes": 8553,
+      "sha256": "6f4fe31f1b07f0f40c28d333781692e583cf734de9c0bf569864672a25e3d28e"
+    },
+    {
+      "name": "Assemble Release Bundle/3_Record runner image.txt",
+      "bytes": 669,
+      "sha256": "6348d7d367c5ea56d5141836021eb2dc9adb128dc205e628ef4a3989b7f44b09"
+    },
+    {
+      "name": "Assemble Release Bundle/4_Install Rust.txt",
+      "bytes": 16313,
+      "sha256": "348697c93eb1ba64dae1afe33f1980b417f02ebab919531177a5ded8e061d58d"
+    },
+    {
+      "name": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "bytes": 4851,
+      "sha256": "eed1d5513ab4f8c8c72b7efb573dca4680561fa098f4a06eb9d473e0526ade66"
+    },
+    {
+      "name": "Assemble Release Bundle/6_Show downloaded assets.txt",
+      "bytes": 3663,
+      "sha256": "1c4e6dfaaf23916595ed9e6a1f49116cf42018610f1d45e001d8231c0ce76859"
+    },
+    {
+      "name": "Assemble Release Bundle/7_Collect release bundle.txt",
+      "bytes": 4820,
+      "sha256": "1adc1735a9172453c0aafe94fbfed1c600b810a3b6c91458adb69aff08b08b32"
+    },
+    {
+      "name": "Assemble Release Bundle/8_Sign release checksum manifest.txt",
+      "bytes": 987,
+      "sha256": "c2e82cdcbc7ee49175d709ea653de0b292f7d6b25c54b35064750647dc78c1c0"
+    },
+    {
+      "name": "Assemble Release Bundle/9_Validate release bundle.txt",
+      "bytes": 2644,
+      "sha256": "b6f64ae41cdaa4de3e5486220f1007f9d04d377a3050ceb2ef121864695b7fd0"
+    },
+    {
+      "name": "Assemble Release Bundle/10_Validate previous public updater compatibility.txt",
+      "bytes": 1526,
+      "sha256": "f7662731673e940760c4e5d76f40c5cdf03fc21fc1881af99a96c068145abff4"
+    },
+    {
+      "name": "Assemble Release Bundle/11_Upload validated candidate bundle.txt",
+      "bytes": 2745,
+      "sha256": "bdd0ea8c02f6026c8fdac09e50404c15b4c2839ec177ae0799761801007489e5"
+    },
+    {
+      "name": "Assemble Release Bundle/22_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "31a5b07c7abe5b4ab8d482ece6caa7ec37311223a8a70894d5fc2e015ecfff9d"
+    },
+    {
+      "name": "Assemble Release Bundle/23_Complete job.txt",
+      "bytes": 61,
+      "sha256": "66b6c50084d66e556311fc3f026ea1250331d7ba463a10b45a33b51380b4a4a2"
+    },
+    {
+      "name": "2_Build Release Assets (macos-arm64).txt",
+      "bytes": 63297,
+      "sha256": "2ff8090e354106384c9be918dcd00584c4ed03eb57edb3a0aa66f14c1aa91d5e"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/system.txt",
+      "bytes": 603,
+      "sha256": "a3f485fde3e1809d8f98bf9c9677becce0cdb8d37766ef9b98ed536844b7e9cc"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/1_Set up job.txt",
+      "bytes": 2480,
+      "sha256": "8c552203fd983698ae04677f07bce274e7121a77c1e0e138ffb2d6ee41d5c24f"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/2_Checkout.txt",
+      "bytes": 10668,
+      "sha256": "7cbcd8ec12e7261dadb3408e1c6abb875ba792c0c5f30ba6936de9ad0da29d68"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/3_Record runner image.txt",
+      "bytes": 735,
+      "sha256": "f1a110dcce22c3e8c8e308c3f9f25f7fb542ce48751d6c250301525a8a9b8ebb"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/5_Install Rust with target.txt",
+      "bytes": 17561,
+      "sha256": "d1f5dc39d66da037e00a35d4eeb9476c70c1f1676c4a6cb7034c10f021151003"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/6_Cache Cargo downloads.txt",
+      "bytes": 1896,
+      "sha256": "e468fff2a34bfac39b5bd3b893df3d182ca7587060b48905aedb4edd70f8db5f"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/12_Build macOS release.txt",
+      "bytes": 21019,
+      "sha256": "d0927bdad3f414789703487a46b7072906b40577ecc91d9dd35c854e1c38ab92"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/13_Package macOS release assets.txt",
+      "bytes": 1696,
+      "sha256": "b901c58a7af7118c09a6c25083f82d1fc1f282627eb5ec12dfaf13ab49318118"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/14_Upload packaged assets.txt",
+      "bytes": 2461,
+      "sha256": "47e0a36dce5446d126236243e1c8f3b8442f6592ef911243ee2662d8f94f2934"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/27_Post Cache Cargo downloads.txt",
+      "bytes": 257,
+      "sha256": "442fbe133c5cb7b694e5341f13344bed7649d0b0e5dd41b5776b3cc6f6d960f5"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/28_Post Checkout.txt",
+      "bytes": 4493,
+      "sha256": "0de72ad5ef3c4fbf17e16a5fa10dfade11db48e7c50ed2e9d9752249fc0d2b2a"
+    },
+    {
+      "name": "Build Release Assets (macos-arm64)/29_Complete job.txt",
+      "bytes": 61,
+      "sha256": "2f98d731ecdd8da1d22c0f7f417012c023001a94f5e04dc630e8fe3223ce8998"
+    },
+    {
+      "name": "3_Build Release Assets (macos-x86_64).txt",
+      "bytes": 65330,
+      "sha256": "82542504782ff65f5ed76e0c61bd732147f722878477a8f9483bc233fbdce1e3"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/system.txt",
+      "bytes": 609,
+      "sha256": "3f42078effa8730f94132b32474582285a98a0668be818bac7bede5141f87ce8"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/1_Set up job.txt",
+      "bytes": 2418,
+      "sha256": "c8c499c0454e1bb68fa6c10c09578b09fe1c1ef164ae9a06e27be291bd14d418"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/2_Checkout.txt",
+      "bytes": 12744,
+      "sha256": "608c1c73a5b4fb9c90b5eba233df7c9a5b54d5950086b2e39aafa9e0044c1bbf"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/3_Record runner image.txt",
+      "bytes": 735,
+      "sha256": "71afc01d51d089cf59faba1ebbb87f9abbd0a595be6ef6f549d0b9f38b414d3e"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/5_Install Rust with target.txt",
+      "bytes": 17552,
+      "sha256": "afdd274a9d72edceec62a875165428379dfc6a71a9ad3b617d57dbb14d27aeec"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/6_Cache Cargo downloads.txt",
+      "bytes": 1818,
+      "sha256": "ea5b84e37b3a5584a2d06140a172cd1044828bb88f47d96e21247c57951d6bd6"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/12_Build macOS release.txt",
+      "bytes": 21101,
+      "sha256": "5b870295227b572939169609747b279b050aa8cd2443eafbd3780845753ec5e2"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/13_Package macOS release assets.txt",
+      "bytes": 1705,
+      "sha256": "08d89e5254e16f2f4b1d246345368f3b85b275f73073aaf5a842bbdd1b316c6f"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/14_Upload packaged assets.txt",
+      "bytes": 2525,
+      "sha256": "8852a10220eb965e98225e830e240465bf063ae305c65d2927425130db1c3a10"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/27_Post Cache Cargo downloads.txt",
+      "bytes": 256,
+      "sha256": "437fb4be3bb157bb8ca897d77904bb07a9cb437b9c8fa0fbf0ed0cd2924e2142"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/28_Post Checkout.txt",
+      "bytes": 4445,
+      "sha256": "92aa7c08dc377e5dc09e9377c74606c7781df8f6d533c50ca2c708c900277ad7"
+    },
+    {
+      "name": "Build Release Assets (macos-x86_64)/29_Complete job.txt",
+      "bytes": 61,
+      "sha256": "6bcb552be2befd233058a3c3a3fd3c5496ac8c5bab5b1d41aed640f7736382aa"
+    },
+    {
+      "name": "4_Build Release Assets (windows-x86_64).txt",
+      "bytes": 73884,
+      "sha256": "ba7a24f654e70fdf2ed5d0300db9c70a3c0cbafa131f64aef9a0aaaab65123bc"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/system.txt",
+      "bytes": 607,
+      "sha256": "57e56678cfef012d8a9a922239b94852ec59e993bc677a692a052b2ee501d45a"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/1_Set up job.txt",
+      "bytes": 2461,
+      "sha256": "77b865a28b56d5531377d627de8f6cb43962d33e4e79dd4fd35d807801bcfaa2"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/2_Checkout.txt",
+      "bytes": 8623,
+      "sha256": "bbb6b421020e17b26a7daef04d95c2ca2b4c02febb943f91aaf745c75e2402e2"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/3_Record runner image.txt",
+      "bytes": 739,
+      "sha256": "c3093e95b442586e32864aefb1e4e67d1ffceb70d541279713982109a9fe8622"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/5_Install Rust with target.txt",
+      "bytes": 17420,
+      "sha256": "97f1f6648e61cbb95fad1fcb22677187745f5e2bd6e4e81854e89a40fd415c9e"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/6_Cache Cargo downloads.txt",
+      "bytes": 1788,
+      "sha256": "dae07860aa2141b6aed9c5906ad86cf9b0c9872db1623a838360aa9a0d099455"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/7_Install mingw-w64.txt",
+      "bytes": 13813,
+      "sha256": "790bfc85f52f68b4f60846a5bc2e1278d99fd946879fb68e1b795b9a3b6ee6ef"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/8_Build Windows release.txt",
+      "bytes": 20841,
+      "sha256": "79de000d4346087f7929f66a35d3274da6d21ef1578c9a51f4c38640d0481e73"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/9_Package Windows release assets.txt",
+      "bytes": 1271,
+      "sha256": "a36d8ad4616b5b7cb4c2160aeaf8cf40dc9aa2c66ba9d16233550ebd4233bff0"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/14_Upload packaged assets.txt",
+      "bytes": 2448,
+      "sha256": "3a710c4971abc8181bf478f997036d9da9f98bd3a937bcf44c23278a3ab8545c"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/27_Post Cache Cargo downloads.txt",
+      "bytes": 258,
+      "sha256": "da5951865e08ba93d74f7cd28c17677cc8928bc6ea70e6e9cdf97c613aac93bc"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/28_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "e1efeeaf16ea3030bf115ec5b917e6a0fcb257483ec50c3f8a73cbe6ba6d87d9"
+    },
+    {
+      "name": "Build Release Assets (windows-x86_64)/29_Complete job.txt",
+      "bytes": 61,
+      "sha256": "cdfc94abd9131e71cc79caed6f7885269e16f99e70f8f3745c9433cf63fc6881"
+    },
+    {
+      "name": "5_Build Release Assets (linux-x86_64).txt",
+      "bytes": 61884,
+      "sha256": "ad5d8ae9fb5e5ae8c39c348ea9c762eea7fa2b6f3fd840a2dd7a879c7e302fb2"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/system.txt",
+      "bytes": 607,
+      "sha256": "85a77c25717348d2deb660ea8a3a24acd9719831abe8abc90a9647e1678ec68b"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/1_Set up job.txt",
+      "bytes": 2462,
+      "sha256": "5777e059f48cd723ea2c006289b68fbe8361afd868550356139223905c8d3ddf"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/2_Checkout.txt",
+      "bytes": 8623,
+      "sha256": "01614a6256d210ba0c035789930b6077f0b1018de48cf72d0ae56d0fd7535ef9"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/3_Record runner image.txt",
+      "bytes": 739,
+      "sha256": "d5cc66354d674f0cc08baf96fc3349831c3b9e0342cc0bcef679b2c1b5383aac"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/4_Install Rust.txt",
+      "bytes": 17227,
+      "sha256": "7227e0a32f87916744d2b21f8fa9d0971a631c8106cd8108da9264d43188f339"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/6_Cache Cargo downloads.txt",
+      "bytes": 1782,
+      "sha256": "288767a02e3eebb8c4424d9a15aa939d566c6874b91bdb8b34dafdf11c17d54b"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/10_Build Linux release.txt",
+      "bytes": 22881,
+      "sha256": "8a44172709ffe6d4077e43e047d6ad058f593e101861634af435b45b310bdef5"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/11_Package Linux release assets.txt",
+      "bytes": 1266,
+      "sha256": "92ec298e15c6f0d8ffdb8bf13e0e6e8f0fe3464b14a07398f30c23a4d1a22263"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/14_Upload packaged assets.txt",
+      "bytes": 2423,
+      "sha256": "4e2b62fc727e58f732e582e7970aa9a90240d3ca504cd0dbb3cbf5f5e25e28e0"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/27_Post Cache Cargo downloads.txt",
+      "bytes": 256,
+      "sha256": "d8097e1118433d9f0ac75635478cf2375c0526a7ee44e0872e5fb282ecb54875"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/28_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "1fe74d21e038c91e744e6a5c55afaa4f17851f4c2ad329a5303c477bc239d682"
+    },
+    {
+      "name": "Build Release Assets (linux-x86_64)/29_Complete job.txt",
+      "bytes": 61,
+      "sha256": "a7124b66a294108583f5a8be91056de7f48953616b47493003853d95d8f40842"
+    },
+    {
+      "name": "6_Release Preflight (macos-native).txt",
+      "bytes": 311852,
+      "sha256": "eaa1de933a707ca8111936a8d1e1bd1014d3e7ebda621c5859b5f426f39a4adc"
+    },
+    {
+      "name": "Release Preflight (macos-native)/system.txt",
+      "bytes": 600,
+      "sha256": "39edb39fce1c835b41866d459c078bbd099f435621d75757e0dd673a3c0eb6b5"
+    },
+    {
+      "name": "Release Preflight (macos-native)/1_Set up job.txt",
+      "bytes": 2308,
+      "sha256": "e23e0abda212383ac827e6a9f252ad3285be04dd7d8a0e684649d905fcf84c80"
+    },
+    {
+      "name": "Release Preflight (macos-native)/2_Checkout.txt",
+      "bytes": 10288,
+      "sha256": "6d866706e541fb9c1bff5f0e29d88ecf7e971098b89ebc339e529b8aa5602e19"
+    },
+    {
+      "name": "Release Preflight (macos-native)/3_Record runner image.txt",
+      "bytes": 665,
+      "sha256": "136fb85d4863f44ee95a1ae53bb1cc1598cf918b4a5d164aa4d05b76e7e7b948"
+    },
+    {
+      "name": "Release Preflight (macos-native)/4_Install Rust.txt",
+      "bytes": 16458,
+      "sha256": "3a1bab2e4a0ca7c35edfecf7ec46a08214217da251a3a3406efd850d9525f5b5"
+    },
+    {
+      "name": "Release Preflight (macos-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1769,
+      "sha256": "24dc5ca08f45f9d1fdf766784761545d4906f0396569a15126285b107a89fb45"
+    },
+    {
+      "name": "Release Preflight (macos-native)/6_Run tests.txt",
+      "bytes": 257012,
+      "sha256": "6fac316211f67a63f7d428a8160505bf96eed6714f1d665eb2f72fc06e10fca7"
+    },
+    {
+      "name": "Release Preflight (macos-native)/7_Run clippy.txt",
+      "bytes": 18563,
+      "sha256": "3f47242b31b82dcb29b951c6087613499dc4652bcad8faf10a7d8b78b40e48a7"
+    },
+    {
+      "name": "Release Preflight (macos-native)/13_Post Cache Cargo downloads.txt",
+      "bytes": 262,
+      "sha256": "df4c6a1dc2cf22d8de1988e2a1c9751992d90583adf817711cbcd7c49d68fcc8"
+    },
+    {
+      "name": "Release Preflight (macos-native)/14_Post Checkout.txt",
+      "bytes": 4493,
+      "sha256": "17c32f1caa2e67784eed9ab31239a8933f9b6e6b98068b4f9ae1c903c3f52224"
+    },
+    {
+      "name": "Release Preflight (macos-native)/15_Complete job.txt",
+      "bytes": 61,
+      "sha256": "6fae26728f34786145eec4328569ea377cb719fae821530a64991dd65c109166"
+    }
+  ],
+  "actual_checkout_observations": [
+    {
+      "file": "Assemble Release Bundle/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Build Release Assets (macos-arm64)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Build Release Assets (macos-x86_64)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Build Release Assets (windows-x86_64)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Build Release Assets (linux-x86_64)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Release Preflight (macos-native)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    }
+  ],
+  "warning_error_candidates": [
+    {
+      "file": "0_Create Draft Release.txt",
+      "line": 75,
+      "text": "2026-10-28T16:07:49.1661907Z (node:1971) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": true
+    },
+    {
+      "file": "Create Draft Release/4_Download validated candidate bundle.txt",
+      "line": 20,
+      "text": "2026-10-28T16:07:49.1661844Z (node:1971) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": false
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 394,
+      "text": "2026-10-28T16:06:01.2661018Z (node:2210) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": true
+    },
+    {
+      "file": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "line": 32,
+      "text": "2026-10-28T16:06:01.2660972Z (node:2210) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": false
+    }
+  ],
+  "identity_unchanged": true,
+  "admission": "NOT PERFORMED; original evidence collection only"
+}

@@ -1,0 +1,77 @@
+{
+  "version": "v0.32.0",
+  "published_at": "2026-10-28T16:35:38Z",
+  "release_id": 426893836,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "annotated_tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "body_sha256": "527fb2a0c04bb652d1af23a44a5e25358204fd7dc51986aa613099f7df392831",
+  "predecessor": {
+    "version": "0.31.1",
+    "release_id": 424455243,
+    "source": "b1febf364457db9feb99a5b0f745b97a99816591"
+  },
+  "preparation": {
+    "pr": 224,
+    "first_ci": 40687822996,
+    "first_master_ci": 40691274200,
+    "actual_pr_checkout": "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d",
+    "pr_and_master_tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+    "master_source": "77e36c4eef21b5047747d04b3983835a50d92f06"
+  },
+  "candidate": {
+    "run": 40696126066,
+    "attempt": 1,
+    "whole_dispatches": 1,
+    "status": "ACCEPTED",
+    "actual_checkouts": 10,
+    "all28_assets_26_manifest_rows_8_binaries_6_archives": "PASS",
+    "realN1": "PASS"
+  },
+  "tagged": {
+    "run": 40712264203,
+    "first_attempt": "FAIL preserved; macOS hosted runner unacquired, no steps/test execution; builds/assembly/draft SKIPPED",
+    "recovery": "Explicitly authorized once; POST exact original Mac job122900573976/rerun at2026-10-28T15:44:18Z; known HTTP201, no whole workflow redispatch",
+    "recovery_attempt": 2,
+    "actual_new_jobs": 7,
+    "carried_original_successful_jobs": 4,
+    "new_raw_log_members": 88,
+    "original_raw_log_members": 42,
+    "derived_union_members": 130,
+    "actual_union_checkouts": 10,
+    "status": "SUCCESS with explicit original-success carry; not all eleven freshly executed",
+    "actual28_assets_signature_realN1": "PASS; fresh five artifact identities"
+  },
+  "public": {
+    "all28_fixed_urls_unauthenticated_once": "PASS",
+    "all28_bytes_equal_accepted_tagged": "PASS",
+    "signature_and_negative_controls": "PASS",
+    "actual_public31_to32_manifest": "PASS",
+    "Latest_API_and_redirect": "v0.32.0 PASS",
+    "independent_readback": "ACCEPTED no findings"
+  },
+  "windows": {
+    "native_first_sessions": 1,
+    "ratio": 0.39935620927732224,
+    "median_ms": {
+      "universal": 77.199,
+      "fw": 30.8299
+    },
+    "gate": 0.7,
+    "fixture_files": 200,
+    "warmups_per_variant": 5,
+    "samples_per_variant": 25,
+    "cleanup": "owned children/fixture/profile removed; pre-existing worktrees preserved",
+    "profile_limitation": "Original exact-metadata audit false retained: one pre-existing directory size0→12288; directory existence/mtime and recorded file metadata unchanged; cause and file-content byte equality not established",
+    "tagged_reuse": "Same source/build inputs; all PE sections/layout identical; only timestamp/checksum fields differ. Not full binary equality and not a new tagged-native measurement."
+  },
+  "residual_risks": {
+    "old219": "Original FAIL; writer stop >5s, accepted1/persisted0; cause and user impact UNKNOWN, not proof of actual user data loss",
+    "old220": "Original FAIL; GNU helper exit1/no observed matching ACK; cause and user impact UNKNOWN, no causal fix claim",
+    "historical_timing_and_coverage": "TC207 48-thread stress >100ms and Linux coverage SIGSEGV unresolved; specifically accepted for v0.32.0 only",
+    "omissions": "Shift+doubleclick/realUNC and unverified native physical input/Linux display remain NOT RUN; current-version scope, not PASS or standing waiver",
+    "macOS": "UNNOTARIZED disclosed"
+  },
+  "settings_keys_conditions": "No new key/credential/access/protection/workflow/threshold/default change; existing signing key only; no further Windows session or performance rerun",
+  "closure": "This documentation-only PR records completed release evidence; its own required checks/independent review/merge are separate from release source77."
+}

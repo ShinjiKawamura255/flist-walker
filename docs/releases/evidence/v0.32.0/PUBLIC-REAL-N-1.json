@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "utc": "2026-10-28T16:39:05.123872+00:00",
+  "release_id": 426893836,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "previous_version": "0.31.1",
+  "previous_release_id": 424455243,
+  "candidate_version": "0.32.0",
+  "current_Latest_version": "v0.32.0",
+  "manifest_sha256": "43bf6d76c7240c29fede92f8ff25ade4f15450dc530111361cea485f748efb19",
+  "checker_sha256": "44b292d59028f42f14038da253dbfc381fc06cebb99c9a63e000583abead4c43",
+  "output_sha256": "eed4a2321b84f206c4f1cc5b69112cc99770bec210080b2ba37920c27ab59daf",
+  "returncode": 0,
+  "predecessor_binding": "previousLatest31 frozenprepublication, recheckedpublished31ID424; nowLatest32 expected; no accidental32\u219232 comparison",
+  "actual_public_download_manifest": true,
+  "waiver": false
+}

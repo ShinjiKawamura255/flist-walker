@@ -1,0 +1,16 @@
+{
+  "utc": "2026-10-28T16:22:55.919045+00:00",
+  "findings_remediated": {
+    "Major1": "review adapter validates actualunionZIPsha/size/CRC/exactfullmembertable andeverybyteagainstbothpinnedrawarchiveSHAs; proofdeep-equalRECONCILIATION.log_union/expectedkind; warnings+checkoutsrecomputedbeforewarningadmission",
+    "Minor1": "uniqueonecheckoutperREUSED4 andNEWminusDraft6 expectedset; appliedbothbuilderandactualbindingvalidator"
+  },
+  "files": {
+    "reconcile_tagged_recovery.py": "7a68e1ac2db8922331f3d64dd702a45dbadb8dd2b6761e916f8dfc15979dc4f2",
+    "review_recovery_release_run.py": "bc6016b1ea05c5bd1fe9cf0d7335dc08d56343a07f0ffa5a4d198ba8b28f8483",
+    "test_recovery_job_identity.py": "e2b923f2febe41c93c4be7c2e2ae6c2a1a8af7f65b2e6e81b5910f645ec2787a"
+  },
+  "controls": "17PASS retainedactualfixturecopies/syntheticnegative; observer-binding-controls-first.log; no native/CI rerun",
+  "actualsourcezipandderivedzip": "unchanged",
+  "operator_review": "strictLOG-WARNING-REVIEW generatedonlyafteractualbindingPASS; independentreviewpending",
+  "actualnewbundle": "BUNDLE-VALIDATION PASS 28assets/26hashes/key/signature/8architectures/6archives/notice/metadata; actual31N1PASS"
+}

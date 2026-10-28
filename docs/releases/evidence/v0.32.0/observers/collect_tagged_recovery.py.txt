@@ -1,0 +1,92 @@
+"""Read-only first-terminal-run preservation, including FAIL. No CI mutations."""
+import sys
+if not __debug__ or sys.flags.optimize:
+    raise RuntimeError('release observer requires Python assertions enabled; optimization is forbidden')
+
+import argparse
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import re
+import subprocess
+import zipfile
+
+BASE = 'repos/ShinjiKawamura255/flist-walker/'
+
+def api(endpoint, raw=False):
+    command = ['gh', 'api']
+    if raw:
+        command.append('--allow-escape-sequences')
+    command.append(BASE + endpoint)
+    data = subprocess.check_output(command, timeout=120)
+    return data if raw else json.loads(data)
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('run', type=int)
+    p.add_argument('source')
+    p.add_argument('event', choices=['pull_request','pull_request_target','push','workflow_dispatch'])
+    p.add_argument('out', type=Path)
+    a = p.parse_args()
+    assert re.fullmatch('[0-9a-f]{40}', a.source)
+    r = api(f'actions/runs/{a.run}')
+    assert (r['id'],r['head_sha'],r['run_attempt'],r['event'],r['status']) == (40712264203,'77e36c4eef21b5047747d04b3983835a50d92f06',2,'push','completed')
+    assert a.run==40712264203 and a.source=='77e36c4eef21b5047747d04b3983835a50d92f06' and a.event=='push' and r['head_branch']=='v0.32.0'
+    assert not a.out.exists(), 'preserve first result; no overwrite'
+    a.out.mkdir()
+    def save(name,value):
+        with (a.out/name).open('x') as f:
+            json.dump(value,f,indent=2)
+            f.write('\n')
+    save('run.json',r)
+    jobs=[]
+    for page in range(1,11):
+        d=api(f'actions/runs/{a.run}/jobs?filter=latest&per_page=100&page={page}')
+        jobs.extend(d['jobs'])
+        if len(jobs)==d['total_count']:
+            break
+    else:
+        raise ValueError('job pagination incomplete')
+    save('jobs.json',jobs)
+    annotations=[]
+    for job in jobs:
+        if not job.get('check_run_url'):
+            continue
+        check=job['check_run_url'].rsplit('/',1)[1]
+        for page in range(1,11):
+            rows=api(f'check-runs/{check}/annotations?per_page=100&page={page}')
+            annotations.extend({'job':job['name'],'check_run':check,'annotation':x} for x in rows)
+            if len(rows)<100:
+                break
+        else:
+            raise ValueError('annotation pagination incomplete')
+    save('annotations.json',annotations)
+    artifacts=api(f'actions/runs/{a.run}/artifacts?per_page=100')
+    assert artifacts['total_count']==len(artifacts['artifacts'])
+    save('artifacts.json',artifacts)
+    raw=api(f'actions/runs/{a.run}/logs',raw=True)
+    with (a.out/'logs.zip').open('xb') as f:
+        f.write(raw)
+    records=[]; scan=[]; checkouts=[]
+    with zipfile.ZipFile(a.out/'logs.zip') as z:
+        assert z.testzip() is None
+        assert len(z.namelist())==len(set(z.namelist()))
+        for name in z.namelist():
+            data=z.read(name)
+            records.append({'name':name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+            text=re.sub(r'\x1b\[[0-9;]*[A-Za-z]','',data.decode('utf-8',errors='replace'))
+            if re.fullmatch(r'[^/]+/\d+_Checkout\.txt',name):
+                hits=re.findall(r'log -1 --format=%H\r?\n[^\n]*? ([0-9a-f]{40})(?:\r?\n|$)',text)
+                checkouts.append({'file':name,'actual_commits':hits})
+            for line_no,line in enumerate(text.splitlines(),1):
+                content=re.sub(r'^\S+Z ','',line)
+                if re.search(r'##\[(warning|error)\]|^\s*(?:warning|error)(?:\[[^]]+\])?:|\(node:\d+\).*?(?:DeprecationWarning|Warning)',content):
+                    scan.append({'file':name,'line':line_no,'text':line,'aggregate':'/' not in name})
+    end=api(f'actions/runs/{a.run}')
+    assert all(end[k]==r[k] for k in ('id','head_sha','run_attempt','event','status','conclusion'))
+    save('collection-proof.json',{'utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'run':a.run,'attempt':2,'source':a.source,'event':a.event,'conclusion':r['conclusion'],'raw_archive_bytes':len(raw),'raw_archive_sha256':hashlib.sha256(raw).hexdigest(),'CRC':'PASS','members':records,'actual_checkout_observations':checkouts,'warning_error_candidates':scan,'identity_unchanged':True,'admission':'NOT PERFORMED; original evidence collection only'})
+    print(json.dumps({'run':a.run,'conclusion':r['conclusion'],'jobs':[{k:j[k] for k in ('id','name','conclusion')} for j in jobs],'actual_checkout_observations':checkouts,'warning_error_candidates':scan,'archive_sha256':hashlib.sha256(raw).hexdigest()},indent=2))
+
+if __name__=='__main__':
+    main()

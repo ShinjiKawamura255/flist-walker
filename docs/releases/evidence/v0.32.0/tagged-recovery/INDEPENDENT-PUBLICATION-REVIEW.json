@@ -1,0 +1,36 @@
+{
+  "utc": "2026-10-28T16:35:13.712681+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "PUBLICATION_GO_CONDITIONAL_FRESH_READONLY_GUARD",
+  "findings": [],
+  "release_id": 426893836,
+  "version": "v0.32.0",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "run": 40712264203,
+  "attempt": 2,
+  "body_sha256": "527fb2a0c04bb652d1af23a44a5e25358204fd7dc51986aa613099f7df392831",
+  "independent_checks": [
+    "4originalcarry/7new11jobs;twooriginalZIPs+derived130members/10sourcecheckouts",
+    "fivefreshZIPs/APIhashsizeCRC/26producerfinalsame/28assets/6archives/8binaries/keysignature/actualN1",
+    "Windowsallsections/layoutsame, onlyPEtimestampchecksumdiff; actual12compilerlinkerpackages same; candidatefirstTC193reusevalid, nottaggedmeasurementorfullbytesameclaim",
+    "11fullaggregate82broadcandidates/exactrawsource classification; productionwarnings0/unknown0",
+    "draftall28assetIDs/sizes/digests/source/tag/bodySHA/fixedURLs/disclosure"
+  ],
+  "minor_warning_exception": "ACCEPT_ONLY40712264203_ATTEMPT2:DEP0005 actual2/export4; officiallatest8.0.2fullpin900\u2026/Node24/actualrunner2.338/codecallsiteinputintegrityallgates independentlyconfirmed; nopriorcandidateinheritance",
+  "authority": "existingconditionalfullv0320publication andexplicitonceinfra recovery, no GitHubApprove",
+  "max_publish_PATCH": 1,
+  "fresh_guard": [
+    "master77/treef928/clean",
+    "annotatedtagac6/source77",
+    "Latest31ID424455243",
+    "confirmedDraftID426893836/bodySHA/all28assetsunchanged"
+  ],
+  "postpublish_required": [
+    "fixedpublicURLs/body/tag/Latest",
+    "28unauthenticateddownloads/byteequality/keysignature/realN1/independentreadback",
+    "closurePR/validation/review/protectedmerge/postmergeCI"
+  ],
+  "old_failures_unknown_notrun": "retained no causalfixclaim/version32onlyriskacceptance"
+}

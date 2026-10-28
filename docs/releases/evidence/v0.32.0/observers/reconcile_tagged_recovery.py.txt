@@ -1,0 +1,249 @@
+"""Frozen one-job recovery: distinguish four original successes from seven new jobs."""
+import sys
+if not __debug__ or sys.flags.optimize:
+    raise RuntimeError('release observer requires Python assertions enabled; optimization is forbidden')
+import argparse
+import datetime
+import hashlib
+import json
+from pathlib import Path
+import re
+import zipfile
+
+RUN = 40712264203
+SOURCE = '77e36c4eef21b5047747d04b3983835a50d92f06'
+REUSED = {'Resolve Release Context', 'Release Cargo Audit',
+          'Release Preflight (linux-native)', 'Release Preflight (windows-native)'}
+NEW = {'Release Preflight (macos-native)', 'Assemble Release Bundle', 'Create Draft Release'} | {
+    'Build Release Assets (' + axis + ')' for axis in
+    ('windows-x86_64', 'linux-x86_64', 'macos-arm64', 'macos-x86_64')}
+
+
+def utc_stamp(value):
+    assert isinstance(value, str), 'UTC timestamp string required'
+    stamp = datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
+    assert stamp.tzinfo is not None and stamp.utcoffset() == datetime.timedelta(0), 'timezone-aware UTC required'
+    return stamp
+
+
+def validate_jobs(prior, latest, not_before):
+    old = {job['name']: job for job in prior}
+    assert len(old) == len(prior) == 8
+    assert len(latest) == 11 and len({j['id'] for j in latest}) == 11
+    assert {j['name'] for j in latest} == REUSED | NEW
+    assert all(j['run_id'] == RUN and j['run_attempt'] == 2 and j['conclusion'] == 'success' and j['status'] == 'completed'
+               and j['head_sha'] == SOURCE and j['head_branch'] == 'v0.32.0'
+               for j in latest)
+    carried, fresh = [], []
+    old_ids = {j['id'] for j in prior}
+    boundary = utc_stamp(not_before)
+    for job in latest:
+        assert utc_stamp(job['completed_at']) >= utc_stamp(job['started_at'])
+        if job['name'] in REUSED:
+            original = old[job['name']]
+            assert original['run_id'] == RUN and original['run_attempt'] == 1
+            assert original['conclusion'] == 'success'
+            assert all(job[k] == original[k] for k in ('started_at', 'completed_at', 'steps'))
+            carried.append(dict(name=job['name'], original_job_id=original['id'],
+                                latest_api_job_id=job['id'], original_attempt=1,
+                                api_attempt=job['run_attempt'], actual_execution='attempt1 only',
+                                started_at=job['started_at'], completed_at=job['completed_at'],
+                                full_step_metadata_equal=True))
+        else:
+            assert job['id'] not in old_ids and utc_stamp(job['started_at']) >= boundary
+            fresh.append(dict(name=job['name'], job_id=job['id'], actual_attempt=2,
+                              started_at=job['started_at'], completed_at=job['completed_at']))
+    assert len(carried) == 4 and len(fresh) == 7
+    return carried, fresh
+
+
+def validate_checkout_roles(checkouts):
+    assert len(checkouts) == 10 and len({x['job'] for x in checkouts}) == 10
+    assert {x['job'] for x in checkouts if x['source_attempt'] == 1} == REUSED
+    assert {x['job'] for x in checkouts if x['source_attempt'] == 2} == NEW - {'Create Draft Release'}
+    assert all(x['actual_commits'] == [SOURCE] for x in checkouts)
+
+
+def validate_union_binding(current, collection, reconciled, original):
+    assert collection == reconciled['log_union'], 'union proof differs from reconciled proof'
+    assert collection['kind'] == 'DERIVED_BYTE_PRESERVING_UNION_NOT_RAW_DOWNLOAD'
+    assert (collection['run'], collection['attempt'], collection['source']) == (RUN, 2, SOURCE)
+    expected = {x['name']: x for x in collection['members']}
+    assert len(expected) == len(collection['members'])
+    raw = (current / 'union-logs.zip').read_bytes()
+    assert len(raw) == collection['derived_union_bytes']
+    assert hashlib.sha256(raw).hexdigest() == collection['derived_union_sha256']
+    source_data = {}
+    for folder, attempt, allowed, key in ((original, 1, REUSED, 'original_logs_sha256'),
+                                         (current, 2, NEW, 'attempt2_logs_sha256')):
+        archive = (folder / 'logs.zip').read_bytes()
+        digest = hashlib.sha256(archive).hexdigest()
+        assert digest == reconciled[key]
+        declared = next(x for x in collection['originals'] if x['attempt'] == attempt)
+        assert declared['raw_archive_sha256'] == digest and declared['raw_archive_bytes'] == len(archive)
+        assert set(declared['jobs']) == allowed
+        with zipfile.ZipFile(folder / 'logs.zip') as z:
+            assert z.testzip() is None and len(z.namelist()) == len(set(z.namelist())) == declared['members']
+            source_data[attempt] = (digest, {n: z.read(n) for n in z.namelist()}, allowed)
+    assert source_data[1][0] == '1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638'
+    assert source_data[2][0] == 'ca888c5192159002376b1af26afb45e2217918608c73301aab2438a9abf01ad8'
+    assert set(expected) == set(source_data[1][1]) | set(source_data[2][1])
+    assert not set(source_data[1][1]) & set(source_data[2][1])
+    checkouts, warnings = [], []
+    with zipfile.ZipFile(current / 'union-logs.zip') as z:
+        assert z.testzip() is None and len(z.namelist()) == len(expected) and set(z.namelist()) == set(expected)
+        for name in z.namelist():
+            record = expected[name]
+            raw_sha, originals, allowed = source_data[record['source_attempt']]
+            data = z.read(name)
+            assert name in originals and data == originals[name]
+            assert record['source_raw_archive_sha256'] == raw_sha
+            assert len(data) == record['bytes'] and hashlib.sha256(data).hexdigest() == record['sha256']
+            job = name.split('/', 1)[0] if '/' in name else re.fullmatch(r'\d+_(.+)\.txt', name).group(1)
+            assert record['job'] == job and job in allowed
+            text = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', data.decode('utf-8', errors='replace'))
+            if re.fullmatch(r'[^/]+/\d+_Checkout\.txt', name):
+                hits = re.findall(r'log -1 --format=%H\r?\n[^\n]*? ([0-9a-f]{40})(?:\r?\n|$)', text)
+                checkouts.append(dict(file=name, actual_commits=hits, source_attempt=record['source_attempt'],
+                                      job=job, source_raw_archive_sha256=raw_sha))
+            for line_no, line in enumerate(text.splitlines(), 1):
+                content = re.sub(r'^\S+Z ', '', line)
+                if re.search(r'##\[(warning|error)\]|^\s*(?:warning|error)(?:\[[^]]+\])?:|\(node:\d+\).*?(?:DeprecationWarning|Warning)', content):
+                    warnings.append(dict(file=name, line=line_no, text=line, aggregate='/' not in name,
+                                         source_attempt=record['source_attempt']))
+    validate_checkout_roles(checkouts)
+    assert checkouts == collection['actual_checkout_observations']
+    assert warnings == collection['warning_error_candidates'], 'warning list differs from actual immutable log bytes'
+
+
+def build_log_union(original, current):
+    """Derived archive only: every member keeps its immutable raw bytes and origin."""
+    output = current / 'union-logs.zip'
+    proof_path = current / 'union-collection-proof.json'
+    assert not output.exists() and not proof_path.exists()
+    members, originals, checkouts, warnings = [], [], [], []
+    seen = set()
+    for folder, attempt, allowed in ((original, 1, REUSED), (current, 2, NEW)):
+        proof = json.loads((folder / 'collection-proof.json').read_text())
+        assert (proof['run'], proof['attempt'], proof['source']) == (RUN, attempt, SOURCE)
+        raw = (folder / 'logs.zip').read_bytes()
+        raw_sha = hashlib.sha256(raw).hexdigest()
+        assert len(raw) == proof['raw_archive_bytes'] and raw_sha == proof['raw_archive_sha256']
+        expected = {x['name']: x for x in proof['members']}
+        assert len(expected) == len(proof['members'])
+        source_jobs = set()
+        with zipfile.ZipFile(folder / 'logs.zip') as z:
+            assert z.testzip() is None and len(z.namelist()) == len(set(z.namelist()))
+            assert set(z.namelist()) == set(expected)
+            for name in z.namelist():
+                assert name not in seen, 'duplicate derived member path is forbidden'
+                if '/' in name:
+                    job_name = name.split('/', 1)[0]
+                else:
+                    match = re.fullmatch(r'\d+_(.+)\.txt', name)
+                    assert match, 'unidentified aggregate log'
+                    job_name = match.group(1)
+                assert job_name in allowed, 'raw member from unauthorized job/attempt role'
+                source_jobs.add(job_name)
+                data = z.read(name)
+                identity = expected[name]
+                digest = hashlib.sha256(data).hexdigest()
+                assert len(data) == identity['bytes'] and digest == identity['sha256']
+                record = dict(name=name, bytes=len(data), sha256=digest, job=job_name,
+                              source_attempt=attempt, source_raw_archive_sha256=raw_sha)
+                members.append((record, data))
+                seen.add(name)
+                text = re.sub(r'\x1b\[[0-9;]*[A-Za-z]', '', data.decode('utf-8', errors='replace'))
+                if re.fullmatch(r'[^/]+/\d+_Checkout\.txt', name):
+                    hits = re.findall(r'log -1 --format=%H\r?\n[^\n]*? ([0-9a-f]{40})(?:\r?\n|$)', text)
+                    assert hits == [SOURCE]
+                    checkouts.append(dict(file=name, actual_commits=hits, source_attempt=attempt,
+                                          job=job_name, source_raw_archive_sha256=raw_sha))
+                for line_no, line in enumerate(text.splitlines(), 1):
+                    content = re.sub(r'^\S+Z ', '', line)
+                    if re.search(r'##\[(warning|error)\]|^\s*(?:warning|error)(?:\[[^]]+\])?:|\(node:\d+\).*?(?:DeprecationWarning|Warning)', content):
+                        warnings.append(dict(file=name, line=line_no, text=line,
+                                             aggregate='/' not in name, source_attempt=attempt))
+        assert source_jobs == allowed
+        originals.append(dict(attempt=attempt, raw_archive_bytes=len(raw), raw_archive_sha256=raw_sha,
+                              members=len(expected), jobs=sorted(source_jobs)))
+    validate_checkout_roles(checkouts)
+    with zipfile.ZipFile(output, 'x') as z:
+        for record, data in members:
+            info = zipfile.ZipInfo(record['name'], date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, data)
+    with zipfile.ZipFile(output) as z:
+        assert z.testzip() is None and len(z.namelist()) == len(members)
+        for record, data in members:
+            assert z.read(record['name']) == data
+    result = dict(kind='DERIVED_BYTE_PRESERVING_UNION_NOT_RAW_DOWNLOAD', run=RUN, attempt=2,
+                  source=SOURCE, originals=originals, members=[x[0] for x in members],
+                  derived_union_bytes=output.stat().st_size,
+                  derived_union_sha256=hashlib.sha256(output.read_bytes()).hexdigest(),
+                  actual_checkout_observations=checkouts, warning_error_candidates=warnings,
+                  original_archives_untouched=True)
+    with proof_path.open('x') as stream:
+        json.dump(result, stream, indent=2)
+        stream.write('\n')
+    return result
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('evidence', type=Path)
+    p.add_argument('--original', type=Path, required=True)
+    p.add_argument('--operation', type=Path, required=True)
+    a = p.parse_args()
+    out = a.evidence / 'RECONCILIATION.json'
+    assert not out.exists()
+    op = json.loads(a.operation.read_text())
+    assert op['status'] == 'RECOVERY_POST_201_ATTEMPT2_READBACK_BOUND'
+    assert op['run'] == RUN and op['job'] == 122900573976 and op['source'] == SOURCE
+    assert op['targeted_post_count'] == 1 and op['expected_attempt'] == 2
+    old_run = json.loads((a.original / 'run.json').read_text())
+    current = json.loads((a.evidence / 'run.json').read_text())
+    assert old_run['id'] == RUN and old_run['run_attempt'] == 1 and old_run['conclusion'] == 'failure'
+    assert (current['id'], current['run_attempt'], current['head_sha'], current['head_branch'],
+            current['event'], current['status'], current['conclusion']) == (
+                RUN, 2, SOURCE, 'v0.32.0', 'push', 'completed', 'success')
+    assert old_run['head_sha'] == SOURCE
+    assert all(current[k] == old_run[k] for k in ('workflow_id', 'path', 'created_at'))
+    raw = (a.original / 'logs.zip').read_bytes()
+    assert len(raw) == 331239 and hashlib.sha256(raw).hexdigest() == '1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638'
+    original_proof = json.loads((a.original / 'collection-proof.json').read_text())
+    assert len(original_proof['members']) == 42
+    with zipfile.ZipFile(a.original / 'logs.zip') as z:
+        assert z.testzip() is None
+        for item in original_proof['members']:
+            data = z.read(item['name'])
+            assert len(data) == item['bytes'] and hashlib.sha256(data).hexdigest() == item['sha256']
+    prior = json.loads((a.original / 'jobs.json').read_text())
+    old_mac = next(j for j in prior if j['name'] == 'Release Preflight (macos-native)')
+    assert old_mac['id'] == 122900573976 and old_mac['conclusion'] == 'cancelled'
+    assert not old_mac['steps'] and not old_mac['runner_name']
+    assert json.loads((a.original / 'artifacts.json').read_text())['total_count'] == 0
+    latest = json.loads((a.evidence / 'jobs.json').read_text())
+    carried, fresh = validate_jobs(prior, latest, op['not_before'])
+    proof = build_log_union(a.original, a.evidence)
+    assert proof['run'] == RUN and proof['attempt'] == 2 and proof['source'] == SOURCE
+    assert len(proof['actual_checkout_observations']) == 10
+    assert all(x['actual_commits'] == [SOURCE] for x in proof['actual_checkout_observations'])
+    result = dict(utc=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                  status='PASS_EXPLICIT_ATTEMPT1_CARRY_AND_ATTEMPT2_NEW_JOB_UNION',
+                  run=RUN, attempt=2, source=SOURCE, recovery_not_before=op['not_before'],
+                  carried_original_successes=carried, actually_new_jobs=fresh,
+                  original_attempt1_failure_retained=True,
+                  original_logs_sha256=hashlib.sha256(raw).hexdigest(),
+                  attempt2_logs_sha256=json.loads((a.evidence / 'collection-proof.json').read_text())['raw_archive_sha256'],
+                  log_union=proof,
+                  api_carry_forward='IDs/run_attempt may be newly assigned; full original timestamps and step metadata must match',
+                  actual_checkout_count=10, publication_GO=False)
+    with out.open('x') as stream:
+        json.dump(result, stream, indent=2)
+        stream.write('\n')
+    print(result['status'])
+
+
+if __name__ == '__main__':
+    main()

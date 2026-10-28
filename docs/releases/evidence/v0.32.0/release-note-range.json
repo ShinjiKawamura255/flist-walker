@@ -1,0 +1,68 @@
+{
+  "utc": "2026-10-28T15:10:49.435448+00:00",
+  "range": "v0.31.1..v0.32.0",
+  "previous_tag": "v0.31.1",
+  "previous_source": "b1febf364457db9feb99a5b0f745b97a99816591",
+  "target_tag": "v0.32.0",
+  "target_source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "source_commits": [
+    {
+      "sha": "4cc35b451a46578cadaff024ac62b4e4a207f121",
+      "subject": "docs(release): record v0.31.1 publication and verified assets",
+      "section": "Changed",
+      "coverage": "v0.31.1 publication records; no runtimefeature"
+    },
+    {
+      "sha": "14ea78cc8e771c8d1e9ca1b66e9b1f7a1d32a3d7",
+      "subject": "feat(actions): reveal selected files in their containing folder",
+      "section": "Added",
+      "coverage": "containingfolder native selectedoriginals/siblings andLinuxfallback"
+    },
+    {
+      "sha": "73db5ebfc1c2cc3cf7b3dcb34ab5873556d36976",
+      "subject": "fix(perf): preflight complete indexing work contracts before builds",
+      "section": "Changed",
+      "coverage": "completeindexingcontractinventory/prebuildandfinalpreflight"
+    },
+    {
+      "sha": "43f7b462e9a2f4b8edb8bc7231ac344725bcb59b",
+      "subject": "test: complete promotion smoke through retained-kind reactivation",
+      "section": "Changed",
+      "coverage": "measuredretainedkindreactivation/testcontract, no thresholdrelaxation"
+    },
+    {
+      "sha": "28dbcd46621c393c44e1ae305143b38b2123898d",
+      "subject": "fix(indexer): preserve foreign FileList changes during rollback",
+      "section": "Fixed",
+      "coverage": "FileList foreignupdaterollbackprotection"
+    },
+    {
+      "sha": "13949d932679979e09d60652cc3c715a7cd1be24",
+      "subject": "fix(catalog): restore state after post-replace durability failures",
+      "section": "Fixed",
+      "coverage": "catalogpostreplace durabilityfailure restore"
+    },
+    {
+      "sha": "29fdd28bc064cca206bf1cbbc85893bf380c3b7b",
+      "subject": "fix(cli): classify invalid catalog names as usage errors",
+      "section": "Fixed",
+      "coverage": "invalidcatalog exit2beforebootstrap"
+    },
+    {
+      "sha": "447372ef0f579397988baec0c2dee5b29d9e40ab",
+      "subject": "ci: apply calibrated v10 indexing gate to current product",
+      "section": "Changed",
+      "coverage": "calibratedv10referenceadoption/currentproductproof"
+    },
+    {
+      "sha": "77e36c4eef21b5047747d04b3983835a50d92f06",
+      "subject": "chore(release): prepare v0.32.0 compatibility and release record",
+      "section": "Changed",
+      "coverage": "version32/releasepacket/explicit31N1capability+exact26case"
+    }
+  ],
+  "uncovered_commits": [],
+  "all9commits_classified": true,
+  "public_body_status": "finalization afteractualdraft28assetbinding; notpublished"
+}

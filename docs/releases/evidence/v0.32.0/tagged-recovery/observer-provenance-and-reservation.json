@@ -1,0 +1,38 @@
+{
+  "utc": "2026-10-28T15:36:46.650480+00:00",
+  "run": 40712264203,
+  "job": 122900573976,
+  "original_attempt": 1,
+  "sole_allowed_recovery_attempt": 2,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tag": "v0.32.0",
+  "tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "max_targeted_recovery_posts": 1,
+  "method": "POST actions/jobs/122900573976/rerun defaultdebugfalse; jobanddependentsonly",
+  "human_authority": "User <private-conversation-reference> via trustedparent; normalnon-destructiveauxiliaryworkneedsnoreapproval, explicitonce/firstFAILconditionsmaintained",
+  "originals": "tagged-first/terminal andfailurediagnosis retained unchanged",
+  "observers": {
+    "collect_tagged_recovery.py": "f8a209c72f3ebf6aa01209d9825376a7d9f0fbed3c221d4d95f8b2daa9e255e8",
+    "fetch_verify_recovery_artifacts.py": "9c3d836be362886f41d727214354749c593710daa73c2b0570df75d6c40399e2",
+    "review_recovery_release_run.py": "4176fb219ccbc8ffafffeefcfe0027f0cd38b63f26170747f79474fa71a80a4e",
+    "reconcile_tagged_recovery.py": "929cb0caaab71efb1fc39d643e3b542d187b878ab7bc4ba40efcb42b8091f53b",
+    "test_recovery_job_identity.py": "e27f5bd5757b0deea4893863bc0eba14823fe7c21c930eaeab18ef556ac6a024"
+  },
+  "minimal_delta": "separateexclusive40712264203/source77/tag32/attempt2 adapters; preserveoriginalstrictattempt1tools; fetchrequires explicitreconciliation+artifactcreatedafterPOST; unchangedhashCRCsignatureN1threshold/runtime/workflow/keys",
+  "union": "4 priorcontextsLinuxWindowsAudit successes exacttimestamps/fullsteps, APIcarryIDs recorded;7actualnewjobs withnewIDs/notbefore;10actualcheckout77; no claimreusedjobsrerun",
+  "controls": "8syntheticPASS withmetadata4cases/timezonecases; remediatedlog retainedfirst6log too",
+  "status": "FOCUSED_INDEPENDENT_REVIEW_PENDING_NO_POST",
+  "logical_recovery_uuid": "a9c3a342-07e9-4446-839d-fabb4efd89bc",
+  "rejected_original_observer_hashes": {
+    "collect_tagged_recovery.py": "b61cc320975a22e89e158f5a182c5f45dbeaaa8ba511801582547006b04564a3",
+    "fetch_verify_recovery_artifacts.py": "562e97f825141b1b6a5e75fd792734c13ae05b58f3edbfc3607852f47d4f251b",
+    "review_recovery_release_run.py": "4176fb219ccbc8ffafffeefcfe0027f0cd38b63f26170747f79474fa71a80a4e",
+    "reconcile_tagged_recovery.py": "20e65699d9ccae5242a79b94163a11136f23ab339128b2fd39f475b1b9ba7099",
+    "test_recovery_job_identity.py": "d2b3fe512b2709cc3b7ffc0f22660b719485455a1f07ec93781632e9505ece23"
+  },
+  "review_findings": {
+    "Major1": "use knownobservedglobal latestjobs?filter=latest andlatestlogs; pre/postrunattempt2binding unchanged",
+    "Minor1": "latestalljobsource77/tag32/statuscompleted required; negatives added",
+    "Minor2": "timezone-awareUTC parsed instants, no lexicalordering; naive/nonUTC rejected, equivalentUTC accepted"
+  }
+}

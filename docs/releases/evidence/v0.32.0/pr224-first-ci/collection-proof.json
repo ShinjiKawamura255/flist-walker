@@ -1,0 +1,645 @@
+{
+  "utc": "2026-10-28T12:45:18.471305+00:00",
+  "run": 40687822996,
+  "attempt": 1,
+  "source": "7dcf6565359f86ecfe4262516990be750f611604",
+  "event": "pull_request",
+  "conclusion": "success",
+  "raw_archive_bytes": 768934,
+  "raw_archive_sha256": "3303c99a3a0be8b433c2ad70926a041adbe5028831c37c4ce192a9e8a421585d",
+  "CRC": "PASS",
+  "members": [
+    {
+      "name": "0_CI Gate.txt",
+      "bytes": 4974,
+      "sha256": "d049a2ac178bf5ea9bccc447f374a69823407401dc7198ee2822d6ce6eb741c6"
+    },
+    {
+      "name": "CI Gate/system.txt",
+      "bytes": 598,
+      "sha256": "ca8f64b19a7f366c47afff4efbecf98ec12fbd678c5ef4fc66317eb51fd405d2"
+    },
+    {
+      "name": "CI Gate/1_Set up job.txt",
+      "bytes": 1713,
+      "sha256": "5a2aa66178b3bcbf668c8b88ef5abb57e1e2b7169d7c39647be5632f96b43165"
+    },
+    {
+      "name": "CI Gate/2_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "3b2734c0add75fc00828b08c304bdb9b0e85d864f47c01833d8a5ce1c5d60110"
+    },
+    {
+      "name": "CI Gate/3_Verify required results.txt",
+      "bytes": 2479,
+      "sha256": "03a73ec579528fa4ce57c8b121c89b977a0790653d525e375f8ebc9b592d4b7f"
+    },
+    {
+      "name": "CI Gate/4_Complete job.txt",
+      "bytes": 61,
+      "sha256": "97244a61fc52e07d5c64f1bb2721cfafed536cc82fad39f560f5a676637b2e79"
+    },
+    {
+      "name": "1_Windows GNU Updater E2E.txt",
+      "bytes": 42740,
+      "sha256": "754433260467fbf0068f0dd39b39061e98ceefebab965fd2a486342caa986b74"
+    },
+    {
+      "name": "Windows GNU Updater E2E/system.txt",
+      "bytes": 755,
+      "sha256": "8929d0848acd1686a8ea569c62f41b0ceb2be5b8a0719a2805cb9f9f48d973c7"
+    },
+    {
+      "name": "Windows GNU Updater E2E/1_Set up job.txt",
+      "bytes": 2380,
+      "sha256": "18891bc1022a9fb1f7e8d6ddbfd5a575a3259baf2e5e1f25721b62769587c238"
+    },
+    {
+      "name": "Windows GNU Updater E2E/2_Checkout.txt",
+      "bytes": 8761,
+      "sha256": "2616385f1734ebb1482a959962921eacd9e2f93b35dc37bc527b9eef598f50e1"
+    },
+    {
+      "name": "Windows GNU Updater E2E/3_Record runner image.txt",
+      "bytes": 716,
+      "sha256": "d5efc2e2b4a7d9b985d65f93a3d7b63e8cfb9336b884989c9bfb6bf755acbfc3"
+    },
+    {
+      "name": "Windows GNU Updater E2E/4_Install Rust for manifest signer.txt",
+      "bytes": 17755,
+      "sha256": "ebdea252d6b6cd39c9bf8a90ccd1e6e44fad53b13b4473ba69d2f8e5ae082fc4"
+    },
+    {
+      "name": "Windows GNU Updater E2E/5_Download Windows GNU test-channel artifact.txt",
+      "bytes": 2418,
+      "sha256": "28f1f6b4b2d753d9953d203d7660d47564cb348204fae8217d2222b44d9a8faf"
+    },
+    {
+      "name": "Windows GNU Updater E2E/6_Execute sandbox self-update.txt",
+      "bytes": 6167,
+      "sha256": "0d3364a68dd429b311756790ee611a58dca897ef0325f11d0a6a5c8dcd4d7875"
+    },
+    {
+      "name": "Windows GNU Updater E2E/12_Post Checkout.txt",
+      "bytes": 4427,
+      "sha256": "2b772364c826a4e34fb9ec439e89988d14b267bbfaf4a381e66ae411d48b87f6"
+    },
+    {
+      "name": "Windows GNU Updater E2E/13_Complete job.txt",
+      "bytes": 137,
+      "sha256": "5fba5f4a66db2b23dc22eadc86a56e729a107f127ff2ce5416ccff1c1e413e98"
+    },
+    {
+      "name": "2_Rust Test and Build (macos-native).txt",
+      "bytes": 355381,
+      "sha256": "7e38f90072a85deb1dbabfee2bad48f46154b2174cb13448828340d114479fd3"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/system.txt",
+      "bytes": 737,
+      "sha256": "92f4790b7d4a4391adfeffb76a9a6af725f1ccd6a90f94ff4b1668df97215881"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/1_Set up job.txt",
+      "bytes": 2310,
+      "sha256": "2267ad3fec26843a0f8ca3862176765ff678b4a2e96a0e23a51c1dc99452ffb4"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/2_Checkout.txt",
+      "bytes": 10298,
+      "sha256": "a5afa5210f038e62d0a1e6397a217b2dc65afb8e139ef0947ec0e03c32f0837f"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/3_Record runner image.txt",
+      "bytes": 726,
+      "sha256": "c280cbcaa74caad1fc9fe8484cd685633a0d6e80339c2e71476009c09acba98e"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/4_Install Rust.txt",
+      "bytes": 17252,
+      "sha256": "9efc4481f27def038bc0b9c27deed2c6da5628dd1ab904148ea65340c6ee587a"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1186,
+      "sha256": "a12754cd6288f6dadc3c2afa81e0fbcdfce04da1239ea543df8447170ba78980"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/6_Run tests.txt",
+      "bytes": 279312,
+      "sha256": "67a1fc7543f376fd42d2fb5f4a32e8f47ee8da3b3f30f9e78c338235002ae064"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/7_Run platform clippy.txt",
+      "bytes": 18624,
+      "sha256": "1d5815f8c0b8325e8a4a0da1341015b5a8f24a95d0ef87f9a29fadcaac7fbb45"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/9_Build release.txt",
+      "bytes": 20624,
+      "sha256": "7be22062b39899f742be02c9c4c03337ab3bc9810fa7c58dc18406661258129c"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/17_Post Cache Cargo downloads.txt",
+      "bytes": 525,
+      "sha256": "71b2789f82bcc4b6cf9156a4da3eb7aa16d7d2fe52851b413af4437b7c9bb149"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/18_Post Checkout.txt",
+      "bytes": 4493,
+      "sha256": "8eeb947c5e7c2c968880945b5029acae2245278569b951216d3d0883f7d7ce01"
+    },
+    {
+      "name": "Rust Test and Build (macos-native)/19_Complete job.txt",
+      "bytes": 61,
+      "sha256": "3c641b440306d1e375417c328c77bdee32baa2efce9cab8e4a631df3f34dd0b5"
+    },
+    {
+      "name": "3_Rust Test and Build (linux-native).txt",
+      "bytes": 343268,
+      "sha256": "1844caab1e13db8aa32dcdf4a87491c86c282be5b5bd9bfb20cd88a7e95f9e89"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/system.txt",
+      "bytes": 741,
+      "sha256": "aa0a55ac5fd544d5253adbf4abf1bcea3d4af5015fad3a050194854e4c5e2ef2"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/1_Set up job.txt",
+      "bytes": 2295,
+      "sha256": "400407958837a182d7a644168e916102db83d449cce55153130c148447965b1a"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/2_Checkout.txt",
+      "bytes": 8467,
+      "sha256": "590520d2e1b67f01443cf85ecb85a99ee8b912d72a7643fc20e1b6b9ca31677d"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "8ec92b1a2d676994f73a0629c43bd74e1f0134ea0813302190b04b371234ecbd"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/4_Install Rust.txt",
+      "bytes": 17110,
+      "sha256": "a567259d5d7a3db3e90de33043487f11831e17ab98a111a04e6b86ea567338a2"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1181,
+      "sha256": "91fe1dddcdbbe87cdeb500ae1fa20a8d01b49f4b00b69a65d6bddb4d5ee17ca5"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/6_Run tests.txt",
+      "bytes": 284589,
+      "sha256": "00f1b07c959b9f4b84e7a4db743ef1f94e40dffa442585b5f5dea31f6b6fc0cd"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/8_Run lightweight perf gate.txt",
+      "bytes": 1604,
+      "sha256": "8301aeff79471a4d43ba88911fe76ea5950e2adebc573dfd86a50607b8b7fa78"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/9_Build release.txt",
+      "bytes": 22581,
+      "sha256": "7b0a97052ee6a21ccb5be74fafb56ce99fd2c83337c8c172bd538fbbec5742c2"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/17_Post Cache Cargo downloads.txt",
+      "bytes": 486,
+      "sha256": "92cedd75b40520422de67b71824f75c5171b3b4b08ba3ad9866c08b42239be0e"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/18_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "7c2ee865279f0f56b5727cc3f4c142fb31a93da8bd3b7119b8547390b22f5ee8"
+    },
+    {
+      "name": "Rust Test and Build (linux-native)/19_Complete job.txt",
+      "bytes": 61,
+      "sha256": "5b32a1db7e5d58a1a20564ecf801b7b4402a1a06062da2763aa9cf0f11a6d241"
+    },
+    {
+      "name": "4_Clippy and Coverage.txt",
+      "bytes": 398103,
+      "sha256": "cfbccda5a27bb6deea5347e7e9fe1e041db696fb4a51919b055a23bbde65a85b"
+    },
+    {
+      "name": "Clippy and Coverage/system.txt",
+      "bytes": 743,
+      "sha256": "4ebe68550c151bb8ed757b6a4779fde94346c2549d233fa1f35c1115d9b7be21"
+    },
+    {
+      "name": "Clippy and Coverage/1_Set up job.txt",
+      "bytes": 2442,
+      "sha256": "62ae114846213790810b65cb2875f79b2e7d7b691228c0ed5efeb043e248235c"
+    },
+    {
+      "name": "Clippy and Coverage/2_Checkout.txt",
+      "bytes": 8467,
+      "sha256": "3cee899464d4ff1bc7663ac4dd58a699b7863293a585eb5d5ab6e1232a58702c"
+    },
+    {
+      "name": "Clippy and Coverage/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "155418596392b4159b359f1ad233f5e2557f833f04cc073bbdb3af46c0f08dfb"
+    },
+    {
+      "name": "Clippy and Coverage/4_Install Rust with clippy and llvm tools.txt",
+      "bytes": 17305,
+      "sha256": "84cd9c01f5866eb5882495df6b95400c66afde6e26ca67f7801e6a9ac38e0cf2"
+    },
+    {
+      "name": "Clippy and Coverage/5_Cache Cargo downloads.txt",
+      "bytes": 1165,
+      "sha256": "fcf629c61ed4210bc2897032025b3ce68ab24717031ec398c58ba7897ce6dbc6"
+    },
+    {
+      "name": "Clippy and Coverage/6_Install cargo-llvm-cov.txt",
+      "bytes": 8795,
+      "sha256": "0c8924e72c7647fc763e3437f740fb6466dcae7328db3747a046063be55325d2"
+    },
+    {
+      "name": "Clippy and Coverage/7_Run cargo fmt.txt",
+      "bytes": 959,
+      "sha256": "83aa186f68191c064ba40bc5ca4cee5586d514d3ba76cee177868cf061cd96da"
+    },
+    {
+      "name": "Clippy and Coverage/8_Run cargo clippy.txt",
+      "bytes": 46201,
+      "sha256": "bc68cb50f679fff35ae0f81205b64989400323a595d8eed7e9c15a567d8fe23d"
+    },
+    {
+      "name": "Clippy and Coverage/9_Prepare coverage output directory.txt",
+      "bytes": 642,
+      "sha256": "420c78e16969238a091606653d8760296edff65b2651aef25502477af2f97789"
+    },
+    {
+      "name": "Clippy and Coverage/10_Install Linux fault debugger.txt",
+      "bytes": 8666,
+      "sha256": "e9033644183215f4995e2f63ac0fb29b3ee0b3edd02450e372a2645c28158241"
+    },
+    {
+      "name": "Clippy and Coverage/11_Generate coverage report.txt",
+      "bytes": 293767,
+      "sha256": "8ec6367d0276ee5f3764aa531d8f1c6c95014ac5f67c70f04df41c42bed07599"
+    },
+    {
+      "name": "Clippy and Coverage/12_Upload Linux fault diagnostics.txt",
+      "bytes": 2183,
+      "sha256": "6b78952603301370e4412594d38c8f0d11b4a0dabf25a4d4a42e2e983f75f646"
+    },
+    {
+      "name": "Clippy and Coverage/13_Upload coverage artifact.txt",
+      "bytes": 2016,
+      "sha256": "c537f78a9b6845623c581f8e9094fefac007e361d1daa92cc44295ede1f726b9"
+    },
+    {
+      "name": "Clippy and Coverage/25_Post Cache Cargo downloads.txt",
+      "bytes": 555,
+      "sha256": "fda07c8671b41c7f02cce7d8ff3ce42530524238354d92458064642a8153c6e5"
+    },
+    {
+      "name": "Clippy and Coverage/26_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "1e9e78bf71cbff5df87b8ab6e542c8ac302f0a6262c3b71a1e927fb00ff482e6"
+    },
+    {
+      "name": "Clippy and Coverage/27_Complete job.txt",
+      "bytes": 61,
+      "sha256": "7dad2fb555039d60ececa32a52f3107ee4b4b22f3710035e05c700baf2158f6e"
+    },
+    {
+      "name": "5_Windows GNU Updater Build.txt",
+      "bytes": 97955,
+      "sha256": "09e2f5477ce62ad5477e07cb5b4b73f28d9c2771f26f784f09e5ff9432958e4b"
+    },
+    {
+      "name": "Windows GNU Updater Build/system.txt",
+      "bytes": 751,
+      "sha256": "60060dd5399f65f1943186dfc6a8670780532cb6d17f39385198c8a719eea2d9"
+    },
+    {
+      "name": "Windows GNU Updater Build/1_Set up job.txt",
+      "bytes": 2449,
+      "sha256": "b0261a44e8cb84a38392492e04dbfe6be4dd272bcdd2cd860ddda007b0fc5adf"
+    },
+    {
+      "name": "Windows GNU Updater Build/2_Checkout.txt",
+      "bytes": 8467,
+      "sha256": "3cf9fd481a078b21cbbc336581a1d319c3b8273eeb2d69ef8aaccf0270560b66"
+    },
+    {
+      "name": "Windows GNU Updater Build/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "bfc0cced613e911b22845da3ffb101b0cf99aa282c938532d8220a4f891f130a"
+    },
+    {
+      "name": "Windows GNU Updater Build/4_Install Rust with target.txt",
+      "bytes": 17251,
+      "sha256": "27502e729e972605e9246718f14d0fc04a843ea4f338bd0584420caf83ec5bb2"
+    },
+    {
+      "name": "Windows GNU Updater Build/5_Cache Cargo downloads.txt",
+      "bytes": 1195,
+      "sha256": "f0eab50bcbb2196624d835259be1081c8f940461de3dc082e8abddff9bd48fb6"
+    },
+    {
+      "name": "Windows GNU Updater Build/6_Install mingw-w64.txt",
+      "bytes": 13804,
+      "sha256": "18bbde740697a5fe0e07f5fed8e6f595e51a6761ac9d8d605032bd7a9552ebab"
+    },
+    {
+      "name": "Windows GNU Updater Build/7_Build updater test channel.txt",
+      "bytes": 46752,
+      "sha256": "77b8b958a1c78e098b738af067015c9a615bcb0862dda2b47efd73d720217d3a"
+    },
+    {
+      "name": "Windows GNU Updater Build/8_Upload Windows GNU test-channel artifact.txt",
+      "bytes": 2512,
+      "sha256": "a41c09f43da241ae54ef1d9aa6809170b0ca4234ee4d34588334f8293c664f06"
+    },
+    {
+      "name": "Windows GNU Updater Build/15_Post Cache Cargo downloads.txt",
+      "bytes": 570,
+      "sha256": "f4940b8430e2990578bc8d8d3670fbc79490907acc0fcff3afa38539069a764e"
+    },
+    {
+      "name": "Windows GNU Updater Build/16_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "9e5dcce620d8d724d074b7ba2eef567f1b98bb5f4dc5ff01e57dfbda404efede"
+    },
+    {
+      "name": "Windows GNU Updater Build/17_Complete job.txt",
+      "bytes": 61,
+      "sha256": "cb70b1ec91614d2e0fecb734ba576bf9015acda05c440f8c5a8698ad45aab18c"
+    },
+    {
+      "name": "6_Rust Test and Build (windows-native).txt",
+      "bytes": 360131,
+      "sha256": "7f9abf26bbbd37099f45c994f34ef5d6956e5b811eee36583b531360b57e86f8"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/system.txt",
+      "bytes": 748,
+      "sha256": "c091758d139d0ffa9de8591d028f7029528c9c6edf442bee3016bac3613c9c8c"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/1_Set up job.txt",
+      "bytes": 2380,
+      "sha256": "0f9c920b5d31b598b933db7fd665d075dfb36c042be29b7d2d7ae50279644661"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/2_Checkout.txt",
+      "bytes": 10525,
+      "sha256": "39c02ea5aa49fce11ace9f05aabaf645f9cafe6464fe67e98ba6ddc32a633c7d"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/3_Record runner image.txt",
+      "bytes": 760,
+      "sha256": "6a35aa938b57ace7d8165613a2b92740a2b6a8a43328c219a06fa4f8ead2c101"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/4_Install Rust.txt",
+      "bytes": 17756,
+      "sha256": "118f07cf4e7e8a7adf200c789565430ecb6cba8dda276f72668dd0380e3bb659"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1214,
+      "sha256": "aa13cf254342d80d01c4444b94e6fd17919ebd122101cfb9340ca064746b33b7"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/6_Run tests.txt",
+      "bytes": 284531,
+      "sha256": "0c420fc6cdccf822b466312d0d226bf4c913efcb95e75af9fa9993c2a75e9d71"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/7_Run platform clippy.txt",
+      "bytes": 17897,
+      "sha256": "4d17075fb73a9e3f44f189a1554afd4c5acf7da0a4dec4c09f44f85bbf54b401"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/9_Build release.txt",
+      "bytes": 20009,
+      "sha256": "384a723f2dca76c6bc97189478c7a9bdf65136ac33d0f57856d2687a31ea749a"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/17_Post Cache Cargo downloads.txt",
+      "bytes": 525,
+      "sha256": "185408e99fbf036059431afbb646037ae517bd5f76261148657c75923ae66451"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/18_Post Checkout.txt",
+      "bytes": 4427,
+      "sha256": "58cfe055c32ea0f59932aa20ed4999641779108195c16ba1399b7083b0d1e561"
+    },
+    {
+      "name": "Rust Test and Build (windows-native)/19_Complete job.txt",
+      "bytes": 137,
+      "sha256": "173603dfcad4d317e7225fbe7e58ebab865a836a057430c5fa851614341169f1"
+    },
+    {
+      "name": "7_Cargo Audit.txt",
+      "bytes": 81124,
+      "sha256": "d2f39be729b4838c5fd5174f433ee8d3608f8fe9eb2da3048bb7c2dcccdd7f2a"
+    },
+    {
+      "name": "Cargo Audit/system.txt",
+      "bytes": 733,
+      "sha256": "b81ac2c1f06b39e345cba7a8344c938e0051eefebf4a90cdbba1bfc3b5e7ff50"
+    },
+    {
+      "name": "Cargo Audit/1_Set up job.txt",
+      "bytes": 2105,
+      "sha256": "f294b9053bee3f318590bafdb9dd396b23b01c06ce0af1a4e31e7e6012b698d8"
+    },
+    {
+      "name": "Cargo Audit/2_Checkout.txt",
+      "bytes": 8467,
+      "sha256": "d7d05f17569b9dc9f62e0218ddfafc1764d5e2abea135269da860c7a5eed81c7"
+    },
+    {
+      "name": "Cargo Audit/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "cb45bce3c2e54f102517e959adaeb00891983bef24f753a467adb8cb3a28a0d1"
+    },
+    {
+      "name": "Cargo Audit/4_Install Rust.txt",
+      "bytes": 17105,
+      "sha256": "0ba1f6d75bd5fc6877dd4c80596623320df90cfe2c6803647e8f5633979e7d7e"
+    },
+    {
+      "name": "Cargo Audit/5_Install cargo-audit.txt",
+      "bytes": 47151,
+      "sha256": "99c592c45c52ea9ce03248306da36cb1f56ecfd2d7d8c2630c41367a71624cda"
+    },
+    {
+      "name": "Cargo Audit/6_Run cargo audit.txt",
+      "bytes": 1332,
+      "sha256": "3e771faa1bb2b0cea872e48c587858591686fc6b0ede15d5bcdb60256a4917e0"
+    },
+    {
+      "name": "Cargo Audit/12_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "9c5e2e05cbecc450a6d53b01d4a8e93d71380fb8c32717b0d950e90a9a28f84a"
+    },
+    {
+      "name": "Cargo Audit/13_Complete job.txt",
+      "bytes": 61,
+      "sha256": "3d275e07505cac01ffeb359e9740081b75f3fd4ad855430ebaed0e871526027c"
+    },
+    {
+      "name": "8_Detect Changes.txt",
+      "bytes": 31604,
+      "sha256": "05aed459d864bddcb66d2340a39a7087a78de6bd18c842e35d06b81ebf2496fa"
+    },
+    {
+      "name": "Detect Changes/system.txt",
+      "bytes": 606,
+      "sha256": "f2bf302aba138beaa42998e70fedcbb68ad44bce35c46ac7b186d73332d35b98"
+    },
+    {
+      "name": "Detect Changes/1_Set up job.txt",
+      "bytes": 1938,
+      "sha256": "cf1d40bbc9f5ac31d257e3f0c864a15f4076daa35aed0af1b488492232454ade"
+    },
+    {
+      "name": "Detect Changes/2_Checkout.txt",
+      "bytes": 19256,
+      "sha256": "e4be0a5851791b7b5b0022f7939f52f6acddc1759413b0051f8dc906ae2481f3"
+    },
+    {
+      "name": "Detect Changes/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "ac25068466f43bed776352dd53ba78b84470d0b8403e72cc7bc1bf294d2c6be9"
+    },
+    {
+      "name": "Detect Changes/4_Classify changes fail closed.txt",
+      "bytes": 5266,
+      "sha256": "68c62ade9d508a9be5b3eeba908fd138f6040e9a506a450d51c29d08d259332e"
+    },
+    {
+      "name": "Detect Changes/8_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "82b5cf1f77a6a76d1fdf31d8c2d8fece6e9027d8fffdbd30bf5e2e1274b7b765"
+    },
+    {
+      "name": "Detect Changes/9_Complete job.txt",
+      "bytes": 235,
+      "sha256": "2ec831d73937bc2e8a6a66063fe5c0219479bfd2e5a2b4c702902cef79b4fff7"
+    },
+    {
+      "name": "9_CI Policy.txt",
+      "bytes": 16445,
+      "sha256": "7e2e89e1cbf837805e6b5c2ee51ab49b090ca27f38a989cb6096e96db599b335"
+    },
+    {
+      "name": "CI Policy/system.txt",
+      "bytes": 601,
+      "sha256": "9589965f221c1eafb65761e8084313b212d6e976f6c1a5faf14bce3e0502f69e"
+    },
+    {
+      "name": "CI Policy/1_Set up job.txt",
+      "bytes": 1934,
+      "sha256": "60b10fec66f2768c7720b5aa8606748617782af75e811e7ec410b68861bf3502"
+    },
+    {
+      "name": "CI Policy/2_Checkout.txt",
+      "bytes": 8467,
+      "sha256": "7bb82c5ab52cb70acdd837e01826714bc41d9304bd958126857a43b758f12913"
+    },
+    {
+      "name": "CI Policy/3_Record runner image.txt",
+      "bytes": 730,
+      "sha256": "869f293f088b262e8039658cc62729ba04ce07650e62e3923f9073b3974691ff"
+    },
+    {
+      "name": "CI Policy/4_Validate repository tooling.txt",
+      "bytes": 1074,
+      "sha256": "bc067c95efd7654d0ac25e3f1a73a88bc8de20323a7145380073ee013220c300"
+    },
+    {
+      "name": "CI Policy/8_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "30fbfc760b83d33e8e1f2542f3de7c2b3ff629cb1061f99b1525a7bb9997c8fb"
+    },
+    {
+      "name": "CI Policy/9_Complete job.txt",
+      "bytes": 61,
+      "sha256": "c4b03cd1cb3bf75d05b3171245c1b96866f2e400f08ea1763c67eafdffe6bac6"
+    }
+  ],
+  "actual_checkout_observations": [
+    {
+      "file": "Windows GNU Updater E2E/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Rust Test and Build (macos-native)/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Rust Test and Build (linux-native)/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Clippy and Coverage/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Windows GNU Updater Build/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Rust Test and Build (windows-native)/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Cargo Audit/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "Detect Changes/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    },
+    {
+      "file": "CI Policy/2_Checkout.txt",
+      "actual_commits": [
+        "6140bb3f2e338c6e040a2a0b27fd54cc1cf6994d"
+      ]
+    }
+  ],
+  "warning_error_candidates": [
+    {
+      "file": "1_Windows GNU Updater E2E.txt",
+      "line": 396,
+      "text": "2026-10-28T12:31:27.9252018Z (node:3532) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": true
+    },
+    {
+      "file": "Windows GNU Updater E2E/5_Download Windows GNU test-channel artifact.txt",
+      "line": 23,
+      "text": "2026-10-28T12:31:27.9251972Z (node:3532) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": false
+    }
+  ],
+  "identity_unchanged": true,
+  "admission": "NOT PERFORMED; original evidence collection only"
+}

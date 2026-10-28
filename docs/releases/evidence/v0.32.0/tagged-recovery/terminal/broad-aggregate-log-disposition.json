@@ -1,0 +1,598 @@
+{
+  "run": 40712264203,
+  "attempt": 2,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "all11aggregate_sources": "old4/raw1+new7/raw2, unionmemberprovenance retained",
+  "all_broad_matches": [
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 246,
+      "text": "2026-10-28T15:05:24.5911298Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://win.rustup.rs/x86_64 --output 'D:\\a\\_temp\\rustup-init.exe'",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 356,
+      "text": "2026-10-28T15:05:37.4829410Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 357,
+      "text": "2026-10-28T15:05:37.5013723Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 358,
+      "text": "2026-10-28T15:05:37.5014339Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 568,
+      "text": "2026-10-28T15:07:10.6358104Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 603,
+      "text": "2026-10-28T15:07:46.9004423Z    Compiling error-code v3.3.2",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 1133,
+      "text": "2026-10-28T15:10:36.1690241Z test app::tests::indexing_perf::harness::extensions::driver::tc_229_background_refresh_allocation_rejects_missing_deferred_flag - should panic ... ok",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "successful expected-panic regression test; no unexpectedproductpanic"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 2551,
+      "text": "2026-10-28T15:13:41.8297685Z ##[group]Run cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 2552,
+      "text": "2026-10-28T15:13:41.8298956Z cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 2694,
+      "text": "2026-10-28T15:14:39.1324204Z     Checking error-code v3.3.2",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "3_Release Preflight (windows-native).txt",
+      "line": 2697,
+      "text": "2026-10-28T15:14:39.8568551Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 72,
+      "text": "2026-10-28T15:04:58.8646010Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 216,
+      "text": "2026-10-28T15:05:09.9033795Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 327,
+      "text": "2026-10-28T15:05:16.7460524Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 328,
+      "text": "2026-10-28T15:05:16.7477296Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 329,
+      "text": "2026-10-28T15:05:16.7477576Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 565,
+      "text": "2026-10-28T15:05:52.1947064Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 1136,
+      "text": "2026-10-28T15:06:59.3180286Z test app::tests::indexing_perf::harness::extensions::driver::tc_229_background_refresh_allocation_rejects_missing_deferred_flag - should panic ... ok",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "successful expected-panic regression test; no unexpectedproductpanic"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 2538,
+      "text": "2026-10-28T15:07:28.8555967Z ##[group]Run cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 2539,
+      "text": "2026-10-28T15:07:28.8556317Z cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "5_Release Preflight (linux-native).txt",
+      "line": 2718,
+      "text": "2026-10-28T15:07:50.2757712Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 71,
+      "text": "2026-10-28T15:04:59.9191088Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 215,
+      "text": "2026-10-28T15:05:13.8241818Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 326,
+      "text": "2026-10-28T15:05:21.9699970Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 327,
+      "text": "2026-10-28T15:05:21.9723342Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 328,
+      "text": "2026-10-28T15:05:21.9723792Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 414,
+      "text": "2026-10-28T15:05:23.1506155Z   Downloaded display-error-chain v0.2.2",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "dependencydownload crate name, noterror"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 449,
+      "text": "2026-10-28T15:05:23.2109063Z   Downloaded gix-error v0.2.4",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "dependencydownload crate name, noterror"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 738,
+      "text": "2026-10-28T15:05:37.3190009Z    Compiling gix-error v0.2.4",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "6_Release Cargo Audit.txt",
+      "line": 986,
+      "text": "2026-10-28T15:07:22.7959414Z    Compiling display-error-chain v0.2.2",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "7_Resolve Release Context.txt",
+      "line": 70,
+      "text": "2026-10-28T15:04:41.2699764Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "0_Create Draft Release.txt",
+      "line": 64,
+      "text": "2026-10-28T16:07:48.1691361Z   digest-mismatch: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "0_Create Draft Release.txt",
+      "line": 75,
+      "text": "2026-10-28T16:07:49.1661907Z (node:1971) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "classification": "actualexternalDEP0005",
+      "final_classification": "actualexternalDEP0005"
+    },
+    {
+      "file": "0_Create Draft Release.txt",
+      "line": 76,
+      "text": "2026-10-28T16:07:49.1662898Z (Use `node --trace-deprecation ...` to show where the warning was created)",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "continuation line of alreadycounted DEP0005 emission"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 73,
+      "text": "2026-10-28T16:05:37.6464554Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 217,
+      "text": "2026-10-28T16:05:52.6291331Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 328,
+      "text": "2026-10-28T16:06:00.0898841Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 329,
+      "text": "2026-10-28T16:06:00.0915359Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 330,
+      "text": "2026-10-28T16:06:00.0915695Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 371,
+      "text": "2026-10-28T16:06:00.1369150Z   digest-mismatch: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 394,
+      "text": "2026-10-28T16:06:01.2661018Z (node:2210) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "classification": "actualexternalDEP0005",
+      "final_classification": "actualexternalDEP0005"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 395,
+      "text": "2026-10-28T16:06:01.2661754Z (Use `node --trace-deprecation ...` to show where the warning was created)",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "continuation line of alreadycounted DEP0005 emission"
+    },
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "line": 575,
+      "text": "2026-10-28T16:07:33.0704158Z   if-no-files-found: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 75,
+      "text": "2026-10-28T15:50:35.1839300Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 252,
+      "text": "2026-10-28T15:50:57.0757630Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 372,
+      "text": "2026-10-28T15:51:06.7673850Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain_2.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 373,
+      "text": "2026-10-28T15:51:06.7709960Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 374,
+      "text": "2026-10-28T15:51:06.7710420Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 534,
+      "text": "2026-10-28T15:51:43.6035570Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "line": 757,
+      "text": "2026-10-28T16:01:14.4160170Z   if-no-files-found: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 74,
+      "text": "2026-10-28T15:50:47.5745260Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 286,
+      "text": "2026-10-28T15:51:11.4851240Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 406,
+      "text": "2026-10-28T15:51:27.0986040Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain_2.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 407,
+      "text": "2026-10-28T15:51:27.1058720Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 408,
+      "text": "2026-10-28T15:51:27.1060300Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 564,
+      "text": "2026-10-28T15:52:25.7766350Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "3_Build Release Assets (macos-x86_64).txt",
+      "line": 791,
+      "text": "2026-10-28T16:05:25.0534890Z   if-no-files-found: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 74,
+      "text": "2026-10-28T15:50:33.6854078Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 224,
+      "text": "2026-10-28T15:51:13.8720832Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 342,
+      "text": "2026-10-28T15:51:24.2536800Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain_2.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 343,
+      "text": "2026-10-28T15:51:24.2558245Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 344,
+      "text": "2026-10-28T15:51:24.2558729Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 728,
+      "text": "2026-10-28T15:52:52.0605621Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 743,
+      "text": "2026-10-28T15:52:52.8122897Z    Compiling error-code v3.3.2",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "4_Build Release Assets (windows-x86_64).txt",
+      "line": 867,
+      "text": "2026-10-28T15:55:50.2833771Z   if-no-files-found: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 74,
+      "text": "2026-10-28T15:50:33.5644703Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 223,
+      "text": "2026-10-28T15:51:15.7583008Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 341,
+      "text": "2026-10-28T15:51:23.5390410Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 342,
+      "text": "2026-10-28T15:51:23.5429596Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 343,
+      "text": "2026-10-28T15:51:23.5430036Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 602,
+      "text": "2026-10-28T15:52:44.0598423Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "line": 744,
+      "text": "2026-10-28T15:55:56.3107116Z   if-no-files-found: error",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "failclosed Actioninput value, noterror emission"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 73,
+      "text": "2026-10-28T15:44:30.2305900Z hint: to use in all of your new repositories, which will suppress this warning,",
+      "classification": "gitcheckout informational hint",
+      "final_classification": "gitcheckout informational hint"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 239,
+      "text": "2026-10-28T15:44:48.0820560Z   curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused --location --silent --show-error --fail https://sh.rustup.rs | sh -s -- --default-toolchain none -y",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "printed toolchaininstall command option --show-error, notemission"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 352,
+      "text": "2026-10-28T15:44:58.5264390Z ##[start-action display=Run : work around spurious network errors in curl 8.0;id=__dtolnay_rust-toolchain.__run_9]",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 353,
+      "text": "2026-10-28T15:44:58.5313160Z ##[group]Run : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 354,
+      "text": "2026-10-28T15:44:58.5313590Z : work around spurious network errors in curl 8.0",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "literal pinnedAction step label/noop command, notobservednetworkerror"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 478,
+      "text": "2026-10-28T15:45:19.2601880Z    Compiling quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 1137,
+      "text": "2026-10-28T15:47:44.9443770Z test app::tests::indexing_perf::harness::extensions::driver::tc_229_background_refresh_allocation_rejects_missing_deferred_flag - should panic ... ok",
+      "classification": "NEEDS_MANUAL_CLASSIFICATION",
+      "final_classification": "successful expected-panic regression test; no unexpectedproductpanic"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 2527,
+      "text": "2026-10-28T15:49:03.0529540Z ##[group]Run cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 2528,
+      "text": "2026-10-28T15:49:03.0530640Z cargo clippy --locked --all-targets -- -D warnings",
+      "classification": "clippy argv notemission",
+      "final_classification": "clippy argv notemission"
+    },
+    {
+      "file": "6_Release Preflight (macos-native).txt",
+      "line": 2603,
+      "text": "2026-10-28T15:49:19.8295200Z     Checking quick-error v2.0.1",
+      "classification": "dependencyprogress crate name notemission",
+      "final_classification": "dependencyprogress crate name notemission"
+    }
+  ],
+  "counts": {
+    "printed toolchaininstall command option --show-error, notemission": 9,
+    "literal pinnedAction step label/noop command, notobservednetworkerror": 27,
+    "dependencyprogress crate name notemission": 15,
+    "successful expected-panic regression test; no unexpectedproductpanic": 3,
+    "clippy argv notemission": 6,
+    "gitcheckout informational hint": 9,
+    "dependencydownload crate name, noterror": 2,
+    "failclosed Actioninput value, noterror emission": 7,
+    "actualexternalDEP0005": 2,
+    "continuation line of alreadycounted DEP0005 emission": 2
+  },
+  "unknown": [],
+  "actual_externalwarning_emissions": 2,
+  "product_warnings_errors": 0,
+  "independent_review": "PENDING"
+}

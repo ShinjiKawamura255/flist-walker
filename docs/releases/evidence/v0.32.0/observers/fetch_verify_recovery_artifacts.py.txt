@@ -1,0 +1,88 @@
+"""Read-only fetch plus outer ZIP/producer-to-signed-bundle reconciliation."""
+import sys
+if not __debug__ or sys.flags.optimize:
+ raise RuntimeError('release observer requires Python assertions enabled; optimization is forbidden')
+import argparse,concurrent.futures,hashlib,importlib.util,json,pathlib,subprocess,zipfile,re,time
+from reconcile_tagged_recovery import utc_stamp
+
+def store_and_check_archive(identity, raw, path):
+ with path.open('xb') as output: output.write(raw)
+ observed='sha256:'+hashlib.sha256(raw).hexdigest()
+ if len(raw)!=identity['size_in_bytes'] or observed!=identity['digest']:
+  record={'status':'RETAINED_REJECTED_OUTER_ARCHIVE','artifact_id':identity['id'],'expected_bytes':identity['size_in_bytes'],'observed_bytes':len(raw),'expected_digest':identity['digest'],'observed_digest':observed,'untrusted_received_bytes':path.name,'extracted':False}
+  with path.with_suffix('.rejected.json').open('x') as output: json.dump(record,output,indent=2)
+  raise ValueError('outer API size/digest mismatch; received bytes retained without extraction')
+
+def stream_artifact(identity,path):
+ stderr=path.with_suffix('.stderr')
+ receipt=path.with_suffix('.transport.json')
+ if any(p.exists() for p in (path,stderr,receipt)): raise RuntimeError('refuse duplicate artifact acquisition/overwrite')
+ report={'artifact_id':identity['id'],'workflow_run':identity['workflow_run'],'expected_bytes':identity['size_in_bytes'],'expected_digest':identity['digest'],'status':'FAIL','max_reads':1,'wait_timeout_seconds':600,'kill_cleanup_timeout_seconds':30,'purpose':'new tagged identity input acquisition only; no candidate/CI/performance repeat'}
+ try:
+  with path.open('xb') as output,stderr.open('xb') as errors:
+   started=time.monotonic()
+   child=subprocess.Popen(['gh','api','--allow-escape-sequences',f"repos/ShinjiKawamura255/flist-walker/actions/artifacts/{identity['id']}/zip"],stdout=output,stderr=errors)
+   report['owned_pid']=child.pid
+   try:code=child.wait(timeout=600)
+   except subprocess.TimeoutExpired:
+    child.kill();child.wait(timeout=30)
+    raise TimeoutError('single tagged archive transfer exceeded600s; original partialbytes retained; no automatic reread')
+   report['elapsed_seconds']=time.monotonic()-started;report['exit_code']=code
+  raw=path.read_bytes();report['observed_bytes']=len(raw);report['observed_digest']='sha256:'+hashlib.sha256(raw).hexdigest()
+  if code!=0 or len(raw)!=identity['size_in_bytes'] or report['observed_digest']!=identity['digest']:raise RuntimeError('tagged input transfer failed or size/digest mismatch; original bytes retained without extraction')
+  report['status']='PASS_TRANSPORT_ONLY'
+ except Exception as exc:
+  report['error']=f'{type(exc).__name__}: {exc}'
+  if path.exists():report['retained_bytes']=path.stat().st_size
+  raise
+ finally:
+  with receipt.open('x') as record:json.dump(report,record,indent=2);record.write('\n')
+
+def strict_producer_manifest(raw, expected):
+ rows={}
+ for row in raw.decode('ascii').splitlines():
+  match=re.fullmatch(r'([0-9a-f]{64})  ([A-Za-z0-9_.-]+)',row)
+  if match is None: raise ValueError('malformed producer manifest row')
+  digest,name=match.groups()
+  if name in rows: raise ValueError('duplicate producer manifest row')
+  rows[name]=digest
+ if len(rows)!=len(expected) or set(rows)!=expected: raise ValueError('producer manifest inventory mismatch')
+ return rows
+p=argparse.ArgumentParser();p.add_argument('evidence',type=pathlib.Path);p.add_argument('--source',required=True);p.add_argument('--run',required=True,type=int);a=p.parse_args()
+spec=importlib.util.spec_from_file_location('observer',pathlib.Path(__file__).with_name('verify_bundle.py'));m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+art=json.loads((a.evidence/'artifacts.json').read_text())['artifacts'];assert len(art)==5
+r=json.loads((a.evidence/'run.json').read_text());assert r['head_sha']==a.source and r['run_attempt']==2 and r['status']=='completed' and r['conclusion']=='success' and r['event']=='push' and r['id']==a.run and r['head_branch']=='v0.32.0'
+assert r['id']==40712264203 and a.source=='77e36c4eef21b5047747d04b3983835a50d92f06'
+reconciled=json.loads((a.evidence/'RECONCILIATION.json').read_text());assert reconciled['status']=='PASS_EXPLICIT_ATTEMPT1_CARRY_AND_ATTEMPT2_NEW_JOB_UNION' and reconciled['run']==r['id'] and reconciled['attempt']==2
+source=r['head_sha'];version='0.32.0';full='validated-release-bundle-v'+version+'-'+source
+expected_names={'release-'+x for x in ('windows-x86_64','linux-x86_64','macos-arm64','macos-x86_64')}|{full};assert {x['name'] for x in art}==expected_names
+out=a.evidence/'artifact-zips';assert not out.exists();out.mkdir()
+def fetch(x):
+ assert utc_stamp(x['created_at'])>=utc_stamp(reconciled['recovery_not_before'])
+ assert x['workflow_run']['id']==r['id'] and x['workflow_run']['head_sha']==source and not x['expired']
+ path=out/(str(x['id'])+'.zip')
+ stream_artifact(x,path)
+ raw=path.read_bytes()
+ assert len(raw)==x['size_in_bytes'] and 'sha256:'+hashlib.sha256(raw).hexdigest()==x['digest'],'outer API size/digest mismatch; received bytes retained without extraction'
+ with zipfile.ZipFile(path) as z:
+  assert z.testzip() is None
+  names=z.namelist();assert len(names)==len(set(names)) and all('/' not in n and '\\' not in n and n not in ('.','..') for n in names)
+  members={n:z.read(n) for n in names}
+ return x,members
+with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:items=list(pool.map(fetch,art))
+final=next(members for x,members in items if x['name']==full);assert set(final)==m.inventory(version)|{'SHA256SUMS','SHA256SUMS.sig'}
+records=[];seen=set()
+for x,members in items:
+ if x['name']==full:continue
+ platform=x['name'].removeprefix('release-');expected={n for n in m.inventory(version) if platform in n}
+ assert set(members)==expected|{'SHA256SUMS'}
+ rows=strict_producer_manifest(members['SHA256SUMS'],expected)
+ for name in expected:
+  assert members[name]==final[name] and hashlib.sha256(members[name]).hexdigest()==rows[name],name
+ assert not seen&expected;seen|=expected
+ records.append(dict(id=x['id'],name=x['name'],bytes=x['size_in_bytes'],sha256=x['digest'][7:],crc='PASS',exact_members=sorted(members),all_payloads_equal_final=True))
+assert seen==m.inventory(version)
+bundle=a.evidence/'bundle';assert not bundle.exists();bundle.mkdir()
+for name,raw in final.items():(bundle/name).write_bytes(raw)
+record=dict(result='PASS',run=r['id'],attempt=r['run_attempt'],source=source,producers=records,final_artifact=next({k:x[k] for k in ('id','name','size_in_bytes','digest')} for x in art if x['name']==full),exact_final_members=sorted(final),all26_producer_payloads_equal_final=True)
+(a.evidence/'ARTIFACT-INTEGRITY.json').write_text(json.dumps(record,indent=2)+'\n');print('PASS:5 API archive hashes/sizes/CRC; exact inventories; all26 producer payloads equal final')

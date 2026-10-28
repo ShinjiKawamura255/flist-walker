@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-28T16:31:01.497502+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "ACCEPT_CORRECTED_UNION_REVIEW_ADAPTER_NOT_PUBLICATION_GO",
+  "findings": [],
+  "closed": [
+    "Major actualZIPsha/size/CRC/member/rawbyte/proofkind binding and warningrecomputation",
+    "Minor distinctexpected10checkoutjobs"
+  ],
+  "controls": "17PASS; exactupdatedsourceSHAs inunion-binding-remediation.json",
+  "original_raw1_sha256": "1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638",
+  "original_raw2_sha256": "ca888c5192159002376b1af26afb45e2217918608c73301aab2438a9abf01ad8",
+  "derived_union_sha256": "0ebe4cb0f562c11a6d8928c6ebb7366ee3a61f4dcdb723c4600fd380bf9dd639",
+  "publication_checkpoint": "pendingseparatefullactualassets/N1/body/riskreview"
+}

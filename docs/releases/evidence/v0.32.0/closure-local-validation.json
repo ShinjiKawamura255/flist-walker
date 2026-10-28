@@ -1,0 +1,46 @@
+{
+  "utc": "2026-10-28T16:49:54.258484+00:00",
+  "base": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "branch": "codex/release-v0.32.0-closure",
+  "mode": "new-change preflight PASS atcleanmaster77; sameownedcheckout reused",
+  "scope": "A/M CHANGELOG.md and docs/releases/** only; documentary snapshots not activated tooling",
+  "selected_VM": [
+    "VM-001 Docs only"
+  ],
+  "validation": [
+    {
+      "command": "python3 scripts/validate_change.py --base 77e36c4eef21b5047747d04b3983835a50d92f06 --plan",
+      "result": "VM001 only"
+    },
+    {
+      "command": "python3 scripts/validate_change.py --base 77e36c4eef21b5047747d04b3983835a50d92f06 --quick",
+      "result": "Repository contract OK"
+    },
+    {
+      "command": "python3 -m unittest scripts.tests.test_validate_change scripts.tests.test_check_repo_contract",
+      "result": "PASS19tests/0.070s"
+    },
+    {
+      "command": "retained inventory actual hashes/lengths and three ZIP CRCs",
+      "result": "PASS"
+    },
+    {
+      "command": "local reference/privacy review",
+      "result": "PASS after focused remediation; private conversation IDs and operator paths removed from documentary copies, original hashes retained"
+    }
+  ],
+  "TDD": "inapplicable: records completed external outcomes; no executable behavior change",
+  "native_Rust_artifact_performance": "NOT RERUN for docs closure; prior exactsource results remain distinct",
+  "workflow_checkouts": "pending first PR/master workflows; no PASS claim before actualresults",
+  "logs": {
+    "closure-validation-plan.txt": "c7586278fd6143083c12b357565698e6ad046f5f51ed72dc0c9ebb40eeb6eb34",
+    "closure-quick-validation.txt": "dfbc5189b734be2b39841a6ff67acf6aae5d9db764cc5945f775d237a5ab866b",
+    "closure-focused-tests.txt": "e79f0b315bcc3b1a5872ce795d4ed61ee344fe7d262552cc346ef2129d0ec088"
+  },
+  "whitespace_history": {
+    "first_unstaged_check": "PASS only for tracked diff; new untracked evidence not covered, so not an all-file PASS",
+    "first_staged_default_check": "FAIL due retained Windows CRLF and one snapshot trailing space; original receipt retained",
+    "remediation": "snapshot trailing space removed in documentary copy/inventory updated; original Windows result/raw-row CRLF bytes unchanged",
+    "final_staged_check": "PASS git -c core.whitespace=cr-at-eol diff --cached --check; Windows original CRLF preserved, snapshot trailing space removed"
+  }
+}

@@ -1,0 +1,248 @@
+{
+  "utc": "2026-10-28T16:23:47.939309+00:00",
+  "candidate_run": 40696126066,
+  "tagged_run": 40712264203,
+  "tagged_attempt": 2,
+  "both_source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "mode": "read-only binary comparison; no binarymodified or executed",
+  "Windows_TC193": "candidate exactpairfirstPASS0.39935620927732224; no extra native session",
+  "binaries": [
+    {
+      "role": "universal",
+      "filename": "FlistWalker-0.32.0-windows-x86_64.exe",
+      "candidate_sha256": "bae2c6c09c9d04c9d696ac77aecad0b98ce810a5c50bb5013035c861bc2a0eb6",
+      "tagged_sha256": "0afcb5da5be2bc06857956d520a628cebc01d4147ea889c340ba2501172d1547",
+      "bytes_candidate": 16599040,
+      "bytes_tagged": 16599040,
+      "different_byte_count": 6,
+      "different_offsets": [
+        136,
+        137,
+        138,
+        216,
+        217,
+        218
+      ],
+      "only_COFF_timestamp_and_checksum_differ": true,
+      "masked_fields": [
+        {
+          "offset": 136,
+          "bytes": 4,
+          "field": "COFF TimeDateStamp"
+        },
+        {
+          "offset": 216,
+          "bytes": 4,
+          "field": "OptionalHeader CheckSum"
+        }
+      ],
+      "sections": [
+        {
+          "name": ".text",
+          "bytes": 12363264,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".data",
+          "bytes": 15360,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".rdata",
+          "bytes": 3731968,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".pdata",
+          "bytes": 151040,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".xdata",
+          "bytes": 242176,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".bss",
+          "bytes": 0,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".idata",
+          "bytes": 14848,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".CRT",
+          "bytes": 512,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".tls",
+          "bytes": 512,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".rsrc",
+          "bytes": 26624,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".reloc",
+          "bytes": 51712,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        }
+      ]
+    },
+    {
+      "role": "fw",
+      "filename": "fw-0.32.0-windows-x86_64.exe",
+      "candidate_sha256": "f7aff8b2c7331a76247a9fe70a685fe7c053a5bf6fa9accd9dd7c807e56301cd",
+      "tagged_sha256": "d86803eba6f8196c4fd11ee9f9317ec3ba60275d50454fa38cdf7a3648910821",
+      "bytes_candidate": 6272000,
+      "bytes_tagged": 6272000,
+      "different_byte_count": 5,
+      "different_offsets": [
+        136,
+        137,
+        138,
+        216,
+        217
+      ],
+      "only_COFF_timestamp_and_checksum_differ": true,
+      "masked_fields": [
+        {
+          "offset": 136,
+          "bytes": 4,
+          "field": "COFF TimeDateStamp"
+        },
+        {
+          "offset": 216,
+          "bytes": 4,
+          "field": "OptionalHeader CheckSum"
+        }
+      ],
+      "sections": [
+        {
+          "name": ".text",
+          "bytes": 4700160,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".data",
+          "bytes": 9216,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".rdata",
+          "bytes": 1323520,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".pdata",
+          "bytes": 66560,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".xdata",
+          "bytes": 108032,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".bss",
+          "bytes": 0,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".idata",
+          "bytes": 8192,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".CRT",
+          "bytes": 512,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".tls",
+          "bytes": 512,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".rsrc",
+          "bytes": 26624,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        },
+        {
+          "name": ".reloc",
+          "bytes": 27648,
+          "layout_identical": true,
+          "raw_bytes_identical": true
+        }
+      ]
+    }
+  ],
+  "build_boundary": "PASS same source/tree/workflow/Rust1.97.1/lockedCargo inputs/defaults/version/publickey/targetGNU/buildscript; actual12compiler/linkerpackage versions identical; bothbinaryallsection bytes identical, onlyCOFFtime/checksum differs",
+  "actual_build_log_comparison": {
+    "candidate": {
+      "aggregate_sha256": "c8c3f34bbeadd989677000512b51359d6294217479872777d480ca3e4dce1909",
+      "compiler_linker_packages": {
+        "binutils-mingw-w64-x86-64": "2.41.90.20240122-1ubuntu1+11.4",
+        "mingw-w64-common": "11.0.1-3build1",
+        "mingw-w64-x86-64-dev": "11.0.1-3build1",
+        "gcc-mingw-w64-base": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-posix-runtime": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-posix": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64-posix": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-win32-runtime": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-win32": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64-win32": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64": "13.2.0-6ubuntu1+26.1"
+      },
+      "Windows_build_command": "./scripts/build-rust-win.sh --locked",
+      "package_command": "./scripts/prepare-release.sh v0.32.0"
+    },
+    "tagged": {
+      "aggregate_sha256": "ba7a24f654e70fdf2ed5d0300db9c70a3c0cbafa131f64aef9a0aaaab65123bc",
+      "compiler_linker_packages": {
+        "binutils-mingw-w64-x86-64": "2.41.90.20240122-1ubuntu1+11.4",
+        "mingw-w64-common": "11.0.1-3build1",
+        "mingw-w64-x86-64-dev": "11.0.1-3build1",
+        "gcc-mingw-w64-base": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-posix-runtime": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-posix": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64-posix": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-win32-runtime": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64-win32": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64-win32": "13.2.0-6ubuntu1+26.1",
+        "g++-mingw-w64-x86-64": "13.2.0-6ubuntu1+26.1",
+        "gcc-mingw-w64-x86-64": "13.2.0-6ubuntu1+26.1"
+      },
+      "Windows_build_command": "./scripts/build-rust-win.sh --locked",
+      "package_command": "./scripts/prepare-release.sh v0.32.0"
+    }
+  },
+  "reuse_decision": "OPERATOR_REUSE WindowsTC193candidatefirstPASS forunchangedstartupcontract; newartifactdigests/signature/metadata validatedseparately; independentpublicationreview pending"
+}

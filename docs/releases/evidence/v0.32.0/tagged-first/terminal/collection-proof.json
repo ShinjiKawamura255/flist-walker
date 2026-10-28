@@ -1,0 +1,252 @@
+{
+  "utc": "2026-10-28T15:21:48.142993+00:00",
+  "run": 40712264203,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "event": "push",
+  "conclusion": "failure",
+  "raw_archive_bytes": 331239,
+  "raw_archive_sha256": "1fe781f9fc0828bda45c220c9c25b0c015b4add7570ec19b97303ff8a74d4638",
+  "CRC": "PASS",
+  "members": [
+    {
+      "name": "3_Release Preflight (windows-native).txt",
+      "bytes": 317810,
+      "sha256": "b1ca756661f5aadc30737f48a2463a091ad1fed7e0504816e2b1b962cd6807cd"
+    },
+    {
+      "name": "Release Preflight (windows-native)/system.txt",
+      "bytes": 611,
+      "sha256": "a01a30463fa76cc029c958958fadb63bcabbc2ec9ad86aab7b006c1c50c534b4"
+    },
+    {
+      "name": "Release Preflight (windows-native)/1_Set up job.txt",
+      "bytes": 2378,
+      "sha256": "86a38c194700f615445ae8459d75283cf5cf1517c1a719cc3e42e44858bcd078"
+    },
+    {
+      "name": "Release Preflight (windows-native)/2_Checkout.txt",
+      "bytes": 10658,
+      "sha256": "f9e5eaee2a7c064342f2fedb8d38caa278addea20f739335cd8cda3233e2711b"
+    },
+    {
+      "name": "Release Preflight (windows-native)/3_Record runner image.txt",
+      "bytes": 698,
+      "sha256": "c1e111fff04966b4426f8f34569e7ff5a7fb479ba2528c7d31242decbdeda889"
+    },
+    {
+      "name": "Release Preflight (windows-native)/4_Install Rust.txt",
+      "bytes": 16954,
+      "sha256": "b1de4b5627c101b95f4d13765ffe6e42c0b46c2e8bc634b99771910897a86474"
+    },
+    {
+      "name": "Release Preflight (windows-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1864,
+      "sha256": "4459448a530303af0b30c175a2e665ec5a623f1fcddc8796ab13ca8364ddc6b1"
+    },
+    {
+      "name": "Release Preflight (windows-native)/6_Run tests.txt",
+      "bytes": 262620,
+      "sha256": "7e2f622a0a73dc43a09d93d04f8917e633096f1a381e2fd04f60dc7212e00d82"
+    },
+    {
+      "name": "Release Preflight (windows-native)/7_Run clippy.txt",
+      "bytes": 17835,
+      "sha256": "95916fd9a070d54aa9e5269c3be86d46b5eb7cf6c68ac86b8377f2119656d6b6"
+    },
+    {
+      "name": "Release Preflight (windows-native)/13_Post Cache Cargo downloads.txt",
+      "bytes": 266,
+      "sha256": "dec0031260790a91629f2125e0fb900428b0e5b26de7326737dcbdc9980ae18b"
+    },
+    {
+      "name": "Release Preflight (windows-native)/14_Post Checkout.txt",
+      "bytes": 4427,
+      "sha256": "c9268cc9e1a9bb7e742c05529b2de58f692c5b9af044f6adc4aa586afb991ce5"
+    },
+    {
+      "name": "Release Preflight (windows-native)/15_Complete job.txt",
+      "bytes": 137,
+      "sha256": "ba9cfdbefa58eb9cb2c151b60959a0ae5bc61ee35effdef82952cd340097034e"
+    },
+    {
+      "name": "5_Release Preflight (linux-native).txt",
+      "bytes": 314531,
+      "sha256": "fe9795842c4f3627ac8da42093622200b494dab8cb14c3241d4503e540fbd51e"
+    },
+    {
+      "name": "Release Preflight (linux-native)/system.txt",
+      "bytes": 604,
+      "sha256": "addd7529831308a97a608e4dac1da1702798f1a9d7bcb65ed3f07e65e0f1d9d7"
+    },
+    {
+      "name": "Release Preflight (linux-native)/1_Set up job.txt",
+      "bytes": 2288,
+      "sha256": "5c729c8fef28ecaadfc7d69487dbcd74ce855303afa255700712e17dab8a1807"
+    },
+    {
+      "name": "Release Preflight (linux-native)/2_Checkout.txt",
+      "bytes": 8553,
+      "sha256": "c0d7729d2f02d1765c25e47144a9ef74a0e6b09e2aaea5e2bb8c721c0b7519da"
+    },
+    {
+      "name": "Release Preflight (linux-native)/3_Record runner image.txt",
+      "bytes": 669,
+      "sha256": "1b23365a14c74e59ebf31f0c97d34d958bb0c9dccda221f7128ab67a6cbf4ade"
+    },
+    {
+      "name": "Release Preflight (linux-native)/4_Install Rust.txt",
+      "bytes": 16317,
+      "sha256": "31ed60537975b3dbbc32b301eadf756d66b108954ddea583899bc548381e0778"
+    },
+    {
+      "name": "Release Preflight (linux-native)/5_Cache Cargo downloads.txt",
+      "bytes": 1724,
+      "sha256": "2ef002252bed9402de1588f51ed37c00cb731bd6bebe55a9d0823c4c52334786"
+    },
+    {
+      "name": "Release Preflight (linux-native)/6_Run tests.txt",
+      "bytes": 260343,
+      "sha256": "2efc27d232615361068f486551a128bb67e071c0a8eb453eea1c1359c65b1f94"
+    },
+    {
+      "name": "Release Preflight (linux-native)/7_Run clippy.txt",
+      "bytes": 20149,
+      "sha256": "b0293df14ccf3fc2567117083c5c6c9f65639ffc8a56e9aa6ef7bacc393b0a27"
+    },
+    {
+      "name": "Release Preflight (linux-native)/13_Post Cache Cargo downloads.txt",
+      "bytes": 260,
+      "sha256": "6a470e74366cf835ec2c4f1c7142240e0a898cb8788b76133fa216ae36a58f97"
+    },
+    {
+      "name": "Release Preflight (linux-native)/14_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "d74e0c16ca079945aa9b27f36afa2da194fb44e74c3270d0c631d211e207a1d0"
+    },
+    {
+      "name": "Release Preflight (linux-native)/15_Complete job.txt",
+      "bytes": 61,
+      "sha256": "625a1d6e2aa1c8b27bc7382efd4dfbbc058fa285ef136956aa6ba1d1d016880d"
+    },
+    {
+      "name": "6_Release Cargo Audit.txt",
+      "bytes": 80242,
+      "sha256": "f7a8840836be1431a04b4b868c5b3ea6412587fe563855af129c308d1646b2bf"
+    },
+    {
+      "name": "Release Cargo Audit/system.txt",
+      "bytes": 606,
+      "sha256": "1150f24ad3711e94399ce0800071312e4cf10b63aa40a763be707679ae15e6d9"
+    },
+    {
+      "name": "Release Cargo Audit/1_Set up job.txt",
+      "bytes": 2112,
+      "sha256": "528b6b8bfd509ea6fb091ab68d410f12bda1b14e27ee3ae78696417193066bc9"
+    },
+    {
+      "name": "Release Cargo Audit/2_Checkout.txt",
+      "bytes": 8553,
+      "sha256": "e04a50037e3c59c30ec4d0c9a010b064a5d9c090404cc0e0f1ac6c99a2c74d32"
+    },
+    {
+      "name": "Release Cargo Audit/3_Record runner image.txt",
+      "bytes": 669,
+      "sha256": "7bf93e0b89ed6c15b6eb90add8dc4e1c7c9fdf82068f22419c6741ec4fe4dd1d"
+    },
+    {
+      "name": "Release Cargo Audit/4_Install Rust.txt",
+      "bytes": 16313,
+      "sha256": "51cc8c753459726ce661070625c8180182042252d19778809a31ccaa89a92e1c"
+    },
+    {
+      "name": "Release Cargo Audit/5_Install cargo-audit.txt",
+      "bytes": 47090,
+      "sha256": "b66e14e2e7befda82a67982f00af30bd66924ee25ed876976c5a7ace98242227"
+    },
+    {
+      "name": "Release Cargo Audit/6_Run cargo audit.txt",
+      "bytes": 1271,
+      "sha256": "80546f469c255dcb2010c0061f446f457ca47da492f5ffd0deb8b15a61369b3b"
+    },
+    {
+      "name": "Release Cargo Audit/12_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "021934b04304ed489c59fb6f1bd3afa558263bfc88ced6c956ee222a2679539d"
+    },
+    {
+      "name": "Release Cargo Audit/13_Complete job.txt",
+      "bytes": 61,
+      "sha256": "6493a15b121fbf085db49deb72fa07761de6dd3631d193104988e1c63f762714"
+    },
+    {
+      "name": "7_Resolve Release Context.txt",
+      "bytes": 17732,
+      "sha256": "6d1fe9d9f1d1c5469bc4b5a795696b510c2133ca0c3e9b0bc3d1be0c8e4385b4"
+    },
+    {
+      "name": "Resolve Release Context/system.txt",
+      "bytes": 602,
+      "sha256": "2046ad4e6048ce4469a019d638685bb46606a9b12b9f548dc3dcdae66685fbfa"
+    },
+    {
+      "name": "Resolve Release Context/1_Set up job.txt",
+      "bytes": 1948,
+      "sha256": "e9a8f88fa39aab301c7fa9822d755cbf28c82970b85bf73c2a3f39f653117d1b"
+    },
+    {
+      "name": "Resolve Release Context/2_Checkout.txt",
+      "bytes": 8553,
+      "sha256": "7693e64dfbc0ea414f192f9bc4b651121ba9607e8b6f7a371c9ff596081bc6cc"
+    },
+    {
+      "name": "Resolve Release Context/3_Record runner image.txt",
+      "bytes": 669,
+      "sha256": "3c3995f8f680f6a4f9788ad97e638d3177f1f3181146eea3a36b0dcd879092a6"
+    },
+    {
+      "name": "Resolve Release Context/4_Resolve and validate version.txt",
+      "bytes": 2168,
+      "sha256": "c305726893e2541cecd809fed728a07656b76facaafcc71a519fd5417b2c699e"
+    },
+    {
+      "name": "Resolve Release Context/8_Post Checkout.txt",
+      "bytes": 4194,
+      "sha256": "85b91de842f38c08ea2a14a13802ca29705ce81e53361959d93e0e9c3ad376df"
+    },
+    {
+      "name": "Resolve Release Context/9_Complete job.txt",
+      "bytes": 215,
+      "sha256": "2a62e34212b5eb1a38c33d9730fb917d3c3ed7e5e815293ba4bbb2262ec3e286"
+    }
+  ],
+  "actual_checkout_observations": [
+    {
+      "file": "Release Preflight (windows-native)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Release Preflight (linux-native)/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Release Cargo Audit/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    },
+    {
+      "file": "Resolve Release Context/2_Checkout.txt",
+      "actual_commits": [
+        "77e36c4eef21b5047747d04b3983835a50d92f06"
+      ]
+    }
+  ],
+  "warning_error_candidates": [],
+  "identity_unchanged": true,
+  "admission": "NOT PERFORMED; original evidence collection only"
+}

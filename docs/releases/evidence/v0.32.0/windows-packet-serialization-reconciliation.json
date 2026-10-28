@@ -1,0 +1,11 @@
+{
+  "status": "PASS_EXACT_COMPACT_SERIALIZATION_ONLY",
+  "canonical_mac_bytes": 22031,
+  "canonical_mac_sha256": "d9dcf85dc627900aed7a9121f456aa9093118a4ec1de6720dfe0e4d4710e9fbc",
+  "Windows_packet_bytes": 21853,
+  "Windows_packet_sha256": "eff5d78c97d6c7d0c2e379de58197a2f6a1f87705bfa565fdd8ccf8f2edd67cb",
+  "transformation": "json.dumps(json.loads(canonicalMac),separators=(comma,colon)) + LF; exactbytehashmatches Windows retainedinventory",
+  "payload_semantic_changes": false,
+  "decoded_source_binding_helper_manifest_signature_bytes": "unchanged; prior6fieldposthashes independentlymatch",
+  "new_remote_execution": false
+}

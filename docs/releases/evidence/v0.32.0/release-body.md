@@ -1,10 +1,37 @@
 ## Summary
-- Release: `v0.32.0` — preparation draft, not published.
-- Date: 未確定（準備日: 2026-10-28）。公開前に実際の公開日へ確定する。
-- 格納フォルダでのファイル選択表示と、FileList・検索catalogの失敗時保護を改善する予定。
+- Release: `v0.32.0`
+- Date: `2026-10-28`
+- 格納フォルダでのファイル選択表示と、FileList・検索catalogの失敗時保護を改善しました。
 
 ## Downloads
-- 配布物はまだ生成・添付されていません。候補・tagged runの実物検証後、実際に添付するアセットだけを列挙して本文を確定します。
+- [FlistWalker-0.32.0-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-linux-x86_64)
+- [FlistWalker-0.32.0-linux-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-linux-x86_64.LICENSE.txt)
+- [FlistWalker-0.32.0-linux-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-linux-x86_64.README.txt)
+- [FlistWalker-0.32.0-linux-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-linux-x86_64.THIRD_PARTY_NOTICES.txt)
+- [FlistWalker-0.32.0-linux-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-linux-x86_64.tar.gz)
+- [FlistWalker-0.32.0-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64)
+- [FlistWalker-0.32.0-macos-arm64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64-app.zip)
+- [FlistWalker-0.32.0-macos-arm64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64.LICENSE.txt)
+- [FlistWalker-0.32.0-macos-arm64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64.README.txt)
+- [FlistWalker-0.32.0-macos-arm64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64.THIRD_PARTY_NOTICES.txt)
+- [FlistWalker-0.32.0-macos-arm64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-arm64.tar.gz)
+- [FlistWalker-0.32.0-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64)
+- [FlistWalker-0.32.0-macos-x86_64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64-app.zip)
+- [FlistWalker-0.32.0-macos-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64.LICENSE.txt)
+- [FlistWalker-0.32.0-macos-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64.README.txt)
+- [FlistWalker-0.32.0-macos-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64.THIRD_PARTY_NOTICES.txt)
+- [FlistWalker-0.32.0-macos-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-macos-x86_64.tar.gz)
+- [FlistWalker-0.32.0-windows-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-windows-x86_64.LICENSE.txt)
+- [FlistWalker-0.32.0-windows-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-windows-x86_64.README.txt)
+- [FlistWalker-0.32.0-windows-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-windows-x86_64.THIRD_PARTY_NOTICES.txt)
+- [FlistWalker-0.32.0-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-windows-x86_64.exe)
+- [FlistWalker-0.32.0-windows-x86_64.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/FlistWalker-0.32.0-windows-x86_64.zip)
+- [SHA256SUMS](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/SHA256SUMS)
+- [SHA256SUMS.sig](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/SHA256SUMS.sig)
+- [fw-0.32.0-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/fw-0.32.0-linux-x86_64)
+- [fw-0.32.0-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/fw-0.32.0-macos-arm64)
+- [fw-0.32.0-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/fw-0.32.0-macos-x86_64)
+- [fw-0.32.0-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.32.0/fw-0.32.0-windows-x86_64.exe)
 
 ## Added
 - Shift+Enter / Shift+ダブルクリックでファイルの格納フォルダを開くとき、元ファイルを選択表示し、同じフォルダの複数選択を保持する。Windows / macOS と対応Linuxファイルマネージャーで利用でき、Linuxの非対応環境では再検証後に親フォルダを開く。
@@ -34,8 +61,10 @@
 - Shift+ダブルクリック、実UNC上での選択表示、Linuxの実表示には未確認の範囲が残る。省略した検証を成功や恒久的な省略許可とは扱わない。
 - v0.24.3利用者は同じvariantのbinaryとSHA256SUMSを手動で取得・検証して一度置き換える必要がある。v0.24.4以降は通常の自動更新を利用できる。
 
+- 上記の未解決事項と今回合意した検証省略は、v0.32.0 に限る制限として記録します。次版や新たな失敗への恒久的な免除にはしません。
+
 ## Verify checksum
-配布物の生成・添付と署名検証が済んだ後に使用する例です。
+同じリリースの `SHA256SUMS` と配布物を取得して照合してください。自動更新では埋め込み公開鍵による `SHA256SUMS.sig` の署名検証も行います。
 
 PowerShell:
 ```powershell

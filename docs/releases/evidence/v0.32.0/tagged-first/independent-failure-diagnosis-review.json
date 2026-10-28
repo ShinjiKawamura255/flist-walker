@@ -1,0 +1,25 @@
+{
+  "utc": "2026-10-28T15:27:57.842367+00:00",
+  "reviewer": "contract_repair_review",
+  "decision": "DIAGNOSIS_ACCEPTED_PUBLICATION_BLOCKED_NO_RECOVERY_EXECUTION_GO",
+  "findings": [],
+  "run": 40712264203,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "tag_object": "ac6ce85e24b61b13e2b923959e0303f5a841b847",
+  "independent_checks": "raw331239B/42members/CRC/SHA1fe781f9\u2026;4actualsource77checkouts;Linux1694/Windows1712/TC229once;mac0steps/no runner/no logs/explicitallocationfailureannotation",
+  "Mac_native_tests_Clippy": "NOT RUN; notproducttestFAIL",
+  "exact_backend_rootcause_and_transience": "UNKNOWN notclaimedfixed",
+  "proposal": "one targetedmacjob122900573976+dependents sameRunID/tag/source technicallyvalid onlyafterhumanexceptiondecision",
+  "before_any_execution": [
+    "preserveattempt1FAIL andunaffected4originaljobidentities",
+    "minimalexplicitattempt1reuse+attempt2newjobIDunion observeradaptation/controls+independentreview, nevergeneralattemptconstraintrelaxation",
+    "new4build+mac/assemble/draft/fresh5artifacts/28payload/signature/actualN1/allwarnings/draftbinding/newpublicationGO",
+    "anynewFAIL/unknown stops, no additionalrecovery"
+  ],
+  "required_human_decision": "Permit exactlyone exceptional hostedrunnerallocation recovery ofjob122900573976anddependentjobs inrun40712264203, supersedingonlyoriginalrequiredFAIL-stopforthisrecovery",
+  "executed_retries": 0,
+  "Release": "ABSENT latestpublic31; tagretainedunchanged",
+  "Windows_TC193": "PASS retained",
+  "old219_220": "UNKNOWN retained"
+}

@@ -1,0 +1,80 @@
+{
+  "utc": "2026-10-28T14:58:51.868518+00:00",
+  "status": "PASS_TECHNICAL_WINDOWS_FIRST_SESSION_INDEPENDENT_REVIEW_PENDING",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "run": 40696126066,
+  "attempt": 1,
+  "host": "LOSGATOS",
+  "thread": "<private-native-task-id>",
+  "session_uuid": "360e101d-a5ec-4603-bdb0-87227792dfaa",
+  "native_sessions": 1,
+  "transfer_zip_bytes": 15265,
+  "transfer_zip_sha256": "4aa154f521ec965ffd4f35ea12d9566441980d47fd4d0e5e09250478491d12d5",
+  "raw_rows": 102,
+  "timed_rows": 60,
+  "alias_rows": 40,
+  "version_rows": 2,
+  "warmups_per_variant": 5,
+  "samples_per_variant": 25,
+  "fixture_files": 200,
+  "median_ms": {
+    "universal": 77.199,
+    "fw": 30.8299
+  },
+  "ratio": 0.39935620927732224,
+  "max_ratio": 0.7,
+  "helper_elapsed_seconds": 6.4060000000172295,
+  "process_elapsed_seconds": 6.594000000011874,
+  "helper_sha256": "7939a57ef73c226443311247f985fa388753ee4492b1da4e66b5ce26d1af30f4",
+  "all_target_hashes_unchanged": true,
+  "cleanup": "PASS ownedchildren/fixture/profile removed; worktrees unchanged",
+  "profile_limitation": "One directory st_size0to12288 differs; originalfalse audit retained; directoryexistence/mtime and recordedfilemetadata unchanged; no filecontent read/equalityclaim or causalexplanation",
+  "files": [
+    {
+      "name": "provenance-supplement.json",
+      "bytes": 1419,
+      "sha256": "454de8f64700bdcf7115813570184fa9b94ae24da6a3bf9aa6c155ebba6732e2"
+    },
+    {
+      "name": "audit.json",
+      "bytes": 374,
+      "sha256": "0479ebfc119f3feb9e8c7948e2f7c368be407e5cd7eae28d8a37e1a7634d6972"
+    },
+    {
+      "name": "process.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "provenance.json",
+      "bytes": 15169,
+      "sha256": "54cbae13a4e60bf9a8d4d0afc53eb77b8e514667b667bccd83cc0b90cf49f0c0"
+    },
+    {
+      "name": "first-result.raw.jsonl",
+      "bytes": 197524,
+      "sha256": "b8a929e9e2706667f24eff6af79768c4261b0ffeab336839a4e4526ee53df594"
+    },
+    {
+      "name": "process.stdout",
+      "bytes": 989,
+      "sha256": "0944cf6aff56c9da31b69f66bde0a07c75cf8f5c9dd962520def863afa5e88e5"
+    },
+    {
+      "name": "cleanup.json",
+      "bytes": 195,
+      "sha256": "75fbf5aac8fb327ae47233dc11e5bd2a887f404cc7f63462ce798b56cd410aac"
+    },
+    {
+      "name": "first-result.json",
+      "bytes": 39134,
+      "sha256": "efc145fcc917b7add9cf8d5eee390a9dc6bfdefd061118c0cc9b797a45c88d1d"
+    },
+    {
+      "name": "process.json",
+      "bytes": 1831,
+      "sha256": "836ef3af6b6a0da05ec4b974a63cf958c3341c8bf205122c1e6f90cd7e643228"
+    }
+  ],
+  "missing_optional_transferred_files": "full57item inventory retainedWindows;10essential originalfiles retrievedMac; no privatefilecontents transferred"
+}

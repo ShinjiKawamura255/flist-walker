@@ -1,0 +1,226 @@
+{
+  "version": "v0.32.0",
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "run": 40696126066,
+  "attempt": 1,
+  "event": "workflow_dispatch",
+  "status": "PROPOSED MINOR; independent exact-run review pending",
+  "all_required_jobs_pass": true,
+  "draft_job": "skipped",
+  "all_log_files": 122,
+  "logs_zip_sha256": "33825ee8f69f38646acb16927ee16584502e3c6b4aa60d014b7dd38f204de4e5",
+  "aggregate_log_identities": [
+    {
+      "file": "1_Assemble Release Bundle.txt",
+      "bytes": 52524,
+      "sha256": "00755efd8bd97d60933934dcb5f66f854a2301eadbb4de8ca91f7637dfb2fc4f",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "2_Build Release Assets (macos-arm64).txt",
+      "bytes": 82534,
+      "sha256": "4309fa6923206c65745f878b7f63932c7d25e5022ad94f932d31365bc65ff4b2",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "3_Build Release Assets (windows-x86_64).txt",
+      "bytes": 98360,
+      "sha256": "c8c3f34bbeadd989677000512b51359d6294217479872777d480ca3e4dce1909",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "4_Build Release Assets (macos-x86_64).txt",
+      "bytes": 86301,
+      "sha256": "bef133a9531da17eeb51688341688bb2eee2af5ef696dcd61e0e9e28fb87e0af",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "5_Build Release Assets (linux-x86_64).txt",
+      "bytes": 84894,
+      "sha256": "8016573f54d9fedbaf027c8c24ef081e4be7ef758c4fa36178362054877edbb0",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "6_Release Preflight (linux-native).txt",
+      "bytes": 337462,
+      "sha256": "38bcf59738a3d4f44e45248c6a6f080f0e3909a99effa87305a6495e013cfc69",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "7_Release Preflight (macos-native).txt",
+      "bytes": 333721,
+      "sha256": "2796582d0072053436b5c226ddb373d75c93268dd93cfc89620771b9c59156f3",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "8_Release Preflight (windows-native).txt",
+      "bytes": 338319,
+      "sha256": "c15853c95f9b1dc172fae793985981fd8c717b7152457bf38f269953c676c7ff",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "9_Release Cargo Audit.txt",
+      "bytes": 79319,
+      "sha256": "d877e33907d16128a68dcecfae4ebcccb713b1bf1faefe74de48af6bdde3088b",
+      "runners": [
+        "2.338.0"
+      ]
+    },
+    {
+      "file": "10_Resolve Release Context.txt",
+      "bytes": 16828,
+      "sha256": "2bdc40b9661f4f73c67e2e13974b771f9db63b36706f094fcb6585c48cf19d42",
+      "runners": [
+        "2.338.0"
+      ]
+    }
+  ],
+  "actual_external_action_emissions": [
+    {
+      "file": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "line": 32,
+      "text": "2026-10-28T13:50:13.8453995Z (node:2201) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.",
+      "aggregate": false
+    }
+  ],
+  "actual_warning_count": 1,
+  "exported_occurrences": 2,
+  "duplicate_reason": "one aggregate and one step export per actual emission; same node/message/step, timestamps differ by export microseconds",
+  "product_rust_test_clippy_audit_warnings": 0,
+  "warning_error_annotations": 0,
+  "notices": [
+    {
+      "job": "Release Preflight (macos-native)",
+      "check_run": "122843411447",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    },
+    {
+      "job": "Build Release Assets (macos-arm64)",
+      "check_run": "122849606413",
+      "annotation": {
+        "path": ".github",
+        "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/77e36c4eef21b5047747d04b3983835a50d92f06/.github",
+        "start_line": 1,
+        "start_column": null,
+        "end_line": 1,
+        "end_column": null,
+        "annotation_level": "notice",
+        "title": "",
+        "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+        "raw_details": ""
+      }
+    }
+  ],
+  "actual_download_steps": [
+    {
+      "file": "Assemble Release Bundle/5_Download packaged assets.txt",
+      "sha256": "4619f6c03d1f30a2b5425d1ae9b92f5306de747f170013d81a56085cacd68e96",
+      "selected_artifact_ids": [
+        12820861011,
+        12820811722,
+        12820418729,
+        12820268383
+      ],
+      "api_expected_computed_actual_hashes_equal": true,
+      "digest_mismatch": "error",
+      "skip_decompress": false
+    }
+  ],
+  "official_action": {
+    "observed_utc": "2026-10-28T13:52:35.596940+00:00",
+    "latest_stable": "v8.0.2",
+    "release_url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "full_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "runtime": "node24",
+    "action_yml_sha256": "e98559b7a31ba31be4709f20d22102dc2737fa630f69a339eb89981151e505fe",
+    "bundle_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+    "bundle_bytes": 4432922,
+    "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "diagnosed_bundle_identical": true,
+    "minimum_runner": "2.327.1",
+    "support_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+    "result": "PASS official latest identity/code/runtime support; exact hosted run still separately reviewed"
+  },
+  "causal_evidence": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+  "callsite": "unchanged full bundle UnzipStream dist67720 new Buffer(empty string), numeric4 dist67982 immediately filled by writeUInt32LE67983",
+  "observation_inference_boundary": "Hosted pin/runtime/input/emission/digests/success observed; actual producer/final bytes independently checked. Unchanged full official Action bounded causal diagnosis reused. No hosted stack/argument count/HTTPS/parallel reproduction claimed; no prior exception inherited.",
+  "fresh_artifact_checks": "ARTIFACT-INTEGRITY.json and BUNDLE-VALIDATION.json; real N-1 separately required",
+  "operator": "release owner",
+  "followup_owner": "repository maintainer",
+  "re_evaluate": "Every candidate/tagged run; any new code/callsite/message/count/input/security/integrity/function uncertainty stops. No general DEP0005 allowance.",
+  "actual_checkout_count": 10,
+  "actual_tree": "f928bf275f9b3e5808218c0180c35243811a3c03",
+  "native_preflights": {
+    "linux-native": {
+      "passed": 1694,
+      "failed": 0,
+      "ignored": 20,
+      "tests": "actualSUCCESS",
+      "locked_all_targets_clippy_Dwarnings": "actualSUCCESS",
+      "normalTC229": "PASS once",
+      "aggregate_sha256": "38bcf59738a3d4f44e45248c6a6f080f0e3909a99effa87305a6495e013cfc69"
+    },
+    "macos-native": {
+      "passed": 1685,
+      "failed": 0,
+      "ignored": 20,
+      "tests": "actualSUCCESS",
+      "locked_all_targets_clippy_Dwarnings": "actualSUCCESS",
+      "normalTC229": "PASS once",
+      "aggregate_sha256": "2796582d0072053436b5c226ddb373d75c93268dd93cfc89620771b9c59156f3"
+    },
+    "windows-native": {
+      "passed": 1712,
+      "failed": 0,
+      "ignored": 21,
+      "tests": "actualSUCCESS",
+      "locked_all_targets_clippy_Dwarnings": "actualSUCCESS",
+      "normalTC229": "PASS once",
+      "aggregate_sha256": "c15853c95f9b1dc172fae793985981fd8c717b7152457bf38f269953c676c7ff"
+    }
+  },
+  "real_previous_compatibility": {
+    "status": "PASS",
+    "run": 40696126066,
+    "attempt": 1,
+    "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+    "previous_version": "0.31.1",
+    "previous_public_release_id": 424455243,
+    "candidate_version": "0.32.0",
+    "manifest_sha256": "e2d013b6a24714ae422a33e609165d62139538a684e6a81a16035454022e3276",
+    "checker_sha256": "44b292d59028f42f14038da253dbfc381fc06cebb99c9a63e000583abead4c43",
+    "returncode": 0,
+    "output_sha256": "9edbcb483348fcd5d347fa320d382581fa358fb7bb6278ec3fee52d2a58cce0f",
+    "actualmanifest_not_selftest": true,
+    "waiver": false
+  },
+  "admission_scope": "workflow/artifact/native-preflight technical proof and minorwarning proposal only; selectedWindowsTC193 and finalindependentpretag/publication gates remain separate",
+  "release_publication_GO": false
+}

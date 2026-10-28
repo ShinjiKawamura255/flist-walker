@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "run": 40696126066,
+  "attempt": 1,
+  "source": "77e36c4eef21b5047747d04b3983835a50d92f06",
+  "previous_version": "0.31.1",
+  "previous_public_release_id": 424455243,
+  "candidate_version": "0.32.0",
+  "manifest_sha256": "e2d013b6a24714ae422a33e609165d62139538a684e6a81a16035454022e3276",
+  "checker_sha256": "44b292d59028f42f14038da253dbfc381fc06cebb99c9a63e000583abead4c43",
+  "returncode": 0,
+  "output_sha256": "9edbcb483348fcd5d347fa320d382581fa358fb7bb6278ec3fee52d2a58cce0f",
+  "actualmanifest_not_selftest": true,
+  "waiver": false
+}
