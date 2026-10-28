@@ -260,3 +260,253 @@ mod tests {
         assert!(labels.iter().all(|name| name.starts_with("before-")));
     }
 }
+
+pub(super) const NATIVE_EVENT_PREFIX: &str = "NATIVE_WRITER_OBSERVATION ";
+const NATIVE_LEAF: &str = "app::tests::indexing_perf::harness::extensions::tc_229_all_tab_profile_controls_preserve_own_expected_state";
+
+pub(super) fn native_observation_enabled() -> bool {
+    static ENABLED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *ENABLED.get_or_init(|| {
+        native_scope_valid(
+            &std::env::var("FW_INDEX_PERF_NORMAL_CHILD").unwrap_or_default(),
+            &std::env::var("FW_INDEX_PERF_NORMAL_CHILD_ROLE").unwrap_or_default(),
+            &std::env::args_os()
+                .skip(1)
+                .map(|value| value.into_string().unwrap_or_default())
+                .collect::<Vec<_>>(),
+        )
+    })
+}
+fn native_scope_valid(child: &str, role: &str, arguments: &[String]) -> bool {
+    child == NATIVE_LEAF
+        && role == "normal"
+        && arguments
+            .windows(2)
+            .any(|pair| pair[0] == "--exact" && pair[1] == NATIVE_LEAF)
+        && arguments.iter().any(|arg| arg == "--test-threads=1")
+}
+
+#[derive(Clone, Debug, serde::Serialize)]
+pub(super) struct NativeThreadSample {
+    platform: &'static str,
+    cpu_100ns: Option<u64>,
+    io_pending: Option<bool>,
+    cpu_error: Option<u32>,
+    io_error: Option<u32>,
+}
+
+pub(super) fn native_thread_sample(
+    handle: Option<&std::thread::JoinHandle<()>>,
+) -> NativeThreadSample {
+    #[cfg(not(windows))]
+    {
+        let _ = handle;
+        NativeThreadSample {
+            platform: "unsupported",
+            cpu_100ns: None,
+            io_pending: None,
+            cpu_error: None,
+            io_error: None,
+        }
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::io::AsRawHandle;
+        #[repr(C)]
+        #[derive(Default)]
+        struct FileTime {
+            low: u32,
+            high: u32,
+        }
+        impl FileTime {
+            fn ticks(&self) -> u64 {
+                (u64::from(self.high) << 32) | u64::from(self.low)
+            }
+        }
+        #[link(name = "kernel32")]
+        unsafe extern "system" {
+            fn GetThreadTimes(
+                handle: *mut std::ffi::c_void,
+                created: *mut FileTime,
+                exited: *mut FileTime,
+                kernel: *mut FileTime,
+                user: *mut FileTime,
+            ) -> i32;
+            fn GetThreadIOPendingFlag(handle: *mut std::ffi::c_void, pending: *mut i32) -> i32;
+            fn GetLastError() -> u32;
+        }
+        let Some(handle) = handle else {
+            return NativeThreadSample {
+                platform: "missing-handle",
+                cpu_100ns: None,
+                io_pending: None,
+                cpu_error: None,
+                io_error: None,
+            };
+        };
+        let (mut created, mut exited, mut kernel, mut user) = (
+            FileTime::default(),
+            FileTime::default(),
+            FileTime::default(),
+            FileTime::default(),
+        );
+        // Borrow this exact owned handle only; never open, duplicate, suspend or close it.
+        let times_ok = unsafe {
+            GetThreadTimes(
+                handle.as_raw_handle(),
+                &mut created,
+                &mut exited,
+                &mut kernel,
+                &mut user,
+            )
+        } != 0;
+        let cpu_error = (!times_ok).then(|| unsafe { GetLastError() });
+        let mut pending = 0;
+        let io_ok = unsafe { GetThreadIOPendingFlag(handle.as_raw_handle(), &mut pending) } != 0;
+        let io_error = (!io_ok).then(|| unsafe { GetLastError() });
+        NativeThreadSample {
+            platform: "windows",
+            cpu_100ns: times_ok
+                .then(|| kernel.ticks().checked_add(user.ticks()))
+                .flatten(),
+            io_pending: io_ok.then_some(pending != 0),
+            cpu_error,
+            io_error,
+        }
+    }
+}
+
+fn native_class(before: &NativeThreadSample, after: &NativeThreadSample) -> &'static str {
+    if before.platform == "unsupported" || after.platform == "unsupported" {
+        return "unsupported";
+    }
+    if before.cpu_error.is_some()
+        || before.io_error.is_some()
+        || after.cpu_error.is_some()
+        || after.io_error.is_some()
+    {
+        return "query-incomplete";
+    }
+    let (Some(a), Some(b), Some(io_a), Some(io_b)) = (
+        before.cpu_100ns,
+        after.cpu_100ns,
+        before.io_pending,
+        after.io_pending,
+    ) else {
+        return "query-incomplete";
+    };
+    if b < a {
+        "counter-inconsistent"
+    } else if io_a || io_b {
+        "io-pending-observed"
+    } else if b > a {
+        "cpu-progress-no-positive-io-sample"
+    } else {
+        "no-io-sample-no-cpu-progress"
+    }
+}
+
+pub(super) fn native_wait_event(
+    progress: &TestWorkerProgress,
+    before: &(u64, NativeThreadSample, u64),
+    after: NativeThreadSample,
+    wall_after_us: u64,
+    decision: &'static str,
+) -> serde_json::Value {
+    serde_json::json!({
+        "schema": 1, "kind": "owned-thread-samples", "wait_decision": decision, "wait_sequence": before.2,
+        "wall_before_us": before.0, "wall_after_us": wall_after_us,
+        "worker_path_fingerprint": progress.path_fingerprint.map(|v| format!("{v:016x}")),
+        "worker_rust_thread_fingerprint": progress.worker_thread_fingerprint.load(Ordering::Relaxed),
+        "phase": progress.phase(),
+        "last_io_checkpoint": checkpoint_name(progress.last_io_checkpoint.load(Ordering::Relaxed)),
+        "sample_before": before.1, "sample_after": after,
+        "classification": native_class(&before.1, &after),
+    })
+}
+
+pub(super) fn emit_native_wait_event(event: &serde_json::Value) {
+    use std::io::Write;
+    // Caller has released worker ownership and registry locks. The child output
+    // is an owned drained file; the parent exports only finite validated fields.
+    if let Ok(line) = serde_json::to_string(event) {
+        let _ = writeln!(std::io::stderr().lock(), "{NATIVE_EVENT_PREFIX}{line}");
+    }
+}
+
+#[cfg(test)]
+mod native_tests {
+    use super::*;
+    #[test]
+    fn native_diag_classifier_preserves_unknown_and_instantaneous_limits() {
+        let args = ["--exact", NATIVE_LEAF, "--test-threads=1"].map(str::to_owned);
+        assert!(native_scope_valid(NATIVE_LEAF, "normal", &args));
+        assert!(!native_scope_valid(NATIVE_LEAF, "perf", &args));
+        assert!(!native_scope_valid("other-leaf", "normal", &args));
+        assert!(!native_scope_valid(
+            NATIVE_LEAF,
+            "normal",
+            &["--ignored".into()]
+        ));
+        let sample = |cpu, io| NativeThreadSample {
+            platform: "windows",
+            cpu_100ns: cpu,
+            io_pending: io,
+            cpu_error: None,
+            io_error: None,
+        };
+        assert_eq!(
+            native_class(&sample(Some(1), Some(false)), &sample(Some(1), Some(true))),
+            "io-pending-observed"
+        );
+        assert_eq!(
+            native_class(&sample(Some(1), Some(false)), &sample(Some(2), Some(false))),
+            "cpu-progress-no-positive-io-sample"
+        );
+        assert_eq!(
+            native_class(&sample(Some(1), Some(false)), &sample(Some(1), Some(false))),
+            "no-io-sample-no-cpu-progress"
+        );
+        assert_eq!(
+            native_class(&sample(Some(2), Some(false)), &sample(Some(1), Some(false))),
+            "counter-inconsistent"
+        );
+        assert_eq!(
+            native_class(&sample(None, Some(false)), &sample(Some(1), Some(false))),
+            "query-incomplete"
+        );
+        let mut denied = sample(None, None);
+        denied.io_error = Some(5);
+        assert_eq!(
+            native_class(&denied, &sample(Some(1), Some(true))),
+            "query-incomplete"
+        );
+    }
+    #[cfg(windows)]
+    #[test]
+    fn native_diag_queries_only_a_borrowed_owned_live_thread() {
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel();
+        let (release_tx, release_rx) = std::sync::mpsc::channel();
+        let child = std::thread::spawn(move || {
+            let _ = ready_tx.send(());
+            let _ = release_rx.recv_timeout(std::time::Duration::from_secs(2));
+        });
+        let ready = ready_rx.recv_timeout(std::time::Duration::from_secs(2));
+        let sample = native_thread_sample(Some(&child));
+        let _ = release_tx.send(());
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while !child.is_finished() && std::time::Instant::now() < deadline {
+            std::thread::yield_now();
+        }
+        assert!(
+            child.is_finished(),
+            "native query fixture did not physically return"
+        );
+        let joined = child.join();
+        ready.unwrap();
+        joined.unwrap();
+        assert_eq!(sample.platform, "windows");
+        assert!(sample.cpu_100ns.is_some() && sample.io_pending.is_some());
+        assert!(sample.cpu_error.is_none() && sample.io_error.is_none());
+    }
+}

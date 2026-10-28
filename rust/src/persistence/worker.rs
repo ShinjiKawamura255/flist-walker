@@ -58,6 +58,7 @@ struct TestWorkerProgress {
     phase: std::sync::atomic::AtomicU8,
     last_io_checkpoint: std::sync::atomic::AtomicU8,
     worker_thread_fingerprint: std::sync::atomic::AtomicU64,
+    native_wait_sequence: std::sync::atomic::AtomicU64,
     path_fingerprint: Option<u64>,
     last_wait_failure: Mutex<Option<Value>>,
 }
@@ -70,6 +71,7 @@ impl TestWorkerProgress {
             phase: std::sync::atomic::AtomicU8::new(0),
             last_io_checkpoint: std::sync::atomic::AtomicU8::new(0),
             worker_thread_fingerprint: std::sync::atomic::AtomicU64::new(0),
+            native_wait_sequence: std::sync::atomic::AtomicU64::new(0),
             path_fingerprint: None,
             last_wait_failure: Mutex::new(None),
         }
@@ -625,7 +627,23 @@ pub(crate) fn finish_ui_state_persistence_for_test(
         }
     };
     let ownership_elapsed = ownership_started.elapsed();
-    if worker.completed.is_none() {
+    let native_before = io_diagnostics::native_observation_enabled().then(|| {
+        (
+            u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
+            io_diagnostics::native_thread_sample(worker.handle.as_ref()),
+            sender.as_ref().map_or(0, |sender| {
+                sender
+                    .progress
+                    .native_wait_sequence
+                    .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+                    .saturating_add(1)
+            }),
+        )
+    });
+    if let Some(completed) = worker.completed.as_ref() {
+        completed.clone()?;
+        drop(worker);
+    } else {
         if !worker.shutdown_sent {
             let (tx, _rx) = mpsc::channel();
             let sent = sender
@@ -650,18 +668,52 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             .is_some_and(thread::JoinHandle::is_finished)
         {
             if std::time::Instant::now() >= deadline {
+                let shutdown_sent = worker.shutdown_sent;
+                // The original timeout decision is already fixed. Observations
+                // must not let a later completion turn this result into success.
+                let event = native_before
+                    .as_ref()
+                    .zip(sender.as_ref())
+                    .map(|(before, sender)| {
+                        io_diagnostics::native_wait_event(
+                            &sender.progress,
+                            before,
+                            io_diagnostics::native_thread_sample(worker.handle.as_ref()),
+                            u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
+                            "timeout",
+                        )
+                    });
+                if event.is_some() {
+                    drop(worker);
+                }
                 record_test_worker_wait_failure(
                     sender.as_ref(),
                     started,
                     registry_elapsed,
                     ownership_elapsed,
                     "physical-stop",
-                    Some(worker.shutdown_sent),
+                    Some(shutdown_sent),
                 );
+                if let Some(event) = event {
+                    io_diagnostics::emit_native_wait_event(&event);
+                }
                 return Err("test settings writer did not physically stop before deadline".into());
             }
             thread::sleep(Duration::from_millis(1));
         }
+        // is_finished has already selected physical completion, before querying.
+        let event = native_before
+            .as_ref()
+            .zip(sender.as_ref())
+            .map(|(before, sender)| {
+                io_diagnostics::native_wait_event(
+                    &sender.progress,
+                    before,
+                    io_diagnostics::native_thread_sample(worker.handle.as_ref()),
+                    u64::try_from(started.elapsed().as_micros()).unwrap_or(u64::MAX),
+                    "finished",
+                )
+            });
         worker.completed = Some(
             worker
                 .handle
@@ -670,9 +722,16 @@ pub(crate) fn finish_ui_state_persistence_for_test(
                 .join()
                 .map_err(|_| "test settings writer panicked".to_string()),
         );
+        let completed = worker.completed.as_ref().expect("joined writer").clone();
+        if let Some(event) = event {
+            drop(worker);
+            io_diagnostics::emit_native_wait_event(&event);
+            completed?;
+        } else {
+            completed?;
+            drop(worker);
+        }
     }
-    worker.completed.as_ref().expect("joined writer").clone()?;
-    drop(worker);
     let mut registry = ui_state_persistence_registry()
         .lock()
         .map_err(|_| "UI-state persistence registry is unavailable".to_string())?;
