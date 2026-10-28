@@ -9,6 +9,7 @@ use super::filelist_writer::{
     annotate_write_target_error, execute_filelist_write_plan_with, filelist_modified_time,
     finalize_ancestor_filelist_discovery, normalize_filelist_entry_for_text_compare,
     sort_and_deduplicate_filelist_candidates_by, visit_ancestor_directories,
+    write_filelist_target_atomically, write_filelist_target_with_sync_for_test,
     FileListReplacementPhase,
 };
 use super::*;
@@ -1144,20 +1145,25 @@ fn tc165_post_replace_sync_failure_rolls_back_the_current_target() {
         .expect("plan");
 
         let commit_calls = AtomicUsize::new(0);
-        let report =
-            execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, phase| {
+        let report = execute_filelist_write_plan_with(
+            &plan,
+            &|| false,
+            &mut |target, bytes, phase, fingerprint| {
                 if matches!(phase, FileListReplacementPhase::Commit)
                     && commit_calls.fetch_add(1, Ordering::SeqCst) == fail_at
                 {
-                    crate::fs_atomic::write_bytes_atomic_with_sync_for_test(
-                        &target.path,
+                    write_filelist_target_with_sync_for_test(
+                        target,
                         bytes,
+                        phase,
+                        fingerprint,
                         |_| Err(std::io::Error::other("injected directory sync failure")),
                     )
                 } else {
-                    crate::fs_atomic::write_bytes_atomic(&target.path, bytes)
+                    write_filelist_target_atomically(target, bytes, phase, fingerprint)
                 }
-            });
+            },
+        );
 
         assert_eq!(report.status, FileListWriteStatus::Failed);
         assert_eq!(report.committed.len(), fail_at + 1);
@@ -1417,8 +1423,8 @@ fn tc165_cancellation_after_commit_rolls_back_every_committed_target() {
     let report = execute_filelist_write_plan_with(
         &plan,
         &|| writes.load(Ordering::SeqCst) >= 1,
-        &mut |target, bytes, _| {
-            crate::fs_atomic::write_bytes_atomic(&target.path, bytes)?;
+        &mut |target, bytes, phase, fingerprint| {
+            write_filelist_target_atomically(target, bytes, phase, fingerprint)?;
             writes.fetch_add(1, Ordering::SeqCst);
             Ok(())
         },
@@ -1699,6 +1705,159 @@ fn tc165_later_target_change_rolls_back_earlier_commit() {
 }
 
 #[test]
+fn tc165_rollback_preserves_foreign_changes_after_an_ancestor_commit() {
+    for change in ["content", "object", "metadata", "parent"] {
+        for cancel in [false, true] {
+            let fixture = TempDir::new(&format!("tc165-foreign-{change}-{cancel}"));
+            let parent_dir = fixture.path().join("parent");
+            let root = parent_dir.join("child");
+            fs::create_dir_all(&root).expect("create root");
+            let parent = parent_dir.join("FileList.txt");
+            fs::write(&parent, b"prior\n").expect("write parent");
+            let plan = plan_filelist_write(
+                &root,
+                &[root.join("entry.txt")],
+                FileListWriteOptions {
+                    allow_root_overwrite: false,
+                    propagate_to_ancestors: true,
+                },
+            )
+            .expect("plan");
+            let committed = std::cell::Cell::new(false);
+            let changed = std::cell::Cell::new(false);
+            let expected = std::cell::RefCell::new(Vec::new());
+            let report = execute_filelist_write_plan_with(
+                &plan,
+                &|| {
+                    if committed.get() && !changed.replace(true) {
+                        let own_bytes = fs::read(&parent).expect("read committed parent");
+                        let foreign = if change == "content" || change == "parent" {
+                            b"independent update\n".to_vec()
+                        } else {
+                            own_bytes
+                        };
+                        match change {
+                            "content" => fs::write(&parent, &foreign).expect("external write"),
+                            "object" => {
+                                let replacement = parent_dir.join("replacement");
+                                fs::write(&replacement, &foreign).expect("external object");
+                                fs::remove_file(&parent).expect("remove prior object");
+                                fs::rename(replacement, &parent).expect("replace object");
+                            }
+                            "metadata" => {
+                                let file = fs::File::options().write(true).open(&parent).unwrap();
+                                file.set_times(
+                                    fs::FileTimes::new().set_modified(
+                                        UNIX_EPOCH + Duration::from_secs(1_600_000_000),
+                                    ),
+                                )
+                                .unwrap();
+                            }
+                            "parent" => {
+                                fs::rename(&parent_dir, fixture.path().join("moved-parent"))
+                                    .expect("move parent");
+                                fs::create_dir_all(&root).expect("new parent/root");
+                                fs::write(&parent, &foreign).expect("new parent state");
+                            }
+                            _ => unreachable!(),
+                        }
+                        *expected.borrow_mut() = foreign;
+                    }
+                    cancel && committed.get()
+                },
+                &mut |target, bytes, phase, fingerprint| {
+                    if target.path == parent {
+                        write_filelist_target_atomically(target, bytes, phase, fingerprint)?;
+                        if matches!(phase, FileListReplacementPhase::Commit) {
+                            committed.set(true);
+                        }
+                        Ok(())
+                    } else {
+                        Err(std::io::Error::other("later root failure"))
+                    }
+                },
+            );
+            assert!(committed.get() && changed.get());
+            assert_eq!(
+                fs::read(&parent).unwrap(),
+                *expected.borrow(),
+                "{change}, cancel={cancel}"
+            );
+            assert_eq!(report.exit_code(), 1);
+            assert!(report.rolled_back.is_empty());
+            assert_eq!(report.rollback_failed.len(), 1);
+            assert!(!root.join("FileList.txt").exists());
+        }
+    }
+}
+
+#[test]
+fn tc165_rollback_does_not_remove_foreign_state_after_new_target_sync_failure() {
+    for change in ["content", "object"] {
+        let fixture = TempDir::new("tc165-new-target-foreign-sync");
+        let root = fixture.path();
+        let target = root.join("FileList.txt");
+        let plan =
+            plan_filelist_write(root, &[root.join("entry")], FileListWriteOptions::default())
+                .expect("plan");
+        let expected = std::cell::RefCell::new(Vec::new());
+        let report = execute_filelist_write_plan_with(
+            &plan,
+            &|| false,
+            &mut |target, bytes, phase, fingerprint| {
+                write_filelist_target_with_sync_for_test(target, bytes, phase, fingerprint, |_| {
+                    let foreign = if change == "object" {
+                        fs::read(&target.path)?
+                    } else {
+                        b"independent update\n".to_vec()
+                    };
+                    if change == "object" {
+                        let replacement = root.join("replacement");
+                        fs::write(&replacement, &foreign)?;
+                        fs::remove_file(&target.path)?;
+                        fs::rename(replacement, &target.path)?;
+                    } else {
+                        fs::write(&target.path, &foreign)?;
+                    }
+                    *expected.borrow_mut() = foreign;
+                    Err(std::io::Error::other("injected postreplace sync error"))
+                })
+            },
+        );
+        assert_eq!(
+            fs::read(&target).expect("foreign file retained"),
+            *expected.borrow(),
+            "{change}"
+        );
+        assert_eq!(report.exit_code(), 1);
+        assert_eq!(report.committed, vec![target.clone()]);
+        assert_eq!(report.rollback_failed.len(), 1);
+        assert!(report.rolled_back.is_empty());
+    }
+}
+
+#[test]
+fn tc165_missing_commit_identity_preserves_state_and_reports_incomplete_rollback() {
+    let fixture = TempDir::new("tc165-missing-commit-identity");
+    let root = fixture.path();
+    let target = root.join("FileList.txt");
+    let plan = plan_filelist_write(root, &[root.join("entry")], FileListWriteOptions::default())
+        .expect("plan");
+    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _, _| {
+        crate::fs_atomic::write_bytes_atomic_with_sync_for_test(&target.path, bytes, |_| {
+            Err(std::io::Error::other("injected unknown ownership"))
+        })
+    });
+    assert!(target.is_file());
+    assert_eq!(report.exit_code(), 1);
+    assert_eq!(report.rollback_failed.len(), 1);
+    assert!(report.rollback_failed[0]
+        .error
+        .contains("identity unavailable"));
+    assert!(report.rolled_back.is_empty());
+}
+
+#[test]
 fn tc165_injected_write_and_rollback_failures_are_reported() {
     let top = test_root("tc165-injected-failure");
     let root = top.join("child");
@@ -1718,15 +1877,18 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     .expect("plan");
 
     let calls = AtomicUsize::new(0);
-    let report = execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| {
-        let path = &target.path;
-        let call = calls.fetch_add(1, Ordering::SeqCst);
-        match call {
-            0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
-            1 => Err(std::io::Error::other("injected commit failure")),
-            _ => crate::fs_atomic::write_bytes_atomic(path, bytes),
-        }
-    });
+    let report = execute_filelist_write_plan_with(
+        &plan,
+        &|| false,
+        &mut |target, bytes, phase, fingerprint| {
+            let call = calls.fetch_add(1, Ordering::SeqCst);
+            match call {
+                0 => write_filelist_target_atomically(target, bytes, phase, fingerprint),
+                1 => Err(std::io::Error::other("injected commit failure")),
+                _ => write_filelist_target_atomically(target, bytes, phase, fingerprint),
+            }
+        },
+    );
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
     assert_eq!(report.committed, vec![parent.clone()]);
@@ -1746,16 +1908,18 @@ fn tc165_injected_write_and_rollback_failures_are_reported() {
     )
     .expect("re-plan after identity-changing rollback");
     let calls = AtomicUsize::new(0);
-    let rollback_failed =
-        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| {
-            let path = &target.path;
+    let rollback_failed = execute_filelist_write_plan_with(
+        &plan,
+        &|| false,
+        &mut |target, bytes, phase, fingerprint| {
             let call = calls.fetch_add(1, Ordering::SeqCst);
             match call {
-                0 => crate::fs_atomic::write_bytes_atomic(path, bytes),
+                0 => write_filelist_target_atomically(target, bytes, phase, fingerprint),
                 1 => Err(std::io::Error::other("injected commit failure")),
                 _ => Err(std::io::Error::other("injected rollback failure")),
             }
-        });
+        },
+    );
     assert_eq!(rollback_failed.exit_code(), 1);
     assert_eq!(rollback_failed.rollback_failed.len(), 1);
     assert_eq!(rollback_failed.rollback_failed[0].path, parent);
@@ -1782,14 +1946,15 @@ fn tc165_panic_replacing_later_target_rolls_back_earlier_commit() {
     .expect("plan");
 
     let calls = AtomicUsize::new(0);
-    let report =
-        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| match calls
-            .fetch_add(1, Ordering::SeqCst)
-        {
-            0 => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
+    let report = execute_filelist_write_plan_with(
+        &plan,
+        &|| false,
+        &mut |target, bytes, phase, fingerprint| match calls.fetch_add(1, Ordering::SeqCst) {
+            0 => write_filelist_target_atomically(target, bytes, phase, fingerprint),
             1 => panic!("injected commit replacement panic"),
-            _ => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
-        });
+            _ => write_filelist_target_atomically(target, bytes, phase, fingerprint),
+        },
+    );
 
     assert_eq!(report.status, FileListWriteStatus::Failed);
     assert_eq!(report.exit_code(), 1);
@@ -1827,13 +1992,15 @@ fn tc165_panic_during_rollback_is_reported_without_unwinding() {
 
     let calls = AtomicUsize::new(0);
     let report = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        execute_filelist_write_plan_with(&plan, &|| false, &mut |target, bytes, _| match calls
-            .fetch_add(1, Ordering::SeqCst)
-        {
-            0 => crate::fs_atomic::write_bytes_atomic(&target.path, bytes),
-            1 => panic!("injected commit replacement panic"),
-            _ => panic!("injected rollback replacement panic"),
-        })
+        execute_filelist_write_plan_with(
+            &plan,
+            &|| false,
+            &mut |target, bytes, phase, fingerprint| match calls.fetch_add(1, Ordering::SeqCst) {
+                0 => write_filelist_target_atomically(target, bytes, phase, fingerprint),
+                1 => panic!("injected commit replacement panic"),
+                _ => panic!("injected rollback replacement panic"),
+            },
+        )
     }))
     .expect("replacement panic must be reported");
 

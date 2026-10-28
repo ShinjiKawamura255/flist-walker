@@ -1,12 +1,12 @@
 use crate::fs_atomic::{
-    atomic_write_replaced_destination, write_bytes_atomic_with_metadata, AtomicWriteMetadata,
+    atomic_write_replaced_destination, write_bytes_atomic_with_metadata_observed,
+    AtomicWriteMetadata,
 };
 use crate::path_utils::path_key;
 use anyhow::{Context, Result};
 use std::any::Any;
 use std::collections::HashSet;
 use std::fs;
-use std::fs::File;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::{Component, Path, PathBuf};
 use std::time::SystemTime;
@@ -143,7 +143,7 @@ struct FileSystemObjectIdentity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct FileMetadataFingerprint {
+pub(super) struct FileMetadataFingerprint {
     identity: FileSystemObjectIdentity,
     len: u64,
     modified: SystemTime,
@@ -718,9 +718,7 @@ pub fn execute_filelist_write_plan<C>(
 where
     C: Fn() -> bool,
 {
-    execute_filelist_write_plan_with(plan, should_cancel, &mut |target, bytes, phase| {
-        write_filelist_target_atomically(target, bytes, phase)
-    })
+    execute_filelist_write_plan_with(plan, should_cancel, &mut write_filelist_target_atomically)
 }
 
 pub(super) fn execute_filelist_write_plan_with<C, W>(
@@ -730,7 +728,12 @@ pub(super) fn execute_filelist_write_plan_with<C, W>(
 ) -> FileListWriteReport
 where
     C: Fn() -> bool,
-    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
+    W: FnMut(
+        &FileListWriteTarget,
+        &[u8],
+        FileListReplacementPhase,
+        &mut Option<FileMetadataFingerprint>,
+    ) -> std::io::Result<()>,
 {
     let mut report = FileListWriteReport::completed(plan.root_target.clone());
     match preferred_root_filelist_write_target(&plan.root) {
@@ -782,15 +785,17 @@ where
             rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
             return report;
         }
+        let mut committed_fingerprint = None;
         if let Err(error) = replace_filelist_target(
             replace,
             target,
             &target.content,
             FileListReplacementPhase::Commit,
+            &mut committed_fingerprint,
         ) {
             if atomic_write_replaced_destination(&error) {
                 report.committed.push(target.path.clone());
-                committed_indexes.push(index);
+                committed_indexes.push((index, committed_fingerprint));
             }
             report.status = FileListWriteStatus::Failed;
             report.failed.push(FileListWriteFailure {
@@ -801,37 +806,82 @@ where
             return report;
         }
         report.committed.push(target.path.clone());
-        committed_indexes.push(index);
+        committed_indexes.push((index, committed_fingerprint));
         #[cfg(test)]
         abort_after_filelist_commit_if_requested(committed_indexes.len());
-        if let Err(error) = restore_success_metadata(target) {
-            report.status = FileListWriteStatus::Failed;
-            report.failed.push(FileListWriteFailure {
-                path: target.path.clone(),
-                error: error.to_string(),
-            });
-            rollback_committed_targets(&plan.targets, &committed_indexes, &mut report, replace);
-            return report;
-        }
     }
     report
 }
 
-fn write_filelist_target_atomically(
+pub(super) fn write_filelist_target_atomically(
     target: &FileListWriteTarget,
     bytes: &[u8],
     phase: FileListReplacementPhase,
+    fingerprint: &mut Option<FileMetadataFingerprint>,
 ) -> std::io::Result<()> {
-    let preserve_times =
-        matches!(phase, FileListReplacementPhase::Rollback) || target.preserve_mtime_on_success;
-    write_bytes_atomic_with_metadata(
+    write_bytes_atomic_with_metadata_observed(
         &target.path,
         bytes,
-        AtomicWriteMetadata {
-            permissions: target.prior.permissions.clone(),
-            accessed: preserve_times.then_some(target.prior.accessed).flatten(),
-            modified: preserve_times.then_some(target.prior.modified).flatten(),
-        },
+        filelist_write_metadata(target, phase),
+        |tmp| capture_prepared_filelist_target(target, tmp, fingerprint),
+    )
+}
+
+fn filelist_write_metadata(
+    target: &FileListWriteTarget,
+    phase: FileListReplacementPhase,
+) -> AtomicWriteMetadata {
+    let preserve_times =
+        matches!(phase, FileListReplacementPhase::Rollback) || target.preserve_mtime_on_success;
+    AtomicWriteMetadata {
+        permissions: target.prior.permissions.clone(),
+        accessed: preserve_times.then_some(target.prior.accessed).flatten(),
+        modified: preserve_times.then_some(target.prior.modified).flatten(),
+    }
+}
+
+fn capture_prepared_filelist_target(
+    target: &FileListWriteTarget,
+    tmp: &Path,
+    fingerprint: &mut Option<FileMetadataFingerprint>,
+) -> std::io::Result<()> {
+    let parent = target
+        .path
+        .parent()
+        .ok_or_else(|| std::io::Error::other("FileList target has no parent"))?;
+    let identity = filelist_directory_identity(parent)
+        .map_err(|error| std::io::Error::other(error.to_string()))?;
+    if identity != target.parent_identity {
+        return Err(std::io::Error::other(
+            "FileList parent changed before replacement",
+        ));
+    }
+    // Observe our prepared object before rename: a post-replace sync can fail
+    // after another writer has already replaced or edited the destination.
+    *fingerprint = Some(
+        file_metadata_fingerprint(tmp, &fs::symlink_metadata(tmp)?)
+            .map_err(|error| std::io::Error::other(error.to_string()))?,
+    );
+    Ok(())
+}
+
+#[cfg(test)]
+pub(super) fn write_filelist_target_with_sync_for_test<S>(
+    target: &FileListWriteTarget,
+    bytes: &[u8],
+    phase: FileListReplacementPhase,
+    fingerprint: &mut Option<FileMetadataFingerprint>,
+    sync: S,
+) -> std::io::Result<()>
+where
+    S: FnMut(&Path) -> std::io::Result<()>,
+{
+    crate::fs_atomic::write_bytes_atomic_observed_with_sync_for_test(
+        &target.path,
+        bytes,
+        filelist_write_metadata(target, phase),
+        |tmp| capture_prepared_filelist_target(target, tmp, fingerprint),
+        sync,
     )
 }
 
@@ -840,12 +890,20 @@ fn replace_filelist_target<W>(
     target: &FileListWriteTarget,
     bytes: &[u8],
     phase: FileListReplacementPhase,
+    fingerprint: &mut Option<FileMetadataFingerprint>,
 ) -> std::io::Result<()>
 where
-    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
+    W: FnMut(
+        &FileListWriteTarget,
+        &[u8],
+        FileListReplacementPhase,
+        &mut Option<FileMetadataFingerprint>,
+    ) -> std::io::Result<()>,
 {
-    catch_unwind(AssertUnwindSafe(|| replace(target, bytes, phase)))
-        .map_err(replacement_panic_error)?
+    catch_unwind(AssertUnwindSafe(|| {
+        replace(target, bytes, phase, fingerprint)
+    }))
+    .map_err(replacement_panic_error)?
 }
 
 #[cfg(test)]
@@ -1065,6 +1123,18 @@ fn inspect_filelist_target(path: &Path) -> Result<Option<fs::Metadata>> {
 }
 
 fn revalidate_filelist_target(target: &FileListWriteTarget) -> std::io::Result<()> {
+    revalidate_filelist_state(
+        target,
+        target.prior.bytes.as_deref(),
+        target.prior.fingerprint.as_ref(),
+    )
+}
+
+fn revalidate_filelist_state(
+    target: &FileListWriteTarget,
+    expected_bytes: Option<&[u8]>,
+    expected_fingerprint: Option<&FileMetadataFingerprint>,
+) -> std::io::Result<()> {
     let changed = || {
         std::io::Error::other(format!(
             "FileList target changed after planning: {}",
@@ -1079,11 +1149,7 @@ fn revalidate_filelist_target(target: &FileListWriteTarget) -> std::io::Result<(
     }
     let metadata_before = inspect_filelist_target(&target.path)
         .map_err(|error| std::io::Error::other(error.to_string()))?;
-    match (
-        &target.prior.bytes,
-        &target.prior.fingerprint,
-        metadata_before,
-    ) {
+    match (expected_bytes, expected_fingerprint, metadata_before) {
         (None, None, None) => {
             let parent_after = filelist_directory_identity(parent)
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
@@ -1110,7 +1176,7 @@ fn revalidate_filelist_target(target: &FileListWriteTarget) -> std::io::Result<(
                 .ok_or_else(changed)?;
             let parent_after = filelist_directory_identity(parent)
                 .map_err(|error| std::io::Error::other(error.to_string()))?;
-            if actual == *expected_bytes
+            if actual.as_slice() == expected_bytes
                 && file_metadata_fingerprint(&target.path, &metadata_after)
                     .map_err(|error| std::io::Error::other(error.to_string()))?
                     == *expected_fingerprint
@@ -1195,50 +1261,37 @@ fn prepare_filelist_target(
     })
 }
 
-fn restore_success_metadata(target: &FileListWriteTarget) -> std::io::Result<()> {
-    if let Some(permissions) = &target.prior.permissions {
-        fs::set_permissions(&target.path, permissions.clone())?;
-    }
-    if target.preserve_mtime_on_success {
-        restore_file_metadata(&target.path, &target.prior)?;
-    }
-    Ok(())
-}
-
-fn restore_file_metadata(path: &Path, prior: &PriorFileState) -> std::io::Result<()> {
-    if let Some(permissions) = &prior.permissions {
-        fs::set_permissions(path, permissions.clone())?;
-    }
-    let Some(modified) = prior.modified else {
-        return Ok(());
-    };
-    let file = File::options().write(true).open(path)?;
-    let times = match prior.accessed {
-        Some(accessed) => fs::FileTimes::new()
-            .set_accessed(accessed)
-            .set_modified(modified),
-        None => fs::FileTimes::new().set_modified(modified),
-    };
-    file.set_times(times)
-}
-
 fn rollback_committed_targets<W>(
     targets: &[FileListWriteTarget],
-    committed_indexes: &[usize],
+    committed_indexes: &[(usize, Option<FileMetadataFingerprint>)],
     report: &mut FileListWriteReport,
     replace: &mut W,
 ) where
-    W: FnMut(&FileListWriteTarget, &[u8], FileListReplacementPhase) -> std::io::Result<()>,
+    W: FnMut(
+        &FileListWriteTarget,
+        &[u8],
+        FileListReplacementPhase,
+        &mut Option<FileMetadataFingerprint>,
+    ) -> std::io::Result<()>,
 {
-    for index in committed_indexes.iter().rev().copied() {
-        let target = &targets[index];
-        let result = match &target.prior.bytes {
-            Some(bytes) => {
-                replace_filelist_target(replace, target, bytes, FileListReplacementPhase::Rollback)
-                    .and_then(|_| restore_file_metadata(&target.path, &target.prior))
-            }
-            None => fs::remove_file(&target.path),
-        };
+    for (index, fingerprint) in committed_indexes.iter().rev() {
+        let target = &targets[*index];
+        let result = fingerprint
+            .as_ref()
+            .ok_or_else(|| std::io::Error::other("FileList committed object identity unavailable"))
+            .and_then(|fingerprint| {
+                revalidate_filelist_state(target, Some(&target.content), Some(fingerprint))
+            })
+            .and_then(|_| match &target.prior.bytes {
+                Some(bytes) => replace_filelist_target(
+                    replace,
+                    target,
+                    bytes,
+                    FileListReplacementPhase::Rollback,
+                    &mut None,
+                ),
+                None => fs::remove_file(&target.path),
+            });
         match result {
             Ok(()) => report.rolled_back.push(target.path.clone()),
             Err(error) => report.rollback_failed.push(FileListWriteFailure {
