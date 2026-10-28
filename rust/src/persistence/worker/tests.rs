@@ -1914,6 +1914,20 @@ fn assert_shutdown_timeout_observes_owned_phase(after_write: bool) {
             "pre-io-gate"
         }
     );
+    if after_write {
+        assert_eq!(
+            diagnostic["last_io_checkpoint"],
+            "before-result-publication"
+        );
+    }
+    assert_eq!(
+        diagnostic["writer_path_fingerprint"],
+        format!("{:016x}", io_diagnostics::path_fingerprint(&path))
+    );
+    assert_eq!(
+        diagnostic["observation_kind"],
+        "last-checkpoint-nontransactional"
+    );
     assert_eq!(diagnostic["shutdown_sent"], true);
     assert_eq!(diagnostic["physical_finished"], false);
     assert_eq!(diagnostic["accepted_generation"], generation);
@@ -1961,4 +1975,66 @@ fn timed_out_test_shutdown_retains_writer_ownership_until_physical_return() {
         .senders
         .contains_key(&path));
     fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn writer_io_real_atomic_checkpoint_precedes_directory_sync() {
+    let base = temp_dir("io-checkpoint-atomic-sync");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let progress = Arc::new(TestWorkerProgress::for_path(&path));
+    let scope = io_diagnostics::WriterIoScope::bind(&progress);
+    let mut observations = Vec::new();
+    let result = crate::fs_atomic::write_bytes_atomic_with_sync_for_test(&path, b"{}", |_| {
+        observations.push(io_diagnostics::checkpoint_name(
+            progress
+                .last_io_checkpoint
+                .load(std::sync::atomic::Ordering::Relaxed),
+        ));
+        Ok(())
+    });
+    drop(scope);
+    let written = fs::read(&path);
+    fs::remove_dir_all(&base).unwrap();
+    result.unwrap();
+    assert_eq!(written.unwrap(), b"{}");
+    assert!(!observations.is_empty());
+    assert!(observations
+        .iter()
+        .all(|value| *value == Some("before-atomic-parent-sync")));
+}
+
+#[test]
+fn writer_io_last_checkpoint_can_belong_to_a_previous_generation() {
+    let base = temp_dir("io-checkpoint-old-generation");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    enqueue_ui_state_patch(path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    flush_ui_state_persistence(&path, Duration::from_secs(2)).unwrap();
+    let gate = WriteGate::new(path.clone());
+    let generation =
+        enqueue_ui_state_patch(path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+    gate.wait_entered();
+    let progress = {
+        let registry = ui_state_persistence_registry().lock().unwrap();
+        Arc::clone(&registry.senders[&path].progress)
+    };
+    let failure = finish_ui_state_persistence_for_test(&path, Duration::from_millis(1));
+    let diagnostic = progress.last_wait_failure.lock().unwrap().clone();
+    gate.release();
+    finish_ui_state_persistence_for_test(&path, Duration::from_secs(2)).unwrap();
+    fs::remove_dir_all(&base).unwrap();
+    assert!(failure.is_err());
+    let diagnostic = diagnostic.unwrap();
+    assert_eq!(diagnostic["phase"], "pre-io-gate");
+    assert_eq!(
+        diagnostic["last_io_checkpoint"],
+        "before-result-publication"
+    );
+    assert_eq!(diagnostic["accepted_generation"], generation);
+    assert_eq!(diagnostic["persisted_generation"], generation - 1);
+    assert_eq!(
+        diagnostic["observation_kind"],
+        "last-checkpoint-nontransactional"
+    );
 }

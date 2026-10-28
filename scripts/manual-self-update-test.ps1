@@ -506,6 +506,10 @@ try {
         $psi.EnvironmentVariables['FLISTWALKER_UPDATE_ALLOW_DOWNGRADE'] = '1'
     }
 
+    if ($Automated) {
+        . (Join-Path $PSScriptRoot 'self-update-failure-diagnostics.ps1')
+        if ($Variant -eq 'Universal') { & (Join-Path $PSScriptRoot 'tests/test-self-update-live-diagnostics.ps1') }
+    }
     $parentStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
     $process = [System.Diagnostics.Process]::Start($psi)
     $standardErrorTask = if ($Automated) { $process.StandardError.ReadToEndAsync() } else { $null }
@@ -539,7 +543,17 @@ try {
         Write-Host 'Close the launched app to stop the local feed server.'
     }
 
+    $liveObservation = $null
+    if ($Automated) {
+        try { $liveObservation = Watch-SelfUpdateParentHistory $process $AppSandboxDir $parentStopwatch }
+        catch { $liveObservation = @{ schema = 1; observation_error = $true } }
+    }
+    # Observation never replaces the original wait, failure decision or cleanup.
     $process.WaitForExit()
+    if ($Automated) {
+        try { Write-Host ('SELF_UPDATE_LIVE_OBSERVATION ' + (@{ variant = $Variant; observation = $liveObservation } | ConvertTo-Json -Compress -Depth 8)) }
+        catch { Write-Host 'SELF_UPDATE_LIVE_OBSERVATION {"observation_error":true}' }
+    }
     if ($Automated -and $process.ExitCode -ne 0) {
         $standardError = $standardErrorTask.GetAwaiter().GetResult().Trim()
         try {

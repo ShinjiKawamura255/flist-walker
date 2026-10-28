@@ -517,6 +517,12 @@ fn tc159_helper_cannot_ack_or_mutate_before_matching_registration() {
     assert!(err.to_string().contains("registration"));
     assert!(!prepared.ack_path().exists());
     assert_old_bundle(&fixture.root, &current_exe);
+    let ack = prepared.ack_path().to_path_buf();
+    let marker = prepared.marker_path().to_path_buf();
+    drop(prepared); // armed parent cleanup after rejected registration
+    assert!(!ack.exists() && !marker.exists());
+    assert_old_bundle(&fixture.root, &current_exe);
+    eprintln!("CAUSAL_ACK_HISTORY rejected_before_ACK=true post_cleanup_ACK_missing=true old_bundle=true; no_external_helper");
 }
 
 #[test]
@@ -869,6 +875,11 @@ fn tc159_parent_wait_timeout_mutates_no_installation_target() {
         prepared.helper_path(),
     )
     .expect("ack");
+    let ack = prepared.ack_path().to_path_buf();
+    assert!(ack.is_file());
+    let marker = read_marker(prepared.marker_path()).expect("registered marker");
+    validate_ack(prepared.install_dir(), &marker, "matching-start-token")
+        .expect("real ACK validated before rollback");
     let mut process = TestProcessControl::parent_wait_timeout();
     let mut failures = NoFailure;
 
@@ -882,6 +893,11 @@ fn tc159_parent_wait_timeout_mutates_no_installation_target() {
     assert!(result.is_err());
     assert_old_bundle(&fixture.root, &current_exe);
     assert_eq!(process.restart_calls(), 0);
+    assert!(
+        !ack.exists(),
+        "post-exit missing ACK cannot erase its observed history"
+    );
+    eprintln!("CAUSAL_ACK_HISTORY ACK_created_and_validated=true rollback_ACK_missing=true old_bundle=true; mock_false_not_real_timeout_or_native_reproduction");
 }
 
 #[test]
