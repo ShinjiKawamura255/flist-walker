@@ -25,7 +25,9 @@ impl<'a, S> RootProjectionSink<'a, S> {
     }
 
     fn project(&self, path: &Path) -> Option<PathBuf> {
-        if self.requested_root == self.resolved_root {
+        // Equal roots can still receive verbatim Windows candidates. Skip
+        // projection only if this entry already uses the requested root.
+        if self.requested_root == self.resolved_root && path.starts_with(self.requested_root) {
             return None;
         }
         #[cfg(windows)]
@@ -210,6 +212,192 @@ mod tests {
             Some(Path::new(r"C:\Linked").join(unpaired_surrogate))
         );
         assert_eq!(sink.project(Path::new(r"C:\PhysicalOther\entry.txt")), None);
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn equal_root_projection_keeps_the_requested_windows_namespace() {
+        for (resolved, requested, entry) in [
+            (
+                r"\\?\C:\Physical",
+                r"C:\Physical",
+                r"\\?\C:\Physical\資料\alias-a\entry.txt",
+            ),
+            (
+                r"C:\Physical",
+                r"C:\Physical",
+                r"\\?\C:\Physical\資料\alias-a\entry.txt",
+            ),
+            (
+                r"C:\Physical",
+                r"C:\Physical",
+                r"c:\PHYSICAL\資料\alias-a\entry.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\?\UNC\server\share\Physical\資料\alias-a\entry.txt",
+            ),
+            (
+                r"\\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\?\UNC\SERVER\SHARE\PHYSICAL\資料\alias-a\entry.txt",
+            ),
+            (
+                r"\\?\C:\Physical",
+                r"\\?\C:\Physical",
+                r"C:\Physical\資料\alias-a\entry.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical\資料\alias-a\entry.txt",
+            ),
+        ] {
+            let sink = RootProjectionSink::new(&(), Path::new(resolved), Path::new(requested));
+            assert_eq!(
+                sink.project(Path::new(entry)),
+                Some(
+                    Path::new(requested)
+                        .join("資料")
+                        .join("alias-a")
+                        .join("entry.txt")
+                ),
+                "requested={requested:?}, resolved={resolved:?}, entry={entry:?}"
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn equal_root_projection_preserves_external_entries_and_wide_aliases() {
+        use std::ffi::OsString;
+        use std::os::windows::ffi::OsStringExt;
+
+        for (resolved, requested, unchanged) in [
+            (
+                r"\\?\C:\Physical",
+                r"C:\Physical",
+                r"C:\Physical\alias-a\entry.txt",
+            ),
+            (
+                r"\\?\C:\Physical",
+                r"C:\Physical",
+                r"\\?\C:\PhysicalOther\entry.txt",
+            ),
+            (
+                r"\\?\C:\Physical",
+                r"C:\Physical",
+                r"\\?\D:\Physical\entry.txt",
+            ),
+            (
+                r"\\?\C:\Physical",
+                r"C:\Physical",
+                r"\\?\C:\Physical\..\outside.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\server\share\Physical\alias-a\entry.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\?\UNC\server\other-share\Physical\entry.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\?\UNC\server\share\PhysicalOther\entry.txt",
+            ),
+            (
+                r"\\?\UNC\server\share\Physical",
+                r"\\server\share\Physical",
+                r"\\?\UNC\server\share\Physical\..\outside.txt",
+            ),
+        ] {
+            let sink = RootProjectionSink::new(&(), Path::new(resolved), Path::new(requested));
+            assert_eq!(sink.project(Path::new(unchanged)), None, "{unchanged:?}");
+        }
+
+        let root_suffix = OsString::from_wide(&[0xd800]);
+        let file_suffix = OsString::from_wide(&[0xdfff]);
+        let requested = Path::new(r"C:\Physical").join(&root_suffix);
+        let resolved = Path::new(r"\\?\C:\Physical").join(&root_suffix);
+        let entry = resolved.join("alias-a").join(&file_suffix);
+        let sink = RootProjectionSink::new(&(), &resolved, &requested);
+        assert_eq!(
+            sink.project(&entry),
+            Some(requested.join("alias-a").join(file_suffix))
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn equal_root_projection_rewrites_both_data_messages_without_changing_identity() {
+        let requested = Path::new(r"C:\Physical");
+        let resolved = Path::new(r"\\?\C:\Physical");
+        let outside = PathBuf::from(r"\\?\C:\Outside\entry.txt");
+        let (tx, rx) = mpsc::channel();
+        let sink = RootProjectionSink::new(&tx, resolved, requested);
+        for replace in [false, true] {
+            let entries = vec![
+                IndexEntry {
+                    path: resolved.join("alias-a").join("entry.txt"),
+                    kind: EntryKind::link_unknown(),
+                    kind_known: false,
+                },
+                IndexEntry {
+                    path: outside.clone(),
+                    kind: EntryKind::link_unknown(),
+                    kind_known: true,
+                },
+            ];
+            sink.send(if replace {
+                IndexResponse::ReplaceAll {
+                    request_id: 23,
+                    entries,
+                }
+            } else {
+                IndexResponse::Batch {
+                    request_id: 23,
+                    entries,
+                }
+            })
+            .unwrap();
+            match rx.recv().unwrap() {
+                IndexResponse::Batch {
+                    request_id,
+                    entries,
+                }
+                | IndexResponse::ReplaceAll {
+                    request_id,
+                    entries,
+                } => {
+                    assert_eq!(request_id, 23);
+                    assert_eq!(entries[0].path, requested.join("alias-a").join("entry.txt"));
+                    assert_eq!(entries[1].path, outside);
+                    assert_eq!(entries[0].kind, EntryKind::link_unknown());
+                    assert_eq!(entries[1].kind, EntryKind::link_unknown());
+                    assert!(!entries[0].kind_known);
+                    assert!(entries[1].kind_known);
+                }
+                _ => panic!("unexpected response"),
+            }
+        }
+        let source = IndexSource::FileList(resolved.join("FileList.txt"));
+        sink.send(IndexResponse::Started {
+            request_id: 23,
+            source: source.clone(),
+        })
+        .unwrap();
+        match rx.recv().unwrap() {
+            IndexResponse::Started {
+                request_id: 23,
+                source: actual,
+            } => assert_eq!(actual, source),
+            _ => panic!("source identity changed"),
+        }
     }
 
     fn linked_root_results(use_filelist: bool) {
