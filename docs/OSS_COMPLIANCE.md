@@ -197,3 +197,8 @@
 - Central configuration: cargo-auditのproject-local探索規則に従う`rust/.cargo/audit.toml` contains only `RUSTSEC-2026-0194` and `RUSTSEC-2026-0195`; the required command is `cd rust && cargo audit`.
 
 - Reveal additionally enables `NSWorkspace` and `NSURL` in the existing macOS objc2 crates. No crate versions or license expressions change; existing MIT and Zlib/Apache-2.0/MIT notices cover these APIs. Windows uses system Shell32/Ole32; Linux invokes the installed `dbus-send` client (not bundled).
+
+## Windows titlebar theme adapter
+
+- Windows GUI startup directly uses the already resolved `raw-window-handle 0.6.2` (MIT OR Apache-2.0 OR Zlib) to obtain its own root HWND. The lockfile adds only the root dependency edge; no package version, checksum, or enabled feature is changed. `THIRD_PARTY_NOTICES.txt` records the direct usage.
+- The adapter is owned by the GUI binary under `gui_launch/windows_theme.rs`; `fw` does not import its Comctl32/Dwmapi functions. Existing sidecar, archive and self-update notice copying remains unchanged; the release asset inventory in `docs/RELEASE.md` is unchanged.

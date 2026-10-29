@@ -596,13 +596,28 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     ("Copy Path(s)", n) if n > 0 => format!("Copy selected ({n})"),
                     _ => label.to_owned(),
                 };
-                let mut button = egui::Button::new(caption);
-                if label == "Clear Selected" && count > 0 {
-                    button = button.fill(super::super::render_theme::selected_fill(
-                        ui.visuals().dark_mode,
-                    ));
+                let colors = (label == "Clear Selected" && count > 0)
+                    .then(|| super::super::render_theme::pinned_action_colors(ui.visuals().dark_mode));
+                let text = egui::RichText::new(caption);
+                let mut button = egui::Button::new(if let Some((_, _, color)) = colors {
+                    text.color(color)
+                } else {
+                    text
+                });
+                if let Some((fill, _, _)) = colors {
+                    button = button.fill(fill);
                 }
                 let mut response = ui.add_enabled(app.top_action_enabled(label), button);
+                if let Some((_, border, _)) = colors {
+                    // Paint inside the allocated rect: overriding Button::stroke changes
+                    // egui's state-dependent padding and shifts the toolbar on hover.
+                    ui.painter().rect_stroke(
+                        response.rect,
+                        ui.visuals().widgets.inactive.corner_radius,
+                        egui::Stroke::new(1.0, border),
+                        egui::StrokeKind::Inside,
+                    );
+                }
                 response = match label {
                     "Stop Indexing" => response.on_disabled_hover_text(
                         "No indexing is running or waiting in this tab.",
@@ -625,7 +640,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let count = app.shell.runtime.pinned_paths.len();
             if count > 0
                 && !app.shell.runtime.query_state.history_search_active
-                && ui.button(format!("Selected ({count})...")).clicked()
+                && ui.button(format!("Pinned ({count})...")).clicked()
             {
                 app.open_selection_inspector();
             }

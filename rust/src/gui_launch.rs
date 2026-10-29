@@ -60,6 +60,9 @@ fn startup_native_window_geometry(
 #[cfg(target_os = "macos")]
 mod macos_menu;
 
+#[cfg(any(target_os = "windows", test))]
+mod windows_theme;
+
 fn configure_quit_shortcuts(ctx: &eframe::egui::Context) {
     // egui handles its default primary+Q at end_pass, after app input handling.
     // Disable that source without suppressing native or updater close requests.
@@ -208,6 +211,13 @@ pub(crate) fn run(
                         &format!("{placement:?}"),
                     );
                 }
+            }
+            #[cfg(target_os = "windows")]
+            if let Err(error) = windows_theme::install(
+                cc,
+                flist_walker::runtime_config::current_runtime_config().theme,
+            ) {
+                warn!(%error, "could not preserve the native titlebar theme");
             }
             FlistWalkerApp::configure_theme(&cc.egui_ctx);
             configure_quit_shortcuts(&cc.egui_ctx);
