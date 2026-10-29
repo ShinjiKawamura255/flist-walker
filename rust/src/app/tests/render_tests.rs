@@ -2220,6 +2220,13 @@ fn regression_narrow_results_header_and_rows_stay_inside_client_area() {
                 let (_, _, viewport) = probe.scroll.expect("result viewport");
                 let bounds = probe.header_bounds.expect("Results pane bounds");
                 assert_eq!(probe.header_controls.len(), 2);
+                let rightmost = probe
+                    .header_controls
+                    .iter()
+                    .map(|(_, rect)| rect.right())
+                    .fold(f32::NEG_INFINITY, f32::max);
+                assert!((bounds.right() - rightmost).abs() <= 2.0,
+                    "sort controls must end at the Results pane edge: bounds={bounds:?}, controls={:?}", probe.header_controls);
                 for (label, rect) in &probe.header_controls {
                     assert!(rect.left() >= bounds.left() && rect.right() <= bounds.right(),
                     "header control must stay in Results pane: size={size:?}, preview={preview}, label={label}, rect={rect:?}, bounds={bounds:?}");
@@ -2337,6 +2344,50 @@ fn saved_theme_preference_overrides_system_and_system_mode_tracks_os() {
                 ThemeMode::Light => egui::Theme::Light,
             };
             assert_eq!(ctx.theme(), expected);
+        }
+    }
+}
+
+#[test]
+fn native_titlebar_theme_follows_app_preference_and_releases_system_override() {
+    use crate::runtime_config::ThemeMode;
+    let ctx = egui::Context::default();
+    // Reuse one context to catch a stale explicit override when returning to System.
+    for (mode, expected) in [
+        (ThemeMode::Dark, egui::SystemTheme::Dark),
+        (ThemeMode::Light, egui::SystemTheme::Light),
+        (ThemeMode::System, egui::SystemTheme::SystemDefault),
+    ] {
+        render_theme::apply_theme(&ctx, mode);
+        let output = ctx.run_ui(egui::RawInput::default(), |_| {});
+        let commands = &output.viewport_output[&egui::ViewportId::ROOT].commands;
+        assert!(
+            commands.iter().any(|command| matches!(
+                command, egui::ViewportCommand::SetTheme(theme) if *theme == expected
+            )),
+            "native titlebar theme must match {mode:?}: {commands:?}"
+        );
+        for system_theme in [egui::Theme::Dark, egui::Theme::Light] {
+            let output = ctx.run_ui(
+                egui::RawInput {
+                    system_theme: Some(system_theme),
+                    ..Default::default()
+                },
+                |_| {},
+            );
+            let expected_body = match mode {
+                ThemeMode::Dark => egui::Theme::Dark,
+                ThemeMode::Light => egui::Theme::Light,
+                ThemeMode::System => system_theme,
+            };
+            assert_eq!(ctx.theme(), expected_body);
+            assert!(
+                !output.viewport_output[&egui::ViewportId::ROOT]
+                    .commands
+                    .iter()
+                    .any(|command| matches!(command, egui::ViewportCommand::SetTheme(_))),
+                "idle frames must leave native System tracking in place"
+            );
         }
     }
 }

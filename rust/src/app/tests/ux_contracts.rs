@@ -339,7 +339,11 @@ fn ux_contract_pin_count_and_clear_highlight_follow_real_clear_button() {
         } else {
             egui::Visuals::light()
         });
-        let selected_color = crate::app::render_theme::selected_fill(dark);
+        let selected_color = if dark {
+            egui::Color32::from_rgb(77, 61, 37)
+        } else {
+            egui::Color32::from_rgb(247, 231, 200)
+        };
         gui.idle(&mut app);
         let output = gui.idle(&mut app);
         let pos = text_rect(&output, |text| text == "Clear Selected").center();
@@ -354,6 +358,7 @@ fn ux_contract_pin_count_and_clear_highlight_follow_real_clear_button() {
         let output = gui.idle(&mut app);
         text_rect(&output, |text| text == "Open selected (1)");
         text_rect(&output, |text| text == "Copy selected (1)");
+        text_rect(&output, |text| text == "Pinned (1)...");
         let pos = text_rect(&output, |text| text == "Clear Selected").center();
         assert!(output
             .shapes
@@ -369,6 +374,7 @@ fn ux_contract_pin_count_and_clear_highlight_follow_real_clear_button() {
         );
         text_rect(&output, |text| text == "Open / Execute");
         text_rect(&output, |text| text == "Copy Path(s)");
+        assert!(maybe_text_rect(&output, |text| text.starts_with("Pinned (")).is_none());
         let pos = text_rect(&output, |text| text == "Clear Selected").center();
         assert!(!output
             .shapes
@@ -466,5 +472,52 @@ fn ux_contract_editor_commit_buttons_follow_windows_order() {
             "Save precedes Cancel; named_root={named_root}"
         );
         assert!((save.center().y - cancel.center().y).abs() < 1.0);
+    }
+}
+
+#[test]
+fn ux_contract_pin_indicator_tracks_repeated_tab_and_hidden_pins() {
+    for dark in [false, true] {
+        let scope = test_settings_scope("pin-indicator-tab");
+        let root = test_root("pin-indicator-tab-root");
+        let first = root.join("first.txt");
+        let second = root.join("second.txt");
+        let mut app = scope.app(root, 50, String::new());
+        prepare(&mut app, &[first.clone(), second.clone()]);
+        let mut gui = Gui::default();
+        gui.ctx.set_visuals(if dark {
+            egui::Visuals::dark()
+        } else {
+            egui::Visuals::light()
+        });
+        gui.idle(&mut app);
+        for _ in 0..3 {
+            for pinned in [true, false] {
+                let output = gui.frame(
+                    &mut app,
+                    vec![egui::Event::Key {
+                        key: egui::Key::Tab,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }],
+                    egui::Modifiers::NONE,
+                );
+                assert_eq!(app.shell.runtime.pinned_paths.contains(&first), pinned);
+                assert_eq!(app.shell.runtime.current_row, Some(0));
+                assert_eq!(
+                    maybe_text_rect(&output, |text| text == "Pinned (1)...").is_some(),
+                    pinned
+                );
+            }
+        }
+        app.shell.runtime.pinned_paths.insert(first);
+        app.shell.runtime.pinned_paths.insert(second);
+        prepare(&mut app, &[]); // Filtering out results must not hide a retained PIN.
+        let output = gui.idle(&mut app);
+        let pos = text_rect(&output, |text| text == "Pinned (2)...").center();
+        gui.click(&mut app, pos, egui::Modifiers::NONE);
+        assert!(app.shell.ui.selection_inspector.is_some());
     }
 }

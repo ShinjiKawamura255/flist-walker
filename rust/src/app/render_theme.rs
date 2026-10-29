@@ -47,9 +47,37 @@ impl super::FlistWalkerApp {
 
 pub(super) fn apply_theme(ctx: &egui::Context, theme: crate::runtime_config::ThemeMode) {
     use crate::runtime_config::ThemeMode;
+    // egui's preference only styles the client area. winit owns native window
+    // decorations; release its explicit override when returning to System.
+    ctx.send_viewport_cmd_to(
+        egui::ViewportId::ROOT,
+        egui::ViewportCommand::SetTheme(match theme {
+            ThemeMode::System => egui::SystemTheme::SystemDefault,
+            ThemeMode::Dark => egui::SystemTheme::Dark,
+            ThemeMode::Light => egui::SystemTheme::Light,
+        }),
+    );
     ctx.set_theme(match theme {
         ThemeMode::System => egui::ThemePreference::System,
         ThemeMode::Dark => egui::ThemePreference::Dark,
         ThemeMode::Light => egui::ThemePreference::Light,
     });
+}
+
+pub(super) fn pinned_action_colors(
+    dark_mode: bool,
+) -> (egui::Color32, egui::Color32, egui::Color32) {
+    if dark_mode {
+        (
+            egui::Color32::from_rgb(77, 61, 37),
+            egui::Color32::from_rgb(185, 144, 80),
+            egui::Color32::from_rgb(255, 223, 170),
+        )
+    } else {
+        (
+            egui::Color32::from_rgb(247, 231, 200),
+            egui::Color32::from_rgb(156, 117, 50),
+            egui::Color32::from_rgb(100, 66, 20),
+        )
+    }
 }

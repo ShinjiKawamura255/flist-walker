@@ -36,6 +36,10 @@ Additional notice-bearing components
   License: BSD-3-Clause
   Source: https://github.com/linebender/tiny-skia
 
+- raw-window-handle 0.6.2 (Windows native window handle access; already resolved through eframe)
+  License: MIT OR Apache-2.0 OR Zlib
+  Upstream: https://github.com/rust-windowing/raw-window-handle
+
 - eframe 0.35.0 / egui 0.35.0 / egui_glow 0.35.0 / egui-winit 0.35.0
   Primary license: MIT OR Apache-2.0
   Source: https://github.com/emilk/egui

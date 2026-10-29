@@ -8,6 +8,7 @@
 - MUST: Root自体がsymlink/junctionでも、相対表示のResultsは要求されたRootを基準とする。workerの実体Root解決で表示を絶対pathへ変えてはならない。Walker/FileListのBatch/ReplaceAllとも同じ投影を使い、query/highlight/ignoreと候補pathを揃える。Root外の独立した絶対FileList行はそのまま保持し、表示中にcanonicalize等のfilesystem I/Oを行ってはならない。
 - MUST: 検索入力、結果リスト、プレビューペイン、実行/オープンを提供する。
 - MUST: Source（FileList/Walker）と Root を画面表示する。
+- MUST: Results 見出しと表示件数は結果一覧領域の左に、Sorted by と Scope の操作群は同領域の右端（Preview の左）に置く。件数・操作ラベル・選択値の文字ベースラインを揃え、フォントと DPI に固定の縦オフセットを用いない。幅が足りない場合は操作群を下の行へ折り返し、領域外や Preview へはみ出させない。
 - MUST: Root 欄と Root 由来のタブ見出しは改行（CR/LF/NEL/Unicode line・paragraph separator）を表示時にエスケープして単一行を保ち、検索欄や後続操作を画面外へ押し出してはならない。実際の Root path、検索・操作・保存値は表示用エスケープで変更しない。保存 Root・preset・Named Root の共通一覧行はフォントに応じた安定した行高を使い、不可視ラベルの文字レイアウトを計算してはならない。
 - MUST: フッター右端に現在 version を常時表示する。
 - MUST: 非マッチは非表示とし、一致箇所ハイライトを提供する。
@@ -15,7 +16,7 @@
 - MUST: 表示中の Results が空なら current row は `None`、1件以上なら常に範囲内の `Some(row)` とする。検索・sort・filter・preset・tab/session restore・非同期応答による結果再適用では、従来の行番号を結果末尾へ丸め、従来行がなければ0行目を選択する。非active tabで結果配列をcompactionした間だけ、再表示用のbase resultsに対するselection保持を許す。
 - MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後も、上記 Results/current row invariantを次の描画までに満たす。
 - MUST: 複数選択と一括アクションを提供する。
-- MUST: Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を控えめに強調する。強調表示の切替や Clear Selected へのホバーで、Results を含む周辺レイアウトの位置・高さを変化させてはならない。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
+- MUST: Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を明暗テーマ別の控えめなアンバー背景・枠線・読みやすい文字色で強調し、件数付き `Pinned (n)...` ボタンでも PIN の保持を明示する。強調表示の切替や Clear Selected へのホバーで、Results を含む周辺レイアウトの位置・高さを変化させてはならない。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
 - MUST: 検索欄直下に query に対応する検索エラーまたは入力補助を示す。`name:` / `path:` / `dir:` / `ext:` の値が空なら入力待ちとして示す。未知の接頭辞のうち既知フィールドに近い綴りは、単語先頭のコロンを契機に任意の修正候補を示す。入力、貼付け、編集で再評価し、IME 合成中は指摘・修正しない。修正は提案した接頭辞だけを置換し、他の検索語と演算子を維持し、検索欄へ focus を戻す。
 - MUST: 補助は query 解釈を変更せず、未知の接頭辞を通常語とする共通契約を維持する。drive path、URL、引用された通常語、regex 内のコロンを一律に誤記と見なしてはならない。補助解析は最大4096 byteの入力に限定し、それを超える入力でも検索自体は制限してはならない。
 - MUST: 綴りの修正候補と、そのqueryに対応する確定済み検索エラーが同時にある場合は、検索欄直下に両方を表示する。候補によって別の検索語の構文エラーやworker障害の理由を隠してはならない。既知fieldの値が空の場合は入力待ち案内を表示し、空fieldの検索エラーを重複表示しない。

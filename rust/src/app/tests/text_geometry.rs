@@ -221,3 +221,54 @@ fn selectable_row_heights_stay_stable_for_labels_and_font_overrides() {
         }
     }
 }
+
+#[test]
+fn results_header_controls_align_with_shown_text_across_fonts_and_dpi() {
+    let scope = test_settings_scope("results-header-alignment");
+    let mut app = scope.app(
+        test_root("results-header-alignment-root"),
+        30,
+        String::new(),
+    );
+    reset_index_request_state_for_test(&mut app);
+    for scale in [1.0, 1.25, 1.5, 2.0] {
+        for size in [14.0, 22.0] {
+            for offset in [-4.0, 0.0, 4.0] {
+                let ctx = typography_context(scale, size, offset);
+                ctx.all_styles_mut(|style| {
+                    style
+                        .text_styles
+                        .insert(egui::TextStyle::Body, egui::FontId::proportional(size));
+                    style.text_styles.insert(
+                        egui::TextStyle::Heading,
+                        egui::FontId::proportional(size + 4.0),
+                    );
+                });
+                let mut output = egui::FullOutput::default();
+                for _ in 0..3 {
+                    output = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(egui::Rect::from_min_size(
+                                egui::Pos2::ZERO,
+                                egui::vec2(1400.0, 800.0),
+                            )),
+                            ..Default::default()
+                        },
+                        |ui| crate::app::render_panels::render_results_list(&mut app, ui),
+                    );
+                }
+                let (shown, _) = painted_text(&output, "0 shown");
+                let baseline = |text: &egui::epaint::TextShape| {
+                    let row = &text.galley.rows[0];
+                    text.pos.y + row.pos.y + row.glyphs[0].pos.y
+                };
+                for label in ["Sorted by", "Score", "Scope", "Shown results"] {
+                    let (text, clip) = painted_text(&output, label);
+                    assert!((baseline(text) - baseline(shown)).abs() <= 1.0 / scale,
+                        "Results controls must share shown-text baseline: label={label}, scale={scale}, size={size}, offset={offset}, shown={}, actual={}, shown_pos={:?}, text_pos={:?}", baseline(shown), baseline(text), shown.pos, text.pos);
+                    assert_vertical_ink_visible(text, clip);
+                }
+            }
+        }
+    }
+}

@@ -568,13 +568,14 @@ fn labeled_results_combo(
     ui: &mut egui::Ui,
     label: &str,
     combo_width: f32,
+    row_height: f32,
     render_combo: impl FnOnce(&mut egui::Ui) -> egui::Response,
 ) -> egui::Response {
     let label_width = ui
         .painter()
         .layout_no_wrap(
             label.to_owned(),
-            egui::TextStyle::Button.resolve(ui.style()),
+            egui::TextStyle::Body.resolve(ui.style()),
             ui.visuals().text_color(),
         )
         .size()
@@ -585,10 +586,11 @@ fn labeled_results_combo(
     ui.allocate_ui_with_layout(
         egui::vec2(
             label_width + ui.spacing().item_spacing.x + combo_width,
-            ui.spacing().interact_size.y,
+            row_height,
         ),
         egui::Layout::left_to_right(egui::Align::Center),
         |ui| {
+            ui.spacing_mut().interact_size.y = row_height;
             centered_top_panel_label(ui, label);
             render_combo(ui)
         },
@@ -603,89 +605,139 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             active.result.header_bounds = Some(ui.available_rect_before_wrap());
         }
     });
-    // Labeled controls wrap as bounded groups within the Results pane.
-    ui.horizontal_wrapped(|ui| {
-        ui.heading("Results");
-        let total = app.shell.runtime.total_match_count;
-        let shown = app.shell.runtime.results.len();
-        if total > shown {
-            ui.label(format!("{shown} of {total} shown"));
-        } else {
-            ui.label(format!("{shown} shown"));
-        }
-        let original_scope = app.shell.runtime.result_sort_scope;
-        let mut selected_scope = original_scope;
-        let mut selected = app.shell.runtime.result_sort_mode;
-        let sort_response = labeled_results_combo(
-            ui,
-            "Sorted by",
-            FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH,
-            |ui| {
-                egui::ComboBox::from_id_salt("results-sort-selector")
-                    .width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH)
+    let row_height = ui
+        .text_style_height(&egui::TextStyle::Heading)
+        .max(ui.text_style_height(&egui::TextStyle::Body) + 2.0 * ui.spacing().button_padding.y)
+        .max(ui.spacing().interact_size.y);
+    let text_width = |text: &str, style: egui::TextStyle| {
+        ui.painter()
+            .layout_no_wrap(
+                text.to_owned(),
+                style.resolve(ui.style()),
+                ui.visuals().text_color(),
+            )
+            .size()
+            .x
+    };
+    let shown = app.shell.runtime.results.len();
+    let total = app.shell.runtime.total_match_count;
+    let shown_label = if total > shown {
+        format!("{shown} of {total} shown")
+    } else {
+        format!("{shown} shown")
+    };
+    let gap = ui.spacing().item_spacing.x;
+    let caption_width = text_width("Results", egui::TextStyle::Heading)
+        + gap
+        + text_width(&shown_label, egui::TextStyle::Body);
+    let sort_width = text_width("Sorted by", egui::TextStyle::Body)
+        + gap
+        + FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH;
+    let scope_width = text_width("Scope", egui::TextStyle::Body) + gap + 126.0;
+    let controls_width = sort_width + gap + scope_width;
+    let available_width = ui.available_width();
+    let separate_controls = caption_width + gap + controls_width > available_width;
+    let split_controls = controls_width > available_width;
+    // Allocate the complete row height before any widget so the heading, count,
+    // labels and combo text share a center/baseline at every font size and DPI.
+    ui.allocate_ui_with_layout(
+        egui::vec2(available_width, row_height),
+        egui::Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
+        |ui| {
+            ui.heading("Results");
+            ui.label(shown_label);
+            if separate_controls {
+                ui.end_row();
+            }
+            let controls_row_width = if split_controls {
+                sort_width
+            } else {
+                controls_width
+            };
+            ui.add_space(
+                (ui.available_size_before_wrap().x - controls_row_width - 1.0)
+                    .max(0.0)
+                    .floor(),
+            );
+            let original_scope = app.shell.runtime.result_sort_scope;
+            let mut selected_scope = original_scope;
+            let mut selected = app.shell.runtime.result_sort_mode;
+            let sort_response = labeled_results_combo(
+                ui,
+                "Sorted by",
+                FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH,
+                row_height,
+                |ui| {
+                    egui::ComboBox::from_id_salt("results-sort-selector")
+                        .width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH)
+                        .selected_text("")
+                        .show_ui(ui, |ui| {
+                            ui.set_min_width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH);
+                            for mode in [
+                                ResultSortMode::Score,
+                                ResultSortMode::NameAsc,
+                                ResultSortMode::NameDesc,
+                                ResultSortMode::PathAsc,
+                                ResultSortMode::PathDesc,
+                                ResultSortMode::ModifiedDesc,
+                                ResultSortMode::ModifiedAsc,
+                                ResultSortMode::CreatedDesc,
+                                ResultSortMode::CreatedAsc,
+                                ResultSortMode::SizeDesc,
+                                ResultSortMode::SizeAsc,
+                            ] {
+                                ui.selectable_value(&mut selected, mode, mode.label());
+                            }
+                        })
+                        .response
+                },
+            );
+            #[cfg(test)]
+            RESULT_RENDER_PROBE.with(|probe| {
+                if let Some(active) = probe.borrow_mut().as_mut() {
+                    active
+                        .result
+                        .header_controls
+                        .push(("sort", sort_response.rect));
+                }
+            });
+            paint_compact_combo_selected_text(ui, &sort_response, selected.label());
+
+            if split_controls {
+                ui.end_row();
+                ui.add_space((ui.max_rect().width() - scope_width - 1.0).max(0.0).floor());
+            }
+            let scope_response = labeled_results_combo(ui, "Scope", 126.0, row_height, |ui| {
+                egui::ComboBox::from_id_salt("results-sort-scope-selector")
+                    .width(126.0)
                     .selected_text("")
                     .show_ui(ui, |ui| {
-                        ui.set_min_width(FlistWalkerApp::RESULT_SORT_SELECTOR_WIDTH);
-                        for mode in [
-                            ResultSortMode::Score,
-                            ResultSortMode::NameAsc,
-                            ResultSortMode::NameDesc,
-                            ResultSortMode::PathAsc,
-                            ResultSortMode::PathDesc,
-                            ResultSortMode::ModifiedDesc,
-                            ResultSortMode::ModifiedAsc,
-                            ResultSortMode::CreatedDesc,
-                            ResultSortMode::CreatedAsc,
-                            ResultSortMode::SizeDesc,
-                            ResultSortMode::SizeAsc,
-                        ] {
-                            ui.selectable_value(&mut selected, mode, mode.label());
+                        ui.set_min_width(126.0);
+                        for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
+                            ui.selectable_value(&mut selected_scope, scope, scope.label());
                         }
                     })
                     .response
-            },
-        );
-        #[cfg(test)]
-        RESULT_RENDER_PROBE.with(|probe| {
-            if let Some(active) = probe.borrow_mut().as_mut() {
-                active
-                    .result
-                    .header_controls
-                    .push(("sort", sort_response.rect));
-            }
-        });
-        paint_compact_combo_selected_text(ui, &sort_response, selected.label());
+            });
+            #[cfg(test)]
+            RESULT_RENDER_PROBE.with(|probe| {
+                if let Some(active) = probe.borrow_mut().as_mut() {
+                    active
+                        .result
+                        .header_controls
+                        .push(("scope", scope_response.rect));
+                }
+            });
+            paint_compact_combo_selected_text(ui, &scope_response, selected_scope.label());
 
-        let scope_response = labeled_results_combo(ui, "Scope", 126.0, |ui| {
-            egui::ComboBox::from_id_salt("results-sort-scope-selector")
-                .width(126.0)
-                .selected_text("")
-                .show_ui(ui, |ui| {
-                    ui.set_min_width(126.0);
-                    for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
-                        ui.selectable_value(&mut selected_scope, scope, scope.label());
-                    }
-                })
-                .response
-        });
-        #[cfg(test)]
-        RESULT_RENDER_PROBE.with(|probe| {
-            if let Some(active) = probe.borrow_mut().as_mut() {
-                active
-                    .result
-                    .header_controls
-                    .push(("scope", scope_response.rect));
+            if selected != app.shell.runtime.result_sort_mode {
+                app.select_result_sort_mode(selected);
             }
-        });
-        paint_compact_combo_selected_text(ui, &scope_response, selected_scope.label());
-
-        if selected != app.shell.runtime.result_sort_mode {
-            app.select_result_sort_mode(selected);
-        }
-        if selected_scope != original_scope {
-            app.set_result_sort_scope(selected_scope);
-        }
-    });
+            if selected_scope != original_scope {
+                app.set_result_sort_scope(selected_scope);
+            }
+        },
+    );
     if app.shell.runtime.result_sort_mode.uses_metadata()
         && app.shell.runtime.result_sort_scope == ResultSortScope::ShownResults
     {

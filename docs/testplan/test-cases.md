@@ -31,7 +31,7 @@
 | TC-020 | manual+unit | 起動geometryはmonitor gap/切断、負座標、混在scale、legacy JSONとscale保存、保存位置なし、monitor/position取得不可のfallbackをpure reducerとnative起動経路で検証する。保存位置なし／legacy scale不明でも実monitorが利用可能なら現在のmonitor内へ明示配置し、OS/WM既定位置を安全性の根拠にしない。Windows: 異解像度モニタ跨ぎ時に復元サイズが破綻せず、IME `Space` / `Shift+Space` で最低限の半角スペースが検索窓へ反映される（`CompositionUpdate` 同フレームでも挿入される） | SP-010, SP-011 |
 | TC-021 | unit | 検索窓フォーカス中でも `Ctrl+N` / `Ctrl+P` が current row を移動する | SP-010 |
 | TC-022 | unit | 検索窓フォーカス中でも `Ctrl+G` / `Esc` で query clear + filter reset が実行される | SP-010 |
-| TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |
+| TC-023 | unit | `Tab` / `Shift+Tab` はフォーカス非依存で PIN 固定/解除を実行し、既定では current row を維持する。明暗両テーマで繰り返し操作・非表示PINの件数表示と全解除を検証し、`Pinned (n)...` と強調が残PINに追従する。`tab_pin_moves_to_next_row=true` では PIN 固定/解除後に次行へ移動する | SP-010, SP-016 |
 | TC-023A | unit | tab切替、closed-tab/session restore、`Esc`系reset後も、空Resultsは`None`、非空Resultsは範囲内のvisible current rowとなる。新規タブは継承結果のkindと選択行previewを追加入力なしに非同期で準備し、空結果・preview無効でpreview要求を出さない。inactive compacted tabだけはbase resultsに対するselection保持を許す | SP-010 |
 | TC-024 | unit | IME スペースフォールバックと composition commit fallback はカーソル位置へ挿入し、挿入後カーソルへ更新する | SP-010 |
 | TC-025 | unit | FileList ストリーミング時に種別不明候補を先行表示し、LINK identity とリンク先種別を分離して、解決後に FILE/DIR/LINK 表示とフィルタ状態を反映する。OTHER/解決不能の終端状態は再解決しない | SP-001, SP-010, SP-007 |
@@ -255,3 +255,10 @@
 
 | TC-235 | unit+process+platform | 本番の内部子entrypoint、同じsupervisor/decoderによる停止・再試行、2件停止後の正常要求、pipe背圧/partial frame/EOF/crash、native path/effective settings、physical leaseとexit回収、回収不能時の上限を検証する。in-process algorithm testsを本番process証拠へ昇格しない | SP-027 |
 | TC-236 | unit+GUI+manual | 現在/全停止、保留・遅延更新の取消、停止ボタンの処理中/待機/確定待ち/遅延更新での有効化と完了/停止/失敗後の無効化、背景タブだけ処理中の全停止、描画から実行までに完了した操作の無作用、停止後のtab作成/切替/設定変更/late completion、対象tabだけの明示更新、旧確定snapshot保持を検証する。実共有フォルダ切断・復帰は各platformの実行軸を別記する | SP-027 |
+
+### Theme and Results header regression coverage (SP-010, SP-024)
+
+- `native_titlebar_theme_follows_app_preference_and_releases_system_override`: Dark → Light → System の root viewport command と OS テーマ変更時の本体追従/固定。Windows の実タイトルバーは独立した native 確認が必要。`gui_launch::windows_theme` の callback seam は既定処理後の再適用、破棄前解除、無関係なメッセージの維持、同期再入の抑止を検証する。
+- `results_header_controls_align_with_shown_text_across_fonts_and_dpi`: 14/22pt、glyph offset ±4pt、DPI 100/125/150/200% で表示件数と Sorted by / Scope / 選択値の文字ベースラインと縦 clipping を確認。
+- `regression_narrow_results_header_and_rows_stay_inside_client_area`: Preview 有無、640/760/1200pt 幅、短/長件数で操作群の右端・領域内描画を確認。
+- `ux_contract_pin_count_and_clear_highlight_follow_real_clear_button` / `ux_contract_pin_indicator_tracks_repeated_tab_and_hidden_pins`: 実キー・クリックによる件数、強調、全解除、PIN 一覧への導線。既存の hover レイアウト不変テストも維持。
