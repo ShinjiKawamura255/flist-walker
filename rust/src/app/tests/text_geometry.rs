@@ -60,6 +60,135 @@ fn assert_vertical_ink_visible(text: &egui::epaint::TextShape, clip: egui::Rect)
     );
 }
 
+// Assert relationships in the actual paint output, rather than reproducing
+// the layout algorithm or fixing all widget coordinates in a golden file.
+fn assert_toolbar_run(
+    output: &egui::FullOutput,
+    labels: &[&str],
+    screen: egui::Rect,
+    scale: f32,
+) -> egui::Rect {
+    let mut bounds = egui::Rect::NOTHING;
+    let mut previous: Option<&egui::epaint::TextShape> = None;
+    let baseline = |text: &egui::epaint::TextShape| {
+        let row = &text.galley.rows[0];
+        text.pos.y + row.pos.y + row.glyphs[0].pos.y
+    };
+    for label in labels {
+        let (text, clip) = painted_text(output, label);
+        let ink = text.visual_bounding_rect();
+        assert_eq!(text.galley.rows.len(), 1, "single-line control: {label}");
+        assert_vertical_ink_visible(text, clip);
+        assert!(
+            screen.contains_rect(ink) && clip.contains_rect(ink),
+            "toolbar text must fit: label={label}, ink={ink:?}, clip={clip:?}, screen={screen:?}"
+        );
+        if let Some(previous) = previous {
+            let previous_ink = previous.visual_bounding_rect();
+            if ink.left() > previous_ink.left() {
+                assert!(
+                    (baseline(text) - baseline(previous)).abs() <= 1.0 / scale,
+                    "same-row toolbar baselines: {} -> {label}",
+                    previous.galley.text()
+                );
+                assert!(previous_ink.right() < ink.left(), "no overlap: {label}");
+            } else {
+                assert!(
+                    previous_ink.bottom() < ink.top(),
+                    "controls must retain reading order when wrapping: {} -> {label}",
+                    previous.galley.text()
+                );
+            }
+        }
+        bounds = bounds.union(ink);
+        previous = Some(text);
+    }
+    bounds
+}
+
+#[test]
+fn top_toolbar_geometry_preserves_order_baselines_and_query_space() {
+    let scope = test_settings_scope("top-toolbar-geometry");
+    let mut app = scope.app(test_root("top-toolbar-geometry-root"), 30, String::new());
+    reset_index_request_state_for_test(&mut app);
+    // These are the reviewed existing surface order, deliberately independent
+    // of top_action_labels() so a renderer reorder cannot change the oracle.
+    let filters = [
+        "Use FileList",
+        "Regex",
+        "Ignore Case",
+        "Use Ignore List",
+        "Files",
+        "Folders",
+        "Follow links",
+        "Preview",
+    ];
+    let actions = [
+        "Open / Execute",
+        "Copy Path(s)",
+        "Clear Selected",
+        "Create File List",
+        "Refresh Index",
+        "Stop Indexing",
+        "Stop All Indexing",
+        "Presets...",
+        "Help",
+    ];
+    for size in [egui::vec2(640.0, 400.0), egui::vec2(1200.0, 800.0)] {
+        for scale in [1.0, 1.25, 2.0] {
+            for dark in [false, true] {
+                let ctx = typography_context(scale, 14.0, 0.0);
+                ctx.set_visuals(if dark {
+                    egui::Visuals::dark()
+                } else {
+                    egui::Visuals::light()
+                });
+                let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, size);
+                let mut output = egui::FullOutput::default();
+                for _ in 0..4 {
+                    output = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(screen),
+                            ..Default::default()
+                        },
+                        |ui| crate::app::render_panels::render_top_panel(&mut app, ui),
+                    );
+                }
+                let filters = assert_toolbar_run(&output, &filters, screen, scale);
+                let actions = assert_toolbar_run(&output, &actions, screen, scale);
+                let root_actions = assert_toolbar_run(
+                    &output,
+                    &["Browse...", "Set as default", "Manage list"],
+                    screen,
+                    scale,
+                );
+                assert!(
+                    root_actions.bottom() < filters.top(),
+                    "filters must remain below Root actions: {root_actions:?}, {filters:?}"
+                );
+                let query = ctx
+                    .read_response(app.shell.ui.query_input_id)
+                    .expect("query response")
+                    .rect;
+                assert!(
+                    screen.contains_rect(query),
+                    "query stays visible: {query:?}"
+                );
+                assert!(filters.bottom() < query.top() && query.bottom() < actions.top(),
+                    "filters, query, actions retain vertical order: {filters:?}, {query:?}, {actions:?}");
+                if size.x == 640.0 {
+                    let (first, _) = painted_text(&output, "Open / Execute");
+                    let (last, _) = painted_text(&output, "Help");
+                    assert!(
+                        last.pos.y > first.pos.y,
+                        "narrow case must exercise wrapping"
+                    );
+                }
+            }
+        }
+    }
+}
+
 #[test]
 fn root_selector_preserves_vertical_glyph_ink_across_font_metrics_and_dpi() {
     let root = test_root("typography-Ågj-日本語");

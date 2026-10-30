@@ -258,6 +258,7 @@
 
 ### Theme and Results header regression coverage (SP-010, SP-024)
 
+- `top_toolbar_geometry_preserves_order_baselines_and_query_space`: 上部filterとactionの既存の読み順、同一行baseline、字形の画面/clip内収容、filter → query → actionの非重複を640/1200pt、Light/Dark、DPI 100/125/200%の実描画で検証。狭幅は折返しの発生も要求し、全面座標固定はしない。[変更前後比較](../GUI-TESTPLAN.md#layout-regression-checks-and-beforeafter-comparison)は影響領域と隣接領域を対象とし、意図しない失敗の期待値追従更新を禁止する。
 - `native_titlebar_theme_follows_app_preference_and_releases_system_override`: Dark → Light → System の root viewport command と OS テーマ変更時の本体追従/固定。Windows の実タイトルバーは独立した native 確認が必要。`gui_launch::windows_theme` の callback seam は既定処理後の再適用、破棄前解除、無関係なメッセージの維持、同期再入の抑止を検証する。
 - `results_header_controls_align_with_shown_text_across_fonts_and_dpi`: 14/22pt、glyph offset ±4pt、DPI 100/125/150/200% で表示件数と Sorted by / Scope / 選択値の文字ベースラインと縦 clipping を確認。
 - `regression_narrow_results_header_and_rows_stay_inside_client_area`: Preview 有無、640/760/1200pt 幅、短/長件数で操作群の右端・領域内描画を確認。
