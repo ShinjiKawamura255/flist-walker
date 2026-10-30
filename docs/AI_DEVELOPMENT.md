@@ -25,7 +25,7 @@ Run `python3 scripts/agent_worktree_preflight.py <mode> ...` before edits or bra
 | `continue-pr` | Continue an existing PR | `HEAD == verified PR head`; local head branch owned by this worktree | Never commit detached or update a branch owned by another worktree |
 | `stacked-change` | Work that intentionally depends on an open parent PR | `HEAD == verified parent head`; unused child branch; recorded old-parent SHA | After parent merge, replay only `old-parent..<task-head>` and revalidate |
 
-The preflight is read-only and returns a stop reason instead of changing Git state. Fetching refs does not authorize switching, resetting, cleaning, deleting, or committing in another worktree.
+The preflight is read-only and returns a stop reason instead of changing Git state. After a mode passes, continuing edits within that same owned task is not a new task start. Apply the relevant preflight before starting a different task or mode and before branch mutation; do not repeat a clean-only start check solely because the owned task has uncommitted edits. A failed preflight remains a stop. Fetching refs does not authorize switching, resetting, cleaning, deleting, or committing in another worktree.
 
 ### Stacked Rebase Contract
 
@@ -66,7 +66,7 @@ python3 scripts/validate_change.py --base origin/master --full
 
 ## PR Work Packet
 
-Use `.github/pull_request_template.md`. A PR must preserve enough context for a fresh reviewer to reconstruct the task without chat history:
+Use `.github/pull_request_template.md`. Select checks from the [validation routing](#validation-routing), then apply [release evidence reuse](testplan/release-validation.md#evidence-reuse) when applicable. Link durable evidence rather than copying the same judgment across records; retain original results and identity. A PR must preserve enough context for a fresh reviewer to reconstruct the task without chat history:
 
 - objective, non-goals, and observable acceptance criteria;
 - exact base/head or old-parent/task range;
@@ -80,7 +80,7 @@ Use `.github/pull_request_template.md`. A PR must preserve enough context for a 
 
 Use `skills/flistwalker-change-review/` for plan-driven required checkpoints and changes to bounded concurrency, action authorization, updater trust/transactions, release, immutable CI policy, security, or worktree/rebase safety.
 
-The reviewer is read-only and independent from the implementation owner. Blocking and major findings stop the checkpoint. Minor findings are fixed or accepted with a recorded reason. Review the final post-rebase diff, not a pre-replay branch snapshot.
+The reviewer is read-only and independent from the implementation owner. Blocking and major findings stop the checkpoint. Minor findings are fixed or accepted with a recorded reason. Review the final post-rebase diff, not a pre-replay branch snapshot. For remediation, follow the [focused re-review scope](../skills/flistwalker-change-review/SKILL.md) in the change-review skill.
 
 ## Authority Matrix
 
