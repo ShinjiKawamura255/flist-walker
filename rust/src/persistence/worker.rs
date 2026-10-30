@@ -54,6 +54,7 @@ struct TestWorkerProgress {
     started: std::time::Instant,
     phase: std::sync::atomic::AtomicU8,
     last_wait_failure: Mutex<Option<Value>>,
+    io: Arc<crate::test_io::Progress>,
 }
 
 #[cfg(test)]
@@ -63,6 +64,7 @@ impl TestWorkerProgress {
             started: std::time::Instant::now(),
             phase: std::sync::atomic::AtomicU8::new(0),
             last_wait_failure: Mutex::new(None),
+            io: crate::test_io::Progress::new(),
         }
     }
     fn set_phase(&self, phase: u8) {
@@ -107,6 +109,7 @@ fn record_test_worker_wait_failure(
     });
     let diagnostic = serde_json::json!({
         "stage": stage,
+        "io": sender.progress.io.snapshot(),
         "phase": sender.progress.phase(),
         "worker_age_ms": sender.progress.started.elapsed().as_secs_f64() * 1000.0,
         "elapsed_ms": started.elapsed().as_secs_f64() * 1000.0,
@@ -392,7 +395,11 @@ fn spawn_ui_state_persistence_worker(
     let progress = Arc::new(TestWorkerProgress::new());
     #[cfg(test)]
     let worker_progress = Arc::clone(&progress);
+    #[cfg(test)]
+    let io_observer = crate::test_io::inherited_observer();
     let handle = thread::spawn(move || {
+        #[cfg(test)]
+        let _io_scope = crate::test_io::install(Arc::clone(&worker_progress.io), io_observer);
         run_ui_state_persistence_worker(
             rx,
             path,
@@ -810,10 +817,12 @@ fn publish_write_result(
     result: &Result<(), String>,
     attempted: bool,
 ) {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::PublishResult);
     if !attempted {
         return;
     }
-    if let Ok(mut state) = state.lock() {
+    if let Ok(mut state) = observe_persistence_io!(PublishStateLock, state.lock()) {
         match result {
             Ok(()) => {
                 if let Some(last) = pending.last() {
@@ -831,7 +840,7 @@ fn publish_write_result(
     }
     // Potentially large payloads are released by this worker, outside the lock.
     if result.is_ok() {
-        pending.clear();
+        observe_persistence_io!(DropPending, pending.clear());
     }
 }
 

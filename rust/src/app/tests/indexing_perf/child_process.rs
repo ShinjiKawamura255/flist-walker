@@ -191,6 +191,21 @@ fn spawn(name: &str, role: &str, inherited_cap: Option<usize>, timeout: Duration
             == 1;
     drop(owned); // physical exit precedes owned fixture removal, including panic.
     let cleaned = !root_path.exists();
+    if let Some(mut observation) = normal_writer_observation(name, role, &output, reaped) {
+        observation["passed"] = passed.into();
+        observation["reaped"] = reaped.into();
+        observation["owned_fixture_cleaned"] = cleaned.into();
+        // Publish only bounded, allowlisted observations after physical child exit.
+        // Direct stderr survives libtest's successful-test capture; no worker timer
+        // or original outcome is changed. Missing output is missing evidence.
+        use std::io::Write;
+        if let Err(error) = writeln!(
+            std::io::stderr().lock(),
+            "INDEX_PERF_CHILD_WRITER_OBSERVATION {observation}"
+        ) {
+            eprintln!("writer observation export failed: {error}");
+        }
+    }
     eprintln!(
         "INDEX_PERF_CHILD {}",
         serde_json::json!({"test":name,"role":role,"passed":passed,"reaped":reaped,"owned_fixture_cleaned":cleaned,"ready":ready_at.is_some(),"watchdog_expired":timed_out,"output_path":output_path})
@@ -349,4 +364,135 @@ fn tc_229_child_contract_rejects_zero_failure_and_wrong_recursion_identity() {
     assert!(child_identity_valid("owned", "owned", &args));
     assert!(!child_identity_valid("owned", "other", &args));
     assert!(!child_identity_valid("owned", "owned", &[]));
+}
+
+fn normal_writer_observation(
+    name: &str,
+    role: &str,
+    output: &str,
+    reaped: bool,
+) -> Option<serde_json::Value> {
+    if role != "normal" || !reaped {
+        return None;
+    }
+    let selected =
+        name.ends_with("::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim");
+    let mut waits = Vec::new();
+    let mut phases = Vec::new();
+    let mut settings = None;
+    let mut omitted = 0usize;
+    let subset = |value: &serde_json::Value, fields: &[&str]| {
+        serde_json::Value::Object(
+            fields
+                .iter()
+                .filter_map(|key| value.get(*key).map(|v| ((*key).to_owned(), v.clone())))
+                .collect(),
+        )
+    };
+    for line in output.lines() {
+        if let Some(raw) = line.strip_prefix("TEST_WRITER_WAIT_FAILURE ") {
+            if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+                if waits.len() == 64 {
+                    omitted += 1;
+                    continue;
+                }
+                let mut wait = subset(
+                    &value,
+                    &[
+                        "stage",
+                        "phase",
+                        "worker_age_ms",
+                        "elapsed_ms",
+                        "registry_acquisition_ms",
+                        "ownership_acquisition_ms",
+                        "shutdown_sent",
+                        "physical_finished",
+                        "status_available",
+                        "accepted_generation",
+                        "persisted_generation",
+                        "outstanding",
+                        "last_error_present",
+                    ],
+                );
+                if let Some(io) = value.get("io") {
+                    wait["io"] = subset(
+                        io,
+                        &[
+                            "worker_id",
+                            "process_id",
+                            "native_thread_id",
+                            "stage",
+                            "parent",
+                            "stage_elapsed_ms",
+                            "observer_injected",
+                        ],
+                    );
+                }
+                waits.push(wait);
+            } else {
+                omitted += 1;
+            }
+        } else if selected {
+            if let Some(raw) = line.strip_prefix("INDEX_PERF_NORMAL_PHASE ") {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+                    if phases.len() < 32 {
+                        phases.push(subset(
+                            &value,
+                            &[
+                                "shape",
+                                "partition",
+                                "phase",
+                                "elapsed_ms",
+                                "profile",
+                                "source",
+                                "entries",
+                            ],
+                        ));
+                    } else {
+                        omitted += 1;
+                    }
+                } else {
+                    omitted += 1;
+                }
+            } else if let Some(raw) = line.strip_prefix("INDEX_PERF_CHILD_SETTINGS ") {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
+                    settings = Some(subset(&value, &["test", "leaf_pid", "walker_cap"]));
+                } else {
+                    omitted += 1;
+                }
+            }
+        }
+    }
+    if !selected && waits.is_empty() && omitted == 0 {
+        return None;
+    }
+    Some(
+        serde_json::json!({"test":name,"waits":waits,"normal_phases":phases,"leaf_settings":settings,"omitted_or_invalid_records":omitted,"scope":"post-exit observation;not an OS stack or causal repair"}),
+    )
+}
+
+#[test]
+fn tc_229_writer_observation_exports_healthy_selected_leaf_and_preserves_identity() {
+    let name = "app::tests::indexing_perf::harness::extensions::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim";
+    let report = normal_writer_observation(name, "normal",
+        "private unrelated stdout\nINDEX_PERF_CHILD_SETTINGS {\"test\":\"leaf\",\"leaf_pid\":123,\"walker_cap\":500000,\"private\":\"omit\"}\nINDEX_PERF_NORMAL_PHASE {\"phase\":\"profile-completed\",\"elapsed_ms\":42,\"secret\":\"omit\"}\n", true).unwrap();
+    assert_eq!(report["test"], name);
+    assert_eq!(report["waits"].as_array().unwrap().len(), 0);
+    assert_eq!(report["normal_phases"][0]["phase"], "profile-completed");
+    assert_eq!(report["leaf_settings"]["leaf_pid"], 123);
+    assert!(!report.to_string().contains("private") && !report.to_string().contains("secret"));
+    assert!(normal_writer_observation(name, "normal", "", false).is_none());
+    assert!(normal_writer_observation(name, "panic", "", true).is_none());
+    assert!(normal_writer_observation("unselected", "normal", "", true).is_none());
+}
+
+#[test]
+fn tc_229_writer_observation_limits_records_and_omits_unapproved_payload() {
+    let line = "TEST_WRITER_WAIT_FAILURE {\"phase\":\"write-result\",\"elapsed_ms\":5000,\"private_content\":\"omit\",\"io\":{\"stage\":\"sync-temp\",\"native_thread_id\":42,\"private_path\":\"omit\"}}\n";
+    let report = normal_writer_observation("unselected", "normal", &line.repeat(70), true).unwrap();
+    assert_eq!(report["waits"].as_array().unwrap().len(), 64);
+    assert_eq!(report["omitted_or_invalid_records"], 6);
+    assert_eq!(report["waits"][0]["io"]["stage"], "sync-temp");
+    assert_eq!(report["waits"][0]["io"]["native_thread_id"], 42);
+    assert!(!report.to_string().contains("private"));
 }
