@@ -191,17 +191,16 @@ fn spawn(name: &str, role: &str, inherited_cap: Option<usize>, timeout: Duration
             == 1;
     drop(owned); // physical exit precedes owned fixture removal, including panic.
     let cleaned = !root_path.exists();
-    if let Some(mut observation) = normal_writer_observation(name, role, &output, reaped) {
-        observation["passed"] = passed.into();
-        observation["reaped"] = reaped.into();
-        observation["owned_fixture_cleaned"] = cleaned.into();
+    if let Some(observation) = normal_writer_observation(name, role, &output, reaped)
+        .and_then(|r| finalize_writer_observation(r, passed, reaped, cleaned))
+    {
         // Publish only bounded, allowlisted observations after physical child exit.
         // Direct stderr survives libtest's successful-test capture; no worker timer
         // or original outcome is changed. Missing output is missing evidence.
         use std::io::Write;
         if let Err(error) = writeln!(
             std::io::stderr().lock(),
-            "INDEX_PERF_CHILD_WRITER_OBSERVATION {observation}"
+            "{WRITER_OBSERVATION_PREFIX}{observation}"
         ) {
             eprintln!("writer observation export failed: {error}");
         }
@@ -366,6 +365,91 @@ fn tc_229_child_contract_rejects_zero_failure_and_wrong_recursion_identity() {
     assert!(!child_identity_valid("owned", "owned", &[]));
 }
 
+fn filtered_writer_history(io: &serde_json::Value, checkpoint: &str) -> Option<serde_json::Value> {
+    let h = io.get("history")?;
+    if h["capacity"].as_u64() != Some(64) {
+        return None;
+    }
+    let mut out = serde_json::json!({"checkpoint":checkpoint,"checkpoint_updates":1});
+    for key in ["process_id", "worker_id"] {
+        out[key] = io.get(key)?.as_u64()?.into();
+    }
+    out["native_thread_id"] = match io.get("native_thread_id")? {
+        serde_json::Value::Null => serde_json::Value::Null,
+        v => v.as_u64()?.into(),
+    };
+    for key in [
+        "capacity",
+        "reserved_records",
+        "reserved_before_window",
+        "dropped_busy",
+        "dropped_stale",
+        "unavailable_in_window",
+    ] {
+        out[key] = h.get(key)?.as_u64()?.into();
+    }
+    let raw = h.get("records")?.as_array()?;
+    if raw.len() > 64 {
+        return None;
+    }
+    let mut records = Vec::new();
+    for r in raw.iter().rev().take(32).rev() {
+        let (kind, stage) = (r["kind"].as_str()?, r["stage"].as_str()?);
+        if !crate::test_io::valid_history_label(kind, stage) {
+            return None;
+        }
+        let mut row = serde_json::json!({"kind":kind,"stage":stage});
+        for key in [
+            "sequence",
+            "at_us",
+            "command_id",
+            "generation",
+            "operation_id",
+            "detail",
+        ] {
+            row[key] = r.get(key)?.as_u64()?.into();
+        }
+        if row["detail"].as_u64()? > 10 {
+            return None;
+        }
+        records.push(row);
+    }
+    out["omitted_history_prefix"] = raw.len().saturating_sub(32).into();
+    out["records"] = records.into();
+    Some(out)
+}
+fn retain_writer_history(
+    histories: &mut Vec<serde_json::Value>,
+    io: &serde_json::Value,
+    checkpoint: &str,
+    omitted: &mut usize,
+) {
+    if io.get("history").is_none() {
+        return;
+    }
+    let Some(mut row) = filtered_writer_history(io, checkpoint) else {
+        *omitted += 1;
+        return;
+    };
+    if let Some(old) = histories.iter_mut().find(|old| {
+        old["process_id"] == row["process_id"]
+            && old["worker_id"] == row["worker_id"]
+            && old["checkpoint"] == row["checkpoint"]
+    }) {
+        let count = old["checkpoint_updates"].as_u64().unwrap_or(0) + 1;
+        if row["reserved_records"].as_u64() >= old["reserved_records"].as_u64() {
+            row["checkpoint_updates"] = count.into();
+            *old = row;
+        } else {
+            old["checkpoint_updates"] = count.into();
+        }
+    } else if histories.len() < 8 {
+        histories.push(row);
+    } else {
+        *omitted += 1;
+    }
+}
+
 fn normal_writer_observation(
     name: &str,
     role: &str,
@@ -378,6 +462,8 @@ fn normal_writer_observation(
     let selected =
         name.ends_with("::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim");
     let mut waits = Vec::new();
+    let mut histories = Vec::new();
+    let mut history_omitted = 0usize;
     let mut phases = Vec::new();
     let mut settings = None;
     let mut omitted = 0usize;
@@ -415,6 +501,7 @@ fn normal_writer_observation(
                     ],
                 );
                 if let Some(io) = value.get("io") {
+                    retain_writer_history(&mut histories, io, "wait-failure", &mut history_omitted);
                     wait["io"] = subset(
                         io,
                         &[
@@ -425,6 +512,9 @@ fn normal_writer_observation(
                             "parent",
                             "stage_elapsed_ms",
                             "observer_injected",
+                            "command_id",
+                            "generation",
+                            "operation_id",
                         ],
                     );
                 }
@@ -433,7 +523,13 @@ fn normal_writer_observation(
                 omitted += 1;
             }
         } else if selected {
-            if let Some(raw) = line.strip_prefix("INDEX_PERF_NORMAL_PHASE ") {
+            if let Some(raw) = line.strip_prefix("TEST_WRITER_HISTORY ") {
+                if let Ok(io) = serde_json::from_str::<serde_json::Value>(raw) {
+                    retain_writer_history(&mut histories, &io, "joined", &mut history_omitted);
+                } else {
+                    history_omitted += 1;
+                }
+            } else if let Some(raw) = line.strip_prefix("INDEX_PERF_NORMAL_PHASE ") {
                 if let Ok(value) = serde_json::from_str::<serde_json::Value>(raw) {
                     if phases.len() < 32 {
                         phases.push(subset(
@@ -467,8 +563,52 @@ fn normal_writer_observation(
         return None;
     }
     Some(
-        serde_json::json!({"test":name,"waits":waits,"normal_phases":phases,"leaf_settings":settings,"omitted_or_invalid_records":omitted,"scope":"post-exit observation;not an OS stack or causal repair"}),
+        serde_json::json!({"test":name,"waits":waits,"normal_phases":phases,"leaf_settings":settings,"omitted_or_invalid_records":omitted,"writer_histories":histories,"history_omitted_or_invalid":history_omitted,"scope":"post-exit observation;not an OS stack or causal repair"}),
     )
+}
+
+const WRITER_OBSERVATION_PREFIX: &str = "INDEX_PERF_CHILD_WRITER_OBSERVATION ";
+fn finalize_writer_observation(
+    mut report: serde_json::Value,
+    passed: bool,
+    reaped: bool,
+    cleaned: bool,
+) -> Option<serde_json::Value> {
+    if !reaped {
+        return None;
+    }
+    report["passed"] = passed.into();
+    report["reaped"] = reaped.into();
+    report["owned_fixture_cleaned"] = cleaned.into();
+    let mut omitted = report["omitted_or_invalid_records"].as_u64().unwrap_or(0);
+    let mut history_omitted = report["history_omitted_or_invalid"].as_u64().unwrap_or(0);
+    for _ in 0..105 {
+        let line_bytes = WRITER_OBSERVATION_PREFIX.len() + report.to_string().len() + 1;
+        if line_bytes <= 128 * 1024 {
+            return Some(report);
+        }
+        if report["writer_histories"]
+            .as_array_mut()
+            .unwrap()
+            .pop()
+            .is_some()
+        {
+            history_omitted += 1;
+            report["history_omitted_or_invalid"] = history_omitted.into();
+        } else if report["waits"].as_array_mut().unwrap().pop().is_some()
+            || report["normal_phases"]
+                .as_array_mut()
+                .unwrap()
+                .pop()
+                .is_some()
+        {
+            omitted += 1;
+            report["omitted_or_invalid_records"] = omitted.into();
+        } else {
+            return None;
+        }
+    }
+    None
 }
 
 #[test]
@@ -495,4 +635,67 @@ fn tc_229_writer_observation_limits_records_and_omits_unapproved_payload() {
     assert_eq!(report["waits"][0]["io"]["stage"], "sync-temp");
     assert_eq!(report["waits"][0]["io"]["native_thread_id"], 42);
     assert!(!report.to_string().contains("private"));
+}
+
+#[test]
+fn writer_history_export_preserves_failure_and_join_without_private_fields() {
+    let name="app::tests::indexing_perf::harness::extensions::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim";
+    let records=(1..=40).map(|n|serde_json::json!({"sequence":n,"at_us":n,"kind":"io-begin","command_id":1,"generation":1,"operation_id":n,"stage":"open-temp","detail":0,"private_path":"omit"})).collect::<Vec<_>>();
+    let io = serde_json::json!({"process_id":1,"worker_id":2,"native_thread_id":3,"history":{"capacity":64,"reserved_records":40,"reserved_before_window":0,"dropped_busy":0,"dropped_stale":0,"unavailable_in_window":0,"records":records}});
+    let wait = serde_json::json!({"stage":"physical-stop","io":io});
+    let text = format!("TEST_WRITER_WAIT_FAILURE {wait}\nTEST_WRITER_HISTORY {io}\n");
+    let r = normal_writer_observation(name, "normal", &text, true).unwrap();
+    let histories = r["writer_histories"]
+        .as_array()
+        .expect("history checkpoints must survive child capture");
+    assert_eq!(histories.len(), 2);
+    assert_eq!(histories[0]["checkpoint"], "wait-failure");
+    assert_eq!(histories[1]["checkpoint"], "joined");
+    assert_eq!(histories[0]["records"].as_array().unwrap().len(), 32);
+    assert_eq!(histories[0]["records"][0]["sequence"], 9);
+    assert_eq!(histories[0]["omitted_history_prefix"], 8);
+    assert!(!r.to_string().contains("private_path") && !r.to_string().contains("omit\""));
+}
+
+#[test]
+fn writer_history_export_rejects_unapproved_labels_and_caps_checkpoints() {
+    let name="app::tests::indexing_perf::harness::extensions::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim";
+    let row = serde_json::json!({"sequence":1,"at_us":1,"kind":"body-returned","command_id":1,"generation":1,"operation_id":0,"stage":"idle","detail":0});
+    let mut io = serde_json::json!({"process_id":1,"worker_id":0,"native_thread_id":null,"history":{"capacity":64,"reserved_records":1,"reserved_before_window":0,"dropped_busy":0,"dropped_stale":0,"unavailable_in_window":0,"records":[row]}});
+    let mut text = String::new();
+    for owner in 1..=9 {
+        io["worker_id"] = owner.into();
+        text.push_str(&format!("TEST_WRITER_HISTORY {io}\n"));
+    }
+    io["history"]["records"][0]["kind"] = "secret-payload".into();
+    text.push_str(&format!("TEST_WRITER_HISTORY {io}\n"));
+    let r = normal_writer_observation(name, "normal", &text, true).unwrap();
+    assert_eq!(r["writer_histories"].as_array().unwrap().len(), 8);
+    assert_eq!(r["history_omitted_or_invalid"], 2);
+    assert!(r.to_string().len() <= 128 * 1024 && !r.to_string().contains("secret-payload"));
+}
+
+#[test]
+fn writer_history_actual_export_line_includes_final_flags_prefix_and_newline_in_cap() {
+    let make = |phase: String| {
+        format!(
+            "TEST_WRITER_WAIT_FAILURE {}\n",
+            serde_json::json!({"phase":phase})
+        )
+    };
+    let base =
+        normal_writer_observation("unselected", "normal", &make(String::new()), true).unwrap();
+    let padding = 128 * 1024 - base.to_string().len();
+    let raw = normal_writer_observation("unselected", "normal", &make("x".repeat(padding)), true)
+        .unwrap();
+    let final_report = finalize_writer_observation(raw, false, true, false).unwrap();
+    let actual = format!("{WRITER_OBSERVATION_PREFIX}{final_report}\n");
+    assert!(
+        actual.len() <= 128 * 1024,
+        "actual export line exceeds cap: {}",
+        actual.len()
+    );
+    assert_eq!(final_report["passed"], false);
+    assert_eq!(final_report["reaped"], true);
+    assert_eq!(final_report["omitted_or_invalid_records"], 1);
 }

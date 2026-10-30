@@ -1,5 +1,7 @@
 //! Test-only operation boundaries. These are not OS stack samples.
 //! No callback, lock, allocation or clock read is added to non-test builds.
+mod history;
+pub(crate) use history::Kind;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -34,6 +36,11 @@ pub(crate) enum Stage {
     PublishResult,
     PublishStateLock,
     DropPending,
+    ReceiveCommand,
+    StartupStateLock,
+    WaitFlush,
+    WaitOwnership,
+    WaitPhysical,
 }
 
 fn label(code: u8) -> &'static str {
@@ -64,6 +71,11 @@ fn label(code: u8) -> &'static str {
         "publish-result",
         "publish-state-lock",
         "drop-pending",
+        "receive-command",
+        "startup-state-lock",
+        "wait-flush",
+        "wait-ownership",
+        "wait-physical",
     ];
     LABELS.get(usize::from(code)).copied().unwrap_or("unknown")
 }
@@ -77,6 +89,12 @@ pub(crate) struct Progress {
     recorded: AtomicU64,
     native_tid: AtomicU32,
     observer_injected: AtomicBool,
+    history: history::History,
+    next_command: AtomicU64,
+    next_operation: AtomicU64,
+    command: AtomicU64,
+    generation: AtomicU64,
+    operation: AtomicU64,
 }
 
 impl Progress {
@@ -88,7 +106,72 @@ impl Progress {
             recorded: AtomicU64::new(Stage::Idle as u64),
             native_tid: AtomicU32::new(0),
             observer_injected: AtomicBool::new(false),
+            history: history::History::new(),
+            next_command: AtomicU64::new(0),
+            next_operation: AtomicU64::new(0),
+            command: AtomicU64::new(0),
+            generation: AtomicU64::new(0),
+            operation: AtomicU64::new(0),
         })
+    }
+
+    pub(crate) fn event(
+        &self,
+        kind: Kind,
+        command: u64,
+        generation: u64,
+        operation: u64,
+        stage: Stage,
+        detail: u8,
+    ) {
+        self.history.record(history::Record {
+            at_us: self.micros(),
+            kind,
+            command,
+            generation,
+            operation,
+            stage: stage as u8,
+            detail,
+        });
+    }
+    pub(crate) fn command_attempt(&self, detail: u8, generation: u64) -> u64 {
+        let id = self.next_command.fetch_add(1, Ordering::Relaxed) + 1;
+        self.event(Kind::SendAttempt, id, generation, 0, Stage::Idle, detail);
+        id
+    }
+    pub(crate) fn dequeued(&self, id: u64, detail: u8, generation: u64) {
+        self.command.store(id, Ordering::Relaxed);
+        self.generation.store(generation, Ordering::Relaxed);
+        self.event(Kind::Dequeued, id, generation, 0, Stage::Idle, detail);
+    }
+    pub(crate) fn batch(&self, generation: u64, kind: Kind) {
+        self.generation.store(generation, Ordering::Relaxed);
+        self.event(
+            kind,
+            self.command.load(Ordering::Relaxed),
+            generation,
+            0,
+            Stage::Idle,
+            0,
+        );
+    }
+    pub(crate) fn lifecycle(&self, kind: Kind, detail: u8) {
+        self.event(
+            kind,
+            self.command.load(Ordering::Relaxed),
+            self.generation.load(Ordering::Relaxed),
+            0,
+            Stage::Idle,
+            detail,
+        );
+    }
+    pub(crate) fn wait_begin(&self, stage: Stage, command: u64) -> u64 {
+        let id = self.next_operation.fetch_add(1, Ordering::Relaxed) + 1;
+        self.event(Kind::WaitBegin, command, 0, id, stage, 0);
+        id
+    }
+    pub(crate) fn wait_end(&self, stage: Stage, command: u64, id: u64, kind: Kind) {
+        self.event(kind, command, 0, id, stage, 0);
     }
 
     fn micros(&self) -> u64 {
@@ -110,6 +193,10 @@ impl Progress {
             "parent": label((value >> 8) as u8),
             "stage_elapsed_ms": (current != 0).then(|| self.micros().saturating_sub(value >> 16) as f64 / 1000.0),
             "observer_injected": self.observer_injected.load(Ordering::Relaxed),
+            "command_id":self.command.load(Ordering::Relaxed),
+            "generation":self.generation.load(Ordering::Relaxed),
+            "operation_id":self.operation.load(Ordering::Relaxed),
+            "history":self.history.snapshot(),
         })
     }
 }
@@ -145,6 +232,7 @@ pub(crate) fn install(progress: Arc<Progress>, extra: Option<Observer>) -> Scope
     progress
         .observer_injected
         .store(extra.is_some(), Ordering::Relaxed);
+    progress.event(Kind::Started, 0, 0, 0, Stage::Idle, 0);
     let previous = CURRENT.with(|slot| slot.replace(Some(Context { progress, extra })));
     Scope { previous }
 }
@@ -189,13 +277,33 @@ pub(crate) fn capture_on_spawn(observer: Observer) -> Capture {
 pub(crate) struct Operation {
     progress: Option<Arc<Progress>>,
     previous: u64,
+    previous_operation: u64,
+    id: u64,
+    command: u64,
+    generation: u64,
+    stage: Stage,
 }
 
 impl Drop for Operation {
     fn drop(&mut self) {
         if let Some(progress) = &self.progress {
-            // No callback/clock/lock here, including on Err and unwind.
+            // No callback/lock/allocation, including unwind. Timestamp is a monotonic read.
             progress.recorded.store(self.previous, Ordering::Relaxed);
+            progress
+                .operation
+                .store(self.previous_operation, Ordering::Relaxed);
+            progress.event(
+                if std::thread::panicking() {
+                    Kind::IoUnwind
+                } else {
+                    Kind::IoEnd
+                },
+                self.command,
+                self.generation,
+                self.id,
+                self.stage,
+                0,
+            );
         }
     }
 }
@@ -207,22 +315,47 @@ pub(crate) fn enter(stage: Stage) -> Operation {
         return Operation {
             progress: None,
             previous: 0,
+            previous_operation: 0,
+            id: 0,
+            command: 0,
+            generation: 0,
+            stage,
         };
     };
     let previous = context.progress.recorded.load(Ordering::Relaxed);
+    let id = context
+        .progress
+        .next_operation
+        .fetch_add(1, Ordering::Relaxed)
+        + 1;
+    let command = context.progress.command.load(Ordering::Relaxed);
+    let generation = context.progress.generation.load(Ordering::Relaxed);
+    let previous_operation = context.progress.operation.swap(id, Ordering::Relaxed);
     // Establish restoration before publishing or invoking a possibly-panicking control.
     let guard = Operation {
         progress: Some(Arc::clone(&context.progress)),
         previous,
+        previous_operation,
+        id,
+        command,
+        generation,
+        stage,
     };
     context.progress.recorded.store(
         (context.progress.micros() << 16) | ((previous & 0xff) << 8) | stage as u64,
         Ordering::Relaxed,
     );
+    context
+        .progress
+        .event(Kind::IoBegin, command, generation, id, stage, 0);
     if let Some(extra) = &context.extra {
         extra(stage);
     }
     guard
+}
+
+pub(crate) fn valid_history_label(kind: &str, stage: &str) -> bool {
+    history::valid_kind(kind) && (0..=Stage::WaitPhysical as u8).any(|code| label(code) == stage)
 }
 
 #[cfg(test)]
@@ -252,6 +385,17 @@ mod tests {
         });
         assert!(outcome.is_err());
         assert_eq!(inner.recorded.load(Ordering::Relaxed), 0);
+        let inner_history = inner.history.snapshot();
+        assert!(inner_history["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["kind"] == "io-unwind" && r["stage"] == "replace-file"));
+        assert!(outer.history.snapshot()["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["kind"] == "io-end" && r["stage"] == "open-temp"));
         assert_eq!(outer.recorded.load(Ordering::Relaxed), original);
         assert!(inherited_observer().is_none());
         let _next = enter(Stage::SerializeDocument);

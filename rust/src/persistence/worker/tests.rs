@@ -1513,7 +1513,7 @@ fn flush_failure_diagnostic_distinguishes_reply_disconnection() {
     };
     let worker = thread::spawn(move || {
         assert!(matches!(
-            rx.recv().unwrap(),
+            rx.recv().unwrap().0,
             UiStatePersistenceCommand::Flush(_)
         ));
         // Receiving then dropping the reply sender is a disconnection, not a timeout.
@@ -1572,6 +1572,7 @@ impl HistorySemanticFixture {
         let ownership = Arc::new(Mutex::new(TestWorkerOwnership {
             handle,
             shutdown_sent: false,
+            shutdown_command_id: 0,
             completed: None,
         }));
         registry.senders.insert(path.clone(), writer.sender.clone());
@@ -2092,6 +2093,16 @@ fn assert_io_probe_reports_real_worker_boundary(
     assert_eq!(diagnostic["io"]["stage"], label);
     assert_eq!(diagnostic["io"]["parent"], parent);
     assert_eq!(diagnostic["io"]["observer_injected"], true);
+    assert!(
+        diagnostic["io"]["history"]["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["kind"] == "io-begin"
+                && r["stage"] == label
+                && r["command_id"].as_u64().unwrap_or(0) > 0),
+        "real operation must correlate with a dequeued command"
+    );
     assert_eq!(diagnostic["persisted_generation"], 0);
     assert_eq!(diagnostic["accepted_generation"], generation);
     assert_eq!(a_while_b_finished["stage"], label);
@@ -2100,6 +2111,21 @@ fn assert_io_probe_reports_real_worker_boundary(
         other_progress.io.snapshot()["worker_id"]
     );
     assert_eq!(other_progress.io.snapshot()["observer_injected"], false);
+    let tail = progress.io.snapshot();
+    let records = tail["history"]["records"].as_array().unwrap();
+    let returned = records
+        .iter()
+        .find(|r| r["kind"] == "body-returned")
+        .unwrap()["sequence"]
+        .as_u64()
+        .unwrap();
+    let joined_record = records.iter().find(|r| r["kind"] == "joined").unwrap()["sequence"]
+        .as_u64()
+        .unwrap();
+    assert!(returned < joined_record);
+    assert!(records
+        .iter()
+        .any(|r| r["kind"] == "dequeued" && r["detail"] == 4));
     assert_eq!(persisted, generation);
     assert_eq!(other_generation, 1);
     assert_eq!(
