@@ -1,0 +1,38 @@
+{
+  "at": "2026-10-30T06:39:56.247313+00:00",
+  "version": "v0.32.1",
+  "decision_received_utc": "2026-10-30T06:34:00Z",
+  "user_message_id": "Sentinel_e7ebd05e10408191a7909128791f021e",
+  "condition": "Proceed when symptoms are not currently deterministically reproducing; no blanket failure waiver",
+  "TC229": {
+    "original": "FAIL master5650 / CI40981621313 attempt1 / physical stop >5s / saved state completion uncertain",
+    "later": "No original5s reproduction in c673 and aca5 diagnostics; SDK4471 own discovery failure separate",
+    "cause": "UNKNOWN, not assigned to environment"
+  },
+  "TC207": {
+    "original": "natural stress reproduction at9ab1 source; 48threads third of3 failed after2PASS; default campaign different results retained",
+    "current": "No current deterministic reproduction established; current ordinary CI PASS is not48-thread stress PASS; stress not rerun",
+    "record": "docs/history/tc207-timing-2026-10-24/natural-reproduction/README.md"
+  },
+  "coverage": {
+    "original": "SIGSEGV sourcecde026 / run39130272096 actualstack absent",
+    "later": "Historical five bounded nofault observations; v0321 ordinarycoverage PASS; no causalrepair",
+    "current": "No current deterministic actualfault reproduction established"
+  },
+  "nonstrict_race": {
+    "reproduction": "YES local deterministic",
+    "disposition": "Separate testfixture issue / unfixed / not admitted as TC229 cause or covered by nonreproduction condition"
+  },
+  "not_accepted": [
+    "TC193 NOTRUN",
+    "new deterministic or outside-scope defects",
+    "required-check bypass",
+    "security/crypto/checksum/N-1 omission",
+    "unbounded diagnosis or blindreruns",
+    "LOSGATOS reconnect"
+  ],
+  "release_state": "RESUMED_PREPARATION / tag+publication still gated",
+  "decision_scope_source": "Product/test/build/workflow inputs5650; docs-only protected descendants, subject to exact candidate gates",
+  "diagnostic_PR230": "Retained draft/unmerged; not required for release, not a product repair",
+  "risk_record_role": "Version-scoped disposition; no test result changed to PASS"
+}
