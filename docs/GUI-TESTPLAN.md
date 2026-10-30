@@ -31,6 +31,60 @@
 | Windows 11 | affected shared GUI behavior or Windows-specific changes | Run only selected input/IME/geometry/action/update axes; unrelated residuals are not mandatory. |
 | macOS | affected shared GUI behavior or macOS-specific changes | Run only selected command-key/rendering/bundle/launch axes. |
 
+## Layout Regression Checks And Before/After Comparison
+
+The engineer changing the UI owns this check at change time. Use the existing
+`surface-dialog-theme` group and normal `cargo test`; no separate screenshot CI
+or full native matrix is required for a local layout change.
+
+1. Run the affected geometry tests from `rust/`:
+   `cargo test --locked --lib render_tests::text_geometry` and
+   `cargo test --locked --lib regression_narrow_results_header_and_rows`.
+   The first includes the top toolbar's reading order, same-row baselines,
+   glyph/clip containment and filter → query → action separation at 640/1200pt,
+   light/dark and 100/125/200% scale. Existing tests cover Results alignment,
+   Root and selectable-row font metrics. Run owner tests for other touched
+   regions (for example `tab_drag` or `settings_dialog`). These are paint-output
+   checks, not proof of native rasterization, IME or OS DPI behavior.
+2. For a rendered appearance change, compare the base and candidate's **changed
+   region plus its neighbors**, starting with 1200×800 and 640×400 client points,
+   the same fixture/query/selection/Preview state, OS, scale and theme. Keep the
+   full client view as context. Check placement, wrapping, row/control heights,
+   baselines, overlap and clipped text, including adjacent unchanged regions.
+   A test/docs-only change with no rendered difference records this axis
+   `NOT RUN — no production rendering change`; it does not need a native launch.
+3. Obtain the base in an owned checkout using the PR lifecycle preflight; never
+   switch or reset another task's worktree. Record both source SHAs/dirty diff,
+   executable hashes and conditions in the existing local report. In each owned
+   checkout run `cargo build --locked --bin flistwalker` from `rust/`, then from
+   its root run `scripts/gui-headful-smoke.sh --no-build --duration 120 --base-dir
+   <absolute-comparison-dir>`. Use a single comparison directory below the
+   candidate's ignored `rust/target/gui-smoke/` for identical fixture paths; run
+   the two versions sequentially. On Windows use the existing
+   `gui-headful-smoke.ps1 -NoBuild -DurationSeconds 120 -BaseDir <path>`.
+   The wrappers stage an owned executable, isolate settings, disable self-update
+   and stop their process. Resize and capture the selected cases during that
+   window using the available native capture tool. Record the actual client
+   size/scale; an unavailable condition remains NOT RUN.
+4. Name local captures `before-<case>` / `after-<case>`, view them side by side,
+   and describe every observed difference as intended or a defect. Keep captures
+   and the existing report in the ignored evidence directory; retain a sanitized
+   comparison result in the PR. Do not commit screenshots or create a second
+   report for the same run. Follow the existing native safety gates and record
+   owned process/file cleanup; keep evidence needed for review.
+
+For a local widget change select only the affected conditions. Shared layout,
+font or egui/eframe changes widen the selection to Root/filter/query/actions,
+tabs, Results/Preview and dialog footers, both themes and supported scales
+(100/125/150/200%); use the affected native OS/font/backend axes. This trigger
+widens the scope, not a requirement to repeat unrelated action/update tests.
+
+A geometry failure is a defect until an intentional UI contract change or an
+incorrect oracle is established. Never update expected order, tolerances or
+reference captures merely to turn a failure green. Explain any intentional
+expectation change and its specification/design basis in the PR; reviewers
+inspect it alongside the implementation and before/after evidence.
+
 ## Execution Profiles And Session Preflight
 
 | Profile | Required evidence | Use |
