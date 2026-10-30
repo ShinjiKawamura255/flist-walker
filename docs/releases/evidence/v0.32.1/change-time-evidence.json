@@ -1,0 +1,226 @@
+{
+  "scope": "retained change-time results, not executions of version0.32.1",
+  "UI226": {
+    "pr": "https://github.com/ShinjiKawamura255/flist-walker/pull/226",
+    "merge": "2d120e05452468c4357542bf8b5791f1e799b623",
+    "patch_sha256": "3cd4092ab9443e6bffd7d72fcf72ce4e48786c02ecd63c09164e7cdc0394c07e",
+    "all17_files_match_merge": {
+      "THIRD_PARTY_NOTICES.txt": true,
+      "docs/OSS_COMPLIANCE.md": true,
+      "docs/design/architecture-overview.md": true,
+      "docs/spec/gui-behavior.md": true,
+      "docs/spec/operations-release-config.md": true,
+      "docs/testplan/test-cases.md": true,
+      "rust/Cargo.lock": true,
+      "rust/Cargo.toml": true,
+      "rust/src/app/render_panels.rs": true,
+      "rust/src/app/render_panels/top_panel.rs": true,
+      "rust/src/app/render_panels/widgets.rs": true,
+      "rust/src/app/render_theme.rs": true,
+      "rust/src/app/tests/render_tests.rs": true,
+      "rust/src/app/tests/text_geometry.rs": true,
+      "rust/src/app/tests/ux_contracts.rs": true,
+      "rust/src/gui_launch.rs": true,
+      "rust/src/gui_launch/windows_theme.rs": true
+    },
+    "source_hashes": {
+      "THIRD_PARTY_NOTICES.txt": "cc32431e36a12fec788510e3c57ce73381ad31b6dddf92b5ff05d58d215e94ff",
+      "docs/OSS_COMPLIANCE.md": "6558b0c6e0ee07f478b02d670d40733aa91d29412e4dfc32782036e513e3a686",
+      "docs/design/architecture-overview.md": "2afc9587c3eba380682d4fed17f0890b4857ccb5e64ee1be85798e8e5a6793b5",
+      "docs/spec/gui-behavior.md": "7145479762477f468ed7c283c6868fb50cb5576fe482b8794190cd51a3075e50",
+      "docs/spec/operations-release-config.md": "5666735a63bdedc39ecf60a7ebdf99cd8c42102994998b2bae7d257beb97961c",
+      "docs/testplan/test-cases.md": "b8934e09284c799874b6a15ff4e6a1f0b7edfef89b02f5e187250b26f864f28d",
+      "rust/Cargo.lock": "37f8163d1b927045f3ace64e2d3d19c95729c4201f12ff46c0188a1a9c680568",
+      "rust/Cargo.toml": "7f5b07a5ef4b7cafc85cac15f3dd0770f637c90c272297de3e987549b6f528cb",
+      "rust/src/app/render_panels.rs": "b58ef386adedc21c06480edc27192f82977610fbc862627325081bf4b86f57c3",
+      "rust/src/app/render_panels/top_panel.rs": "4a06cc6b7fdcd27e8fd64f1760281de789040a180517ff3645f92bc6c20823c4",
+      "rust/src/app/render_panels/widgets.rs": "54ec50726de9bb5bc757f4268704b721a118646609f55ec53ede5099c297ded4",
+      "rust/src/app/render_theme.rs": "92391162cf4fd1b5e600243da4d584defb2420e593cbd9fcbaa800457da7c627",
+      "rust/src/app/tests/render_tests.rs": "2ff35f5b292f34163912587598ad695d7cb404c8314a3b126fbd573c5f4d27d6",
+      "rust/src/app/tests/text_geometry.rs": "2208b9bd1917d5899200dc3b47d125d23f72ccdd8df520952648629fe0a615ab",
+      "rust/src/app/tests/ux_contracts.rs": "fab4df5b4b1452df55158e93bf2fb041f1027eea4a4bde2efd6b7f3b0774cce6",
+      "rust/src/gui_launch.rs": "6110a83b96ee0a979b4da824c9bab5d3103f1a8794e1da83774c306d8d4f1f32",
+      "rust/src/gui_launch/windows_theme.rs": "6346a6a97a30371ffb864829079bf26f6bdc8db6d0002756796b25e6c87bc58f"
+    },
+    "windows_binary_sha256": "4259e574a7dda9c07609f7a7dddf907e4b18666e82b79ea9ec7850084a3a3710",
+    "windows_native": "PASS app/OSLightDark mismatch, explicitfixed/Systemlivebothdirections,nextstartsave,pinrepeat/hidden/clear,Results/preview/narrow/resize",
+    "windows_os": "Windows build26300.9711,scale1.0",
+    "windows_restored": "OS Apps/System0/0;9usual productsettings files hash unchanged;owned processes0",
+    "windows_full_at_UI_stage": "FAIL1712PASS/3FAIL/21ignored;baseline also7PASS/3FAIL;not overwritten",
+    "mac_native": {
+      "status": "PASS",
+      "packaged_binary_sha256": "2a79c47cb8e3510fdadea65f22f157ae45089a099e3a70ef0804bb52644d1676",
+      "source_binary_sha256": "07d1ebcd380f6a198d8cd1b25fd0344c91505fe48707c69e6dc0f82c496bd6a7",
+      "all_text_sections_identical": true,
+      "themes": [
+        "dark",
+        "system",
+        "light"
+      ],
+      "live_window_size_roundtrip": [
+        [
+          760,
+          562
+        ],
+        [
+          2560,
+          1320
+        ],
+        [
+          760,
+          562
+        ]
+      ],
+      "minimum_window_capture": [
+        640,
+        432
+      ],
+      "preview_on_off": "PASS",
+      "pin_clear": "PASS",
+      "no_security_settings_changed": true
+    },
+    "mac_live_OS_switch": "NOT RUN; no newlive result inferred",
+    "original_receipt_hashes": {
+      "WINDOWS_VALIDATION.md": "636923996d81ccb23871517cd1f10676db2e617e284ea77c5e2627b2097bc33e",
+      "WINDOWS_SYSTEM_ADDENDUM.md": "16f7217977194e32d980f973befb3079f8a33dd97b9c1dfffb5355ae13ce84f3",
+      "native-build.json": "2f8b7a162d23026fe2f9cfa17951990a2a2b1eb5ec38529b5423d6d143a9f2eb",
+      "dependency-graph-comparison.json": "8005cefea4f13b74e8e997fbd7d7d697a6d00183e196ab33e3c01750b822732f"
+    }
+  },
+  "GNU227": {
+    "pr": "https://github.com/ShinjiKawamura255/flist-walker/pull/228",
+    "merge": "c8d73040d52fb797bb7f4b6a3ca2d09c93e62a43",
+    "tested_source": "base2d120 + reviewed2filepatch;hashes below equal merged product",
+    "source_hashes": {
+      "rust/src/app/index_worker/root_projection.rs": "0374882fe883329002710c3dbcc8317c1b0f13488d55012c86f543880a9b9ea9",
+      "docs/testplan/test-cases.md": "7fdcbf8986943887e5d7d562e6206b41e7516a3ba7f5df2bcb91a701a7810f10",
+      "rust/src/app/tests/freshness_refresh.rs": "dff0371b8cdc572501c2fdaa5f24b1c54ed052f39c211686858e9f2f2e430045"
+    },
+    "environment": {
+      "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)\nbinary: rustc\ncommit-hash: 8bab26f4f68e0e26f0bb7960be334d5b520ea452\ncommit-date: 2026-07-14\nhost: x86_64-pc-windows-msvc\nrelease: 1.97.1\nLLVM version: 22.1.6",
+      "cargo": "cargo 1.97.1 (c980f4866 2026-06-30)",
+      "gcc": "gcc.exe (Rev2, Built by MSYS2 project) 16.1.0"
+    },
+    "test_target": "x86_64-pc-windows-gnu",
+    "RED": "original7PASS/3FAIL;additional0PASS/3assertionFAIL,compile successful",
+    "GREEN": [
+      {
+        "name": "validation-plan",
+        "exit": 0,
+        "results": [],
+        "log": "validation-plan.green.log",
+        "log_sha256": "ae8832abbf1e1db1312cff5052b2be4ee5b3b51e508449dd96c52c48676b070d",
+        "normalized_command": "python -X utf8 scripts/validate_change.py --base 2d120e05452468c4357542bf8b5791f1e799b623 --plan"
+      },
+      {
+        "name": "repo-contract",
+        "exit": 0,
+        "results": [],
+        "log": "repo-contract.green.log",
+        "log_sha256": "9b4287cc3b850fae1e873f77b33247bebfa18f0e5067a81fa9680f7d92efee99",
+        "normalized_command": "python -X utf8 scripts/check_repo_contract.py ."
+      },
+      {
+        "name": "new-regressions",
+        "exit": 0,
+        "results": [
+          "test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 1736 filtered out; finished in 0.00s"
+        ],
+        "log": "new-regressions.green.log",
+        "log_sha256": "66165a4360f71afefc4795ee7af6e6523a428801afe1cab1fe90ffedee560210",
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu --lib equal_root_projection -- --nocapture --test-threads=1"
+      },
+      {
+        "name": "freshness",
+        "exit": 0,
+        "results": [
+          "test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 1729 filtered out; finished in 1.81s"
+        ],
+        "log": "freshness.green.log",
+        "log_sha256": "15f5ef69b18ab77be58342ff3e0214f616a1cf8f6f0d828b703aa1cee6a09dc8",
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu --lib app::tests::freshness_refresh:: -- --nocapture --test-threads=1"
+      },
+      {
+        "name": "root-projection",
+        "exit": 0,
+        "results": [
+          "test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 1731 filtered out; finished in 0.07s"
+        ],
+        "log": "root-projection.green.log",
+        "log_sha256": "7aabdcd12cece377cda83e8eb6a52759d5183545e0c087746fee382ac3a6bb91",
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu --lib app::index_worker::root_projection:: -- --nocapture --test-threads=1"
+      },
+      {
+        "name": "full-cargo-test",
+        "exit": 0,
+        "results": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1738 filtered out; finished in 0.03s",
+          "test result: ok. 1718 passed; 0 failed; 21 ignored; 0 measured; 0 filtered out; finished in 74.65s",
+          "test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s",
+          "test result: ok. 49 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.71s",
+          "test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s",
+          "test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s",
+          "test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+        ],
+        "log": "full-cargo-test.green.log",
+        "log_sha256": "102b89b993b1a7956c8e2258eeb4da902f861535f7e80056ebce179613a462b4",
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu"
+      },
+      {
+        "name": "clippy",
+        "exit": 0,
+        "results": [],
+        "log": "clippy.green.log",
+        "log_sha256": "02ef256085563f6f639be199132c6a2ffa7351621539e51944eb5be2d2e127c7",
+        "normalized_command": "cargo clippy --locked --all-targets --target x86_64-pc-windows-gnu -- -D warnings"
+      },
+      {
+        "name": "fmt",
+        "exit": 0,
+        "results": [],
+        "log": "fmt.green.log",
+        "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "normalized_command": "cargo fmt --all -- --check"
+      },
+      {
+        "name": "perf-filelist",
+        "exit": 0,
+        "results": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1738 filtered out; finished in 22.89s"
+        ],
+        "log": "perf-filelist.green.log",
+        "log_sha256": "f6b54398f14b91ab296db435e9c2dc57a88a1a419acf8f86ec6d67f4f0299720",
+        "metrics": [
+          "FileList perf control_baseline lines=30000 validation_only_ms=3.935 metadata_probe_total_ms=1761.659 current_total_ms=199.921 speedup=8.81x metadata_probe_count=30000 current_count=30000",
+          "test indexer::tests::perf::perf_filelist_stream_is_faster_than_metadata_probe_baseline ... ok"
+        ],
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu perf_filelist_stream_is_faster_than_metadata_probe_baseline --lib -- --ignored --nocapture"
+      },
+      {
+        "name": "perf-walker",
+        "exit": 0,
+        "results": [
+          "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1738 filtered out; finished in 45.56s"
+        ],
+        "log": "perf-walker.green.log",
+        "log_sha256": "4eb800bedae6aa547d8a1d60aa6f4ce92f85835597ba743a73ddb0c8eeb3a5cc",
+        "metrics": [
+          "Walker perf control_baseline samples=7 eager_metadata_median_ms=2252.171 fast_classify_median_ms=54.438 speedup=41.37x entries=33025"
+        ],
+        "normalized_command": "cargo test --locked --target x86_64-pc-windows-gnu perf_walker_classification_is_faster_than_eager_metadata_resolution --lib -- --ignored --nocapture"
+      }
+    ],
+    "source_receipt_sha256": "ff0a3c65969af425654fb76da0668256b7bbd6d07a7dc34442a32564e88fc015",
+    "native_connection_after_shutdown_notice": false
+  },
+  "not_claimed": [
+    "new0.32.1 nativeGUI/timing",
+    "freshnewWindowsconnection",
+    "alternateDPI/IME/UNC/fullcertification",
+    "oldstress/SIGSEGVcausalrepair",
+    "newriskacceptance"
+  ],
+  "privacy": "Original host paths and privateTEMP/TMP omitted;commands normalized to tool names. Screenshots not committed."
+}

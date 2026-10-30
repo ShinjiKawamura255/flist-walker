@@ -1,0 +1,83 @@
+{
+  "utc": "2026-10-30T00:18:54.161861+00:00",
+  "results": [
+    {
+      "name": "preparation-plan",
+      "command": [
+        "python3",
+        "scripts/validate_change.py",
+        "--base",
+        "origin/master",
+        "--plan"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "preparation-quick",
+      "command": [
+        "python3",
+        "scripts/validate_change.py",
+        "--base",
+        "origin/master",
+        "--quick"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "guardian",
+      "command": [
+        "python3",
+        "scripts/check_ci_policy.py",
+        "--guardian",
+        "."
+      ],
+      "exit": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--check"
+      ],
+      "exit": 0
+    },
+    {
+      "name": "package-metadata",
+      "command": [
+        "cargo",
+        "metadata",
+        "--locked",
+        "--no-deps",
+        "--format-version",
+        "1"
+      ],
+      "exit": 0
+    }
+  ],
+  "script_unittest_count": 165,
+  "n1_red": {
+    "exit": 1,
+    "expected_failure": "unsupported previous release capability: 0.32.0"
+  },
+  "n1_green": {
+    "command": [
+      "python3",
+      "scripts/test-updater-n-minus-one-compatibility.py"
+    ],
+    "exit": 0,
+    "result": "N-1 updater compatibility regression tests passed",
+    "source_sha256": {
+      "scripts/check-updater-n-minus-one-compatibility.py": "f74b8d193e960a57fe2a5b11ad25b11faf4fca478880ea7e7543a7fd1dfca7d5",
+      "scripts/test-updater-n-minus-one-compatibility.py": "cdf4f82bbfdfeba83279b215da6e71317a7ce790b7c39510c94057a42e073bba"
+    },
+    "record_kind": "receipt of first GREEN tool execution; no duplicate test run"
+  },
+  "selected_VM": [
+    "VM-001",
+    "VM-005",
+    "VM-009"
+  ],
+  "full_local_Rust_repeated": false,
+  "reason": "Product unchanged by preparation;current exactsource PR/master/candidate provides required fullRust/clippy/audit."
+}

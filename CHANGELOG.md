@@ -24,6 +24,34 @@
 ### Known issues
 - なし。
 
+## [0.32.1] - 2026-10-30
+### Added
+- なし。
+
+### Changed
+- v0.32.0から次版への自動更新互換性を、26件のchecksum inventoryと非増加versionの拒否テストで確認する。
+
+### Fixed
+- WindowsでアプリにLight/Darkを指定した場合、システムと異なるテーマや実行中のOSテーマ変更でもタイトルバーと本体の色を揃える。SystemはOSに追従し、設定の次回起動時反映は維持する。
+- PIN中のClear Selectedをテーマに合うアンバー色と枠線で強調し、件数ボタンをPinned表示にして解除忘れに気付きやすくする。Tabと全解除の操作は維持する。
+- Results件数を左、Sorted byとScopeをプレビュー手前の右端へ戻し、文字の高さを揃える。狭い幅では操作群を折り返す。
+- Windowsの通常パスとverbatim prefix付き候補が混在すると、同じRootでも要求されたパス表記への投影を省略していた不具合を修正する。既存仕様とテスト期待値は変更しない（Issue #227 / PR #228）。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存バージョン、既存依存のfeature、更新時の署名検証方式の変更はない。Windowsの既存raw-window-handleを直接参照し、OSS告知を更新した。
+
+### Known issues
+- macOS配布物は未notarized。
+- 過去のTC-207の48並列ストレス条件での100ms超過と、Linux coverageのSIGSEGVは原因未確定。通常条件の成功を原因解消とは扱わない。
+- 過去のWindows保存ワーカー終了遅延と自己更新失敗は原因・実利用への影響が未確定。今回のパス表記修正が原因解消したとは主張しない。
+- v0.24.3利用者は同じvariantのbinaryとSHA256SUMSを手動で取得・検証して一度置き換える必要がある。v0.24.4以降は通常の自動更新を利用できる。
+
 ## [0.32.0] - 2026-10-28
 ### Added
 - Shift+Enter / Shift+ダブルクリックでファイルの格納フォルダを開くとき、Windows / macOS と対応Linuxファイルマネージャーで元ファイルを選択表示する。同じフォルダの複数選択を保持し、Linuxの非対応環境では再検証後に親フォルダを開く。
@@ -2299,6 +2327,7 @@
 - macOS アセットは未提供。
 
 [Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.0...HEAD
+[0.32.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.0...v0.32.1
 [0.32.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.1...v0.32.0
 [0.31.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...v0.31.1
 [0.31.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.30.2...v0.31.0

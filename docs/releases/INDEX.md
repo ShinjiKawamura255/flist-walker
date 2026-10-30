@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.32.1 Preparation Packet](v0.32.1.md) | UI/theme/PIN/header and Windows path repair; current candidate gates and evidence-reuse boundaries |
 | [v0.32.0 Execution Packet](v0.32.0.md) | Published source/tag, first candidate and native TC193, retained hosted-runner failure/one targeted recovery, signed tagged/public bytes, Latest and actual N-1 |
 | [v0.31.1 Execution Packet](v0.31.1.md) | Published source/tag, Windows native verification, separate candidate/tagged/public gates and retained external-install CI failure/retry |
 | [v0.31.0 Regenerated Candidate39810727499](evidence/v0.31.0/regenerated-39810727499/REPORT.md) | Source d1bf330; fresh audit failed on two TLS dependencies, so distribution/signature/actual N-1 remain unverified; updated Windows preparation |
