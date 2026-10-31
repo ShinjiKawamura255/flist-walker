@@ -21,6 +21,8 @@ This document is the durable current-state snapshot for maintainers. It does not
 
 ## Known Evidence Gaps
 
+- UI regression prevention from [PR #234](https://github.com/ShinjiKawamura255/flist-walker/pull/234) is delivered. Settings-persistence CI timeouts remain a separately tracked unresolved issue with cause `UNKNOWN`; focused local non-reproduction is not fix confirmation. Apply the [local/CI evidence rules](AI_DEVELOPMENT.md#local-validation-and-ci-disposition) without changing the original CI result or required checks.
+
 - TC-207 keeps its strict 100ms wall gate. Additional tracing of the [native stress failure with 48 test threads](history/tc207-timing-2026-10-24/natural-reproduction/README.md) is on hold as a documented stress-condition limitation; the historical file-filter/Walker causes remain unknown. A fresh normal-condition failure or matching native GUI stall reopens investigation. Retained failures and release gates remain unchanged.
 
 - Paged preview has an application-owned control mode via Primary+Shift+L, with normal-render-path regression tests. Native OS key delivery and IME remain separate manual evidence axes.
