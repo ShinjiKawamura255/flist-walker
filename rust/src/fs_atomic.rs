@@ -47,18 +47,23 @@ pub struct SidecarFileLock {
 }
 
 pub fn acquire_sidecar_lock(path: &Path, timeout: Duration) -> std::io::Result<SidecarFileLock> {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::SidecarLock);
     let lock_path = sidecar_lock_path(path);
     let parent = lock_path.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(parent)?;
+    observe_persistence_io!(CreateParent, fs::create_dir_all(parent))?;
     let deadline = Instant::now() + timeout;
     loop {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(&lock_path)?;
-        match file.try_lock() {
+        let file = observe_persistence_io!(
+            SidecarOpen,
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .truncate(false)
+                .open(&lock_path)
+        )?;
+        match observe_persistence_io!(SidecarTryLock, file.try_lock()) {
             Ok(()) => return Ok(SidecarFileLock { _file: file }),
             Err(std::fs::TryLockError::WouldBlock) => {
                 if Instant::now() >= deadline {
@@ -67,7 +72,7 @@ pub fn acquire_sidecar_lock(path: &Path, timeout: Duration) -> std::io::Result<S
                         format!("timed out waiting for sidecar lock {}", lock_path.display()),
                     ));
                 }
-                thread::sleep(Duration::from_millis(5));
+                observe_persistence_io!(SidecarRetryWait, thread::sleep(Duration::from_millis(5)));
             }
             Err(std::fs::TryLockError::Error(err)) => return Err(err),
         }
@@ -159,13 +164,19 @@ where
     B: FnMut(&Path) -> std::io::Result<()>,
     S: FnMut(&Path) -> std::io::Result<()>,
 {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::AtomicWrite);
     let parent = parent_directory(path);
-    let directory_sync_targets = directory_sync_targets(parent)?;
-    fs::create_dir_all(parent)?;
+    let directory_sync_targets =
+        observe_persistence_io!(DirectoryPlan, directory_sync_targets(parent))?;
+    observe_persistence_io!(CreateParent, fs::create_dir_all(parent))?;
     let tmp = build_temp_path(path);
     let result = (|| {
-        let mut file = OpenOptions::new().write(true).create_new(true).open(&tmp)?;
-        file.write_all(bytes)?;
+        let mut file = observe_persistence_io!(
+            OpenTemp,
+            OpenOptions::new().write(true).create_new(true).open(&tmp)
+        )?;
+        observe_persistence_io!(WriteTemp, file.write_all(bytes))?;
         if let Some(permissions) = metadata.permissions {
             file.set_permissions(permissions)?;
         }
@@ -179,19 +190,20 @@ where
             }
             file.set_times(times)?;
         }
-        file.sync_all()?;
+        observe_persistence_io!(SyncTemp, file.sync_all())?;
         // In particular on Windows, write timestamps are only guaranteed
         // final after the writing handle closes. Observe the closed object.
-        drop(file);
-        before_replace(&tmp)?;
-        replace_file(&tmp, path)?;
+        observe_persistence_io!(CloseTemp, drop(file));
+        observe_persistence_io!(BeforeReplace, before_replace(&tmp))?;
+        observe_persistence_io!(ReplaceFile, replace_file(&tmp, path))?;
         for directory in &directory_sync_targets {
-            sync_directory(directory).map_err(post_replace_sync_error)?;
+            observe_persistence_io!(SyncDirectory, sync_directory(directory))
+                .map_err(post_replace_sync_error)?;
         }
         Ok(())
     })();
     if result.is_err() {
-        let _ = fs::remove_file(&tmp);
+        let _ = observe_persistence_io!(CleanupTemp, fs::remove_file(&tmp));
     }
     result
 }

@@ -38,6 +38,8 @@ pub(super) fn commit_settings_with_writer<W>(
 where
     W: FnMut(&Path, &[u8]) -> std::io::Result<()>,
 {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::CommitSettings);
     let _lock = acquire_sidecar_lock(ui_state_path, lock_timeout)?;
     let ui_state_previous = read_optional_file(ui_state_path)?;
     let document = build_ui_state_document(
@@ -46,7 +48,9 @@ where
         Some(&request.patch),
         history_persist_disabled,
     )?;
-    let serialized = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
+    let serialized =
+        observe_persistence_io!(SerializeDocument, serde_json::to_string_pretty(&document))
+            .map_err(std::io::Error::other)?;
     let canonical_default_root = document
         .get("default_root")
         .and_then(Value::as_str)
@@ -105,7 +109,7 @@ where
 }
 
 fn read_optional_file(path: &Path) -> std::io::Result<Option<Vec<u8>>> {
-    match fs::read(path) {
+    match observe_persistence_io!(ReadDocument, fs::read(path)) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error),

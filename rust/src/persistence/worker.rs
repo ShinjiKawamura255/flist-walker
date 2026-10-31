@@ -41,9 +41,18 @@ struct AdmissionState {
     outstanding: usize,
 }
 
+#[cfg(test)]
+type WorkerCommand = (UiStatePersistenceCommand, u64);
+#[cfg(not(test))]
+type WorkerCommand = UiStatePersistenceCommand;
+#[cfg(test)]
+type CommandReceipt = u64;
+#[cfg(not(test))]
+type CommandReceipt = ();
+
 #[derive(Clone)]
 struct PersistenceSender {
-    tx: SyncSender<UiStatePersistenceCommand>,
+    tx: SyncSender<WorkerCommand>,
     state: Arc<Mutex<AdmissionState>>,
     #[cfg(test)]
     progress: Arc<TestWorkerProgress>,
@@ -54,6 +63,7 @@ struct TestWorkerProgress {
     started: std::time::Instant,
     phase: std::sync::atomic::AtomicU8,
     last_wait_failure: Mutex<Option<Value>>,
+    io: Arc<crate::test_io::Progress>,
 }
 
 #[cfg(test)]
@@ -63,6 +73,7 @@ impl TestWorkerProgress {
             started: std::time::Instant::now(),
             phase: std::sync::atomic::AtomicU8::new(0),
             last_wait_failure: Mutex::new(None),
+            io: crate::test_io::Progress::new(),
         }
     }
     fn set_phase(&self, phase: u8) {
@@ -107,6 +118,7 @@ fn record_test_worker_wait_failure(
     });
     let diagnostic = serde_json::json!({
         "stage": stage,
+        "io": sender.progress.io.snapshot(),
         "phase": sender.progress.phase(),
         "worker_age_ms": sender.progress.started.elapsed().as_secs_f64() * 1000.0,
         "elapsed_ms": started.elapsed().as_secs_f64() * 1000.0,
@@ -143,12 +155,11 @@ impl PersistenceSender {
             return Err(error);
         }
         let generation = state.status.accepted_generation.saturating_add(1);
-        if let Err(error) = self.tx.try_send(UiStatePersistenceCommand::Enqueue {
+        if let Err(error) = self.send_command(UiStatePersistenceCommand::Enqueue {
             generation,
             patch,
             history_delta,
         }) {
-            let error = admission_error(error);
             state.status.last_error = Some(error.clone());
             return Err(error);
         }
@@ -157,12 +168,48 @@ impl PersistenceSender {
         Ok(generation)
     }
 
-    fn send_control(&self, command: UiStatePersistenceCommand) -> Result<(), String> {
-        self.tx.try_send(command).map_err(admission_error)
+    fn send_control(&self, command: UiStatePersistenceCommand) -> Result<CommandReceipt, String> {
+        self.send_command(command)
+    }
+    fn send_command(&self, command: UiStatePersistenceCommand) -> Result<CommandReceipt, String> {
+        #[cfg(test)]
+        let (id, detail, generation) = {
+            let (detail, generation) = command.diagnostic_identity();
+            (
+                self.progress.io.command_attempt(detail, generation),
+                detail,
+                generation,
+            )
+        };
+        #[cfg(test)]
+        let command = (command, id);
+        let result = self.tx.try_send(command);
+        #[cfg(test)]
+        {
+            use crate::test_io::{Kind, Stage};
+            let kind = match &result {
+                Ok(_) => Kind::SendAccepted,
+                Err(TrySendError::Full(_)) => Kind::SendFull,
+                Err(TrySendError::Disconnected(_)) => Kind::SendDisconnected,
+            };
+            self.progress
+                .io
+                .event(kind, id, generation, 0, Stage::Idle, detail);
+        }
+        result
+            .map(|_| {
+                #[cfg(test)]
+                {
+                    id
+                }
+                #[cfg(not(test))]
+                {}
+            })
+            .map_err(admission_error)
     }
 }
 
-fn admission_error(error: TrySendError<UiStatePersistenceCommand>) -> String {
+fn admission_error(error: TrySendError<WorkerCommand>) -> String {
     match error {
         TrySendError::Full(_) => {
             "UI-state persistence queue is full; retry after pending changes are saved".to_string()
@@ -230,6 +277,26 @@ enum UiStatePersistenceCommand {
     },
     Flush(Sender<Result<(), String>>),
     Shutdown(Sender<Result<(), String>>),
+}
+
+#[cfg(test)]
+impl UiStatePersistenceCommand {
+    fn diagnostic_identity(&self) -> (u8, u64) {
+        match self {
+            Self::Enqueue { generation, .. } => (1, *generation),
+            Self::CommitSettings { .. } => (2, 0),
+            Self::Flush(_) => (3, 0),
+            Self::Shutdown(_) => (4, 0),
+        }
+    }
+}
+#[cfg(test)]
+impl TestWorkerProgress {
+    fn received(&self, (command, id): WorkerCommand) -> UiStatePersistenceCommand {
+        let (detail, generation) = command.diagnostic_identity();
+        self.io.dequeued(id, detail, generation);
+        command
+    }
 }
 
 pub(crate) struct SettingsCommitRequest {
@@ -332,6 +399,7 @@ struct UiStatePersistenceRegistry {
 struct TestWorkerOwnership {
     handle: Option<thread::JoinHandle<()>>,
     shutdown_sent: bool,
+    shutdown_command_id: u64,
     completed: Option<Result<(), String>>,
 }
 fn ui_state_persistence_registry() -> &'static Mutex<UiStatePersistenceRegistry> {
@@ -392,7 +460,13 @@ fn spawn_ui_state_persistence_worker(
     let progress = Arc::new(TestWorkerProgress::new());
     #[cfg(test)]
     let worker_progress = Arc::clone(&progress);
+    #[cfg(test)]
+    let io_observer = crate::test_io::inherited_observer();
     let handle = thread::spawn(move || {
+        #[cfg(test)]
+        let _io_scope = crate::test_io::install(Arc::clone(&worker_progress.io), io_observer);
+        #[cfg(test)]
+        let return_io = Arc::clone(&worker_progress.io);
         run_ui_state_persistence_worker(
             rx,
             path,
@@ -401,7 +475,9 @@ fn spawn_ui_state_persistence_worker(
             worker_state,
             #[cfg(test)]
             worker_progress,
-        )
+        );
+        #[cfg(test)]
+        return_io.lifecycle(crate::test_io::Kind::BodyReturned, 0);
     });
     (
         PersistenceSender {
@@ -451,6 +527,7 @@ fn registry_sender(
             Arc::new(Mutex::new(TestWorkerOwnership {
                 handle: Some(handle),
                 shutdown_sent: false,
+                shutdown_command_id: 0,
                 completed: None,
             })),
         );
@@ -523,8 +600,30 @@ fn flush_sender(sender: &PersistenceSender, timeout: Duration) -> Result<(), Str
     #[cfg(test)]
     let started = std::time::Instant::now();
     let (tx, rx) = mpsc::channel();
+    #[cfg(test)]
+    let receipt = sender.send_control(UiStatePersistenceCommand::Flush(tx))?;
+    #[cfg(not(test))]
     sender.send_control(UiStatePersistenceCommand::Flush(tx))?;
+    #[cfg(test)]
+    let wait = sender
+        .progress
+        .io
+        .wait_begin(crate::test_io::Stage::WaitFlush, receipt);
     let response = rx.recv_timeout(timeout);
+    #[cfg(test)]
+    {
+        use crate::test_io::{Kind, Stage};
+        sender.progress.io.wait_end(
+            Stage::WaitFlush,
+            receipt,
+            wait,
+            match &response {
+                Ok(_) => Kind::WaitOk,
+                Err(mpsc::RecvTimeoutError::Timeout) => Kind::WaitTimeout,
+                Err(mpsc::RecvTimeoutError::Disconnected) => Kind::WaitDisconnected,
+            },
+        );
+    }
     #[cfg(test)]
     if let Err(error) = response.as_ref() {
         record_test_worker_wait_failure(
@@ -582,15 +681,29 @@ pub(crate) fn finish_ui_state_persistence_for_test(
     };
     let registry_elapsed = started.elapsed();
     let ownership_started = std::time::Instant::now();
+    let ownership_wait = sender.as_ref().map(|s| {
+        s.progress
+            .io
+            .wait_begin(crate::test_io::Stage::WaitOwnership, 0)
+    });
+    let ownership_end = |kind| {
+        if let (Some(s), Some(id)) = (&sender, ownership_wait) {
+            s.progress
+                .io
+                .wait_end(crate::test_io::Stage::WaitOwnership, 0, id, kind);
+        }
+    };
     // Never wait while holding the global registry lock. Serialize only this path.
     let mut worker = loop {
         match ownership.try_lock() {
             Ok(worker) => break worker,
             Err(std::sync::TryLockError::Poisoned(_)) => {
-                return Err("test writer ownership poisoned".into())
+                ownership_end(crate::test_io::Kind::WaitError);
+                return Err("test writer ownership poisoned".into());
             }
             Err(std::sync::TryLockError::WouldBlock) => {
                 if std::time::Instant::now() >= deadline {
+                    ownership_end(crate::test_io::Kind::WaitTimeout);
                     record_test_worker_wait_failure(
                         sender.as_ref(),
                         started,
@@ -606,6 +719,7 @@ pub(crate) fn finish_ui_state_persistence_for_test(
         }
     };
     let ownership_elapsed = ownership_started.elapsed();
+    ownership_end(crate::test_io::Kind::WaitOk);
     if worker.completed.is_none() {
         if !worker.shutdown_sent {
             let (tx, _rx) = mpsc::channel();
@@ -613,24 +727,42 @@ pub(crate) fn finish_ui_state_persistence_for_test(
                 .as_ref()
                 .ok_or("test writer sender missing")?
                 .send_control(UiStatePersistenceCommand::Shutdown(tx));
-            if let Err(error) = sent {
+            if let Err(error) = sent.as_ref() {
                 if !worker
                     .handle
                     .as_ref()
                     .is_some_and(thread::JoinHandle::is_finished)
                 {
-                    return Err(error);
+                    return Err(error.clone());
                 }
             } else {
                 worker.shutdown_sent = true;
+                worker.shutdown_command_id = sent.unwrap();
             }
         }
+        let physical_command = worker.shutdown_command_id;
+        let physical_wait = sender.as_ref().map(|s| {
+            s.progress
+                .io
+                .wait_begin(crate::test_io::Stage::WaitPhysical, physical_command)
+        });
+        let physical_end = |kind| {
+            if let (Some(s), Some(id)) = (&sender, physical_wait) {
+                s.progress.io.wait_end(
+                    crate::test_io::Stage::WaitPhysical,
+                    physical_command,
+                    id,
+                    kind,
+                );
+            }
+        };
         while !worker
             .handle
             .as_ref()
             .is_some_and(thread::JoinHandle::is_finished)
         {
             if std::time::Instant::now() >= deadline {
+                physical_end(crate::test_io::Kind::WaitTimeout);
                 record_test_worker_wait_failure(
                     sender.as_ref(),
                     started,
@@ -643,6 +775,7 @@ pub(crate) fn finish_ui_state_persistence_for_test(
             }
             thread::sleep(Duration::from_millis(1));
         }
+        physical_end(crate::test_io::Kind::WaitOk);
         worker.completed = Some(
             worker
                 .handle
@@ -651,6 +784,16 @@ pub(crate) fn finish_ui_state_persistence_for_test(
                 .join()
                 .map_err(|_| "test settings writer panicked".to_string()),
         );
+        if let Some(s) = &sender {
+            s.progress.io.lifecycle(
+                crate::test_io::Kind::Joined,
+                if worker.completed.as_ref().unwrap().is_ok() {
+                    8
+                } else {
+                    10
+                },
+            );
+        }
     }
     worker.completed.as_ref().expect("joined writer").clone()?;
     drop(worker);
@@ -667,11 +810,21 @@ pub(crate) fn finish_ui_state_persistence_for_test(
         registry.history_snapshots.remove(path);
         registry.startup_failures.remove(path);
     }
+    drop(registry);
+    if std::env::var("FW_INDEX_PERF_NORMAL_CHILD_ROLE").as_deref() == Ok("normal")
+        && std::env::var("FW_INDEX_PERF_NORMAL_CHILD").is_ok_and(|name| {
+            name.ends_with("::tc_229_real_worker_extended_profiles_smoke_flat_files_warm_reclaim")
+        })
+    {
+        if let Some(s) = &sender {
+            eprintln!("TEST_WRITER_HISTORY {}", s.progress.io.snapshot());
+        }
+    }
     Ok(())
 }
 
 fn run_ui_state_persistence_worker(
-    rx: mpsc::Receiver<UiStatePersistenceCommand>,
+    rx: mpsc::Receiver<WorkerCommand>,
     path: PathBuf,
     history_persist_disabled: bool,
     lock_timeout: Duration,
@@ -682,7 +835,12 @@ fn run_ui_state_persistence_worker(
     loop {
         #[cfg(test)]
         progress.set_phase(1);
-        let command = rx.recv_timeout(UI_STATE_PERSISTENCE_RETRY_DELAY);
+        let command = observe_persistence_io!(
+            ReceiveCommand,
+            rx.recv_timeout(UI_STATE_PERSISTENCE_RETRY_DELAY)
+        );
+        #[cfg(test)]
+        let command = command.map(|c| progress.received(c));
         let mut flush_reply = None;
         let mut shutdown_reply = None;
         let mut settings_commit = None;
@@ -711,6 +869,8 @@ fn run_ui_state_persistence_worker(
             && !disconnected
         {
             while let Ok(command) = rx.try_recv() {
+                #[cfg(test)]
+                let command = progress.received(command);
                 match command {
                     UiStatePersistenceCommand::Enqueue {
                         generation,
@@ -738,8 +898,13 @@ fn run_ui_state_persistence_worker(
         }
         debug_assert!(pending.len() <= MAX_PENDING_UI_STATE_WRITES);
         let attempted = settings_commit.is_some() || !pending.is_empty();
-        let protected = state
-            .lock()
+        #[cfg(test)]
+        let batch_generation = pending.last().map_or(0, |p| p.generation);
+        #[cfg(test)]
+        progress
+            .io
+            .batch(batch_generation, crate::test_io::Kind::BatchBegin);
+        let protected = observe_persistence_io!(StartupStateLock, state.lock())
             .map(|state| state.status.startup_protected)
             .unwrap_or(true);
         #[cfg(test)]
@@ -783,6 +948,15 @@ fn run_ui_state_persistence_worker(
             result
         };
         #[cfg(test)]
+        progress.io.batch(
+            batch_generation,
+            if result.is_ok() {
+                crate::test_io::Kind::BatchOk
+            } else {
+                crate::test_io::Kind::BatchError
+            },
+        );
+        #[cfg(test)]
         progress.set_phase(4);
         #[cfg(test)]
         tests::pause_after_write(after_write_gate, &state);
@@ -810,10 +984,12 @@ fn publish_write_result(
     result: &Result<(), String>,
     attempted: bool,
 ) {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::PublishResult);
     if !attempted {
         return;
     }
-    if let Ok(mut state) = state.lock() {
+    if let Ok(mut state) = observe_persistence_io!(PublishStateLock, state.lock()) {
         match result {
             Ok(()) => {
                 if let Some(last) = pending.last() {
@@ -831,7 +1007,7 @@ fn publish_write_result(
     }
     // Potentially large payloads are released by this worker, outside the lock.
     if result.is_ok() {
-        pending.clear();
+        observe_persistence_io!(DropPending, pending.clear());
     }
 }
 

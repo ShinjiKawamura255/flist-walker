@@ -1513,7 +1513,7 @@ fn flush_failure_diagnostic_distinguishes_reply_disconnection() {
     };
     let worker = thread::spawn(move || {
         assert!(matches!(
-            rx.recv().unwrap(),
+            rx.recv().unwrap().0,
             UiStatePersistenceCommand::Flush(_)
         ));
         // Receiving then dropping the reply sender is a disconnection, not a timeout.
@@ -1572,6 +1572,7 @@ impl HistorySemanticFixture {
         let ownership = Arc::new(Mutex::new(TestWorkerOwnership {
             handle,
             shutdown_sent: false,
+            shutdown_command_id: 0,
             completed: None,
         }));
         registry.senders.insert(path.clone(), writer.sender.clone());
@@ -1921,6 +1922,10 @@ fn assert_shutdown_timeout_observes_owned_phase(after_write: bool) {
         diagnostic["persisted_generation"],
         if after_write { generation } else { 0 }
     );
+    assert!(
+        diagnostic["io"]["worker_id"].as_u64().is_some(),
+        "timeout needs a path-owned I/O observer identity"
+    );
     assert!(diagnostic["elapsed_ms"].as_f64().unwrap() >= 1.0);
     assert!(!base.exists());
     assert!(ownership.lock().unwrap().handle.is_none());
@@ -1961,4 +1966,242 @@ fn timed_out_test_shutdown_retains_writer_ownership_until_physical_return() {
         .senders
         .contains_key(&path));
     fs::remove_dir_all(base).unwrap();
+}
+
+struct IoProbeRelease {
+    release: Option<mpsc::Sender<()>>,
+    base: PathBuf,
+    paths: [PathBuf; 2],
+    cleaned: Arc<std::sync::atomic::AtomicBool>,
+}
+impl IoProbeRelease {
+    fn release(&mut self) {
+        if let Some(tx) = self.release.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+impl Drop for IoProbeRelease {
+    fn drop(&mut self) {
+        self.release();
+        let mut joined = true;
+        for path in &self.paths {
+            // Attempt both exact owners, even when the first cannot stop.
+            let current =
+                finish_ui_state_persistence_for_test(path, Duration::from_secs(2)).is_ok();
+            joined = current && joined;
+        }
+        if joined {
+            let removed = fs::remove_dir_all(&self.base)
+                .map(|_| true)
+                .unwrap_or_else(|error| error.kind() == std::io::ErrorKind::NotFound);
+            self.cleaned
+                .store(removed, std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+}
+
+fn assert_io_probe_reports_real_worker_boundary(
+    target: crate::test_io::Stage,
+    label: &str,
+    parent: &str,
+) {
+    let base = temp_dir("io-probe-boundary");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    let other_path = base.join("other.json");
+    let (ready_tx, ready_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let mut release = IoProbeRelease {
+        release: Some(release_tx),
+        base: base.clone(),
+        paths: [path.clone(), other_path.clone()],
+        cleaned: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+    };
+    let release_rx = Mutex::new(release_rx);
+    let reached = std::sync::atomic::AtomicBool::new(false);
+    let observer: crate::test_io::Observer = Arc::new(move |stage| {
+        if stage == target && !reached.swap(true, std::sync::atomic::Ordering::Relaxed) {
+            assert!(crate::test_io::inherited_observer().is_none());
+            ready_tx.send(()).unwrap();
+            release_rx
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .expect("controlled I/O hold must be released");
+        }
+    });
+    let capture = crate::test_io::capture_on_spawn(observer);
+    let generation = enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::from_json(json!({"show_preview":true})),
+        vec![],
+        false,
+    )
+    .unwrap();
+    drop(capture);
+    let (progress, state, ownership) = {
+        let registry = ui_state_persistence_registry().lock().unwrap();
+        let sender = &registry.senders[&path];
+        (
+            Arc::clone(&sender.progress),
+            Arc::clone(&sender.state),
+            Arc::clone(&registry.test_workers[&path]),
+        )
+    };
+    let ready = ready_rx.recv_timeout(Duration::from_secs(2));
+    let failure = ready
+        .is_ok()
+        .then(|| finish_ui_state_persistence_for_test(&path, Duration::from_millis(1)));
+    let diagnostic = progress.last_wait_failure.lock().unwrap().clone();
+    // A second real writer has no inherited test observer and must finish while A is held.
+    let other_generation = enqueue_ui_state_patch(
+        other_path.clone(),
+        UiStatePatch::from_json(json!({"show_preview":false})),
+        vec![],
+        false,
+    )
+    .unwrap();
+    let other_progress = {
+        let registry = ui_state_persistence_registry().lock().unwrap();
+        Arc::clone(&registry.senders[&other_path].progress)
+    };
+    let other_joined = finish_ui_state_persistence_for_test(&other_path, Duration::from_secs(2));
+    let other_document = fs::read_to_string(&other_path);
+    let a_while_b_finished = progress.io.snapshot();
+    release.release();
+    // All release/join/removal occurs before the diagnostic RED assertions.
+    let joined = finish_ui_state_persistence_for_test(&path, Duration::from_secs(2));
+    let document = fs::read_to_string(&path);
+    let persisted = state.lock().unwrap().status.persisted_generation;
+    if joined.is_ok() && other_joined.is_ok() {
+        fs::remove_dir_all(&base).unwrap();
+    }
+    assert!(
+        ready.is_ok(),
+        "real worker did not expose the selected I/O boundary"
+    );
+    assert!(
+        joined.is_ok() && other_joined.is_ok(),
+        "both exact writers must physically join"
+    );
+    assert_eq!(
+        failure.unwrap().unwrap_err(),
+        "test settings writer did not physically stop before deadline"
+    );
+    let diagnostic = diagnostic.expect("negative wait must produce a diagnostic");
+    assert_eq!(diagnostic["io"]["stage"], label);
+    assert_eq!(diagnostic["io"]["parent"], parent);
+    assert_eq!(diagnostic["io"]["observer_injected"], true);
+    assert!(
+        diagnostic["io"]["history"]["records"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|r| r["kind"] == "io-begin"
+                && r["stage"] == label
+                && r["command_id"].as_u64().unwrap_or(0) > 0),
+        "real operation must correlate with a dequeued command"
+    );
+    assert_eq!(diagnostic["persisted_generation"], 0);
+    assert_eq!(diagnostic["accepted_generation"], generation);
+    assert_eq!(a_while_b_finished["stage"], label);
+    assert_ne!(
+        progress.io.snapshot()["worker_id"],
+        other_progress.io.snapshot()["worker_id"]
+    );
+    assert_eq!(other_progress.io.snapshot()["observer_injected"], false);
+    let tail = progress.io.snapshot();
+    let records = tail["history"]["records"].as_array().unwrap();
+    let returned = records
+        .iter()
+        .find(|r| r["kind"] == "body-returned")
+        .unwrap()["sequence"]
+        .as_u64()
+        .unwrap();
+    let joined_record = records.iter().find(|r| r["kind"] == "joined").unwrap()["sequence"]
+        .as_u64()
+        .unwrap();
+    assert!(returned < joined_record);
+    assert!(records
+        .iter()
+        .any(|r| r["kind"] == "dequeued" && r["detail"] == 4));
+    assert_eq!(persisted, generation);
+    assert_eq!(other_generation, 1);
+    assert_eq!(
+        serde_json::from_str::<Value>(&document.unwrap()).unwrap()["show_preview"],
+        true
+    );
+    assert_eq!(
+        serde_json::from_str::<Value>(&other_document.unwrap()).unwrap()["show_preview"],
+        false
+    );
+    assert!(ownership.lock().unwrap().handle.is_none());
+    assert!(!base.exists());
+}
+
+#[test]
+fn io_probe_distinguishes_actual_atomic_replace_boundary() {
+    assert_io_probe_reports_real_worker_boundary(
+        crate::test_io::Stage::ReplaceFile,
+        "replace-file",
+        "atomic-write",
+    );
+}
+
+#[test]
+fn io_probe_distinguishes_actual_result_publication_lock_boundary() {
+    assert_io_probe_reports_real_worker_boundary(
+        crate::test_io::Stage::PublishStateLock,
+        "publish-state-lock",
+        "publish-result",
+    );
+}
+
+#[test]
+fn io_probe_owner_panic_still_releases_joins_and_removes_owned_fixture() {
+    let base = temp_dir("io-probe-panic-cleanup");
+    let path = base.join("state.json");
+    fs::create_dir_all(&base).unwrap();
+    let cleaned = Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let release_rx = Mutex::new(release_rx);
+        let _cleanup = IoProbeRelease {
+            release: Some(release_tx),
+            base: base.clone(),
+            paths: [path.clone(), base.join("other.json")],
+            cleaned: Arc::clone(&cleaned),
+        };
+        let observer: crate::test_io::Observer = Arc::new(move |stage| {
+            if stage == crate::test_io::Stage::ReplaceFile {
+                ready_tx.send(()).unwrap();
+                release_rx
+                    .lock()
+                    .unwrap()
+                    .recv_timeout(Duration::from_secs(5))
+                    .unwrap();
+            }
+        });
+        let capture = crate::test_io::capture_on_spawn(observer);
+        enqueue_ui_state_patch(path.clone(), UiStatePatch::default(), vec![], false).unwrap();
+        drop(capture);
+        ready_rx
+            .recv_timeout(Duration::from_secs(2))
+            .expect("real writer entered controlled operation");
+        panic!("controlled owner panic");
+    }));
+    let panic = result.unwrap_err();
+    assert_eq!(
+        panic.downcast_ref::<&str>(),
+        Some(&"controlled owner panic")
+    );
+    assert!(cleaned.load(std::sync::atomic::Ordering::Relaxed));
+    assert!(!base.exists());
+    assert!(!ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .test_workers
+        .contains_key(&path));
 }
