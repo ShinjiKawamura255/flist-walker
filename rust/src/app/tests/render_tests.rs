@@ -2572,3 +2572,205 @@ fn modifier_click_rejects_a_row_replaced_between_press_and_release() {
     assert!(!app.shell.runtime.pinned_paths.contains(&a));
     assert!(app.shell.runtime.pinned_paths.contains(&b));
 }
+
+struct ModifierPointerHarness {
+    app: FlistWalkerApp,
+    ctx: egui::Context,
+    time: f64,
+    focused: bool,
+    pos: egui::Pos2,
+}
+
+impl ModifierPointerHarness {
+    fn new(focused: bool) -> Self {
+        let root = test_root("pointer-event-modifiers");
+        let mut app = FlistWalkerApp::new(root.clone(), 20, String::new());
+        app.shell.runtime.committed_for_test_mut().results =
+            vec![(root.join("a.txt"), 0.0), (root.join("b.txt"), 0.0)];
+        app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+        app.shell.ui.show_preview = false;
+        let mut harness = Self {
+            app,
+            ctx: egui::Context::default(),
+            time: 0.0,
+            focused,
+            pos: egui::Pos2::ZERO,
+        };
+        harness.frame(egui::Modifiers::NONE, focused, vec![]);
+        let probe = harness.frame(egui::Modifiers::NONE, focused, vec![]);
+        harness.pos = probe.row_rects[1].1.center();
+        harness
+    }
+
+    fn frame(
+        &mut self,
+        modifiers: egui::Modifiers,
+        focused: bool,
+        mut events: Vec<egui::Event>,
+    ) -> render_panels::ResultRenderProbe {
+        if focused != self.focused {
+            events.insert(0, egui::Event::WindowFocused(focused));
+        }
+        self.focused = focused;
+        self.time += 0.05;
+        render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+        let _ = self.ctx.run_ui(
+            egui::RawInput {
+                time: Some(self.time),
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(800.0, 600.0),
+                )),
+                modifiers,
+                focused,
+                events,
+                ..Default::default()
+            },
+            |ui| render_panels::render_results_list(&mut self.app, ui),
+        );
+        render_panels::take_result_render_probe()
+    }
+
+    fn click(
+        &mut self,
+        event_modifiers: egui::Modifiers,
+        frame_modifiers: egui::Modifiers,
+    ) -> render_panels::ResultRenderProbe {
+        let mut events = vec![egui::Event::PointerMoved(self.pos)];
+        for pressed in [true, false] {
+            events.push(egui::Event::PointerButton {
+                pos: self.pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: event_modifiers,
+            });
+        }
+        self.frame(frame_modifiers, true, events)
+    }
+
+    fn primary() -> egui::Modifiers {
+        egui::Modifiers {
+            command: true,
+            ctrl: !cfg!(target_os = "macos"),
+            mac_cmd: cfg!(target_os = "macos"),
+            ..Default::default()
+        }
+    }
+}
+
+#[test]
+fn modifier_click_uses_event_modifiers_after_key_release_before_frame() {
+    for initially_focused in [true, false] {
+        let mut h = ModifierPointerHarness::new(initially_focused);
+        h.click(ModifierPointerHarness::primary(), egui::Modifiers::NONE);
+        assert_eq!(
+            h.app.shell.runtime.current_row,
+            Some(1),
+            "click was delivered"
+        );
+        assert!(h.app.shell.runtime.pinned_paths.contains(&h.app.shell.runtime.results[1].0), "click-time modifier must survive release before render (initially_focused={initially_focused})");
+    }
+}
+
+#[test]
+fn modifier_click_activation_with_held_key_keeps_painted_target() {
+    let mut h = ModifierPointerHarness::new(false);
+    h.click(
+        ModifierPointerHarness::primary(),
+        ModifierPointerHarness::primary(),
+    );
+    assert_eq!(h.app.shell.runtime.current_row, Some(1));
+    assert_eq!(h.app.shell.runtime.pinned_paths.len(), 1);
+}
+
+#[test]
+fn ordinary_click_does_not_use_modifier_pressed_after_the_click() {
+    let mut h = ModifierPointerHarness::new(true);
+    h.click(egui::Modifiers::NONE, ModifierPointerHarness::primary());
+    assert_eq!(h.app.shell.runtime.current_row, Some(1));
+    assert!(h.app.shell.runtime.pinned_paths.is_empty());
+}
+
+#[test]
+fn modifier_double_click_after_key_release_never_activates() {
+    let mut h = ModifierPointerHarness::new(true);
+    h.click(
+        ModifierPointerHarness::primary(),
+        ModifierPointerHarness::primary(),
+    );
+    assert_eq!(h.app.shell.runtime.pinned_paths.len(), 1);
+    let second = h.click(ModifierPointerHarness::primary(), egui::Modifiers::NONE);
+    assert!(
+        second.action_rows.is_empty(),
+        "modifier release must not turn the second click into activation"
+    );
+    assert_eq!(h.app.shell.runtime.pinned_paths.len(), 1);
+}
+
+#[test]
+fn shift_double_click_keeps_event_modifier_after_key_release() {
+    let mut h = ModifierPointerHarness::new(true);
+    let shift = egui::Modifiers {
+        shift: true,
+        ..Default::default()
+    };
+    h.click(shift, egui::Modifiers::NONE);
+    let second = h.click(shift, egui::Modifiers::NONE);
+    assert_eq!(second.action_rows, vec![1]);
+    assert_eq!(second.action_parent_rows, vec![1]);
+    assert!(h.app.shell.runtime.pinned_paths.is_empty());
+}
+
+#[test]
+fn modifier_click_uses_event_modifiers_across_press_and_release_frames() {
+    let mut h = ModifierPointerHarness::new(true);
+    let primary = ModifierPointerHarness::primary();
+    h.frame(
+        egui::Modifiers::NONE,
+        true,
+        vec![
+            egui::Event::PointerMoved(h.pos),
+            egui::Event::PointerButton {
+                pos: h.pos,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: primary,
+            },
+        ],
+    );
+    h.frame(
+        egui::Modifiers::NONE,
+        true,
+        vec![egui::Event::PointerButton {
+            pos: h.pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: primary,
+        }],
+    );
+    assert_eq!(h.app.shell.runtime.current_row, Some(1));
+    assert_eq!(h.app.shell.runtime.pinned_paths.len(), 1);
+}
+
+#[test]
+fn modifier_click_without_painted_target_remains_fail_closed() {
+    let mut h = ModifierPointerHarness::new(true);
+    h.ctx.data_mut(|data| {
+        data.remove::<Vec<(u64, egui::Rect, PathBuf)>>(egui::Id::new(
+            "result-visible-pointer-targets",
+        ));
+    });
+    h.click(
+        ModifierPointerHarness::primary(),
+        ModifierPointerHarness::primary(),
+    );
+    assert_eq!(
+        h.app.shell.runtime.current_row,
+        Some(1),
+        "ordinary selection is still allowed"
+    );
+    assert!(
+        h.app.shell.runtime.pinned_paths.is_empty(),
+        "an unverified painted target cannot be pinned"
+    );
+}
