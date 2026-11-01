@@ -25,6 +25,7 @@ pub(super) enum TestResultRowInteraction {
 pub(super) struct ResultRenderProbe {
     pub(super) rendered_rows: Vec<usize>,
     pub(super) action_rows: Vec<usize>,
+    pub(super) action_parent_rows: Vec<usize>,
     pub(super) row_rects: Vec<(usize, egui::Rect)>,
     pub(super) header_controls: Vec<(&'static str, egui::Rect)>,
     pub(super) header_bounds: Option<egui::Rect>,
@@ -108,13 +109,16 @@ fn record_rendered_result_row(index: usize, rect: egui::Rect) -> TestResultRowIn
 }
 
 #[cfg(test)]
-fn record_result_action(index: usize) -> bool {
+fn record_result_action(index: usize, open_parent: bool) -> bool {
     RESULT_RENDER_PROBE.with(|probe| {
         let mut probe = probe.borrow_mut();
         let Some(active) = probe.as_mut() else {
             return false;
         };
         active.result.action_rows.push(index);
+        if open_parent {
+            active.result.action_parent_rows.push(index);
+        }
         true
     })
 }
@@ -754,8 +758,28 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     } else {
         egui::scroll_area::ScrollSource::NONE
     };
-    let modifier_pin = app.shell.runtime.modifier_click_pins_enabled
-        && ui.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt);
+    // A later ModifiersChanged event can update the frame snapshot after this
+    // click was queued. Keep the click's own chord, including Shift activation.
+    let click_modifiers = ui.input(|i| {
+        i.events
+            .iter()
+            .rev()
+            .find_map(|event| match event {
+                egui::Event::PointerButton {
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers,
+                    ..
+                } => Some(*modifiers),
+                _ => None,
+            })
+            .unwrap_or(i.modifiers)
+    });
+    let pin_enabled = app.shell.runtime.modifier_click_pins_enabled;
+    let pins_with = |modifiers: egui::Modifiers| {
+        pin_enabled && modifiers.command && !modifiers.shift && !modifiers.alt
+    };
+    let modifier_pin = pins_with(click_modifiers);
     let mut clicked_row: Option<usize> = None;
     let mut pin_path = None;
     let pin_gesture_id = egui::Id::new("result-modifier-pin-gesture");
@@ -765,13 +789,13 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 pos,
                 button: egui::PointerButton::Primary,
                 pressed: true,
-                ..
-            } => Some(*pos),
+                modifiers,
+            } => Some((*pos, *modifiers)),
             _ => None,
         })
     });
     let visible_targets_id = egui::Id::new("result-visible-pointer-targets");
-    if let Some(pos) = pressed_at {
+    if let Some((pos, modifiers)) = pressed_at {
         let previous_target = ui
             .ctx()
             .data(|data| {
@@ -785,7 +809,7 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             .map(|(tab, _, path)| (tab, path));
         ui.ctx().data_mut(|data| {
             data.remove::<(u64, std::path::PathBuf)>(pin_gesture_id);
-            if modifier_pin {
+            if pins_with(modifiers) {
                 if let Some(target) = previous_target {
                     data.insert_temp(pin_gesture_id, target);
                 }
@@ -926,9 +950,9 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     if let Some(i) = execute_row {
         app.shell.tabs.mark_active_tab_meaningfully_engaged();
         app.set_current_row(Some(i));
-        let open_parent_for_files = ui.input(|i| i.modifiers.shift);
+        let open_parent_for_files = click_modifiers.shift;
         #[cfg(test)]
-        if !record_result_action(i) {
+        if !record_result_action(i, open_parent_for_files) {
             app.execute_result_row_for_activation(i, open_parent_for_files);
         }
         #[cfg(not(test))]
