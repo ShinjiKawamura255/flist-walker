@@ -348,6 +348,7 @@ fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
         emacs_keybindings_enabled: false,
         ctrl_w_deletes_word_in_query: true,
         tab_pin_moves_to_next_row: true,
+        modifier_click_pins_enabled: false,
         walker_max_entries: 1,
         filelist_auto_check_enabled: false,
     };
@@ -363,6 +364,7 @@ fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
     settle_settings_dialog(&mut app);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
     assert_eq!(app.shell.runtime.emacs_keybindings_enabled, effective_emacs);
+    assert!(app.shell.runtime.modifier_click_pins_enabled);
     let saved_bytes = fs::read(&path).expect("saved settings");
     let saved_json: serde_json::Value = serde_json::from_slice(&saved_bytes).expect("saved JSON");
     assert_eq!(saved_json["future_key"], "retained");
@@ -392,6 +394,10 @@ fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
     assert_eq!(
         next_launch.tab_pin_moves_to_next_row,
         expected.tab_pin_moves_to_next_row
+    );
+    assert_eq!(
+        next_launch.modifier_click_pins_enabled,
+        expected.modifier_click_pins_enabled
     );
     assert_eq!(next_launch.walker_max_entries, expected.walker_max_entries);
     assert_eq!(

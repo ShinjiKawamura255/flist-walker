@@ -754,7 +754,46 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     } else {
         egui::scroll_area::ScrollSource::NONE
     };
+    let modifier_pin = app.shell.runtime.modifier_click_pins_enabled
+        && ui.input(|i| i.modifiers.command && !i.modifiers.shift && !i.modifiers.alt);
     let mut clicked_row: Option<usize> = None;
+    let mut pin_path = None;
+    let pin_gesture_id = egui::Id::new("result-modifier-pin-gesture");
+    let pressed_at = ui.input(|i| {
+        i.events.iter().find_map(|event| match event {
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                ..
+            } => Some(*pos),
+            _ => None,
+        })
+    });
+    let visible_targets_id = egui::Id::new("result-visible-pointer-targets");
+    if let Some(pos) = pressed_at {
+        let previous_target = ui
+            .ctx()
+            .data(|data| {
+                data.get_temp::<Vec<(u64, egui::Rect, std::path::PathBuf)>>(visible_targets_id)
+            })
+            .and_then(|targets| {
+                targets
+                    .into_iter()
+                    .find(|(tab, rect, _)| Some(*tab) == app.current_tab_id() && rect.contains(pos))
+            })
+            .map(|(tab, _, path)| (tab, path));
+        ui.ctx().data_mut(|data| {
+            data.remove::<(u64, std::path::PathBuf)>(pin_gesture_id);
+            if modifier_pin {
+                if let Some(target) = previous_target {
+                    data.insert_temp(pin_gesture_id, target);
+                }
+            }
+        });
+    }
+    let mut visible_targets = Vec::new();
+    let pointer_released = ui.input(|i| i.pointer.button_released(egui::PointerButton::Primary));
     let mut execute_row: Option<usize> = None;
     let prefer_relative = app.prefer_relative_display();
     app.ensure_highlight_cache_scope(prefer_relative);
@@ -809,6 +848,11 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let (rect, response) =
                 ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
             render_result_row(app, ui, rect, &path, is_current, prefer_relative);
+            visible_targets.push((
+                app.current_tab_id().unwrap_or_default(),
+                rect.intersect(ui.clip_rect()),
+                path.clone(),
+            ));
             #[cfg(test)]
             let test_interaction = record_rendered_result_row(i, rect);
             #[cfg(test)]
@@ -823,10 +867,21 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             );
             #[cfg(not(test))]
             let test_double_clicked = false;
-            if response.clicked() || test_clicked {
+            let double_clicked = response.double_clicked() || test_double_clicked;
+            if response.clicked() || test_clicked || (modifier_pin && double_clicked) {
                 clicked_row = Some(i);
+                let same_pressed_target = ui
+                    .ctx()
+                    .data(|data| data.get_temp::<(u64, std::path::PathBuf)>(pin_gesture_id))
+                    .is_some_and(|(tab, pressed)| {
+                        Some(tab) == app.current_tab_id() && pressed == path
+                    });
+                if modifier_pin && !double_clicked && (same_pressed_target || test_clicked) {
+                    // Capture the rendered path, never a row resolved after an index update.
+                    pin_path = Some(path.clone());
+                }
             }
-            if response.double_clicked() || test_double_clicked {
+            if double_clicked && !modifier_pin {
                 execute_row = Some(i);
             }
         }
@@ -843,12 +898,29 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     });
     #[cfg(not(test))]
     let _ = scroll_output;
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(visible_targets_id, visible_targets));
+    if pointer_released {
+        ui.ctx()
+            .data_mut(|data| data.remove::<(u64, std::path::PathBuf)>(pin_gesture_id));
+    }
     if let Some(i) = clicked_row {
         if app.shell.runtime.current_row != Some(i) {
             app.shell.tabs.mark_active_tab_meaningfully_engaged();
         }
         app.set_current_row(Some(i));
-        app.request_preview_for_current();
+        if let Some(path) = pin_path {
+            if app
+                .shell
+                .runtime
+                .results
+                .get(i)
+                .is_some_and(|(current, _)| *current == path)
+            {
+                app.toggle_pin_current();
+            }
+        }
+        app.refresh_preview_for_current();
         app.refresh_status_line();
     }
     if let Some(i) = execute_row {

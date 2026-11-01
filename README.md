@@ -117,6 +117,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
 - Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and text-editing chords in both the GUI and TUI. When enabled (the default), navigation/accept/cancel applies to active result lists, history, root selectors, preset/Named Root screens, overlays, and modals wherever the corresponding arrow/Enter/Esc command exists. Editing chords such as `Ctrl+A/E/B/F/H/D/K/Y/U` apply to every application-owned single-line field, including preset and root-management inputs. GUI `Ctrl+W` remains governed separately by `ctrl_w_deletes_word_in_query` because it conflicts with tab close.
 - Set `ctrl_w_deletes_word_in_query` to `true` to make `Ctrl+W` delete the previous word while the GUI search box or history filter is focused and Emacs keybindings are enabled. It is disabled by default, so `Ctrl+W` continues to close the current tab on Windows/Linux. The TUI has no tab conflict and keeps its existing Emacs `Ctrl+W` behavior.
+- In GUI Results, Ctrl+click (Command+click on macOS) toggles the same pins as Tab and keeps the cursor on the clicked row. This is enabled by default; turn off `modifier_click_pins_enabled` in Settings and restart to restore the previous click behavior. Shift gestures keep their existing actions.
 - Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 
 Example:
@@ -131,6 +132,7 @@ Example:
   "emacs_keybindings_enabled": true,
   "ctrl_w_deletes_word_in_query": false,
   "tab_pin_moves_to_next_row": false,
+  "modifier_click_pins_enabled": true,
   "filelist_auto_check_enabled": true
 }
 ```

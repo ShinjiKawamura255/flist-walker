@@ -52,7 +52,7 @@ pub enum PreviewEncoding {
     Windows1252,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PreviewHeader {
     pub path: PathBuf,
     pub size: Option<u64>,
@@ -346,6 +346,26 @@ impl PagedTextPreview {
         document.verify_identity(path, &file)?;
         document.update_syntax(canceled);
         Ok(document)
+    }
+
+    /// Worker-only validation. Keep loaded pages when identity and displayed metadata agree.
+    pub(crate) fn unchanged(&self, path: &Path, canceled: &dyn Fn() -> bool) -> bool {
+        if canceled() || path != self.header.path || should_skip_preview(path, false) {
+            return false;
+        }
+        if !std::fs::metadata(path).is_ok_and(|meta| meta.is_file()) || canceled() {
+            return false;
+        }
+        let Ok(file) = File::open(path) else {
+            return false;
+        };
+        let Ok(metadata) = file.metadata() else {
+            return false;
+        };
+        FileIdentity::from_file(&file, &metadata) == self.cursor.identity
+            && PreviewHeader::read(path, canceled).as_ref() == Some(&self.header)
+            && self.verify_identity(path, &file).is_ok()
+            && !canceled()
     }
 
     pub fn read_more(

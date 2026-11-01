@@ -88,6 +88,7 @@ pub(super) fn apply_results_with_selection_policy(
     app.shell.runtime.set_total_match_count(total_match_count);
     if app.shell.runtime.results.is_empty() {
         app.set_current_row(None);
+        app.clear_paged_preview();
         app.shell.runtime.clear_preview();
         app.shell.worker_bus.preview.clear_request();
     } else {
@@ -103,7 +104,7 @@ pub(super) fn apply_results_with_selection_policy(
             app.shell.runtime.evicted_selected_path = None;
         }
         app.set_current_row(selected_row.or(previous_row));
-        app.request_preview_for_current();
+        app.refresh_preview_for_current();
         if !keep_scroll_position {
             app.request_scroll_to_current();
         }
@@ -558,9 +559,17 @@ pub(super) fn apply_background_preview_response(
         };
         if current_path.is_some_and(|current_path| *current_path == response.path) {
             if let Some(document) = response.document {
-                tab.result_state.committed.preview.clear();
-                tab.result_state.committed.preview_document = Some(document);
-                tab.result_state.committed.preview_page_error = None;
+                if !tab
+                    .result_state
+                    .committed
+                    .preview_document
+                    .as_ref()
+                    .is_some_and(|current| std::sync::Arc::ptr_eq(current, &document))
+                {
+                    tab.result_state.committed.preview.clear();
+                    tab.result_state.committed.preview_document = Some(document);
+                    tab.result_state.committed.preview_page_error = None;
+                }
             } else if let Some(error) = response.page_error {
                 if !response.is_more {
                     tab.result_state.committed.preview =
@@ -619,7 +628,7 @@ pub(super) fn apply_active_preview_response(
         app.apply_paged_preview_response(response);
         return true;
     }
-    app.clear_paged_preview();
+    app.settle_text_preview();
     app.cache_preview(response.path.clone(), response.preview.clone());
     if let Some(row) = app.shell.runtime.current_row {
         if let Some((current_path, _)) = app.shell.runtime.results.get(row) {

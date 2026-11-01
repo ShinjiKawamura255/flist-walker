@@ -281,9 +281,14 @@ pub(in crate::app) fn spawn_preview_worker(
             return None;
         }
         // A link's target may have become resolvable since kind discovery.
-        let is_dir = request.is_dir
-            || (request.document.is_none()
-                && std::fs::metadata(&request.path).is_ok_and(|metadata| metadata.is_dir()));
+        let is_dir = if request.revalidate {
+            // Index kind discovery may lag behind a replacement at the same path.
+            std::fs::metadata(&request.path).is_ok_and(|metadata| metadata.is_dir())
+        } else {
+            request.is_dir
+                || (request.document.is_none()
+                    && std::fs::metadata(&request.path).is_ok_and(|metadata| metadata.is_dir()))
+        };
         if canceled() {
             return None;
         }
@@ -291,12 +296,27 @@ pub(in crate::app) fn spawn_preview_worker(
             return build_preview_text_with_kind_cancellable(&request.path, true, canceled)
                 .map(PreviewBuild::text);
         }
-        let is_more = request.document.is_some();
-        let result = if let Some(document) = &request.document {
-            document.read_more(&request.path, canceled)
-        } else {
-            PagedTextPreview::initial(&request.path, canceled)
-        };
+        if request.revalidate {
+            if let Some(document) = request
+                .document
+                .as_ref()
+                .filter(|document| document.unchanged(&request.path, canceled))
+            {
+                return Some(PreviewBuild {
+                    preview: String::new(),
+                    document: Some(Arc::clone(document)),
+                    page_error: None,
+                    is_more: false,
+                });
+            }
+        }
+        let is_more = request.document.is_some() && !request.revalidate;
+        let result =
+            if let Some(document) = request.document.as_ref().filter(|_| !request.revalidate) {
+                document.read_more(&request.path, canceled)
+            } else {
+                PagedTextPreview::initial(&request.path, canceled)
+            };
         match result {
             Ok(document) => Some(PreviewBuild {
                 preview: String::new(),
@@ -347,7 +367,7 @@ fn canceled_preview_response(request: PreviewRequest) -> PreviewResponse {
         canceled: true,
         document: None,
         page_error: None,
-        is_more: request.document.is_some(),
+        is_more: request.document.is_some() && !request.revalidate,
     }
 }
 
@@ -1728,6 +1748,7 @@ mod preview_cancellation_tests {
                 Some("latest preview".into())
             });
         tx.send(PreviewRequest {
+            revalidate: false,
             request_id: 1,
             path: "slow".into(),
             is_dir: true,
@@ -1736,6 +1757,7 @@ mod preview_cancellation_tests {
         .unwrap();
         entered_rx.recv_timeout(Duration::from_secs(1)).unwrap();
         tx.send(PreviewRequest {
+            revalidate: false,
             request_id: 2,
             path: "latest".into(),
             is_dir: true,
@@ -1743,6 +1765,7 @@ mod preview_cancellation_tests {
         })
         .unwrap();
         tx.send(PreviewRequest {
+            revalidate: false,
             request_id: 3,
             path: "latest".into(),
             is_dir: true,

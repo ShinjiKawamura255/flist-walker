@@ -606,7 +606,8 @@ fn seeds_default_user_config_values_when_missing() {
     );
     assert_eq!(saved["restore_queries_enabled"], true);
     assert_eq!(saved["theme"], "system");
-    assert_eq!(saved.len(), 9);
+    assert_eq!(saved["modifier_click_pins_enabled"], true);
+    assert_eq!(saved.len(), 10);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -864,7 +865,8 @@ fn load_runtime_config_adds_missing_user_config_values_to_existing_file() {
     );
     assert_eq!(saved["restore_queries_enabled"], true);
     assert_eq!(saved["theme"], "system");
-    assert_eq!(saved.len(), 9);
+    assert_eq!(saved["modifier_click_pins_enabled"], true);
+    assert_eq!(saved.len(), 10);
 
     let _ = fs::remove_dir_all(&home);
 }
@@ -1225,4 +1227,17 @@ fn restore_queries_and_all_theme_modes_round_trip_preserving_unknown_settings() 
         assert_eq!(json["unknown"]["keep"], true);
     }
     fs::remove_dir_all(dir).expect("cleanup");
+}
+
+#[test]
+fn modifier_click_defaults_on_and_persists_opt_out() {
+    let config: RuntimeConfig = serde_json::from_str("{}").unwrap();
+    assert!(config.modifier_click_pins_enabled);
+    assert!(EditableSettings::from(&config).modifier_click_pins_enabled);
+    let config: RuntimeConfig =
+        serde_json::from_str(r#"{"modifier_click_pins_enabled":false}"#).unwrap();
+    assert!(!config.modifier_click_pins_enabled);
+    let next: RuntimeConfig =
+        serde_json::from_str(&serde_json::to_string(&config).unwrap()).unwrap();
+    assert!(!next.modifier_click_pins_enabled);
 }

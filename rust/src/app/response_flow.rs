@@ -291,6 +291,11 @@ impl FlistWalkerApp {
                 }
             }
         }
+        if !self.shell.worker_bus.preview.in_progress
+            && std::mem::take(&mut self.paged_preview_view.revalidate_pending)
+        {
+            self.refresh_preview_for_current();
+        }
     }
 
     pub(super) fn fail_preview_worker(&mut self) {
@@ -376,6 +381,22 @@ impl FlistWalkerApp {
                         }) == Some(&response.path)
                 })
             });
+        let unchanged = target_index.is_some_and(|index| {
+            self.shell.tabs.get(index).is_some_and(|tab| {
+                tab.result_state
+                    .committed
+                    .preview_document
+                    .as_ref()
+                    .zip(response.document.as_ref())
+                    .is_some_and(|(current, incoming)| std::sync::Arc::ptr_eq(current, incoming))
+            })
+        });
+        if unchanged {
+            let request_id = response.request_id;
+            result_reducer::apply_background_preview_response(self, response);
+            self.settle_preview_worker_response(request_id);
+            return;
+        }
         if let Some(document) = response.document.as_ref() {
             if !self.enforce_preview_payload_budget(Some(document), false) {
                 self.deferred_preview_response = Some(response);
@@ -436,7 +457,14 @@ impl FlistWalkerApp {
                     return false;
                 }
             }
-            if let Some(document) = response.document.as_ref() {
+            if let Some(document) = response.document.as_ref().filter(|document| {
+                !self
+                    .shell
+                    .runtime
+                    .preview_document
+                    .as_ref()
+                    .is_some_and(|current| std::sync::Arc::ptr_eq(current, document))
+            }) {
                 if !self.enforce_preview_payload_budget(Some(document), true)
                     || !self.shell.runtime.try_retire_preview_document()
                 {

@@ -1230,7 +1230,7 @@ impl FlistWalkerApp {
             self.request_kind_entry_refilter();
         }
         if resolved_current_row && self.shell.ui.show_preview {
-            self.request_preview_for_current();
+            self.refresh_preview_for_current();
         }
     }
 }

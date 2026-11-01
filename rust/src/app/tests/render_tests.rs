@@ -2391,3 +2391,184 @@ fn native_titlebar_theme_follows_app_preference_and_releases_system_override() {
         }
     }
 }
+
+#[test]
+fn modifier_click_uses_existing_pins_and_preserves_other_clicks() {
+    let root = test_root("modifier-click");
+    let mut app = FlistWalkerApp::new(root.clone(), 20, String::new());
+    let a = root.join("a.txt");
+    let b = root.join("b.txt");
+    app.shell.runtime.committed_for_test_mut().results = vec![(a.clone(), 0.0), (b.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.tab_pin_moves_to_next_row = true;
+    let ctx = egui::Context::default();
+    let click = |app: &mut FlistWalkerApp, row, enabled, primary, shift, double| {
+        app.shell.runtime.modifier_click_pins_enabled = enabled;
+        render_panels::begin_result_render_probe(if double {
+            render_panels::TestResultRowInteraction::DoubleClick(row)
+        } else {
+            render_panels::TestResultRowInteraction::Click(row)
+        });
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                modifiers: egui::Modifiers {
+                    command: primary,
+                    ctrl: primary && !cfg!(target_os = "macos"),
+                    mac_cmd: primary && cfg!(target_os = "macos"),
+                    shift,
+                    ..Default::default()
+                },
+                ..Default::default()
+            },
+            |ui| render_panels::render_results_list(app, ui),
+        );
+        render_panels::take_result_render_probe()
+    };
+    click(&mut app, 1, true, true, false, false);
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert!(app.shell.runtime.pinned_paths.contains(&b));
+    assert!(click(&mut app, 1, true, true, false, true)
+        .action_rows
+        .is_empty());
+    assert!(app.shell.runtime.pinned_paths.contains(&b));
+    click(&mut app, 1, true, true, false, false);
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+    click(&mut app, 0, false, true, false, false);
+    click(&mut app, 1, true, false, false, false);
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+    assert_eq!(app.shell.runtime.current_row, Some(1));
+    assert_eq!(
+        click(&mut app, 0, true, true, true, true).action_rows,
+        vec![0]
+    );
+    assert!(app.shell.runtime.pinned_paths.is_empty());
+}
+
+#[test]
+fn modifier_click_rejects_a_row_replaced_between_press_and_release() {
+    let root = test_root("modifier-index-identity");
+    let a = root.join("a.txt");
+    let b = root.join("b.txt");
+    let mut app = FlistWalkerApp::new(root, 20, String::new());
+    app.shell.ui.show_preview = false;
+    app.shell.runtime.committed_for_test_mut().results = vec![(a.clone(), 0.0)];
+    app.shell.runtime.committed_for_test_mut().current_row = Some(0);
+    let ctx = egui::Context::default();
+    let modifiers = egui::Modifiers {
+        command: true,
+        ctrl: !cfg!(target_os = "macos"),
+        mac_cmd: cfg!(target_os = "macos"),
+        ..Default::default()
+    };
+    let clock = std::cell::Cell::new(0.0);
+    let frame = |app: &mut FlistWalkerApp, events| {
+        render_panels::begin_result_render_probe(render_panels::TestResultRowInteraction::None);
+        clock.set(clock.get() + 0.05);
+        let _ = ctx.run_ui(
+            egui::RawInput {
+                time: Some(clock.get()),
+                modifiers,
+                events,
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(800.0, 600.0),
+                )),
+                ..Default::default()
+            },
+            |ui| render_panels::render_results_list(app, ui),
+        );
+        render_panels::take_result_render_probe()
+    };
+    let probe = frame(&mut app, vec![]);
+    let pos = probe.row_rects[0].1.center();
+    frame(&mut app, vec![egui::Event::PointerMoved(pos)]);
+    frame(
+        &mut app,
+        vec![egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers,
+        }],
+    );
+    app.replace_results_snapshot(vec![(b.clone(), 0.0)], true);
+    frame(
+        &mut app,
+        vec![egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers,
+        }],
+    );
+    assert!(
+        app.shell.runtime.pinned_paths.is_empty(),
+        "index replacement must not pin the new row"
+    );
+    // A complete fast click can arrive in one frame; press identity still comes from the previous painted snapshot.
+    clock.set(clock.get() + 1.0);
+    frame(
+        &mut app,
+        vec![
+            egui::Event::PointerMoved(pos),
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers,
+            },
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers,
+            },
+        ],
+    );
+    assert!(app.shell.runtime.pinned_paths.contains(&b));
+    frame(
+        &mut app,
+        vec![
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers,
+            },
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers,
+            },
+        ],
+    );
+    assert!(
+        app.shell.runtime.pinned_paths.contains(&b),
+        "fast double click must toggle only once"
+    );
+    app.shell.runtime.pinned_paths.clear();
+    // A full gesture on the new snapshot must still pin the clicked path.
+    clock.set(clock.get() + 1.0);
+    frame(
+        &mut app,
+        vec![egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers,
+        }],
+    );
+    frame(
+        &mut app,
+        vec![egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers,
+        }],
+    );
+    assert!(!app.shell.runtime.pinned_paths.contains(&a));
+    assert!(app.shell.runtime.pinned_paths.contains(&b));
+}

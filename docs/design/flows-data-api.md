@@ -80,7 +80,7 @@
 
 - 起動時の `bootstrap` は実効configの `restore_queries_enabled` を復元intentのsanitizeに渡す。`gui_launch` は初回描画前に `render_theme` で `ThemeMode` を egui の System/Dark/Light preference に対応付け、OS追従はeguiへ委ねる。
 - `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。Walker 上限の単一行入力は現在の process の Emacs 設定で共有 text-editing adapter を使い、次回起動用の草稿値をその場で適用しない。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
-- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、9つの利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
+- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、10個の利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
 - `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
 
 ## DES-026 段階的プレビューの所有権と色分け
@@ -119,3 +119,8 @@
 - `index_recovery` と coordinator が停止対象と admission を所有し、明示更新だけで対象タブを再開する。停止時は最新世代、待機 queue、遅延 finish/refresh、index 待ちの FileList intent を失効する。build/mailbox/finalization payload は既存 bounded reclaimer を利用し、Full 時も所有権を保持する。確定 snapshot と write transaction は別責務として保護する。
 - render の共通有効条件が、admission、queue/inflight、active shell または inactive tab の要求・完了確定・遅延更新を参照する。active tab の保存 slot や停止後の資源回収待ちは停止対象に数えない。停止ボタンのグレーアウトと command dispatch の再確認に同じ条件を使い、surface snapshot に無効な action を記録する。
 - Trace: FR-049 / NFR-008 / NFR-015 → SP-027 → DES-029 → TC-235, TC-236。rollback は task commit 全体の revert、永続形式の移行なし。
+
+### DES-026: Preview revalidation on result replacement
+
+- `result_reducer`とkind解決完了は`refresh_preview_for_current`でtab/pathの表示identityを比較する。同じ対象はLoadingへ置換せず、既存bounded preview workerに`revalidate`を渡す。readerはfile ID・size・mtimeと`PreviewHeader`を照合し、一致なら同じArcを返す。本文・syntax・既読ページをUIで比較・cloneしない。変更時は先頭文書または新しいエラー情報へ置換する。directoryもworkerで再取得する。
+- 読込中の結果更新は同じviewのboolean pendingへ集約し、pollの終端後に1回再確認する。target変更・empty・hideではviewとpendingを破棄する。request/tab/path照合と既存reclaimer・予算上限を維持し、再利用Arcの不要な退役を避ける。

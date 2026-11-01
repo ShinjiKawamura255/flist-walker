@@ -286,6 +286,7 @@ pub(super) struct AppRuntimeState {
     pub(super) emacs_keybindings_enabled: bool,
     pub(super) ctrl_w_deletes_word_in_query: bool,
     pub(super) tab_pin_moves_to_next_row: bool,
+    pub(super) modifier_click_pins_enabled: bool,
     pub(super) notice: String,
     pub(super) status_line: String,
 }
@@ -303,6 +304,7 @@ impl AppRuntimeState {
         emacs_keybindings_enabled: bool,
         ctrl_w_deletes_word_in_query: bool,
         tab_pin_moves_to_next_row: bool,
+        modifier_click_pins_enabled: bool,
     ) -> Self {
         Self {
             root,
@@ -325,6 +327,7 @@ impl AppRuntimeState {
             emacs_keybindings_enabled,
             ctrl_w_deletes_word_in_query,
             tab_pin_moves_to_next_row,
+            modifier_click_pins_enabled,
             notice: String::new(),
             status_line: "Initializing...".to_string(),
         }

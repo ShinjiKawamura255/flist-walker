@@ -10,6 +10,7 @@
   "search_parallel_threshold": 25000,
   "search_threads": null,
   "tab_pin_moves_to_next_row": false,
+  "modifier_click_pins_enabled": true,
   "theme": "system",
   "update_allow_downgrade": false,
   "update_allow_same_version": false,

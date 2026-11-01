@@ -460,6 +460,7 @@ impl FlistWalkerApp {
                     emacs_keybindings_enabled,
                     ctrl_w_deletes_word_in_query,
                     tab_pin_moves_to_next_row,
+                    runtime_config.modifier_click_pins_enabled,
                 ),
                 search: SearchCoordinator::new(search_tx, search_rx),
                 worker_bus,

@@ -66,6 +66,7 @@ pub struct RuntimeConfig {
     pub emacs_keybindings_enabled: bool,
     pub ctrl_w_deletes_word_in_query: bool,
     pub tab_pin_moves_to_next_row: bool,
+    pub modifier_click_pins_enabled: bool,
     pub update_feed_url: String,
     pub update_allow_same_version: bool,
     pub update_allow_downgrade: bool,
@@ -86,6 +87,7 @@ pub struct EditableSettings {
     pub emacs_keybindings_enabled: bool,
     pub ctrl_w_deletes_word_in_query: bool,
     pub tab_pin_moves_to_next_row: bool,
+    pub modifier_click_pins_enabled: bool,
     pub walker_max_entries: usize,
     pub filelist_auto_check_enabled: bool,
 }
@@ -100,6 +102,7 @@ impl From<&RuntimeConfig> for EditableSettings {
             emacs_keybindings_enabled: config.emacs_keybindings_enabled,
             ctrl_w_deletes_word_in_query: config.ctrl_w_deletes_word_in_query,
             tab_pin_moves_to_next_row: config.tab_pin_moves_to_next_row,
+            modifier_click_pins_enabled: config.modifier_click_pins_enabled,
             walker_max_entries: config.walker_max_entries,
             filelist_auto_check_enabled: config.filelist_auto_check_enabled,
         }
@@ -198,6 +201,10 @@ fn save_editable_settings_with_writer(
     object.insert(
         "tab_pin_moves_to_next_row".into(),
         serde_json::json!(draft.tab_pin_moves_to_next_row),
+    );
+    object.insert(
+        "modifier_click_pins_enabled".into(),
+        serde_json::json!(draft.modifier_click_pins_enabled),
     );
     object.insert(
         "walker_max_entries".into(),
@@ -306,6 +313,8 @@ struct RuntimeConfigSeed {
     #[serde(skip_serializing_if = "Option::is_none")]
     tab_pin_moves_to_next_row: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    modifier_click_pins_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     update_feed_url: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     update_allow_same_version: Option<bool>,
@@ -382,6 +391,7 @@ impl Default for RuntimeConfig {
             emacs_keybindings_enabled: true,
             ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
+            modifier_click_pins_enabled: true,
             update_feed_url: DEFAULT_UPDATE_FEED_URL.to_string(),
             update_allow_same_version: false,
             update_allow_downgrade: false,
@@ -827,6 +837,7 @@ impl RuntimeConfig {
             emacs_keybindings_enabled: true,
             ctrl_w_deletes_word_in_query: false,
             tab_pin_moves_to_next_row: false,
+            modifier_click_pins_enabled: true,
             update_feed_url: update_feed_url
                 .as_ref()
                 .cloned()
@@ -857,6 +868,7 @@ impl RuntimeConfig {
             emacs_keybindings_enabled: Some(config.emacs_keybindings_enabled),
             ctrl_w_deletes_word_in_query: Some(config.ctrl_w_deletes_word_in_query),
             tab_pin_moves_to_next_row: Some(config.tab_pin_moves_to_next_row),
+            modifier_click_pins_enabled: Some(config.modifier_click_pins_enabled),
             update_feed_url: update_feed_url.map(|_| config.update_feed_url.clone()),
             update_allow_same_version: update_allow_same_version_set
                 .then_some(config.update_allow_same_version),
@@ -937,6 +949,11 @@ fn normalize_runtime_config_file_locked(path: &Path, text: &str, config: &Runtim
         root,
         "tab_pin_moves_to_next_row",
         serde_json::json!(config.tab_pin_moves_to_next_row),
+    );
+    changed |= insert_missing_runtime_config_value(
+        root,
+        "modifier_click_pins_enabled",
+        serde_json::json!(config.modifier_click_pins_enabled),
     );
     changed |= insert_missing_runtime_config_value(
         root,
