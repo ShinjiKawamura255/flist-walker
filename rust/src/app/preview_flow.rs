@@ -118,6 +118,14 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn request_preview_for_current(&mut self) {
+        self.request_preview(false);
+    }
+
+    pub(super) fn refresh_preview_for_current(&mut self) {
+        self.request_preview(true);
+    }
+
+    fn request_preview(&mut self, revalidate: bool) {
         if !self.shell.ui.show_preview {
             self.clear_paged_preview();
             self.shell.runtime.clear_preview();
@@ -127,7 +135,16 @@ impl FlistWalkerApp {
 
         if let Some(row) = self.shell.runtime.current_row {
             if let Some((path, _)) = self.shell.runtime.results.get(row) {
-                if let Some(cached) = self.shell.cache.preview.get(path) {
+                let preserve = revalidate && self.preview_view_matches_current(path);
+                if preserve && self.shell.worker_bus.preview.in_progress {
+                    self.paged_preview_view.revalidate_pending = true;
+                    // Do not restart an initial load or interrupt Load more on every index batch.
+                    return;
+                }
+                let document = preserve
+                    .then(|| self.paged_preview_for_current().cloned())
+                    .flatten();
+                if let Some(cached) = self.shell.cache.preview.get(path).filter(|_| !revalidate) {
                     self.shell.runtime.set_preview(cached.to_string());
                     self.shell.worker_bus.preview.clear_request();
                     self.clear_paged_preview();
@@ -135,7 +152,10 @@ impl FlistWalkerApp {
                 }
                 let path = path.clone();
 
-                let Some(kind) = self.current_result_kind() else {
+                let Some(kind) = self
+                    .current_result_kind()
+                    .or_else(|| preserve.then_some(EntryKind::file()))
+                else {
                     self.clear_paged_preview();
                     self.shell
                         .runtime
@@ -146,7 +166,10 @@ impl FlistWalkerApp {
                     return;
                 };
                 // A dangling/inaccessible link still has useful link metadata.
-                let Some(is_dir) = kind.is_dir.or_else(|| kind.is_link().then_some(false)) else {
+                let Some(is_dir) = kind
+                    .is_dir
+                    .or_else(|| (kind.is_link() || preserve).then_some(false))
+                else {
                     self.clear_paged_preview();
                     if kind.needs_resolution() {
                         self.shell
@@ -162,22 +185,25 @@ impl FlistWalkerApp {
                     self.shell.worker_bus.preview.clear_request();
                     return;
                 };
-                if is_dir {
-                    self.clear_paged_preview();
+
+                if !preserve {
+                    self.shell
+                        .runtime
+                        .set_preview("Loading preview...".to_string());
                 }
-                self.shell
-                    .runtime
-                    .set_preview("Loading preview...".to_string());
                 let request_id = self.shell.worker_bus.preview.begin_request();
                 self.bind_preview_request_to_current_tab(request_id);
-                if !is_dir {
+                if !preserve {
                     self.prepare_paged_preview_initial(&path, request_id);
+                } else {
+                    self.prepare_preview_revalidation(&path, request_id);
                 }
                 let req = PreviewRequest {
+                    revalidate,
                     request_id,
                     path,
                     is_dir,
-                    document: None,
+                    document,
                 };
                 #[cfg(test)]
                 self.shell.indexing.perf_aux_dispatch(

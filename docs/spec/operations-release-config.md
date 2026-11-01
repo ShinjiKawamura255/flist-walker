@@ -174,7 +174,7 @@
 - MUST: Windows の旧バージョンで実行ファイル横または home directory に残っている同名ファイル、Linux/macOS の旧バージョンで home directory 直下に残っている同名ファイルは、新しい保存先に同名ファイルが存在しない場合に限り、新しい保存先へ移行しなければならない。
 - MUST: runtime config の legacy 移行、初回 seed、および GUI 設定 open 時の不足 file 生成は current path の sidecar lock で協調 writer を直列化し、lock 取得後に current を再確認しなければならない。先に current が確定した場合はそれを採用し、legacy、seed、または起動時の実効 config で上書きしてはならない。rename 不可時は legacy bytes を同一ディレクトリの create-new temporary fileへ完全書込み・同期してから atomic replace し、昇格失敗時は partial current を残さず legacy を保持しなければならない。
 - MUST: runtime config file が存在しない場合、ツールは有効な GUI、batch CLI、interactive CLI、`--list-saved-roots`、`--create-filelist` の dispatch 前に現在の `FLISTWALKER_*` 環境変数を seed にした runtime config file を自動生成しなければならない。内部 update helper と引数検証失敗は bootstrap 対象外とする。
-- MUST: 自動生成される runtime config file には、一般利用者が調整してよい `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`restore_queries_enabled`、`theme`、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`filelist_auto_check_enabled` を既定値で含めなければならない。
+- MUST: 自動生成される runtime config file には、一般利用者が調整してよい `walker_max_entries`、`history_persist_disabled`、`restore_tabs_enabled`、`restore_queries_enabled`、`theme`、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`modifier_click_pins_enabled`、`filelist_auto_check_enabled` を既定値で含めなければならない。
 - SHOULD: 既存 runtime config file に上記の利用者向け項目が欠けている場合、読み込み時に現在の実効値で項目を補完して書き戻す。書き戻しは current path の sidecar lock を取得して最新 JSON を再読込した後に行い、並行して成功した設定保存を古い snapshot で上書きしてはならない。
 - MUST: runtime config file が存在する場合、ツールはその内容を runtime settings の source of truth として適用し、同名環境変数は seed としてのみ扱わなければならない。
 - MUST: shared persistence は default/saved-root の read-only access と query-history mutation を分離する。`history_persist_disabled` が true のとき、history load/save と history diagnostic text は no-op とする。
@@ -241,7 +241,7 @@
 - 設定画面の最下段は左に表示項目の既定値リセット、右に Save → Cancel を置く。Open settings JSON と Reload JSON は一段上にまとめ、未保存草稿の破棄確認はその近くへ表示する。保存中は確定・取消を無効化する。
 
 - 設定モーダルが読み込む raw JSON と保存前に生成する JSON は各64 KiB以下とする。64 KiBを超える入力または保存結果は理由を表示して拒否し、既存bytesを変更しない。失敗画面からも従来の JSON open を使えるようにする。この制限は起動時の runtime config 読込には適用しない。
-- GUI の歯車は設定モーダルを開く。起動・履歴、外観、キー操作、検索の群に、`restore_tabs_enabled`、`restore_queries_enabled`、`theme`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`walker_max_entries`、`filelist_auto_check_enabled` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
+- GUI の歯車は設定モーダルを開く。起動・履歴、外観、キー操作、検索の群に、`restore_tabs_enabled`、`restore_queries_enabled`、`theme`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`modifier_click_pins_enabled`、`walker_max_entries`、`filelist_auto_check_enabled` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
 - 9項目はすべて次回起動から反映する。保存成功時はモーダルを閉じ、次回起動から反映する旨をフッターの省略表示より前に見える位置へ通知する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
 - `restore_queries_enabled` は既定 `true`。Restore previous tabs のインデントされた子項目 Restore search queries とし、親が無効なら操作不可だが値は保持する。起動時のタブ復元が有効なときだけ参照し、無効なら全復元タブの検索欄を空にする。root/filter/active tab と履歴設定には影響せず、明示起動引数の優先や同一プロセスの closed-tab restore は変えない。
 - `theme` は `system`（既定）/ `dark` / `light`。外観欄の System / Dark / Light は単一選択とし、起動時に選択を適用する。System は稼働中の OS テーマ変更に追従し、Dark / Light は OS にかかわらず固定する。ネイティブのタイトルバーも同じ選択を使用し、System では OS 追従へ戻す。既存 config の両キー欠落時も同じ既定値を補完する。

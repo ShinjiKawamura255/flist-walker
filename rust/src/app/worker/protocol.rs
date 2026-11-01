@@ -92,6 +92,7 @@ pub(in crate::app) enum IndexResponse {
 }
 
 pub(in crate::app) struct PreviewRequest {
+    pub(in crate::app) revalidate: bool,
     pub(in crate::app) request_id: u64,
     pub(in crate::app) path: PathBuf,
     pub(in crate::app) is_dir: bool,

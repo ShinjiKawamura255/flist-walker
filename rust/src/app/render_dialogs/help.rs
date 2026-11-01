@@ -33,6 +33,7 @@ impl FlistWalkerApp {
             "Enter — Open or execute the current row and pinned items".to_string(),
             "Shift+Enter — Reveal the current row or pinned items in their folders".to_string(),
             "Tab / Shift+Tab — Toggle pin on the current row".to_string(),
+            format!("{primary}+click — Toggle a result pin (configurable in Settings; enabled by default)"),
             format!("{primary}+Shift+C — Copy the current or pinned paths"),
             "Esc — Clear the query and pinned items".to_string(),
             "".to_string(),

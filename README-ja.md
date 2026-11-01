@@ -11,6 +11,8 @@
 - ドキュメント索引: [docs/INDEX.md](docs/INDEX.md)
 - 保守者向けの現状入口: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
+GUIのResultsではCtrl＋クリック（macOSはCommand＋クリック）でTabと同じPINを切り替え、クリックした行に留まります。既定ONです。Settingsの`modifier_click_pins_enabled`をOFFにして再起動すると従来のクリック動作に戻ります。Shift付き操作は従来どおりです。
+
 ## 主要機能
 
 - マルチタブ

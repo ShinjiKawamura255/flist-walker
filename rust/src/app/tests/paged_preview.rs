@@ -132,6 +132,13 @@ fn gui_paged_preview_failed_more_keeps_prior_document_and_requires_reload() {
         before
     );
     assert_eq!(app.paged_preview_view.error, Some(PreviewPageError::Binary));
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert_eq!(app.paged_preview_view.error, Some(PreviewPageError::Binary));
+    assert_eq!(
+        app.shell.runtime.preview_page_error,
+        Some(PreviewPageError::Binary)
+    );
     app.request_paged_preview_more();
     assert!(!app.shell.worker_bus.preview.in_progress);
     fs::remove_dir_all(root).expect("cleanup root");
@@ -456,6 +463,7 @@ fn worker_input_capacity_participates_in_preview_admission_and_quiesces() {
     app.shell.worker_bus.preview.tx = tx;
     app.shell.worker_bus.preview.worker_inflight_request_id = None;
     let request = |id: u64, document: &Arc<PagedTextPreview>| PreviewRequest {
+        revalidate: false,
         request_id: id,
         path: document.header.path.clone(),
         is_dir: false,
@@ -565,12 +573,14 @@ fn preview_retirement_backpressure_keeps_ui_owned_documents() {
     app.shell.worker_bus.preview.tx = tx;
     app.shell.worker_bus.preview.worker_inflight_request_id = None;
     let first = PreviewRequest {
+        revalidate: false,
         request_id: 80_001,
         path: path.clone(),
         is_dir: false,
         document: None,
     };
     let pending = PreviewRequest {
+        revalidate: false,
         request_id: 80_002,
         path: path.clone(),
         is_dir: false,
@@ -579,6 +589,7 @@ fn preview_retirement_backpressure_keeps_ui_owned_documents() {
         )),
     };
     let latest = PreviewRequest {
+        revalidate: false,
         request_id: 80_003,
         path: path.clone(),
         is_dir: false,
@@ -692,6 +703,7 @@ fn repeated_more_across_tabs_while_reclaimer_is_full_keeps_one_parked_document()
         handle.try_retire_preview(Arc::clone(&seed)).expect("fill");
     }
     app.parked_preview_request = Some(PreviewRequest {
+        revalidate: false,
         request_id: 99_001,
         path: paths[0].clone(),
         is_dir: false,
@@ -1808,4 +1820,207 @@ fn unresolved_directory_and_fifo_links_do_not_open_nonregular_bodies() {
     assert!(app.shell.runtime.preview.contains("Target: folder"));
     assert!(app.shell.runtime.preview.contains("child.txt"));
     fs::remove_dir_all(root).expect("cleanup root");
+}
+
+#[test]
+fn results_refresh_keeps_same_preview_and_loaded_pages_until_real_change() {
+    let root = test_root("stable-index-preview");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(
+        &path,
+        (0..700).map(|n| format!("line {n}\n")).collect::<String>(),
+    )
+    .unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    let generation = app.paged_preview_view.display_generation;
+    for _ in 0..3 {
+        app.replace_results_snapshot(vec![(path.clone(), 1.0)], true);
+        assert!(Arc::ptr_eq(
+            app.paged_preview_for_current().unwrap(),
+            &before
+        ));
+        settle_preview(&mut app);
+        assert!(Arc::ptr_eq(
+            app.paged_preview_for_current().unwrap(),
+            &before
+        ));
+        assert_eq!(app.paged_preview_view.display_generation, generation);
+    }
+    fs::write(&path, "changed content\n").unwrap();
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "changed content\n"
+    );
+    fs::remove_file(&path).unwrap();
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert!(app.paged_preview_for_current().is_none());
+    assert!(app.shell.runtime.preview.contains("file not found"));
+    app.replace_results_snapshot(Vec::new(), true);
+    assert!(app.shell.runtime.preview.is_empty());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn result_refresh_rechecks_directory_errors_and_rejects_old_target_responses() {
+    let root = test_root("preview-refresh-targets");
+    fs::create_dir_all(&root).unwrap();
+    let dir = root.join("directory");
+    fs::create_dir_all(&dir).unwrap();
+    let a = root.join("a.txt");
+    let b = root.join("b.txt");
+    fs::write(&a, "old text\n").unwrap();
+    fs::write(&b, "new target\n").unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&dir, EntryKind::dir());
+    app.set_entry_kind(&a, EntryKind::file());
+    app.set_entry_kind(&b, EntryKind::file());
+    app.replace_results_snapshot(vec![(dir.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    let previous = app.shell.runtime.preview.clone();
+    fs::write(dir.join("added.txt"), "child").unwrap();
+    app.replace_results_snapshot(vec![(dir, 0.0)], true);
+    assert_eq!(app.shell.runtime.preview, previous);
+    settle_preview(&mut app);
+    assert!(app.shell.runtime.preview.contains("added.txt"));
+    app.replace_results_snapshot(vec![(a.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.replace_results_snapshot(vec![(a.clone(), 0.0)], true);
+    let stale_id = app.shell.worker_bus.preview.pending_request_id.unwrap();
+    app.replace_results_snapshot(vec![(b.clone(), 0.0)], true);
+    assert!(app.paged_preview_for_current().is_none());
+    let stale = PreviewResponse {
+        canceled: false,
+        request_id: stale_id,
+        path: a,
+        preview: "stale".into(),
+        document: None,
+        page_error: None,
+        is_more: false,
+    };
+    assert!(!app.apply_active_preview_response(&stale));
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "new target\n"
+    );
+    fs::write(&b, b"\0binary").unwrap();
+    app.replace_results_snapshot(vec![(b.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert_eq!(app.paged_preview_view.error, Some(PreviewPageError::Binary));
+    fs::write(&b, "recovered\n").unwrap();
+    app.replace_results_snapshot(vec![(b, 0.0)], true);
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "recovered\n"
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn result_refresh_coalesces_busy_requests_but_rechecks_after_last_update() {
+    let root = test_root("preview-refresh-busy");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "first\n").unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    let initial_id = app.shell.worker_bus.preview.pending_request_id;
+    for _ in 0..3 {
+        app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+        assert_eq!(app.shell.worker_bus.preview.pending_request_id, initial_id);
+    }
+    // Even a final update received while an older response waits in the mailbox is checked.
+    fs::write(&path, "last version\n").unwrap();
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "last version\n"
+    );
+    assert!(!app.paged_preview_view.revalidate_pending);
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn result_refresh_revalidates_kind_when_the_same_path_is_replaced() {
+    let root = test_root("preview-refresh-kind-change");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("entry");
+    fs::create_dir(&path).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::dir());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert!(app.shell.runtime.preview.contains("Directory:"));
+    fs::remove_dir(&path).unwrap();
+    fs::write(&path, "replacement text\n").unwrap();
+    // Kind discovery can lag behind the result batch; preview must use current metadata.
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "replacement text\n"
+    );
+    fs::remove_file(&path).unwrap();
+    fs::create_dir(&path).unwrap();
+    fs::write(path.join("child.txt"), "child").unwrap();
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    assert!(app.paged_preview_for_current().is_none());
+    assert!(app.shell.runtime.preview.contains("child.txt"));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn result_refresh_keeps_pending_more_and_reloads_metadata_only_changes() {
+    let root = test_root("preview-refresh-more-metadata");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "text\n".repeat(700)).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    let more_id = app.shell.worker_bus.preview.pending_request_id;
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    assert_eq!(app.shell.worker_bus.preview.pending_request_id, more_id);
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    assert_eq!(before.line_count(), 600);
+    let modified = before.header.modified.unwrap() + Duration::from_secs(60);
+    fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    settle_preview(&mut app);
+    let after = app.paged_preview_for_current().unwrap();
+    assert!(!Arc::ptr_eq(after, &before));
+    assert_eq!(after.header.modified, Some(modified));
+    assert_eq!(after.line(0), Some("text"));
+    fs::remove_dir_all(root).unwrap();
 }

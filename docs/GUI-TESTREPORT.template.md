@@ -16,6 +16,8 @@
 - Headful command:
 - Staged executable:
 - Settings isolation:
+- macOS development bundle name/ID/signature and preparation command (if selected):
+- Permission prompt or shared-desktop stop condition (if any):
 - Fixture hash/count validation:
 - Pre/post staged allowlist and updater-artifact check:
 - Axis overall: NOT RUN (required axis NOT RUN)
@@ -50,7 +52,7 @@ This is the case inventory, not a mandatory full run. Mark selected subflows in 
 | --- | --- | --- | --- | --- |
 | GSM-001 | NOT RUN — run deterministic wrapper | NOT RUN — startup/focus/typing | NOT RUN — run isolated headful smoke | Startup/indexing |
 | GSM-002 | NOT RUN — run deterministic wrapper and VM-004 | NOT RUN — search/highlight/operators | NOT RUN — supporting only | Search/highlight/operators |
-| GSM-003 | NOT RUN — run deterministic wrapper | NOT RUN — preview and selection movement | NOT RUN — supporting only | Preview/selection |
+| GSM-003 | NOT RUN — run deterministic wrapper | NOT RUN — preview and selection movement | NOT RUN — supporting only | Preview/selection, modifier PIN ON/OFF/double-click/index identity and same-target refresh |
 | GSM-004 | NOT RUN — TC-050/051 recording seams | NOT RUN — satisfy the separate external-action and clipboard safety gates | NOT RUN — supporting only | Open/reveal and Copy Path are distinct native axes; deterministic PASS may coexist with either native NOT RUN |
 | GSM-005 | NOT RUN — run deterministic wrapper | NOT RUN — sort modes/typing | NOT RUN — supporting only | Sort modes |
 | GSM-006 | NOT RUN — run deterministic wrapper | NOT RUN — fixture source/dialog interaction | NOT RUN — supporting only | FileList/dialogs |

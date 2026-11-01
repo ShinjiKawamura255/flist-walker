@@ -114,6 +114,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         &mut draft.tab_pin_moves_to_next_row,
                         "Move to the next row after pinning with Tab",
                     );
+                    ui.checkbox(
+                        &mut draft.modifier_click_pins_enabled,
+                        if cfg!(target_os = "macos") { "Command+click toggles a result pin" } else { "Ctrl+click toggles a result pin" },
+                    ).on_hover_text("Uses the same pinned selection as Tab. Takes effect after restart.");
                     ui.add_space(10.0);
                     ui.heading("Search");
                     ui.checkbox(

@@ -37,6 +37,7 @@ impl PreviewAction {
 pub(super) struct PagedPreviewView {
     pub(super) error: Option<PreviewPageError>,
     pub(super) busy: bool,
+    pub(super) revalidate_pending: bool,
     pub(super) display_generation: u64,
     tab_id: Option<u64>,
     path: Option<std::path::PathBuf>,
@@ -55,6 +56,7 @@ impl Default for PagedPreviewView {
         Self {
             error: None,
             busy: false,
+            revalidate_pending: false,
             display_generation: 0,
             tab_id: None,
             path: None,
@@ -259,6 +261,7 @@ impl FlistWalkerApp {
 
     pub(super) fn clear_paged_preview(&mut self) {
         self.deferred_more_intent = None;
+        self.paged_preview_view.revalidate_pending = false;
         self.paged_preview_view.controls_focused = false;
         self.paged_preview_view.scroll_pages = 0;
         self.paged_preview_view.error = None;
@@ -268,7 +271,21 @@ impl FlistWalkerApp {
         self.paged_preview_view.request_id = None;
     }
 
+    pub(super) fn preview_view_matches_current(&self, path: &Path) -> bool {
+        self.paged_preview_view.tab_id == self.current_tab_id()
+            && self.paged_preview_view.path.as_deref() == Some(path)
+            && !self.shell.runtime.preview_stale
+    }
+
+    pub(super) fn prepare_preview_revalidation(&mut self, path: &Path, request_id: u64) {
+        self.paged_preview_view.busy = true;
+        self.paged_preview_view.tab_id = self.current_tab_id();
+        self.paged_preview_view.path = Some(path.to_path_buf());
+        self.paged_preview_view.request_id = Some(request_id);
+    }
+
     pub(super) fn prepare_paged_preview_initial(&mut self, path: &Path, request_id: u64) {
+        self.paged_preview_view.revalidate_pending = false;
         self.paged_preview_view.error = None;
         self.paged_preview_view.busy = true;
         self.paged_preview_view.tab_id = self.current_tab_id();
@@ -305,6 +322,7 @@ impl FlistWalkerApp {
         let request_id = self.shell.worker_bus.preview.begin_request();
         self.bind_preview_request_to_current_tab(request_id);
         let request = PreviewRequest {
+            revalidate: false,
             request_id,
             path: path.clone(),
             is_dir: false,
@@ -337,11 +355,19 @@ impl FlistWalkerApp {
         self.paged_preview_view.request_id = None;
         match (&response.document, response.page_error) {
             (Some(document), _) => {
-                self.shell
+                if !self
+                    .shell
                     .runtime
-                    .set_preview_document(Arc::clone(document))
-                    .expect("preview response replacement admitted before apply");
-                self.paged_preview_view.error = None;
+                    .preview_document
+                    .as_ref()
+                    .is_some_and(|current| Arc::ptr_eq(current, document))
+                {
+                    self.shell
+                        .runtime
+                        .set_preview_document(Arc::clone(document))
+                        .expect("preview response replacement admitted before apply");
+                    self.paged_preview_view.error = None;
+                }
             }
             (None, Some(error)) => {
                 self.paged_preview_view.error = Some(error);
@@ -354,6 +380,12 @@ impl FlistWalkerApp {
             }
             (None, None) => self.clear_paged_preview(),
         }
+    }
+
+    pub(super) fn settle_text_preview(&mut self) {
+        self.paged_preview_view.busy = false;
+        self.paged_preview_view.request_id = None;
+        self.paged_preview_view.error = None;
     }
 
     pub(super) fn paged_preview_for_current(&self) -> Option<&Arc<PagedTextPreview>> {

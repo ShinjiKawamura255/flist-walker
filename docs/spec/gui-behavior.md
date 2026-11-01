@@ -16,7 +16,8 @@
 - MUST: 表示中の Results が空なら current row は `None`、1件以上なら常に範囲内の `Some(row)` とする。検索・sort・filter・preset・tab/session restore・非同期応答による結果再適用では、従来の行番号を結果末尾へ丸め、従来行がなければ0行目を選択する。非active tabで結果配列をcompactionした間だけ、再表示用のbase resultsに対するselection保持を許す。
 - MUST: GUI 起動直後および `Ctrl+G` / `Esc` による検索キャンセル後も、上記 Results/current row invariantを次の描画までに満たす。
 - MUST: 複数選択と一括アクションを提供する。
-- MUST: Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を明暗テーマ別の控えめなアンバー背景・枠線・読みやすい文字色で強調し、件数付き `Pinned (n)...` ボタンでも PIN の保持を明示する。強調表示の切替や Clear Selected へのホバーで、Results を含む周辺レイアウトの位置・高さを変化させてはならない。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
+- MUST: ResultsのWindows/Linux Ctrl＋クリック、macOS Command＋クリックはTabと同じPIN集合のクリック対象だけを固定/解除する。`modifier_click_pins_enabled`は既定true、SettingsでOFFにでき次回起動から反映する。カーソルはクリック行に留まり、Tabの次行移動設定は適用しない。修飾double clickの2回目は再切替・実行せず、押下から解放までに別path/tabへ変化した対象をPINしてはならない。通常クリック、Tab/Emacs、Shift付き既存操作を維持し、Shift範囲選択は追加しない。
+- MUST: 修飾PIN操作を除き、Results の double click は PIN の有無に関わらずクリックした行だけを開く/実行し、Shift+double click はその行の格納フォルダを開く。Enter、Shift+Enter、top action、選択パスコピーは従来の PIN 優先を維持する。PIN があるときの action 表示は対象件数を示し、Clear Selected を明暗テーマ別の控えめなアンバー背景・枠線・読みやすい文字色で強調し、件数付き `Pinned (n)...` ボタンでも PIN の保持を明示する。強調表示の切替や Clear Selected へのホバーで、Results を含む周辺レイアウトの位置・高さを変化させてはならない。全解除で通常表示へ戻す。検索条件により非表示になった PIN を含む一覧で個別解除できる。選択一覧の表示は件数上限付きページで行い、全 PIN の clone/sort/scan を UI frame に追加してはならない。
 - MUST: 検索欄直下に query に対応する検索エラーまたは入力補助を示す。`name:` / `path:` / `dir:` / `ext:` の値が空なら入力待ちとして示す。未知の接頭辞のうち既知フィールドに近い綴りは、単語先頭のコロンを契機に任意の修正候補を示す。入力、貼付け、編集で再評価し、IME 合成中は指摘・修正しない。修正は提案した接頭辞だけを置換し、他の検索語と演算子を維持し、検索欄へ focus を戻す。
 - MUST: 補助は query 解釈を変更せず、未知の接頭辞を通常語とする共通契約を維持する。drive path、URL、引用された通常語、regex 内のコロンを一律に誤記と見なしてはならない。補助解析は最大4096 byteの入力に限定し、それを超える入力でも検索自体は制限してはならない。
 - MUST: 綴りの修正候補と、そのqueryに対応する確定済み検索エラーが同時にある場合は、検索欄直下に両方を表示する。候補によって別の検索語の構文エラーやworker障害の理由を隠してはならない。既知fieldの値が空の場合は入力待ち案内を表示し、空fieldの検索エラーを重複表示しない。
@@ -212,6 +213,7 @@
 - MUST: GUIのファイル情報は初回本文成否と独立し、binary・empty・本文権限エラー・削除・リンク切れでも取得可能な `Size:` / `Created:` / `Updated:` と本文の理由を表示する。取得不能は `<unavailable>` とし、作成日時へ ctime を代用しない。リンクには既存の `Target ` 接頭辞と `Target:` を維持する。日時は既存の UTC 表記とする。初回失敗にも明示Reloadを提供し、情報を再取得する。メタデータだけを既存preview workerで取得し、本文と同じrequest/tab/path identityで反映する。情報表示のためにon-demand本文を開かず、UI I/O・再帰サイズ計算・独立cacheを追加しない。
 - MUST: GUI のファイルプレビューは最初に100論理行または64 KiBの先着上限まで読み、利用者が `Load more` を選ぶたびに最大500追加行または256 KiBを読み込む。累計は5,000行または1 MiBの先着上限とし、終端と上限を区別する。全体行数の事前走査は行わない。
 - MUST: 本文、行番号、ファイル情報、追加操作を別の表示要素とする。本文は読み取り専用で選択可能とし、コピーに行番号・色分け・省略記号を含めない。長い行の画面表示は先頭4,096文字で省略を明示し、元データの表示範囲を誤認させない。
+- MUST: Index/search/sortの結果再適用で同じtab/pathに留まる場合は、確定済みPreviewと既読ページ・scroll identityを維持して既存workerで再確認する。同じfile ID・size・mtimeと表示メタデータなら文書を再構築しない。実変更・削除は反映し、directory/error表示も更新確認する。対象変更・空結果・preview非表示で旧応答を採用せず、読込中の再確認は最後の要求を読込完了後に1回へまとめる。UI threadでfilesystem確認しない。
 - MUST: 更新中も確定済み本文を維持する。追加読込に失敗した場合は背景タブでも本文を変更せず、理由をそのタブだけに表示し、binary/復号失敗/ファイル変更/上限到達後の続行は停止する。明示的な再読込は先頭から開始する。空ファイル、権限不足、削除、on-demand、I/O失敗を区別する。
 - MUST: UTF-8、BOM付きUTF-16 LE/BE、Shift-JIS、EUC-JP、Windows-1252を既存の優先順位で扱い、後続ページで最初に選んだ復号方式を変更しない。UTF-8 判定試料の末尾が未完の文字なら最大3 byte の有効な継続を先読みしてから方式を確定し、不正な継続は legacy 候補へ戻す。文字・CRLF・行途中のページ境界で重複や欠落を生じさせない。
 - MUST: 追加要求は実行中1件と最新待機1件までとし、古い要求や別タブの応答を本文へ混入させない。ファイルの取得可能なID、size、mtimeの変化は `Changed` として拒否する。Windows の on-demand 判定は初回と追加時の両方で行う。
