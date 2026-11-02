@@ -136,9 +136,14 @@ impl FlistWalkerApp {
         if let Some(row) = self.shell.runtime.current_row {
             if let Some((path, _)) = self.shell.runtime.results.get(row) {
                 let preserve = revalidate && self.preview_view_matches_current(path);
-                if preserve && self.shell.worker_bus.preview.in_progress {
+                let retirement_pending = self.parked_preview_request.is_some()
+                    || self.deferred_preview_response.is_some();
+                if preserve
+                    && (self.shell.worker_bus.preview.in_progress
+                        || retirement_pending && self.paged_preview_for_current().is_some())
+                {
                     self.paged_preview_view.revalidate_pending = true;
-                    // Do not restart an initial load or interrupt Load more on every index batch.
+                    // Keep only an intent while a load or document retirement owns capacity.
                     return;
                 }
                 let document = preserve
