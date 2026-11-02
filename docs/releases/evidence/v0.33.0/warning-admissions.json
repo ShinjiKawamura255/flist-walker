@@ -1,0 +1,284 @@
+{
+  "scope": "Two independent exact-run decisions; historical diagnosis reused only across verified unchanged code/input/impact boundary, exceptions not inherited",
+  "candidate": {
+    "version": "v0.33.0",
+    "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+    "tree": "5f24c3397b793f1eeac78c0048aa771a4fbf5d8f",
+    "run": 41446036315,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "run_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/41446036315",
+    "decision": "ADMITTED exact-run minor external Action exception after all selected gates and independent review",
+    "logs_zip_sha256": "72d13a25ec7f218d49629c392cf5ce766af2d6dabed5723daa5b506702bc1a68",
+    "all_log_files": 122,
+    "all_jobs_expected_result": true,
+    "actual_emissions": [
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated; use Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from()",
+        "actual_count": 1,
+        "exports": "same event in aggregate plus step log"
+      }
+    ],
+    "exported_occurrences": 2,
+    "product_Rust_test_clippy_audit_warnings": 0,
+    "warning_error_annotations": 0,
+    "capacity_notices": 2,
+    "official_latest_stable_checks": {
+      "actions/checkout": {
+        "tag": "v7.0.1",
+        "url": "https://github.com/actions/checkout/releases/tag/v7.0.1",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "runtime": [
+          "using: node24"
+        ],
+        "checked_at": "2026-11-02T12:45:36.764047+00:00"
+      },
+      "actions/cache": {
+        "tag": "v6.1.0",
+        "url": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T12:45:38.469796+00:00"
+      },
+      "actions/upload-artifact": {
+        "tag": "v7.0.2",
+        "url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T12:45:39.822885+00:00"
+      },
+      "actions/download-artifact": {
+        "tag": "v8.0.2",
+        "url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T12:45:41.075941+00:00",
+        "minimum_runner": "2.327.1",
+        "runtime_support_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+        "support_note": "Official runner release establishes Node24 support; current Action README does not state a runner minimum."
+      }
+    },
+    "observed_runners": "all2.338.2; official Node24 minimum2.327.1",
+    "actual_download_calls": [
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "digest_mismatch": "error",
+        "skip_decompress": false,
+        "inputs": [
+          {
+            "id": 13143297881,
+            "name": "release-macos-x86_64",
+            "size_in_bytes": 25396226,
+            "digest": "sha256:78d6d31f7e9a63f34fb33715b7d674d6aac520a26ab62ea66863e2f9cbe94ff6"
+          },
+          {
+            "id": 13142669885,
+            "name": "release-macos-arm64",
+            "size_in_bytes": 23095011,
+            "digest": "sha256:e0d10c268d83a543a8341fa0ec1770b5aa97fef9146f5459590d918141d0d210"
+          },
+          {
+            "id": 13142668865,
+            "name": "release-linux-x86_64",
+            "size_in_bytes": 20143026,
+            "digest": "sha256:227b91ea17f16ee12c10ca80cadfcfdbf5904ee3b53aed53dcf8fe1a6c4fafc9"
+          },
+          {
+            "id": 13142234908,
+            "name": "release-windows-x86_64",
+            "size_in_bytes": 18297369,
+            "digest": "sha256:24694fc87b5d1eaccb0c304740f782ee262fc89eca19266c3459374024863e15"
+          }
+        ],
+        "API_expected_and_actual_download_digests_equal": true
+      }
+    ],
+    "causal_support": {
+      "complete_official_download_bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+      "official_source": "https://github.com/actions/download-artifact/blob/9000827ccba6bdab643e8b6fd33ac0654aef8333/dist/index.js",
+      "retained_diagnosis": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+      "bounded_calls": "Unchanged complete bundle UnzipStream empty-string Buffer allocation at dist67720 and numeric4 allocation at67982 immediately fully filled with writeUInt32LE67983. Actual same-run pin/runtime/inputs/extraction/digests reconcile the affected boundary.",
+      "hosted_observations": "pin/runtime/inputs/emission/completedownload digest/successful extraction/endassets; no hosted stack or allocation argument trace observed",
+      "inference_limit": "Bounded unchanged full-Action diagnosis supports minor impact inference; it does not certify an observed hosted call stack or inherit any earlier exception."
+    },
+    "effect_verification": "Actual input digests and completed extraction match; fresh final all28asset identities/26checksums/Ed25519 negativecontrols/archive-notice/8binary metadata/actual N-1 PASS; selectednative PASS or independently reconciled unaffected reuse. No demonstrated security/integrity/function effect from this bounded allocation warning.",
+    "actual_Nminus": {
+      "status": "PASS",
+      "previous_version": "0.32.1",
+      "candidate_version": "0.33.0",
+      "manifest_sha256": "1518b8c4bad06ce054c0e093b4ebc71fe60ad66f7608a1a9eb816805e1b66521",
+      "exit_code": 0,
+      "stdout": "N-1 manifest compatibility passed for v0.32.1\n",
+      "stderr": "",
+      "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+      "run": 41446036315,
+      "attempt": 1
+    },
+    "independent_review": "Read-only independent source/artifact/log/native-boundary review, no remaining findings; observed vs inferred limitations retained",
+    "operator": "release owner",
+    "followup_owner": "repository maintainer",
+    "reevaluation": "Every new run/attempt; changed source, Action code/runtime/input, warning message/callsite/count, security/integrity/function uncertainty stops for reclassification. No general DEP0005 allowlist or candidate-to-tagged exception transfer."
+  },
+  "tagged": {
+    "version": "v0.33.0",
+    "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+    "tree": "5f24c3397b793f1eeac78c0048aa771a4fbf5d8f",
+    "run": 41454528057,
+    "attempt": 1,
+    "event": "push",
+    "run_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/41454528057",
+    "decision": "ADMITTED exact-run minor external Action exception after all selected gates and independent review",
+    "logs_zip_sha256": "1d1f56fd50f2b54ec5665790ba62307cf09a55d2fc2045f51cc15c36400ed891",
+    "all_log_files": 130,
+    "all_jobs_expected_result": true,
+    "actual_emissions": [
+      {
+        "job": "Create Draft Release",
+        "step": "Download validated candidate bundle",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated; use Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from()",
+        "actual_count": 1,
+        "exports": "same event in aggregate plus step log"
+      },
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated; use Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from()",
+        "actual_count": 1,
+        "exports": "same event in aggregate plus step log"
+      }
+    ],
+    "exported_occurrences": 4,
+    "product_Rust_test_clippy_audit_warnings": 0,
+    "warning_error_annotations": 0,
+    "capacity_notices": 2,
+    "official_latest_stable_checks": {
+      "actions/checkout": {
+        "tag": "v7.0.1",
+        "url": "https://github.com/actions/checkout/releases/tag/v7.0.1",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "runtime": [
+          "using: node24"
+        ],
+        "checked_at": "2026-11-02T13:50:05.422463+00:00"
+      },
+      "actions/cache": {
+        "tag": "v6.1.0",
+        "url": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T13:50:06.795339+00:00"
+      },
+      "actions/upload-artifact": {
+        "tag": "v7.0.2",
+        "url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T13:50:08.032433+00:00"
+      },
+      "actions/download-artifact": {
+        "tag": "v8.0.2",
+        "url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "checked_at": "2026-11-02T13:50:09.232026+00:00",
+        "minimum_runner": "2.327.1",
+        "runtime_support_source": "https://github.com/actions/runner/releases/tag/v2.327.1",
+        "support_note": "Official runner release establishes Node24 support; current Action README does not state a runner minimum."
+      }
+    },
+    "observed_runners": "all2.338.2; official Node24 minimum2.327.1",
+    "actual_download_calls": [
+      {
+        "job": "Create Draft Release",
+        "step": "Download validated candidate bundle",
+        "digest_mismatch": "error",
+        "skip_decompress": false,
+        "inputs": [
+          {
+            "id": 13148840439,
+            "name": "validated-release-bundle-v0.33.0-75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+            "size_in_bytes": 86930783,
+            "digest": "sha256:cfc0b5c58a27a6f8871ef277c0b051bd7dc9d70e0506a28950b287216d015965"
+          }
+        ],
+        "API_expected_and_actual_download_digests_equal": true
+      },
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "digest_mismatch": "error",
+        "skip_decompress": false,
+        "inputs": [
+          {
+            "id": 13148487419,
+            "name": "release-macos-x86_64",
+            "size_in_bytes": 25396192,
+            "digest": "sha256:fd4cf7b3dce730ad2b42b70d99f3ebeb98b66797afbf8725d121ee9f65559798"
+          },
+          {
+            "id": 13148050427,
+            "name": "release-macos-arm64",
+            "size_in_bytes": 23094946,
+            "digest": "sha256:ca4a9272232eab0aa753ef4809f5493ac0c5b6c2efc9e3f34f726887007b8b67"
+          },
+          {
+            "id": 13146568552,
+            "name": "release-linux-x86_64",
+            "size_in_bytes": 20142962,
+            "digest": "sha256:13bcc6894d4be0f4b7eb125ba5b4717e18c87e4cb3c8800c75f76ce9fd172bce"
+          },
+          {
+            "id": 13145884363,
+            "name": "release-windows-x86_64",
+            "size_in_bytes": 18297402,
+            "digest": "sha256:f03d386b888ff03e5c35d229782a653a6996f679a4be6689cf51156f140f7632"
+          }
+        ],
+        "API_expected_and_actual_download_digests_equal": true
+      }
+    ],
+    "causal_support": {
+      "complete_official_download_bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+      "official_source": "https://github.com/actions/download-artifact/blob/9000827ccba6bdab643e8b6fd33ac0654aef8333/dist/index.js",
+      "retained_diagnosis": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md",
+      "bounded_calls": "Unchanged complete bundle UnzipStream empty-string Buffer allocation at dist67720 and numeric4 allocation at67982 immediately fully filled with writeUInt32LE67983. Actual same-run pin/runtime/inputs/extraction/digests reconcile the affected boundary.",
+      "hosted_observations": "pin/runtime/inputs/emission/completedownload digest/successful extraction/endassets; no hosted stack or allocation argument trace observed",
+      "inference_limit": "Bounded unchanged full-Action diagnosis supports minor impact inference; it does not certify an observed hosted call stack or inherit any earlier exception."
+    },
+    "effect_verification": "Actual input digests and completed extraction match; fresh final all28asset identities/26checksums/Ed25519 negativecontrols/archive-notice/8binary metadata/actual N-1 PASS; selectednative PASS or independently reconciled unaffected reuse. No demonstrated security/integrity/function effect from this bounded allocation warning.",
+    "actual_Nminus": {
+      "status": "PASS",
+      "previous_version": "0.32.1",
+      "candidate_version": "0.33.0",
+      "manifest_sha256": "75525eb244fc1833d581d573005242888c82476d62af1fae492f545990104cf8",
+      "exit_code": 0,
+      "stdout": "N-1 manifest compatibility passed for v0.32.1\n",
+      "stderr": "",
+      "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+      "run": 41454528057,
+      "attempt": 1
+    },
+    "independent_review": "Read-only independent source/artifact/log/native-boundary review, no remaining findings; observed vs inferred limitations retained",
+    "operator": "release owner",
+    "followup_owner": "repository maintainer",
+    "reevaluation": "Every new run/attempt; changed source, Action code/runtime/input, warning message/callsite/count, security/integrity/function uncertainty stops for reclassification. No general DEP0005 allowlist or candidate-to-tagged exception transfer."
+  }
+}
