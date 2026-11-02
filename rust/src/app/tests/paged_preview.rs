@@ -1871,6 +1871,89 @@ fn results_refresh_keeps_same_preview_and_loaded_pages_until_real_change() {
     fs::remove_dir_all(root).unwrap();
 }
 
+fn complete_index_for_preview_test(app: &mut FlistWalkerApp, paths: &[PathBuf]) {
+    let (tx, rx) = mpsc::channel();
+    app.shell.indexing.rx = rx;
+    app.shell.indexing.pending_request_id = Some(7001);
+    app.shell.indexing.in_progress = true;
+    app.shell.indexing.build.index.entries = paths
+        .iter()
+        .map(|path| Entry {
+            path: path.clone(),
+            kind: Some(EntryKind::file()),
+        })
+        .collect();
+    tx.send(IndexResponse::Finished {
+        request_id: 7001,
+        source: IndexSource::Walker,
+    })
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(3);
+    loop {
+        app.poll_index_response();
+        app.poll_search_response();
+        app.poll_sort_response();
+        app.poll_preview_response();
+        if app.shell.indexing.pending_request_id.is_none()
+            && !app.shell.search.in_progress()
+            && !app.shell.worker_bus.sort.in_progress
+            && !app.shell.worker_bus.preview.in_progress
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "completion did not settle: {}",
+            app.shell.runtime.notice
+        );
+        thread::yield_now();
+    }
+}
+
+// Exercise terminal resource retirement and its actual search/revalidation responses.
+#[test]
+fn index_completion_retains_loaded_preview_pages_through_revalidation() {
+    let settings = super::support::TestSettingsScope::new("preview-terminal-pages");
+    let root = test_root("preview-index-terminal-pages");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    for query in ["", "'sample.txt"] {
+        for mode in [ResultSortMode::Score, ResultSortMode::NameAsc] {
+            for busy in [false, true] {
+                let mut app = settings.app(root.clone(), 50, query.into());
+                app.shell.ui.show_preview = true;
+                app.shell.ui.ignore_list_enabled = false;
+                app.shell.runtime.include_files = true;
+                app.shell.runtime.include_dirs = true;
+                app.shell.runtime.result_sort_mode = mode;
+                app.set_entry_kind(&path, EntryKind::file());
+                app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+                settle_preview(&mut app);
+                app.request_paged_preview_more();
+                settle_preview(&mut app);
+                let before = app.paged_preview_for_current().unwrap().clone();
+                assert_eq!(before.line_count(), 600);
+                let generation = app.paged_preview_view.display_generation;
+                if busy {
+                    app.refresh_preview_for_current();
+                }
+                complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+                let after = app.paged_preview_for_current().unwrap();
+                assert_eq!(
+                    after.line_count(),
+                    600,
+                    "query={query}, mode={mode:?}, busy={busy}"
+                );
+                assert!(Arc::ptr_eq(after, &before));
+                assert_eq!(app.paged_preview_view.display_generation, generation);
+                assert!(!app.paged_preview_view.revalidate_pending);
+            }
+        }
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
 #[test]
 fn result_refresh_rechecks_directory_errors_and_rejects_old_target_responses() {
     let root = test_root("preview-refresh-targets");
@@ -2022,5 +2105,230 @@ fn result_refresh_keeps_pending_more_and_reloads_metadata_only_changes() {
     assert!(!Arc::ptr_eq(after, &before));
     assert_eq!(after.header.modified, Some(modified));
     assert_eq!(after.line(0), Some("text"));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn index_completion_revalidation_reflects_real_changes_and_disappearance() {
+    let settings = super::support::TestSettingsScope::new("preview-terminal-changes");
+    let root = test_root("preview-terminal-changes");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "original\n".repeat(900)).unwrap();
+    let mut app = settings.app(root.clone(), 50, "'sample.txt".into());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    assert_eq!(before.line_count(), 600);
+    fs::write(&path, "actual replacement\n").unwrap();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    let changed = app.paged_preview_for_current().unwrap().clone();
+    assert!(!Arc::ptr_eq(&before, &changed));
+    assert_eq!(changed.body(), "actual replacement\n");
+    let modified = changed.header.modified.unwrap() + Duration::from_secs(60);
+    fs::File::options()
+        .write(true)
+        .open(&path)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_modified(modified))
+        .unwrap();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    let metadata_changed = app.paged_preview_for_current().unwrap();
+    assert!(!Arc::ptr_eq(&changed, metadata_changed));
+    assert_eq!(metadata_changed.header.modified, Some(modified));
+    fs::remove_file(&path).unwrap();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    assert!(app.paged_preview_for_current().is_none());
+    assert!(app.shell.runtime.preview.contains("file not found"));
+    fs::write(&path, "recovered\n").unwrap();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "recovered\n"
+    );
+    complete_index_for_preview_test(&mut app, &[]);
+    assert!(app.shell.runtime.preview.is_empty());
+    assert!(app.paged_preview_for_current().is_none());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn index_completion_keeps_pending_more_and_rejects_previous_target_response() {
+    let settings = super::support::TestSettingsScope::new("preview-terminal-more");
+    let root = test_root("preview-terminal-more");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    let other = root.join("other.txt");
+    fs::write(&path, "original\n".repeat(900)).unwrap();
+    fs::write(&other, "other target\n").unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.set_entry_kind(&other, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    assert_eq!(app.paged_preview_for_current().unwrap().line_count(), 600);
+    app.refresh_preview_for_current();
+    let stale_id = app.shell.worker_bus.preview.pending_request_id.unwrap();
+    let stale_document = app.paged_preview_for_current().unwrap().clone();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&other));
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "other target\n"
+    );
+    assert!(!app.apply_active_preview_response(&PreviewResponse {
+        request_id: stale_id,
+        path,
+        canceled: false,
+        preview: String::new(),
+        document: Some(stale_document),
+        page_error: None,
+        is_more: false,
+    }));
+    assert_eq!(
+        app.paged_preview_for_current().unwrap().body(),
+        "other target\n"
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn index_completion_backpressure_restores_preview_and_page_error() {
+    let settings = super::support::TestSettingsScope::new("preview-terminal-backpressure");
+    let root = test_root("preview-terminal-backpressure");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    app.shell
+        .runtime
+        .set_preview_page_error(Some(PreviewPageError::ReadFailed));
+    app.shell.tabs.pause_resource_reclaimer();
+    for n in 0..super::super::tab_resources::TAB_RESOURCE_RECLAIMER_CAPACITY {
+        let mut queued = app.capture_active_tab_state(9_000 + n as u64);
+        queued.result_state.committed.all_entries = Arc::new(vec![Entry {
+            path: root.join(format!("queued-{n}")),
+            kind: Some(EntryKind::file()),
+        }]);
+        app.shell
+            .tabs
+            .retire_tab_resources_for_test(queued.take_heavy_resources())
+            .unwrap();
+    }
+    app.shell.indexing.pending_request_id = Some(7001);
+    app.shell.indexing.pending_finish = Some(PendingActiveIndexFinish {
+        request_id: 7001,
+        source: IndexSource::Walker,
+    });
+    app.shell.indexing.build.index.entries = vec![Entry {
+        path: path.clone(),
+        kind: Some(EntryKind::file()),
+    }];
+    assert!(!app.try_finish_active_index_after_pending_drain());
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    assert_eq!(
+        app.shell.runtime.preview_page_error,
+        Some(PreviewPageError::ReadFailed)
+    );
+    app.shell.tabs.resume_resource_reclaimer();
+    complete_index_for_preview_test(&mut app, std::slice::from_ref(&path));
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn background_index_completion_revalidates_on_return_without_losing_loaded_pages() {
+    let settings = super::support::TestSettingsScope::new("preview-background-terminal");
+    let root = test_root("preview-background-terminal");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("sample.txt");
+    for query in ["'sample.txt", ""] {
+        for mode in [ResultSortMode::Score, ResultSortMode::NameAsc] {
+            for change in ["unchanged", "changed", "deleted"] {
+                fs::write(&path, "original\n".repeat(900)).unwrap();
+                let mut app = settings.app(root.clone(), 50, query.into());
+                app.shell.ui.show_preview = true;
+                app.shell.runtime.result_sort_mode = mode;
+                app.set_entry_kind(&path, EntryKind::file());
+                app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+                settle_preview(&mut app);
+                app.request_paged_preview_more();
+                settle_preview(&mut app);
+                let before = app.paged_preview_for_current().unwrap().clone();
+                app.create_new_tab();
+                super::support::reset_index_request_state_for_test(&mut app);
+                if change == "changed" {
+                    fs::write(&path, "changed in background\n").unwrap();
+                }
+                if change == "deleted" {
+                    fs::remove_file(&path).unwrap();
+                }
+                let tab = app.shell.tabs.get_mut(0).unwrap();
+                tab.index_state.apply_resource_transition(
+                    super::super::tab_state::TabResourceTransition::Success,
+                );
+                tab.index_state.pending_index_request_id = Some(7002);
+                tab.index_state.build.index.entries = vec![Entry {
+                    path: path.clone(),
+                    kind: Some(EntryKind::file()),
+                }];
+                app.handle_background_index_response(
+                    0,
+                    IndexResponse::Finished {
+                        request_id: 7002,
+                        source: IndexSource::Walker,
+                    },
+                );
+                let deadline = Instant::now() + Duration::from_secs(3);
+                loop {
+                    app.poll_index_response();
+                    app.poll_search_response();
+                    let tab = app.shell.tabs.get(0).unwrap();
+                    if tab.index_state.pending_index_request_id.is_none() && !tab.search_in_progress
+                    {
+                        break;
+                    }
+                    assert!(Instant::now() < deadline, "background did not settle");
+                    thread::yield_now();
+                }
+                app.switch_to_tab_index(0);
+                settle_preview(&mut app);
+                match change {
+                    "unchanged" => assert!(
+                        Arc::ptr_eq(app.paged_preview_for_current().unwrap(), &before),
+                        "query={query}"
+                    ),
+                    "changed" => assert_eq!(
+                        app.paged_preview_for_current().unwrap().body(),
+                        "changed in background\n"
+                    ),
+                    "deleted" => {
+                        assert!(app.paged_preview_for_current().is_none());
+                        assert!(app.shell.runtime.preview.contains("file not found"));
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
     fs::remove_dir_all(root).unwrap();
 }

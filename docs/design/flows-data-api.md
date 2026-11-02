@@ -122,5 +122,5 @@
 
 ### DES-026: Preview revalidation on result replacement
 
-- `result_reducer`とkind解決完了は`refresh_preview_for_current`でtab/pathの表示identityを比較する。同じ対象はLoadingへ置換せず、既存bounded preview workerに`revalidate`を渡す。readerはfile ID・size・mtimeと`PreviewHeader`を照合し、一致なら同じArcを返す。本文・syntax・既読ページをUIで比較・cloneしない。変更時は先頭文書または新しいエラー情報へ置換する。directoryもworkerで再取得する。
+- `result_reducer`とkind解決完了は`refresh_preview_for_current`でtab/pathの表示identityを比較する。同じ対象はLoadingへ置換せず、既存bounded preview workerに`revalidate`を渡す。readerはfile ID・size・mtimeと`PreviewHeader`を照合し、一致なら同じArcを返す。本文・syntax・既読ページをUIで比較・cloneしない。 index終端で旧committed索引を回収するときもPreview文書・error・stale状態はtab/pathの表示としてmoveで保持する。結果配列の保持方針とは分離し、回収backpressureでは索引と表示をまとめて復元する。 背景完了は復帰時の再検証intentを残し、退役前の選択pathをsearch/sortまで引き継ぐ。同一pathの保持文書へ復帰する場合は初回reloadせずworkerで再確認する。変更時は先頭文書または新しいエラー情報へ置換する。directoryもworkerで再取得する。
 - 読込中の結果更新は同じviewのboolean pendingへ集約し、pollの終端後に1回再確認する。target変更・empty・hideではviewとpendingを破棄する。request/tab/path照合と既存reclaimer・予算上限を維持し、再利用Arcの不要な退役を避ける。

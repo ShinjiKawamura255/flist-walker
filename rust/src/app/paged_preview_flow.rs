@@ -225,6 +225,18 @@ impl FlistWalkerApp {
         )
     }
 
+    pub(super) fn revalidate_preview_after_tab_activation(&mut self) {
+        // A background index completion may keep a fully loaded document.
+        // Restore its display identity before asking the worker to revalidate.
+        if let Some(document) = self.paged_preview_for_current() {
+            let path = document.header.path.clone();
+            self.paged_preview_view.tab_id = self.current_tab_id();
+            self.paged_preview_view.path = Some(path);
+            self.paged_preview_view.error = self.shell.runtime.preview_page_error;
+        }
+        self.refresh_preview_for_current();
+    }
+
     pub(super) fn restore_paged_preview_view_for_active(&mut self) {
         let Some(request_id) = self.shell.worker_bus.preview.pending_request_id else {
             return;

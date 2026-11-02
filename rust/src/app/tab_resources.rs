@@ -120,10 +120,13 @@ pub(super) struct RetiredActiveResources {
 }
 
 pub(super) struct RetainedActiveResultSnapshot {
-    pub(super) results: Vec<(PathBuf, f64)>,
-    pub(super) preview: String,
-    pub(super) total_match_count: usize,
-    pub(super) current_row: Option<usize>,
+    results: Option<Vec<(PathBuf, f64)>>,
+    preview: String,
+    preview_document: Option<Arc<PagedTextPreview>>,
+    preview_page_error: Option<crate::ui_model::PreviewPageError>,
+    preview_stale: bool,
+    total_match_count: usize,
+    current_row: Option<usize>,
 }
 
 pub(super) struct RetiredIndexBuildResources {
@@ -263,12 +266,22 @@ impl RetiredActiveResources {
         self.committed.is_empty()
     }
 
-    pub(super) fn take_visible_result_snapshot(&mut self) -> RetainedActiveResultSnapshot {
+    pub(super) fn take_visible_result_snapshot(
+        &mut self,
+        preserve_results: bool,
+    ) -> RetainedActiveResultSnapshot {
+        // Preview belongs to the selected tab/path, not the replaced index allocation.
+        // Move it out before retirement so revalidation can keep all loaded pages.
         RetainedActiveResultSnapshot {
-            results: std::mem::take(&mut self.committed.results),
+            results: preserve_results.then(|| std::mem::take(&mut self.committed.results)),
             preview: std::mem::take(&mut self.committed.preview),
+            preview_document: self.committed.preview_document.take(),
+            preview_page_error: self.committed.preview_page_error.take(),
+            preview_stale: std::mem::take(&mut self.committed.preview_stale),
             total_match_count: self.committed.total_match_count,
-            current_row: self.committed.current_row.take(),
+            current_row: preserve_results
+                .then(|| self.committed.current_row.take())
+                .flatten(),
         }
     }
 
@@ -276,10 +289,22 @@ impl RetiredActiveResources {
         &mut self,
         snapshot: RetainedActiveResultSnapshot,
     ) {
-        self.committed.results = snapshot.results;
-        self.committed.preview = snapshot.preview;
-        self.committed.total_match_count = snapshot.total_match_count;
-        self.committed.current_row = snapshot.current_row;
+        snapshot.restore_into(&mut self.committed);
+    }
+}
+
+impl RetainedActiveResultSnapshot {
+    pub(super) fn restore_into(self, committed: &mut TabCommittedPayload) {
+        debug_assert!(committed.preview_document.is_none());
+        committed.preview = self.preview;
+        committed.preview_document = self.preview_document;
+        committed.preview_page_error = self.preview_page_error;
+        committed.preview_stale = self.preview_stale;
+        if let Some(results) = self.results {
+            committed.results = results;
+            committed.total_match_count = self.total_match_count;
+            committed.current_row = self.current_row;
+        }
     }
 }
 
