@@ -2332,3 +2332,410 @@ fn background_index_completion_revalidates_on_return_without_losing_loaded_pages
     }
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn foreground_refresh_then_background_real_filelist_preserves_loaded_pages() {
+    let settings = super::support::TestSettingsScope::new("preview-real-background-refresh");
+    let root = test_root("preview-real-background-refresh");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("B-preview.txt");
+    fs::write(root.join("A-preview.txt"), "other target\n").unwrap();
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    fs::write(root.join("FileList.txt"), "A-preview.txt\nB-preview.txt\n").unwrap();
+    let mut app = settings.app(root.clone(), 50, "'B-preview.txt".into());
+    app.shell.ui.show_preview = true;
+    app.request_index_refresh();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        app.poll_runtime_events();
+        if app.shell.indexing.pending_request_id.is_none()
+            && !app.shell.search.in_progress()
+            && app.paged_preview_for_current().is_some()
+            && !app.shell.worker_bus.preview.in_progress
+        {
+            break;
+        }
+        assert!(Instant::now() < deadline, "initial FileList did not settle");
+        thread::yield_now();
+    }
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    assert_eq!(before.line_count(), 600);
+    app.shell.tabs.mark_active_tab_meaningfully_engaged();
+    app.restart_current_index();
+    app.switch_to_tab_index(1);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        app.poll_runtime_events();
+        let tab = app.shell.tabs.get(0).unwrap();
+        if tab.index_state.pending_index_request_id.is_none() && !tab.search_in_progress {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "background FileList did not settle"
+        );
+        thread::yield_now();
+    }
+    app.switch_to_tab_index(0);
+    settle_preview(&mut app);
+    let after = app.paged_preview_for_current().unwrap();
+    assert_eq!(after.line_count(), 600);
+    assert!(Arc::ptr_eq(after, &before));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn canceled_revalidation_delivered_after_tab_return_keeps_loaded_preview() {
+    let settings = super::support::TestSettingsScope::new("preview-cancel-return");
+    let root = test_root("preview-cancel-return");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("B-preview.txt");
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    assert_eq!(before.line_count(), 600);
+    // Hold one real request's terminal until its owning tab has returned.
+    let (tx, requests) = mpsc::channel();
+    let (responses, rx) = mpsc::channel();
+    app.shell.worker_bus.preview.tx = tx;
+    app.shell.worker_bus.preview.rx = rx;
+    app.refresh_preview_for_current();
+    let first = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert!(first.revalidate);
+    assert!(Arc::ptr_eq(first.document.as_ref().unwrap(), &before));
+    app.switch_to_tab_index(1);
+    app.shell
+        .tabs
+        .get_mut(0)
+        .unwrap()
+        .mark_preview_reload_pending();
+    app.switch_to_tab_index(0);
+    responses
+        .send(PreviewResponse {
+            request_id: first.request_id,
+            path: path.clone(),
+            canceled: true,
+            preview: String::new(),
+            document: None,
+            page_error: None,
+            is_more: false,
+        })
+        .unwrap();
+    app.poll_preview_response();
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current()
+            .expect("cancellation must keep the committed document"),
+        &before
+    ));
+    let retry = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert!(retry.revalidate);
+    assert!(Arc::ptr_eq(retry.document.as_ref().unwrap(), &before));
+    responses
+        .send(PreviewResponse {
+            request_id: retry.request_id,
+            path,
+            canceled: false,
+            preview: String::new(),
+            document: Some(before.clone()),
+            page_error: None,
+            is_more: false,
+        })
+        .unwrap();
+    settle_preview(&mut app);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn canceled_more_keeps_the_coalesced_revalidation_and_loaded_pages() {
+    let settings = super::support::TestSettingsScope::new("preview-cancel-more");
+    let root = test_root("preview-cancel-more");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("B-preview.txt");
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    let mut app = settings.app(root.clone(), 50, String::new());
+    app.shell.ui.show_preview = true;
+    app.set_entry_kind(&path, EntryKind::file());
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    settle_preview(&mut app);
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    let (tx, requests) = mpsc::channel();
+    let (responses, rx) = mpsc::channel();
+    app.shell.worker_bus.preview.tx = tx;
+    app.shell.worker_bus.preview.rx = rx;
+    app.request_paged_preview_more();
+    let more = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert!(!more.revalidate);
+    app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+    assert!(app.paged_preview_view.revalidate_pending);
+    responses
+        .send(PreviewResponse {
+            request_id: more.request_id,
+            path: path.clone(),
+            canceled: true,
+            preview: String::new(),
+            document: None,
+            page_error: None,
+            is_more: true,
+        })
+        .unwrap();
+    app.poll_preview_response();
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    let retry = requests
+        .recv_timeout(Duration::from_secs(1))
+        .expect("index refresh revalidation must survive a canceled continuation");
+    assert!(retry.revalidate);
+    assert!(Arc::ptr_eq(retry.document.as_ref().unwrap(), &before));
+    responses
+        .send(PreviewResponse {
+            request_id: retry.request_id,
+            path,
+            canceled: false,
+            preview: String::new(),
+            document: Some(before.clone()),
+            page_error: None,
+            is_more: false,
+        })
+        .unwrap();
+    settle_preview(&mut app);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn canceled_preview_revalidation_waits_for_retirement_capacity() {
+    let settings = super::support::TestSettingsScope::new("preview-cancel-pressure");
+    let root = test_root("preview-cancel-pressure");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("B-preview.txt");
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    for is_more in [false, true] {
+        let mut app = settings.app(root.clone(), 50, String::new());
+        app.shell.ui.show_preview = true;
+        app.set_entry_kind(&path, EntryKind::file());
+        app.replace_results_snapshot(vec![(path.clone(), 0.0)], true);
+        settle_preview(&mut app);
+        app.request_paged_preview_more();
+        settle_preview(&mut app);
+        let before = app.paged_preview_for_current().unwrap().clone();
+        let (tx, requests) = mpsc::channel();
+        let (responses, rx) = mpsc::channel();
+        app.shell.worker_bus.preview.tx = tx;
+        app.shell.worker_bus.preview.rx = rx;
+        if is_more {
+            app.request_paged_preview_more();
+        } else {
+            app.refresh_preview_for_current();
+        }
+        let pending = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+        app.refresh_preview_for_current(); // a newer index update while the request is busy
+        let mut reclaimer = TabResourceReclaimer::paused_for_test();
+        let handle = reclaimer.preview_handle();
+        app.shell.runtime.install_preview_retirement(handle.clone());
+        for _ in 0..4 {
+            handle.try_retire_preview(before.clone()).unwrap();
+        }
+        // A superseded input document can already occupy the one parked slot.
+        app.parked_preview_request = Some(PreviewRequest {
+            request_id: 90_001,
+            revalidate: true,
+            path: path.clone(),
+            is_dir: false,
+            document: Some(before.clone()),
+        });
+        responses
+            .send(PreviewResponse {
+                request_id: pending.request_id,
+                path: path.clone(),
+                canceled: true,
+                preview: String::new(),
+                document: None,
+                page_error: None,
+                is_more,
+            })
+            .unwrap();
+        app.poll_preview_response();
+        assert!(Arc::ptr_eq(
+            app.paged_preview_for_current().unwrap(),
+            &before
+        ));
+        assert!(app.parked_preview_request.is_some());
+        assert!(app.paged_preview_view.revalidate_pending);
+        assert!(
+            requests.try_recv().is_err(),
+            "retention must defer instead of enqueueing another document"
+        );
+        assert!(reclaimer.drain_one_paused_for_test());
+        app.poll_preview_response();
+        assert!(app.parked_preview_request.is_none());
+        let retry = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(retry.revalidate);
+        assert!(Arc::ptr_eq(retry.document.as_ref().unwrap(), &before));
+        responses
+            .send(PreviewResponse {
+                request_id: retry.request_id,
+                path: path.clone(),
+                canceled: false,
+                preview: String::new(),
+                document: Some(before.clone()),
+                page_error: None,
+                is_more: false,
+            })
+            .unwrap();
+        settle_preview(&mut app);
+        assert!(Arc::ptr_eq(
+            app.paged_preview_for_current().unwrap(),
+            &before
+        ));
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn retirement_deferred_revalidation_survives_tab_switch_and_rechecks_changes() {
+    let settings = super::support::TestSettingsScope::new("preview-deferred-tab");
+    let root = test_root("preview-deferred-tab");
+    fs::create_dir_all(&root).unwrap();
+    let a = root.join("A-preview.txt");
+    let b = root.join("B-preview.txt");
+    fs::write(&a, "other target\n").unwrap();
+    for change in ["unchanged", "changed", "deleted"] {
+        fs::write(&b, "unchanged\n".repeat(900)).unwrap();
+        fs::write(root.join("FileList.txt"), "A-preview.txt\nB-preview.txt\n").unwrap();
+        let mut app = settings.app(root.clone(), 50, "'B-preview.txt".into());
+        app.shell.ui.show_preview = true;
+        app.request_index_refresh();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            app.poll_runtime_events();
+            if app.shell.indexing.pending_request_id.is_none()
+                && !app.shell.search.in_progress()
+                && app.paged_preview_for_current().is_some()
+                && !app.shell.worker_bus.preview.in_progress
+            {
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            thread::yield_now();
+        }
+        app.set_entry_kind(&a, EntryKind::file());
+        app.create_new_tab(); // ready second tab selects A
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            app.poll_runtime_events();
+            if app.paged_preview_for_current().is_some()
+                && !app.shell.worker_bus.preview.in_progress
+            {
+                break;
+            }
+            assert!(Instant::now() < deadline);
+            thread::yield_now();
+        }
+        app.switch_to_tab_index(0);
+        settle_preview(&mut app);
+        app.request_paged_preview_more();
+        settle_preview(&mut app);
+        assert!(app.shell.indexing.pending_request_id.is_none());
+        let before = app.paged_preview_for_current().unwrap().clone();
+        assert_eq!(before.line_count(), 600);
+        let (tx, requests) = mpsc::channel();
+        let (responses, rx) = mpsc::channel();
+        let real_tx = std::mem::replace(&mut app.shell.worker_bus.preview.tx, tx);
+        let real_rx = std::mem::replace(&mut app.shell.worker_bus.preview.rx, rx);
+        app.refresh_preview_for_current();
+        let pending = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+        let mut reclaimer = TabResourceReclaimer::paused_for_test();
+        let handle = reclaimer.preview_handle();
+        app.shell.runtime.install_preview_retirement(handle.clone());
+        for _ in 0..4 {
+            handle.try_retire_preview(before.clone()).unwrap();
+        }
+        app.parked_preview_request = Some(PreviewRequest {
+            request_id: 90_002,
+            revalidate: true,
+            path: b.clone(),
+            is_dir: false,
+            document: Some(before.clone()),
+        });
+        responses
+            .send(PreviewResponse {
+                request_id: pending.request_id,
+                path: b.clone(),
+                canceled: true,
+                preview: String::new(),
+                document: None,
+                page_error: None,
+                is_more: false,
+            })
+            .unwrap();
+        app.poll_preview_response();
+        assert!(app.paged_preview_view.revalidate_pending);
+        app.switch_to_tab_index(1);
+        assert!(
+            app.shell.tabs.get(0).unwrap().preview_reload_pending,
+            "deactivation must retain a document revalidation intent without a request ID"
+        );
+        assert!(reclaimer.drain_one_paused_for_test());
+        app.poll_preview_response();
+        match change {
+            "changed" => fs::write(&b, "changed while deferred\n").unwrap(),
+            "deleted" => fs::remove_file(&b).unwrap(),
+            _ => (),
+        }
+        app.switch_to_tab_index(0);
+        assert!(
+            app.shell.indexing.pending_request_id.is_none(),
+            "ready tab must not need reindex to recover preview freshness"
+        );
+        let retry = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+        assert!(retry.revalidate);
+        assert!(Arc::ptr_eq(retry.document.as_ref().unwrap(), &before));
+        assert!(reclaimer.drain_one_paused_for_test());
+        // Restore the real worker transport to check actual current bytes/metadata.
+        app.shell.worker_bus.preview.tx = real_tx;
+        app.shell.worker_bus.preview.rx = real_rx;
+        app.shell.worker_bus.preview.tx.send(retry).unwrap();
+        settle_preview(&mut app);
+        match change {
+            "unchanged" => assert!(Arc::ptr_eq(
+                app.paged_preview_for_current().unwrap(),
+                &before
+            )),
+            "changed" => assert_eq!(
+                app.paged_preview_for_current().unwrap().body(),
+                "changed while deferred\n"
+            ),
+            "deleted" => {
+                assert!(app.paged_preview_for_current().is_none());
+                assert!(app.shell.runtime.preview.contains("file not found"));
+            }
+            _ => unreachable!(),
+        }
+    }
+    fs::remove_dir_all(root).unwrap();
+}

@@ -290,6 +290,8 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn prepare_preview_revalidation(&mut self, path: &Path, request_id: u64) {
+        // This new check covers updates coalesced before it was requested.
+        self.paged_preview_view.revalidate_pending = false;
         self.paged_preview_view.busy = true;
         self.paged_preview_view.tab_id = self.current_tab_id();
         self.paged_preview_view.path = Some(path.to_path_buf());

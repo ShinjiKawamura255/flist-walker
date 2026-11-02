@@ -618,12 +618,25 @@ pub(super) fn apply_active_preview_response(
     app.take_preview_request_tab(response.request_id);
     app.shell.worker_bus.preview.clear_request();
     if response.canceled {
+        let keep_document = app.preview_view_matches_current(&response.path)
+            && app.paged_preview_for_current().is_some();
         if response.is_more {
-            app.clear_paged_preview();
+            if keep_document {
+                // Keep display identity and any coalesced index revalidation.
+                app.settle_text_preview();
+            } else {
+                app.clear_paged_preview();
+            }
             return true;
         }
-        app.shell.runtime.clear_preview();
-        app.request_preview_for_current();
+        if keep_document {
+            // The tab can return before its canceled revalidation is delivered.
+            // Retry against the committed document instead of reloading page one.
+            app.refresh_preview_for_current();
+        } else {
+            app.shell.runtime.clear_preview();
+            app.request_preview_for_current();
+        }
         return true;
     }
     if response.document.is_some() || response.page_error.is_some() {

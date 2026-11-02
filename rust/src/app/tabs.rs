@@ -250,6 +250,7 @@ impl FlistWalkerApp {
     fn deactivate_active_tab_for_transition_at(&mut self, now: Instant) -> usize {
         self.clear_tab_drag_state();
         let previous_active = self.shell.tabs.active_tab_index();
+        let revalidate_preview = self.paged_preview_view.revalidate_pending;
         self.store_active_tab_payload();
         if let Some(tab_id) = self.shell.tabs.get(previous_active).map(|tab| tab.id) {
             self.shell.tabs.touch_heavy_resource(tab_id);
@@ -258,6 +259,10 @@ impl FlistWalkerApp {
                 .record_active_tab_deactivation_at(tab_id, now);
         }
         if let Some(previous_tab) = self.shell.tabs.get_mut(previous_active) {
+            // The display-local intent must survive resetting the next tab's view.
+            if revalidate_preview {
+                previous_tab.mark_preview_reload_pending();
+            }
             Self::trim_inactive_tab_preview(previous_tab);
         }
         previous_active
