@@ -1,0 +1,381 @@
+{
+  "version": "v0.33.0",
+  "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+  "tree": "5f24c3397b793f1eeac78c0048aa771a4fbf5d8f",
+  "tag_object": "0f72a562f654045b249b5ea8307a13e97994d60e",
+  "release_id": 431540857,
+  "release_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.33.0",
+  "published_at": "2026-11-02T14:19:02Z",
+  "latest": true,
+  "release_body_sha256": "4b362e39749287d12f80fe50c125a3e5c60697751554c776731e84ed0563853e",
+  "candidate_run": 41446036315,
+  "tagged_run": 41454528057,
+  "attempts": 1,
+  "candidate_and_tagged_admission": "independent review/all mandatory gates PASS; separate exact-run warning classifications",
+  "published_assets": [
+    {
+      "id": 701979695,
+      "name": "FlistWalker-0.33.0-linux-x86_64",
+      "size": 19600784,
+      "digest": "sha256:b50fd1a0aedfb06f88eb2336fc06aa7230300aa39945f972c9b6e7028da3815b",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-linux-x86_64"
+    },
+    {
+      "id": 701979687,
+      "name": "FlistWalker-0.33.0-linux-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-linux-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 701979688,
+      "name": "FlistWalker-0.33.0-linux-x86_64.README.txt",
+      "size": 6871,
+      "digest": "sha256:a919de35336667716e98d2341213045c99e6d63ba0515f96cc4c31a0d7df38fa",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-linux-x86_64.README.txt"
+    },
+    {
+      "id": 701979694,
+      "name": "FlistWalker-0.33.0-linux-x86_64.tar.gz",
+      "size": 8502318,
+      "digest": "sha256:9bc9c19fba7d039bdbad19f9c3fc0006f0b62181ab7c08a47fdf55b08b5ecef3",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-linux-x86_64.tar.gz"
+    },
+    {
+      "id": 701979693,
+      "name": "FlistWalker-0.33.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5355,
+      "digest": "sha256:6a3f6ad8f853ede5c97f46d2c1e0801d06b1fa2a207317bb4ee85534e848138a",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 701979711,
+      "name": "FlistWalker-0.33.0-macos-arm64",
+      "size": 13634320,
+      "digest": "sha256:5239bc5f54083cac343aec2c4f4d8128528408bc61db5b10ae8effcf27e955fb",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64"
+    },
+    {
+      "id": 701979725,
+      "name": "FlistWalker-0.33.0-macos-arm64-app.zip",
+      "size": 6811742,
+      "digest": "sha256:70aeee700f6f389c7d09256dee1b89a41c279987844a60b0bdc42cb859037461",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64-app.zip"
+    },
+    {
+      "id": 701979731,
+      "name": "FlistWalker-0.33.0-macos-arm64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64.LICENSE.txt"
+    },
+    {
+      "id": 701979745,
+      "name": "FlistWalker-0.33.0-macos-arm64.README.txt",
+      "size": 6798,
+      "digest": "sha256:19b24667fb8c7b54a6d39a960946dabdb8342c1ec80fbbc599c259de64868398",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64.README.txt"
+    },
+    {
+      "id": 701979762,
+      "name": "FlistWalker-0.33.0-macos-arm64.tar.gz",
+      "size": 6712350,
+      "digest": "sha256:59ad28c0029be842a0985670458f363cf1c1a5d74e109b186d45ad9354dd30a6",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64.tar.gz"
+    },
+    {
+      "id": 701979756,
+      "name": "FlistWalker-0.33.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "size": 5355,
+      "digest": "sha256:6a3f6ad8f853ede5c97f46d2c1e0801d06b1fa2a207317bb4ee85534e848138a",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-arm64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 701979763,
+      "name": "FlistWalker-0.33.0-macos-x86_64",
+      "size": 15947232,
+      "digest": "sha256:2249c38ed64e41f1d5e956c16bf56b26ef2e4682c716fd2c8626b7b5a492f1d2",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64"
+    },
+    {
+      "id": 701979773,
+      "name": "FlistWalker-0.33.0-macos-x86_64-app.zip",
+      "size": 7546472,
+      "digest": "sha256:048da3a5841760e33051eed9e2116bc5de87508537f94a4c3a6b6ba097818a4e",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64-app.zip"
+    },
+    {
+      "id": 701979774,
+      "name": "FlistWalker-0.33.0-macos-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 701979786,
+      "name": "FlistWalker-0.33.0-macos-x86_64.README.txt",
+      "size": 6802,
+      "digest": "sha256:39b11dc702b2eefb60ac5382f653caadf6483e1c1607a304963b7ad3a590bfa0",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64.README.txt"
+    },
+    {
+      "id": 701979797,
+      "name": "FlistWalker-0.33.0-macos-x86_64.tar.gz",
+      "size": 7447143,
+      "digest": "sha256:29086677c430567dc0111a4b703325cc0c60cb2b8e28a6b13881c0a925e274c8",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64.tar.gz"
+    },
+    {
+      "id": 701979794,
+      "name": "FlistWalker-0.33.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5355,
+      "digest": "sha256:6a3f6ad8f853ede5c97f46d2c1e0801d06b1fa2a207317bb4ee85534e848138a",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-macos-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 701979835,
+      "name": "FlistWalker-0.33.0-windows-x86_64.exe",
+      "size": 16625152,
+      "digest": "sha256:b78a97f9b39f9e0fc4007114d401a37d78412de710429d438f639ff50629c60c",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-windows-x86_64.exe"
+    },
+    {
+      "id": 701979808,
+      "name": "FlistWalker-0.33.0-windows-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-windows-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 701979813,
+      "name": "FlistWalker-0.33.0-windows-x86_64.README.txt",
+      "size": 7208,
+      "digest": "sha256:b20453391c42b7c7b6e75cd46628c6334f8788adaf431207fba04723b23504e3",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-windows-x86_64.README.txt"
+    },
+    {
+      "id": 701979825,
+      "name": "FlistWalker-0.33.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5355,
+      "digest": "sha256:6a3f6ad8f853ede5c97f46d2c1e0801d06b1fa2a207317bb4ee85534e848138a",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-windows-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 701979845,
+      "name": "FlistWalker-0.33.0-windows-x86_64.zip",
+      "size": 7585373,
+      "digest": "sha256:f20cb714d1dad13a10f99c80be9a5b3fd408419790791b3409f56bb54d0d62ef",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/FlistWalker-0.33.0-windows-x86_64.zip"
+    },
+    {
+      "id": 701979877,
+      "name": "fw-0.33.0-linux-x86_64",
+      "size": 6718432,
+      "digest": "sha256:5f7ebc64c7e9944023fd5e4697b5f8dd2d0b364d9b31c39b6d8a3750bd87f8bb",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/fw-0.33.0-linux-x86_64"
+    },
+    {
+      "id": 701979878,
+      "name": "fw-0.33.0-macos-arm64",
+      "size": 5183168,
+      "digest": "sha256:e31c3f1e42c77e2f85892bf06f8058bd244be936851196827382f5b07f64dfa8",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/fw-0.33.0-macos-arm64"
+    },
+    {
+      "id": 701979887,
+      "name": "fw-0.33.0-macos-x86_64",
+      "size": 5976532,
+      "digest": "sha256:327f89a845a1970f75122a55e9dbdebd1961e540711045124449a94432d0e81b",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/fw-0.33.0-macos-x86_64"
+    },
+    {
+      "id": 701979895,
+      "name": "fw-0.33.0-windows-x86_64.exe",
+      "size": 6273024,
+      "digest": "sha256:9acd6791a0728f322f3daf2cc8fe7c61d7a86cd19bde07dbe2301d390af149e4",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/fw-0.33.0-windows-x86_64.exe"
+    },
+    {
+      "id": 701979848,
+      "name": "SHA256SUMS",
+      "size": 2754,
+      "digest": "sha256:75525eb244fc1833d581d573005242888c82476d62af1fae492f545990104cf8",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/SHA256SUMS"
+    },
+    {
+      "id": 701979849,
+      "name": "SHA256SUMS.sig",
+      "size": 64,
+      "digest": "sha256:984f07aed5be3460a14fc820dd0a65e709d92540f47dc4dfa2924e3441d6adfb",
+      "fixed_url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.0/SHA256SUMS.sig"
+    }
+  ],
+  "public_verification": "All28 fixedURL actual bytes/size/hash equal verified tagged draft; 26-entry manifest Ed25519+negative controls/8binary identities/archive exactmembers/notices/N-1 actual PASS",
+  "public_manifest_sha256": "75525eb244fc1833d581d573005242888c82476d62af1fae492f545990104cf8",
+  "native": {
+    "Mac": "4 selected Preview activation/foreground/completed background/inprogress return cases PASS on reviewed3dafa treeequal7505 local locked release build; actual change/deletion and Cmd-click/OFFrestart/Tab evidence eligible reuse; formalSDK26.5 metadata inspected versus localSDK27.2; formalbytes native NOT RUN",
+    "Windows_comment": "https://github.com/ShinjiKawamura255/flist-walker/pull/242#issuecomment-6578084996",
+    "Windows_candidate_GUI_sha256": "75aa5ddaa8849ab20e911050751816ebcc35d9f7a4ab770a2879d5ba16d22d95",
+    "Windows_selected": "4 paths retain600 lines without extraMore/Reload; realcontent/metadata update and deletionclear PASS",
+    "Windows_tagged_reconciliation": {
+      "result": "PASS_SCOPED_NATIVE_REUSE",
+      "source": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+      "candidate_run": 41446036315,
+      "tagged_run": 41454528057,
+      "attempt": 1,
+      "native_report": "https://github.com/ShinjiKawamura255/flist-walker/pull/242#issuecomment-6578084996",
+      "Windows_native_original_result": "PASS four600linepaths + realcontentmetadatachange + deletion",
+      "tagged_actual_native_execution": "NOT RUN",
+      "difference_reconciliation": "Same source/tree/compiler/key/features/build script; fresh binaries differ only valid COFF link timestamp/checksum and unordered identical VERSIONINFO property values. All other actual bytes equal; no adapter/code/config/manifest/icons/launch behavior change. Same Windows native operation evidence reused on this demonstrated unaffected boundary. No claim exact binary hash equality.",
+      "binaries": [
+        {
+          "name": "FlistWalker-0.33.0-windows-x86_64.exe",
+          "candidate_sha256": "75aa5ddaa8849ab20e911050751816ebcc35d9f7a4ab770a2879d5ba16d22d95",
+          "tagged_sha256": "b78a97f9b39f9e0fc4007114d401a37d78412de710429d438f639ff50629c60c",
+          "size": 16625152,
+          "normalized_all_file_sha256": "b48e72d28d9193d088cd9e0407b27d9baedd6653044c77b1031b62ed5e50d941",
+          "entire_file_equal_except": [
+            [
+              16572032,
+              448,
+              "VERSIONINFO exact canonical semantic equality required"
+            ],
+            [
+              136,
+              4,
+              "COFF build timestamp"
+            ],
+            [
+              216,
+              4,
+              "verified PE checksum"
+            ]
+          ],
+          "canonical_VERSIONINFO_equal": true,
+          "actual_PE_checksums_valid": [
+            16647211,
+            16651071
+          ],
+          "all_executable_sections_and_other_resources_exact_bytes_equal": true,
+          "all_other_bytes_equal": true
+        },
+        {
+          "name": "fw-0.33.0-windows-x86_64.exe",
+          "candidate_sha256": "e4aafe941edc48dd90f57e9b5318a74ef3e88e1a2d95a2247c8e9be2da4e9faf",
+          "tagged_sha256": "9acd6791a0728f322f3daf2cc8fe7c61d7a86cd19bde07dbe2301d390af149e4",
+          "size": 6273024,
+          "normalized_all_file_sha256": "534f3d4901e67f6a77c8d14198fdd0faeaaf47655b806c62eb2cd1498e05e97f",
+          "entire_file_equal_except": [
+            [
+              6244480,
+              448,
+              "VERSIONINFO exact canonical semantic equality required"
+            ],
+            [
+              136,
+              4,
+              "COFF build timestamp"
+            ],
+            [
+              216,
+              4,
+              "verified PE checksum"
+            ]
+          ],
+          "canonical_VERSIONINFO_equal": true,
+          "actual_PE_checksums_valid": [
+            6326251,
+            6330111
+          ],
+          "all_executable_sections_and_other_resources_exact_bytes_equal": true,
+          "all_other_bytes_equal": true
+        }
+      ],
+      "utc": "2026-11-02T13:57:45.126486+00:00",
+      "release_publication_GO": false
+    }
+  },
+  "tagged_artifact_acquisition": {
+    "four_producer_ZIP": "Actual API size/hash/CRC/strictmanifest verified;26 payloads plus fresh draft manifest/signature mapped1:1 to all28 draft API size/digests",
+    "global_wrapper_local_CRC": "NOT RUN; same-run CreateDraftRelease actual expected/downloaded API digest and successful extraction verified, not a claim independent CRC check",
+    "manual_candidate_global_wrapper": "Actual5archives inclglobalwrapper full APIhash/CRC verified; first600s transporttimeout retained, exact206missingrange resume wholehashCRC verified; no CIrerun"
+  },
+  "known_unresolved": "Historical TC229/TC207/coverage/updater failures remain originalFAIL/causeUNKNOWN. Current required gates fulfilled; no inherited0.32-only waiver or repairclaim. First0429candidate Windows2ssettingsFAIL retained/no rerun. macOS unnotarized disclosed.",
+  "not_run": "Unaffected IME/DPI/UNC/externalOpen axes remain conditional, not new release gates. Taggedformalnative not executed; scoped reuse as documented.",
+  "original_rejected_candidates": {
+    "41382808473": "8801 Previewcompletion600to100 nativeFAIL",
+    "41425060699": "0429 Windows2settings testsFAIL/UNKNOWN/no normalassets",
+    "41435637277": "ac09 ReadyreturnPreviewloss nativeFAIL despite automatedPASS"
+  },
+  "cleanup": "Isolated test application, fixtures and settings cleanup PASS; ordinary user environment preserved.",
+  "closure": "Protected documentation PR remains separate from publication; ordinary master ownership preserved.",
+  "created_utc": "2026-11-02T14:25:21.150328+00:00",
+  "whole_release_delta": {
+    "range": "v0.32.1..75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+    "all_commits_classified": true,
+    "rows": [
+      {
+        "commit": "75056b8f29fe50d4fbc8b76fc1bdd8410e0c97c3",
+        "subject": "Preserve preview identity on ready tab return",
+        "disposition": "Fixed Preview Ready return/pages"
+      },
+      {
+        "commit": "ac09c04098e10826ee18a89085c83cce296a2e46",
+        "subject": "fix(preview): preserve revalidation across cancellation and tab changes",
+        "disposition": "Fixed Preview cancellation/tab retention"
+      },
+      {
+        "commit": "0429398e6c8aa35f7210192dd515771ebf8b6b31",
+        "subject": "fix(preview): retain loaded pages through index completion",
+        "disposition": "Fixed Preview index completion/pages"
+      },
+      {
+        "commit": "4e41285837ae7b1d3794467200e459f74ece1421",
+        "subject": "chore(deps): bump tracing-subscriber from 0.3.22 to 0.3.23 in /rust",
+        "disposition": "Changed tracing-subscriber0.3.23; same license/default logger behavior, detailed reconciliation in candidate packet"
+      },
+      {
+        "commit": "8801f60ad1bf65ba1a155750d1083be31504befb",
+        "subject": "chore(release): prepare v0.33.0",
+        "disposition": "Summary version/date+Changed N-1 compatibility+Downloads notices"
+      },
+      {
+        "commit": "11d64a4069042afbf544e53497c00f90e2c31d51",
+        "subject": "fix(gui): preserve click-event modifiers across frame updates",
+        "disposition": "Fixed event-time modifiers/doubleclick"
+      },
+      {
+        "commit": "7ebf516dbbd68999f1309b27e46ca167b2fafd04",
+        "subject": "feat(gui): add modifier-click pins and preserve preview during refresh",
+        "disposition": "Added modifierclick pin+Fixed Preview refresh"
+      },
+      {
+        "commit": "c9fb160969141ab4ee4597a18e7f1a76c00709c1",
+        "subject": "chore(deps): bump objc2 from 0.6.4 to 0.6.5 in /rust",
+        "disposition": "Changed objc20.6.5"
+      },
+      {
+        "commit": "11420f0cd5f427999f2df16f44333ef89468b24b",
+        "subject": "docs: prioritize equivalent local validation evidence",
+        "disposition": "Omitted public bullet: internal validation policy only"
+      },
+      {
+        "commit": "ef151428dcc44b533add27dc33f0fd7b850507fd",
+        "subject": "test(gui): guard toolbar geometry and document focused visual comparison",
+        "disposition": "Omitted public bullet: test/docs only, no product UI change"
+      },
+      {
+        "commit": "2f800f3520469825cf7797f3c498d112146b161f",
+        "subject": "docs: clarify lightweight development workflow",
+        "disposition": "Omitted public bullet: internal development workflow only"
+      },
+      {
+        "commit": "4f49b98cee7c462f18c9f30b6b52e13d44b76181",
+        "subject": "docs(release): record v0.32.1 publication",
+        "disposition": "Omitted public bullet: previous release evidence only"
+      }
+    ],
+    "changelog_consistency": "same version/date/categories/known issues; dependency patch detail expanded, no contradicting product claim"
+  },
+  "warning_admissions": "warning-admissions.json"
+}

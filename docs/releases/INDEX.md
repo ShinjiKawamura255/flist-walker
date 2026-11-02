@@ -2,13 +2,13 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.32.1 (2026-10-30 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.32.1).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.33.0 (2026-11-02 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.33.0).
 
 ## Release And Candidate Records
 
 | Record | Role |
 | --- | --- |
-| [v0.33.0 Execution Packet](v0.33.0.md) | Preparation and validation selection; publication pending |
+| [v0.33.0 Execution Packet](v0.33.0.md) | Published pin/Preview fixes; candidate/tagged/public bytes, selected Mac/Windows native, scoped reuse and separate warning decisions |
 | [v0.32.1 Execution Packet](v0.32.1.md) | Published UI/path fixes, native and CI evidence, signed assets, Latest and N-1 |
 | [v0.32.0 Execution Packet](v0.32.0.md) | Published source/tag, first candidate and native TC193, retained hosted-runner failure/one targeted recovery, signed tagged/public bytes, Latest and actual N-1 |
 | [v0.31.1 Execution Packet](v0.31.1.md) | Published source/tag, Windows native verification, separate candidate/tagged/public gates and retained external-install CI failure/retry |
