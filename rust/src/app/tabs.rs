@@ -401,7 +401,7 @@ impl FlistWalkerApp {
             self.trigger_lifecycle_activation_refresh();
         }
         if preview_reload_pending {
-            self.request_preview_for_current();
+            self.revalidate_preview_after_tab_activation();
         }
         self.restore_paged_preview_view_for_active();
         if request_focus {
@@ -702,9 +702,9 @@ impl FlistWalkerApp {
                 .index_state
                 .committed_snapshot_present()
                 .then(|| tab.take_committed_resources());
-            let retained_results = previous.as_mut().and_then(|previous| {
-                preserve_last_good_results.then(|| previous.take_visible_result_snapshot())
-            });
+            let retained_results = previous
+                .as_mut()
+                .map(|previous| previous.take_visible_result_snapshot(preserve_last_good_results));
             (previous, retained_results)
         };
         if let Some(previous) = previous {
@@ -722,11 +722,15 @@ impl FlistWalkerApp {
         }
         if let Some(retained_results) = retained_results {
             let tab = self.shell.tabs.get_mut(tab_index).expect("validated tab");
-            tab.result_state.committed.results = retained_results.results;
-            tab.result_state.committed.preview = retained_results.preview;
-            tab.result_state.committed.total_match_count = retained_results.total_match_count;
-            tab.result_state.committed.current_row = retained_results.current_row;
+            retained_results.restore_into(&mut tab.result_state.committed);
         }
+        // Retention is not evidence of freshness: validate the retained preview
+        // when this tab returns, after any background search has restored its row.
+        self.shell
+            .tabs
+            .get_mut(tab_index)
+            .expect("validated tab")
+            .mark_preview_reload_pending();
         if let Some(request_id) = stale_sort_request_id {
             self.take_sort_request_tab(request_id);
         }

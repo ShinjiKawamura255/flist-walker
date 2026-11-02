@@ -1697,7 +1697,7 @@ impl FlistWalkerApp {
             self.shell.runtime.result_sort_mode != ResultSortMode::Score;
         let mut previous = self.take_active_committed_resources();
         let mut retained_results =
-            preserve_last_good_results.then(|| previous.take_visible_result_snapshot());
+            Some(previous.take_visible_result_snapshot(preserve_last_good_results));
         if !previous.is_empty() {
             if let Err(mut previous) = self.shell.tabs.try_retire_active_resources(previous) {
                 if let Some(retained_results) = retained_results.take() {
@@ -1709,14 +1709,9 @@ impl FlistWalkerApp {
             }
         }
         if let Some(retained_results) = retained_results {
-            self.shell.runtime.replace_results(retained_results.results);
-            self.shell.runtime.set_preview(retained_results.preview);
             self.shell
                 .runtime
-                .set_total_match_count(retained_results.total_match_count);
-            self.shell
-                .runtime
-                .set_current_row(retained_results.current_row);
+                .restore_visible_result_snapshot(retained_results);
         }
         if preserve_last_good_results {
             if let Some(request_id) = self.shell.worker_bus.sort.pending_request_id {

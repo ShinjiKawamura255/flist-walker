@@ -132,7 +132,9 @@ pub(super) fn apply_background_search_response(
     let Some(tab) = app.shell.tabs.get_mut(tab_index) else {
         return;
     };
-    let previous_path = selected_tab_path(tab).cloned();
+    let previous_path = selected_tab_path(tab)
+        .cloned()
+        .or_else(|| tab.result_state.evicted_selected_path.clone());
     tab.clear_search_request_state();
     let update = super::result_policy::SearchResultUpdate::prepare(
         &tab.query_state.query,
@@ -663,7 +665,9 @@ pub(super) fn apply_background_sort_response(
     let pending_total_match_count = tab.result_state.pending_sorted_total_match_count.take();
     tab.result_state.clear_sort_request_state();
     if response.mode == tab.result_state.result_sort_mode {
-        let previous_path = selected_tab_path(tab).cloned();
+        let previous_path = selected_tab_path(tab)
+            .cloned()
+            .or_else(|| tab.result_state.evicted_selected_path.clone());
         tab.result_state.committed.results = FlistWalkerApp::build_sorted_results_from(
             &tab.result_state.committed.base_results,
             tab.result_state.result_sort_mode,

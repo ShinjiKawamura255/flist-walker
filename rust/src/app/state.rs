@@ -485,6 +485,13 @@ impl AppRuntimeState {
         std::mem::take(&mut self.committed)
     }
 
+    pub(super) fn restore_visible_result_snapshot(
+        &mut self,
+        snapshot: super::tab_resources::RetainedActiveResultSnapshot,
+    ) {
+        snapshot.restore_into(&mut self.committed);
+    }
+
     pub(super) fn restore_committed_payload(&mut self, payload: TabCommittedPayload) {
         self.committed = payload;
     }
