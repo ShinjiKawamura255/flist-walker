@@ -56,6 +56,12 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## objc2 0.6.5 dependency review (2026-11-02)
+
+- Resolved macOS dependency `objc2` moves from0.6.4 to0.6.5, retaining MIT and MSRV1.71. The upstream release fixes autoreleased-object method-call miscompilation; this does not imply any observed FlistWalker incident was caused by it. Cargo's compatible direct requirement remains0.6.4.
+- Four packaged-target graphs preserve packages, dependency edges, enabled features and license expressions after normalizing only objc2 and the root version: Windows GNU292, Linux328, macOS x86_64 304 and arm64 303. [Comparison and upstream license hashes](releases/evidence/v0.33.0/objc2-metadata-comparison.json) records both release-tag LICENSE.md files (identical); the registry crates themselves do not include separate license files. No new license family or distribution obligation is introduced.
+- `THIRD_PARTY_NOTICES.txt` now records resolved0.6.5. Archive, standalone sidecar, macOS bundle and variant-specific self-update notice routes are unchanged; actual candidate contents remain a separate gate. Existing macOS feature-native results in PR238 already used0.6.5; Windows/Linux resolve graphs are unaffected. Fresh host audit exited0 with1395 advisories/452 packages and no vulnerability/warning output; existing build-only quick-xml exceptions are unchanged.
+
 ## rustls-webpki / webpki-roots security update (2026-10-23)
 
 - Through `ureq 2.12.1` / `rustls 0.23.46`, `rustls-webpki` moves from0.103.15 to0.103.16 and the1.x `webpki-roots` parent from1.0.7 to1.0.10. These address [RUSTSEC-2026-0382](https://rustsec.org/advisories/RUSTSEC-2026-0382) (reject distrusted emSign intermediate keys) and [RUSTSEC-2026-0381](https://rustsec.org/advisories/RUSTSEC-2026-0381) (remove the affected emSign root). The0.26.11 compatibility package remains and re-exports the patched1.0.10 roots; no audit ignore is added.
