@@ -396,6 +396,7 @@ impl FlistWalkerApp {
         }
         self.ensure_results_cursor_visible();
         self.clear_paged_preview();
+        self.restore_retained_preview_identity_for_active();
         if !preview_reload_pending {
             self.paged_preview_view.error = self.shell.runtime.preview_page_error;
         }

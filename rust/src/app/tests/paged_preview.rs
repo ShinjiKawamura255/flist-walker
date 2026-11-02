@@ -2358,15 +2358,33 @@ fn foreground_refresh_then_background_real_filelist_preserves_loaded_pages() {
         assert!(Instant::now() < deadline, "initial FileList did not settle");
         thread::yield_now();
     }
-    app.create_new_tab();
-    app.switch_to_tab_index(0);
-    settle_preview(&mut app);
+    // Match native: load pages before creating/returning from the other tab.
     app.request_paged_preview_more();
     settle_preview(&mut app);
     let before = app.paged_preview_for_current().unwrap().clone();
     assert_eq!(before.line_count(), 600);
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    settle_preview(&mut app);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    let restored_identity = app.preview_view_matches_current(&path);
     app.shell.tabs.mark_active_tab_meaningfully_engaged();
     app.restart_current_index();
+    assert!(
+        Arc::ptr_eq(
+            app.paged_preview_for_current()
+                .expect("Refresh admission must retain the loaded document"),
+            &before
+        ),
+        "Refresh admission must not replace the retained document before background work"
+    );
+    assert!(
+        restored_identity,
+        "Ready tab return must restore the retained document display identity"
+    );
     app.switch_to_tab_index(1);
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
@@ -2386,6 +2404,81 @@ fn foreground_refresh_then_background_real_filelist_preserves_loaded_pages() {
     let after = app.paged_preview_for_current().unwrap();
     assert_eq!(after.line_count(), 600);
     assert!(Arc::ptr_eq(after, &before));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn ready_tab_return_revalidation_keeps_loaded_document() {
+    let settings = super::support::TestSettingsScope::new("preview-ready-return-revalidation");
+    let root = test_root("preview-ready-return-revalidation");
+    fs::create_dir_all(&root).unwrap();
+    let path = root.join("B-preview.txt");
+    fs::write(root.join("A-preview.txt"), "other target\n").unwrap();
+    fs::write(&path, "unchanged\n".repeat(900)).unwrap();
+    fs::write(root.join("FileList.txt"), "A-preview.txt\nB-preview.txt\n").unwrap();
+    let mut app = settings.app(root.clone(), 50, "'B-preview.txt".into());
+    app.shell.ui.show_preview = true;
+    app.request_index_refresh();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        app.poll_runtime_events();
+        if app.shell.indexing.pending_request_id.is_none()
+            && !app.shell.search.in_progress()
+            && app.paged_preview_for_current().is_some()
+            && !app.shell.worker_bus.preview.in_progress
+        {
+            break;
+        }
+        assert!(Instant::now() < deadline, "initial FileList did not settle");
+        thread::yield_now();
+    }
+    app.request_paged_preview_more();
+    settle_preview(&mut app);
+    let before = app.paged_preview_for_current().unwrap().clone();
+    assert_eq!(before.line_count(), 600);
+    app.create_new_tab();
+    app.switch_to_tab_index(0);
+    settle_preview(&mut app);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+
+    // Observe the same revalidation entry point used when Refresh reapplies results.
+    let (tx, requests) = mpsc::channel();
+    let (responses, rx) = mpsc::channel();
+    app.shell.worker_bus.preview.tx = tx;
+    app.shell.worker_bus.preview.rx = rx;
+    app.refresh_preview_for_current();
+    let request = requests.recv_timeout(Duration::from_secs(1)).unwrap();
+    assert!(request.revalidate);
+    assert!(Arc::ptr_eq(
+        request
+            .document
+            .as_ref()
+            .expect("Ready return must send the retained pages for revalidation"),
+        &before
+    ));
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
+    responses
+        .send(PreviewResponse {
+            request_id: request.request_id,
+            path,
+            canceled: false,
+            preview: String::new(),
+            document: Some(before.clone()),
+            page_error: None,
+            is_more: false,
+        })
+        .unwrap();
+    settle_preview(&mut app);
+    assert!(Arc::ptr_eq(
+        app.paged_preview_for_current().unwrap(),
+        &before
+    ));
     fs::remove_dir_all(root).unwrap();
 }
 
