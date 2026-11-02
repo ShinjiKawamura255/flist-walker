@@ -24,6 +24,33 @@
 ### Known issues
 - なし。
 
+## [0.33.0] - 2026-11-02
+### Added
+- ResultsでWindowsのCtrl+クリック／macOSのCommand+クリックにより、Tabと同じPINを切り替えられる。既定ONで、SettingsからOFFにでき、再起動後も設定を保持する。
+
+### Changed
+- macOSのobjc2依存を0.6.4から0.6.5へ更新する。ライセンスと配布物の構成は維持する。
+- v0.32.1からの自動更新互換性を26件のchecksum inventoryと非増加versionの拒否テストで確認する。
+
+### Fixed
+- Indexing中、同じ項目を選択している場合はPreviewの不要なクリアと再読込を抑える。対象や内容・メタデータの変更と古い非同期応答の分離は維持する。
+- クリック直後に修飾キーを離した場合も、イベント時点のキー状態でPIN操作を判定する。修飾ダブルクリックでの二重切替を防ぐ。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 新しい依存やライセンス種別、更新時の署名検証方式の変更はない。
+
+### Known issues
+- macOS配布物は未notarized。
+- 過去のTC-207の48並列ストレス条件での100ms超過と、Linux coverageのSIGSEGVは原因未確定。通常条件の成功を原因解消とは扱わない。
+- 過去のWindows保存ワーカー終了遅延と自己更新失敗は原因・実利用への影響が未確定。今回の修正が原因解消したとは主張しない。
+- v0.24.3利用者は同じvariantのbinaryとSHA256SUMSを手動で取得・検証して一度置き換える必要がある。v0.24.4以降は通常の自動更新を利用できる。
+
 ## [0.32.1] - 2026-10-30
 ### Added
 - なし。
@@ -2326,7 +2353,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.0...HEAD
+[0.33.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.1...v0.33.0
 [0.32.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.0...v0.32.1
 [0.32.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.1...v0.32.0
 [0.31.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.31.0...v0.31.1

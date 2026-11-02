@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-02",
+  "base": "11d64a4069042afbf544e53497c00f90e2c31d51",
+  "scope": "mechanical root version, N-1 capability/test, notices and release records",
+  "checks": {
+    "N-1 exact 0.32.1 to 0.33.0": "RED unsupported predecessor; explicit capability then GREEN complete self-test incl non-increasing/unknown rejection",
+    "tooling": "168 tests PASS in76.656s",
+    "repo_contract": "PASS",
+    "guardian_policy": "PASS",
+    "workflow_yaml": "PASS using isolated temporary PyYAML; system Python initially lacked module, product NOT RUN by that failed tool attempt",
+    "fmt": "PASS",
+    "locked_root_metadata": "PASS flist-walker0.33.0",
+    "fresh_audit": "exit0;1395 advisories;452 dependencies;no vulnerability/warning output;existing quick-xml ignores unchanged",
+    "diff_check": "PASS",
+    "public_override_names": "no matches",
+    "whole_delta_routing": "VM001/002/003/004/005/006/008/009 selected; each detail and intent checklist read",
+    "rust_tests": "eligible ba4/11d64 identical-tree evidence reused for preparation; exact source current3OS CI/candidate will execute",
+    "GUI": "no new input/launch/TCC/fixed-app mutation; Windows required native NOT RUN"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "previous": "v0.32.1",
+  "source": "11d64a4069042afbf544e53497c00f90e2c31d51 + mechanical 0.33.0 root version",
+  "normalization": "objc2 0.6.4 -> 0.6.5; flist-walker 0.32.1 -> 0.33.0 only",
+  "targets": {
+    "x86_64-pc-windows-gnu": {
+      "packages": 292,
+      "normalized_package_edge_feature_license_equal": true,
+      "normalized_graph_sha256": "36d901f7b568d0f45bc72b89beb377390813bac9cdf35e7cdd4879d320e05327"
+    },
+    "x86_64-unknown-linux-gnu": {
+      "packages": 328,
+      "normalized_package_edge_feature_license_equal": true,
+      "normalized_graph_sha256": "0420aed7b11add3913992624a59ec1af34040e97041d316a813312aa659b98cd"
+    },
+    "x86_64-apple-darwin": {
+      "packages": 304,
+      "normalized_package_edge_feature_license_equal": true,
+      "normalized_graph_sha256": "3efa6625bd858792c8cd68320dd42788a107b3818972fa55a0214d2a6fc3179f"
+    },
+    "aarch64-apple-darwin": {
+      "packages": 303,
+      "normalized_package_edge_feature_license_equal": true,
+      "normalized_graph_sha256": "2181cb6c46d5cc0d02a05293e84eb1319dc7b9681463d88e760ed83d9d00c7e1"
+    }
+  },
+  "objc2": {
+    "0.6.4": {
+      "license": "MIT",
+      "rust_version": "1.71",
+      "repository": "https://github.com/madsmtm/objc2",
+      "upstream_license": {
+        "url": "https://github.com/madsmtm/objc2/blob/objc2-0.6.4/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "bytes": 1339
+      },
+      "registry_license_files": "Not present in the resolved crate; upstream release LICENSE.md inspected."
+    },
+    "0.6.5": {
+      "license": "MIT",
+      "rust_version": "1.71",
+      "repository": "https://github.com/madsmtm/objc2",
+      "upstream_license": {
+        "url": "https://github.com/madsmtm/objc2/blob/objc2-0.6.5/LICENSE.md",
+        "sha256": "7f976f7e9cb2d87df7230606feb932c3f21ac0e664045a775b600046ff850c54",
+        "bytes": 1339
+      },
+      "registry_license_files": "Not present in the resolved crate; upstream release LICENSE.md inspected."
+    }
+  }
+}
