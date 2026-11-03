@@ -34,6 +34,18 @@ def sample_times(text, change):
     return "\n".join(lines) + "\n"
 
 
+def reference_log(text):
+    def legacy_metadata(meta):
+        # Frozen witness from fcdea8ee; future candidate keys/defaults must not
+        # silently modernize this reference fixture again.
+        settings = json.loads((ROOT / "scripts/tests/fixtures/indexing-runtime-defaults-fcdea8ee.json").read_text())
+        settings["search_threads"] = min(meta["environment_identity"]["logical_cpus"], 32)
+        settings["window_trace_path"] = "/synthetic/reference/" + settings["window_trace_path"]
+        meta["runtime_settings"] = settings
+        meta["environment_identity"]["crate_version"] = "0.30.2"
+    return mutate_record(text, "INDEX_PERF_META", legacy_metadata)
+
+
 def write_fixture(folder, group="f1", change=None, enforced=True):
     """Invented process/source receipts + projected raw data, explicitly synthetic."""
     text = mutate_record(control_log(group), "INDEX_PERF_META",
@@ -45,9 +57,7 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
     for index, role in enumerate(("reference-before", "candidate", "reference-after")):
         raw = sample_times(text, change) if role == "candidate" and change else text
         if role != "candidate":
-            # Model the actual frozen reference, not a modernized symmetric log.
-            raw = mutate_record(raw, "INDEX_PERF_META",
-                                lambda m: m["runtime_settings"].pop("modifier_click_pins_enabled"))
+            raw = reference_log(raw)
         receipt = synthetic_receipt(raw, group, ident="synthetic-" + role)
         receipt["source_before"] = copy.deepcopy(candidate_source)
         receipt["collector_source"] = copy.deepcopy(candidate_source)
@@ -76,6 +86,22 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 
 class GateTests(unittest.TestCase):
+    def test_reference_fixture_does_not_inherit_later_candidate_settings(self):
+        text = mutate_record(control_log("matched"), "INDEX_PERF_META",
+                             lambda m: m["runtime_settings"].update(future_candidate_ui_option=True))
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            with mock.patch(__name__ + ".control_log", return_value=text):
+                write_fixture(folder, "matched")
+            for role in ("reference-before", "reference-after"):
+                raw = (folder / (role + "-measurement.log")).read_text()
+                settings = json.loads(next(s.split("INDEX_PERF_META ", 1)[1]
+                                           for s in raw.splitlines() if "INDEX_PERF_META " in s))["runtime_settings"]
+                self.assertNotIn("future_candidate_ui_option", settings)
+                self.assertNotIn("modifier_click_pins_enabled", settings)
+            with self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+                gate.load_comparison(folder, "matched")
+
     def test_frozen_reference_and_current_candidate_use_distinct_settings_schemas(self):
         with tempfile.TemporaryDirectory() as name:
             folder = Path(name)
@@ -141,6 +167,9 @@ class GateTests(unittest.TestCase):
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
         self.assertEqual(gate.REFERENCE, "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645")
         self.assertEqual(gate.REFERENCE, contract.REFERENCE_RUNTIME_SETTINGS_HEAD)
+        witness = (ROOT / "scripts/tests/fixtures/indexing-runtime-defaults-fcdea8ee.json").read_text()
+        self.assertEqual(hashlib.sha256(witness.encode()).hexdigest(),
+                         "c303bd7f864a6ac596e2a034c34397046c040d44ca5f00759568790bd2b26e42")
         self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v10")
 
     def test_complete_harness_inventory_rejects_changes_additions_and_removals(self):
