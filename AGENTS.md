@@ -21,9 +21,25 @@ This file is the concise project policy entrypoint. The current user request has
 
 Use these preferences for relevant choices within the requested change. The runtime invariants above and existing specifications remain mandatory. This section does not require new features, blanket optimization, repository-wide rearrangement, or an extra review for every task.
 
-- **Keep operation nonblocking, fast, and correct across asynchronous work.** Improve avoidable scans, copies and waits in the touched search/index/preview path; use relevant measurements when claiming a speedup and retain existing performance gates and resource bounds. Prefer bounded/coalesced work with clear request/tab/path ownership over spawning more tasks. When index/search/sort results are reapplied to the same tab/path, preserve confirmed preview pages and scroll position while rechecking; reflect actual changes/deletions and let explicit Reload restart from the beginning. Follow the existing row-selection policy for a changed query instead of chasing the previous path ([GUI specification](docs/spec/gui-behavior.md), [result reducer](rust/src/app/result_reducer.rs)). Cancellation, failure and closed-tab results must respect the same ownership.
-- **Keep behavior consistent and files and responsibilities organized.** Preserve shared query semantics across GUI/CLI/TUI and shared action availability for pointer and keyboard. Put additions in the existing owner modules and matching test area; keep generated output separate from source. For example, [result policy](rust/src/app/result_policy.rs) owns decisions without I/O/dispatch, while orchestration and effects belong to their [architecture owners](docs/ARCHITECTURE.md). Improve a touched boundary when useful; do not move unrelated files or introduce a general framework just for symmetry.
-- **Reduce interaction steps and provide rich keyboard paths.** Prefer frequent search → select → preview/action flows without repeated input or lost context, with discoverable keys, cancellation and focus return. Preserve `Tab` / `Shift+Tab` PIN behavior; use the existing platform-primary preview-focus route rather than repurposing PIN keys. Respect IME/modal boundaries, platform key conventions and intentional selection resets. Fewer steps never waive action-target revalidation or other required safeguards ([GUI specification](docs/spec/gui-behavior.md)).
+- **Keep operation nonblocking, fast, and correct across asynchronous work.** Improve avoidable scans, copies and waits
+  in the touched search/index/preview path; use relevant measurements when claiming a speedup and retain existing
+  performance gates and resource bounds. Prefer bounded/coalesced work with clear request/tab/path ownership over
+  spawning more tasks. When index/search/sort results are reapplied to the same tab/path, preserve confirmed preview
+  pages and scroll position while rechecking; reflect actual changes/deletions and let explicit Reload restart from the
+  beginning. Follow the existing row-selection policy for a changed query instead of chasing the previous path ([GUI
+  specification](docs/spec/gui-behavior.md), [result reducer](rust/src/app/result_reducer.rs)). Cancellation, failure
+  and closed-tab results must respect the same ownership.
+- **Keep behavior consistent and files and responsibilities organized.** Preserve shared query semantics across
+  GUI/CLI/TUI and shared action availability for pointer and keyboard. Put additions in the existing owner modules and
+  matching test area; keep generated output separate from source. For example, [result
+  policy](rust/src/app/result_policy.rs) owns decisions without I/O/dispatch, while orchestration and effects belong to
+  their [architecture owners](docs/ARCHITECTURE.md). Improve a touched boundary when useful; do not move unrelated files
+  or introduce a general framework just for symmetry.
+- **Reduce interaction steps and provide rich keyboard paths.** Prefer frequent search → select → preview/action flows
+  without repeated input or lost context, with discoverable keys, cancellation and focus return. Preserve `Tab` /
+  `Shift+Tab` PIN behavior; use the existing platform-primary preview-focus route rather than repurposing PIN keys.
+  Respect IME/modal boundaries, platform key conventions and intentional selection resets. Fewer steps never waive
+  action-target revalidation or other required safeguards ([GUI specification](docs/spec/gui-behavior.md)).
 
 ## 3. Documentation And Validation
 
