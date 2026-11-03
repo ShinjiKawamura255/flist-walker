@@ -522,7 +522,49 @@ def validate_sample(row, case, source, condition):
                 require(latest["request_id"] == request, "stable edit superseded preceding request")
 
 
-def validate_log(text, group):
+# Only this immutable measured source lacks the later UI input setting. Do not
+# infer a schema from a crate label, executor revision, or observed key presence.
+REFERENCE_RUNTIME_SETTINGS_HEAD = "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645"
+
+
+def validate_runtime_settings(meta, measured_source_head=None):
+    cpus = integer(meta["environment_identity"]["logical_cpus"], "logical CPUs", 1)
+    settings = meta["runtime_settings"]
+    expected_defaults = {
+        "search_parallel_threshold":25000, "search_threads":min(cpus,32),
+        "walker_max_entries":500000, "filelist_auto_check_enabled":True,
+        "window_trace_enabled":False, "window_trace_verbose":False,
+        "history_persist_disabled":False, "restore_tabs_enabled":False,
+        "restore_queries_enabled":True, "theme":"system",
+        "emacs_keybindings_enabled":True, "ctrl_w_deletes_word_in_query":False,
+        "tab_pin_moves_to_next_row":False, "modifier_click_pins_enabled":True,
+        "update_feed_url":"https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest",
+        "update_allow_same_version":False, "update_allow_downgrade":False,
+        "disable_self_update":False, "force_update_check_failure":"",
+    }
+    if measured_source_head == REFERENCE_RUNTIME_SETTINGS_HEAD:
+        del expected_defaults["modifier_click_pins_enabled"]
+    require(type(settings) is dict and set(settings) == set(expected_defaults) | {"window_trace_path"},
+            "runtime settings schema")
+    for key, value in expected_defaults.items():
+        require(type(settings[key]) is type(value) and settings[key] == value, "runtime default drift: " + key)
+    require(isinstance(settings["window_trace_path"],str) and settings["window_trace_path"].endswith(".flistwalker_window_trace.log"), "window trace default")
+    return settings
+
+
+def comparison_runtime_settings(meta, measured_source_head):
+    """Project only validated defaults, without changing or modernizing raw data.
+
+    The harness emits UI frames but generates no modifier-click input. Ignore
+    this one source-versioned input option, not arbitrary new UI/settings keys.
+    Actual product rendering cost remains subject to the unchanged timing gate.
+    """
+    settings = validate_runtime_settings(meta, measured_source_head)
+    return {k:v for k,v in settings.items()
+            if k not in {"window_trace_path", "modifier_click_pins_enabled"}}
+
+
+def validate_log(text, group, *, measured_source_head=None):
     """Validate raw witnesses; actual process/source admission additionally needs receipt."""
     try:
         cells = cells_for(group)
@@ -551,13 +593,7 @@ def validate_log(text, group):
         environment = meta["environment_identity"]
         require(environment["optimized"] is True and environment["frame_period_ms"] == 16 and environment["os"] in ("linux", "macos"), "optimized POSIX frame profile")
         require('channel = "1.97.1"' in environment["pinned_rust_toolchain"], "toolchain pin")
-        cpus = integer(environment["logical_cpus"], "logical CPUs", 1)
-        settings = meta["runtime_settings"]
-        expected_defaults = {"search_parallel_threshold":25000,"search_threads":min(cpus,32),"walker_max_entries":500000,"filelist_auto_check_enabled":True,"window_trace_enabled":False,"window_trace_verbose":False,"history_persist_disabled":False,"restore_tabs_enabled":False,"restore_queries_enabled":True,"theme":"system","emacs_keybindings_enabled":True,"ctrl_w_deletes_word_in_query":False,"tab_pin_moves_to_next_row":False,"modifier_click_pins_enabled":True,"update_feed_url":"https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest","update_allow_same_version":False,"update_allow_downgrade":False,"disable_self_update":False,"force_update_check_failure":""}
-        require(set(settings) == set(expected_defaults) | {"window_trace_path"}, "runtime settings schema")
-        for key, value in expected_defaults.items():
-            require(type(settings[key]) is type(value) and settings[key] == value, "runtime default drift: " + key)
-        require(isinstance(settings["window_trace_path"],str) and settings["window_trace_path"].endswith(".flistwalker_window_trace.log"), "window trace default")
+        validate_runtime_settings(meta, measured_source_head)
         cursor, rows = 0, []
         for case, source in cells:
             def start(condition, role, pair=None, position=None):

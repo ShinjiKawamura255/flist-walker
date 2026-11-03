@@ -364,7 +364,7 @@ def validate_receipt(receipt, text, group):
             if receipt["runner"]["kind"] != "same-job-reference":
                 contract.require(executor == before, "candidate collector/source mismatch")
         validate_runner_record(receipt["runner"],before,receipt["hardware"],executor)
-        result=contract.validate_log(text,group)
+        result=contract.validate_log(text,group,measured_source_head=before["head"])
         identity=result["metadata"]["environment_identity"]
         contract.require(identity["os"] == receipt["hardware"]["os"] and
                          identity["arch"] == {"arm64":"aarch64"}.get(receipt["hardware"]["arch"],receipt["hardware"]["arch"]), "compiled platform mismatch")

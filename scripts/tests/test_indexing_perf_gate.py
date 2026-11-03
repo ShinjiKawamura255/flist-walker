@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 from contextlib import ExitStack
+import hashlib
 import json
 import subprocess
 import sys
@@ -43,6 +44,10 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
     legs = {}
     for index, role in enumerate(("reference-before", "candidate", "reference-after")):
         raw = sample_times(text, change) if role == "candidate" and change else text
+        if role != "candidate":
+            # Model the actual frozen reference, not a modernized symmetric log.
+            raw = mutate_record(raw, "INDEX_PERF_META",
+                                lambda m: m["runtime_settings"].pop("modifier_click_pins_enabled"))
         receipt = synthetic_receipt(raw, group, ident="synthetic-" + role)
         receipt["source_before"] = copy.deepcopy(candidate_source)
         receipt["collector_source"] = copy.deepcopy(candidate_source)
@@ -71,8 +76,71 @@ def write_fixture(folder, group="f1", change=None, enforced=True):
 
 
 class GateTests(unittest.TestCase):
+    def test_frozen_reference_and_current_candidate_use_distinct_settings_schemas(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            write_fixture(folder, "matched")
+            report = gate.load_comparison(folder, "matched")
+            self.assertEqual(report["status"], "pass")
+            for role in gate.ROLES:
+                raw = folder / ("measurement.log" if role == "candidate" else role + "-measurement.log")
+                meta = json.loads(next(s.split("INDEX_PERF_META ", 1)[1]
+                                       for s in raw.read_text().splitlines() if "INDEX_PERF_META " in s))
+                self.assertEqual("modifier_click_pins_enabled" in meta["runtime_settings"], role == "candidate")
+
+    def test_legacy_schema_is_selected_by_measured_source_not_collector_or_crate_label(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            write_fixture(folder, "matched")
+            receipt = json.loads((folder / "reference-before-receipt.log").read_text())
+            raw = (folder / "reference-before-measurement.log").read_text()
+            collector.validate_receipt(receipt, raw, "matched")
+            receipt["source_before"]["head"] = "a" * 40
+            receipt["source_after"] = copy.deepcopy(receipt["source_before"])
+            # A raw crate label or the executor's identity cannot grant legacy admission.
+            raw = mutate_record(raw, "INDEX_PERF_META",
+                                lambda m: m["environment_identity"].update(crate_version="0.30.2"))
+            receipt["raw_sha256"] = hashlib.sha256(raw.encode()).hexdigest()
+            with self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+                collector.validate_receipt(receipt, raw, "matched")
+            receipt["collector_source"]["head"] = REFERENCE
+            receipt["runner"].update(GITHUB_SHA=REFERENCE, GITHUB_WORKFLOW_SHA=REFERENCE)
+            with self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+                collector.validate_receipt(receipt, raw, "matched")
+
+    def test_legacy_schema_support_does_not_promote_an_invalid_receipt(self):
+        with tempfile.TemporaryDirectory() as name:
+            folder = Path(name)
+            write_fixture(folder, "matched")
+            receipt = json.loads((folder / "reference-before-receipt.log").read_text())
+            raw = (folder / "reference-before-measurement.log").read_text()
+            receipt.update(status="invalid", error="ValidationError: runtime settings schema")
+            with self.assertRaisesRegex(contract.ValidationError, "receipt schema/status/selection"):
+                collector.validate_receipt(receipt, raw, "matched")
+
+    def test_comparison_rechecks_settings_before_excluding_the_ui_field(self):
+        with tempfile.TemporaryDirectory() as name:
+            sessions = self.sessions(Path(name), "matched")
+            original = copy.deepcopy(sessions)
+            gate.validate_triplet(sessions, "matched")
+            self.assertEqual(sessions, original)
+            for role, mutate in [
+                ("candidate", lambda s: s.update(modifier_click_pins_enabled=False)),
+                ("candidate", lambda s: s.update(modifier_click_pins_enabled=1)),
+                ("candidate", lambda s: s.pop("modifier_click_pins_enabled")),
+                ("candidate", lambda s: s.update(search_parallel_threshold=1)),
+                ("reference-before", lambda s: s.update(unknown_setting=True)),
+                ("reference-before", lambda s: s.update(modifier_click_pins_enabled=True)),
+                ("reference-after", lambda s: s.update(restore_queries_enabled=False)),
+            ]:
+                changed = copy.deepcopy(sessions)
+                mutate(changed[role][1]["metadata"]["runtime_settings"])
+                with self.subTest(role=role, mutate=mutate), self.assertRaises(contract.ValidationError):
+                    gate.validate_triplet(changed, "matched")
+
     def test_observer_protocol_pins_actual_healthy_measurement_checkpoint(self):
         self.assertEqual(gate.REFERENCE, "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645")
+        self.assertEqual(gate.REFERENCE, contract.REFERENCE_RUNTIME_SETTINGS_HEAD)
         self.assertEqual(gate.PROTOCOL, "same-job-RCR-f1-matched-21-observer-v10")
 
     def test_complete_harness_inventory_rejects_changes_additions_and_removals(self):

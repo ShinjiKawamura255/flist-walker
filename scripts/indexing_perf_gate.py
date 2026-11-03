@@ -99,11 +99,12 @@ def validate_triplet(sessions, group):
         contract.require(_execution_runner(receipt) == _execution_runner(candidate), "different job/image/workflow context")
         validate_work_contract(source, executor)
         # The package's displayed version is not an execution/build setting.
-        for field in ("environment_identity", "runtime_settings"):
-            ignore = {"crate_version"} if field == "environment_identity" else {"window_trace_path"}
-            normalized = lambda m: {k:v for k,v in m[field].items() if k not in ignore}
-            contract.require(normalized(result["metadata"]) == normalized(candidate_result["metadata"]),
-                             "comparison runtime/environment drift")
+        environment = lambda m: {k:v for k,v in m["environment_identity"].items() if k != "crate_version"}
+        contract.require(environment(result["metadata"]) == environment(candidate_result["metadata"]),
+                         "comparison runtime/environment drift")
+        contract.require(contract.comparison_runtime_settings(result["metadata"], source["head"]) ==
+                         contract.comparison_runtime_settings(candidate_result["metadata"], executor["head"]),
+                         "comparison runtime/environment drift")
         interval = receipt["collection_interval_ns"]
         start = contract.integer(interval["started"], "collection start", 1)
         finish = contract.integer(interval["finished"], "collection finish", 1)

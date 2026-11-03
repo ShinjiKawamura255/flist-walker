@@ -393,6 +393,32 @@ def mutate_record(text, marker, change):
 
 
 class IndexingContractTests(unittest.TestCase):
+    def test_legacy_settings_require_explicit_measured_reference_and_stay_strict(self):
+        current = control_log("matched")
+        legacy = mutate_record(current, "INDEX_PERF_META",
+                               lambda m: m["runtime_settings"].pop("modifier_click_pins_enabled"))
+        reference = "fcdea8ee05a5f08c5ee19a9ae8b58b8c8736a645"
+        with self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+            contract.validate_log(legacy, "matched")
+        result = contract.validate_log(legacy, "matched", measured_source_head=reference)
+        self.assertNotIn("modifier_click_pins_enabled", result["metadata"]["runtime_settings"])
+        with self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+            contract.validate_log(current, "matched", measured_source_head=reference)
+        for head in (None, "a" * 40):
+            labeled_old = mutate_record(legacy, "INDEX_PERF_META",
+                                        lambda m: m["environment_identity"].update(crate_version="0.30.2"))
+            with self.subTest(head=head), self.assertRaisesRegex(contract.ValidationError, "runtime settings schema"):
+                contract.validate_log(labeled_old, "matched", measured_source_head=head)
+        for raw, head in ((current, None), (legacy, reference)):
+            for change in (lambda s: s.update(unknown_ui_option=True),
+                           lambda s: s.pop("theme"),
+                           lambda s: s.update(restore_queries_enabled=1),
+                           lambda s: s.update(search_threads=True),
+                           lambda s: s.update(filelist_auto_check_enabled=False)):
+                changed = mutate_record(raw, "INDEX_PERF_META", lambda m: change(m["runtime_settings"]))
+                with self.subTest(head=head, change=change), self.assertRaises(contract.ValidationError):
+                    contract.validate_log(changed, "matched", measured_source_head=head)
+
     def test_serialized_runtime_defaults_and_strict_drift_rejection(self):
         text = control_log("matched")
         self.assertEqual(len(contract.validate_log(text, "matched")["rows"]), 126)
@@ -405,6 +431,9 @@ class IndexingContractTests(unittest.TestCase):
             lambda s: s.update(restore_queries_enabled=False),
             lambda s: s.update(restore_queries_enabled=1),
             lambda s: s.update(unknown_setting=True),
+            lambda s: s.pop("modifier_click_pins_enabled"),
+            lambda s: s.update(modifier_click_pins_enabled=False),
+            lambda s: s.update(modifier_click_pins_enabled=1),
         ]
         for change in changes:
             invalid = mutate_record(text, "INDEX_PERF_META", lambda r: change(r["runtime_settings"]))
