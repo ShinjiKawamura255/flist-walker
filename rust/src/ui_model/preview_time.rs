@@ -159,6 +159,9 @@ mod windows {
             // SAFETY: this SDK structure contains only integer fields/arrays.
             let mut zone: DynamicTimeZoneInformation = unsafe { std::mem::zeroed() };
             zone.bias = bias;
+            // A custom fixed zone has no registry key. Disable dynamic lookup
+            // so the API uses these fixed rules instead of looking up an empty key.
+            zone.dynamic_daylight_time_disabled = 1;
             zone
         }
 
@@ -167,7 +170,12 @@ mod windows {
             assert_eq!(std::mem::size_of::<DynamicTimeZoneInformation>(), 432);
             for (bias, offset) in [(-540, 32_400), (-345, 20_700), (480, -28_800), (0, 0)] {
                 for time in [UNIX_EPOCH, UNIX_EPOCH - Duration::from_nanos(100)] {
-                    assert_eq!(offset_in_zone(time, &fixed_zone(bias)), Some(offset));
+                    assert_eq!(
+                        offset_in_zone(time, &fixed_zone(bias)),
+                        Some(offset),
+                        "fixed bias={bias}, time={time:?}, OS error={}",
+                        std::io::Error::last_os_error()
+                    );
                 }
             }
             let before_windows_epoch = UNIX_EPOCH - Duration::from_secs(11_644_473_601);
@@ -177,6 +185,7 @@ mod windows {
         #[test]
         fn windows_local_time_uses_dynamic_dst_for_the_timestamp_year() {
             let mut pacific = fixed_zone(480);
+            pacific.dynamic_daylight_time_disabled = 0;
             pacific.daylight_bias = -60;
             pacific.standard_date.month = 11;
             pacific.standard_date.day = 1;
