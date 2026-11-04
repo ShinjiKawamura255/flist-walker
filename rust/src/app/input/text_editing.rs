@@ -323,17 +323,57 @@ impl FlistWalkerApp {
         true
     }
 
-    pub(in crate::app) fn consume_disabled_emacs_text_edit_shortcuts(
+    pub(in crate::app) fn prepare_emacs_text_edit_shortcuts(
         ctx: &egui::Context,
         input_focused: bool,
         emacs_enabled: bool,
+        ime_composition_active: bool,
     ) {
-        if emacs_enabled || !input_focused {
+        if !input_focused {
+            return;
+        }
+
+        if !ime_composition_active {
+            ctx.input_mut(|input| {
+                for event in &mut input.events {
+                    if let egui::Event::Key {
+                        key,
+                        physical_key,
+                        modifiers,
+                        ..
+                    } = event
+                    {
+                        if *key == egui::Key::A
+                            && modifiers.ctrl
+                            && !modifiers.alt
+                            && !modifiers.shift
+                            && !modifiers.mac_cmd
+                        {
+                            // TextEdit paints before the post-widget adapter runs.
+                            // Route Ctrl+A through its own cursor handling so no
+                            // select-all is painted, and later events in this frame
+                            // observe the new cursor rather than a selection.
+                            *key = if emacs_enabled {
+                                egui::Key::Home
+                            } else {
+                                egui::Key::A
+                            };
+                            *physical_key = None;
+                            *modifiers = egui::Modifiers {
+                                command: !emacs_enabled,
+                                ..Default::default()
+                            };
+                        }
+                    }
+                }
+            });
+        }
+
+        if emacs_enabled {
             return;
         }
 
         let keys = [
-            egui::Key::A,
             egui::Key::E,
             egui::Key::B,
             egui::Key::F,
