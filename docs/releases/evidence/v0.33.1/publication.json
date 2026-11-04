@@ -1381,5 +1381,120 @@
   "known_unresolved": "Historical TC229/TC207/coverage/updater failures remain original FAIL/cause UNKNOWN, without inherited version waivers or repair claims. macOS lacks Developer ID signing/notarization. Deferred Settings alignment issue disclosed.",
   "cleanup": "Native owned apps/processes/fixtures/profiles removed; normal user settings/timezones and other worktrees preserved. Temporary release downloads are removed after protected documentation closure.",
   "closure": "Publication verified independently of the protected documentation PR; no direct master push, formal GitHub approve, settings change, public tag/asset overwrite or weakened gate.",
-  "created_utc": "2026-11-04T18:23:11.881479+00:00"
+  "created_utc": "2026-11-04T18:23:11.881479+00:00",
+  "artifact_retention": {
+    "candidate": {
+      "run": 41845673180,
+      "artifacts": [
+        {
+          "id": 13336480528,
+          "name": "release-macos-x86_64",
+          "size_in_bytes": 25401503,
+          "digest": "sha256:0e42f689c6a1d2c3fa3cb93e4ed53f1c5f5ac6f2a291e88344d5275659561255",
+          "created_at": "2026-11-04T14:47:18Z",
+          "expires_at": "2027-02-02T14:15:05Z",
+          "expired": false
+        },
+        {
+          "id": 13334418148,
+          "name": "validated-release-bundle-v0.33.1-9d598aa04179b7a0fff366960849c6a7e4dbac96",
+          "size_in_bytes": 86946722,
+          "digest": "sha256:5be6855ff87ca4ef0fc468af7c39cdb909641a17fcff5a4f6ec8ca077cff69d8",
+          "created_at": "2026-11-04T14:50:14Z",
+          "expires_at": "2026-11-18T14:50:09Z",
+          "expired": false
+        },
+        {
+          "id": 13332670536,
+          "name": "release-windows-x86_64",
+          "size_in_bytes": 18301141,
+          "digest": "sha256:46edbabe7cc293d4b29d8b0ecf6509bc38d4eae059ce52fac903f30774191836",
+          "created_at": "2026-11-04T14:30:35Z",
+          "expires_at": "2027-02-02T14:15:05Z",
+          "expired": false
+        },
+        {
+          "id": 13332198188,
+          "name": "release-macos-arm64",
+          "size_in_bytes": 23098996,
+          "digest": "sha256:5e4739f89230e4e3d2fc917bcbb0b98a0eca8ae6f9c57dda13be793e0d44db86",
+          "created_at": "2026-11-04T14:40:57Z",
+          "expires_at": "2027-02-02T14:15:05Z",
+          "expired": false
+        },
+        {
+          "id": 13331183603,
+          "name": "release-linux-x86_64",
+          "size_in_bytes": 20145799,
+          "digest": "sha256:e4d70e344f0e66ccb6877089b740848d874f01c273e91bcbb6ba1d16b15008f8",
+          "created_at": "2026-11-04T14:29:14Z",
+          "expires_at": "2027-02-02T14:15:05Z",
+          "expired": false
+        }
+      ]
+    },
+    "tagged": {
+      "run": 41854630515,
+      "artifacts": [
+        {
+          "id": 13351251825,
+          "name": "validated-release-bundle-v0.33.1-9d598aa04179b7a0fff366960849c6a7e4dbac96",
+          "size_in_bytes": 86946593,
+          "digest": "sha256:c06ff2a02defcf4653f38d4b959b5574994b62c73aa788334b990c286db9af0f",
+          "created_at": "2026-11-04T18:12:36Z",
+          "expires_at": "2026-11-18T18:12:31Z",
+          "expired": false
+        },
+        {
+          "id": 13350681754,
+          "name": "release-macos-arm64",
+          "size_in_bytes": 23098973,
+          "digest": "sha256:9c39e66f180326c5b6213ae68472e3c6d1eacacd14226b9e25a11494a479b8e2",
+          "created_at": "2026-11-04T18:10:01Z",
+          "expires_at": "2027-02-02T17:58:40Z",
+          "expired": false
+        },
+        {
+          "id": 13346316317,
+          "name": "release-macos-x86_64",
+          "size_in_bytes": 25401296,
+          "digest": "sha256:dba1bb5384d757ae684536c91a67fc19f18b9795deded86ad57d40c4b5caa251",
+          "created_at": "2026-11-04T17:08:04Z",
+          "expires_at": "2027-02-02T16:37:41Z",
+          "expired": false
+        },
+        {
+          "id": 13340145984,
+          "name": "release-windows-x86_64",
+          "size_in_bytes": 18301165,
+          "digest": "sha256:0a029d8706c692b65a92cf22f2f34c5b0276485f520c2d06c08dcb3e2c7ae862",
+          "created_at": "2026-11-04T15:45:36Z",
+          "expires_at": "2027-02-02T15:08:29Z",
+          "expired": false
+        },
+        {
+          "id": 13337393225,
+          "name": "release-linux-x86_64",
+          "size_in_bytes": 20145875,
+          "digest": "sha256:a77aaefd9d74c66fa937ea56b0824ee1fc1ea3d2f1961864f5f9e894413707ec",
+          "created_at": "2026-11-04T15:23:09Z",
+          "expires_at": "2027-02-02T15:08:29Z",
+          "expired": false
+        }
+      ]
+    },
+    "checked_at": "2026-11-04T18:38:47.850893+00:00",
+    "scope": "API retention dates apply to transient CI archives, distinct from the 28 published release assets."
+  },
+  "documentation_closure": {
+    "PR": 249,
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/pull/249",
+    "reviewed_head": "d9456e0ba8c12c5d5d0fff78b1f7f6377a52a927",
+    "merged_commit": "1236000012f03bba3bf48d1e5418471892ea6529",
+    "merged_at": "2026-11-04T18:35:35Z",
+    "exact_head_CI_Gate": "PASS run41887763998",
+    "exact_head_CI_Policy_Guardian": "PASS run41887764112",
+    "validation": "VM-001 docs only; repository contract, JSON identity consistency, 26 local Markdown references, public-data and whitespace checks PASS; reviewed-vs-merged tree equality PASS",
+    "independent_review": "All findings resolved before commit; no formal GitHub approve submitted."
+  }
 }
