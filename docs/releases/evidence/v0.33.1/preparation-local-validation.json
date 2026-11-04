@@ -1,0 +1,46 @@
+{
+  "version": "0.33.1",
+  "previous_public": "0.33.0",
+  "source_base": "a4cb04063c959d870a385345bcd9cd04553cc2dd",
+  "scope": "Preparation working-tree file contents below; product regressions retain their original identity, new artifact/native gates pending",
+  "tested_files_sha256": {
+    "rust/Cargo.toml": "de0c5a41b1ad911d4bdea1b580b49a7ef4d48bf2b12e0f24808328dd319e881c",
+    "rust/Cargo.lock": "8f0ba9d795fde8e0195e478f800806d92767d8552ed88e6d8f18764d2d5c2f99",
+    "scripts/check-updater-n-minus-one-compatibility.py": "882460367c90d27a68bcbf861c9a92bce6909ff6829ef21c938ae8ebe9380ac4",
+    "scripts/test-updater-n-minus-one-compatibility.py": "01d0e094ea39d4bf799977ff8cbb06abb9021cd83465f324cc0bfa2544d30e73",
+    "CHANGELOG.md": "0cfc74d752dcb78521f3d07c21a38026156c544f6adfddc933266e2552426754",
+    "docs/RELEASE.md": "7e514d97863cd64549575330685b1fc91cdf495fe76813961fa78d80fbc4b26d",
+    "docs/releases/v0.33.1.md": "266f7d5b9edcd7ea8d869e8c97fcd40c6c3101aaa0f9aec9d89937ff06589470",
+    "docs/releases/evidence/v0.33.1/release-body.md": "e9f4f0811ee1cca1a5acd6d770064ccc0159cc68c533bf39d73a338e4357823f",
+    "docs/releases/INDEX.md": "9094f823123742fdc5242428a1d58db89b5a1d7d6c067b1c1045da6737569868"
+  },
+  "n_minus_one_self_test": {
+    "first_result": "FAIL unsupported previous release capability: 0.33.0 before registry entry",
+    "final_result": "PASS exact 26-entry 0.33.1 inventory accepted by explicit 0.33.0 capability; non-increasing/unknown predecessor still rejected",
+    "published_parser_sha256": "5e7fbaa9fbaae326c149e7224825f5c030e86664420c1c53623d3fe2a2e47f1c",
+    "published_parser_byte_identical": true
+  },
+  "tooling": {
+    "command": "python3 -m unittest discover -s scripts/tests",
+    "passed": 174,
+    "failed": 0
+  },
+  "audit": {
+    "command": "cargo audit",
+    "exit_code": 0,
+    "advisories": 1403,
+    "locked_dependency_count": 452,
+    "vulnerabilities_or_warning_output": false,
+    "existing_accepted_build_time_quick_xml_ignores_unchanged": true
+  },
+  "version_metadata": "PASS 0.33.1; Cargo.lock identical to published predecessor after normalizing root package version only",
+  "format": "PASS",
+  "ci_policy_guardian_local": "PASS",
+  "repository_contract": "PASS",
+  "diff_whitespace": "PASS",
+  "ordering": "TC table248, VM table10, SP sections7+7 ascending; manual traceability is intentionally topic/dated-evidence ordered and has no first-column TC ID table",
+  "public_override_names": "none in README/README-ja/RELEASE/template/new release body",
+  "oss": "No dependency/features/checksum/license/packaging change; actual new assets remain mandatory",
+  "native": "NOT ADMITTED; per-axis requirements and provenance pending in version packet",
+  "generated_utc": "2026-11-04T13:35:16.495651+00:00"
+}

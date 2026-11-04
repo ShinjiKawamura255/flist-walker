@@ -8,6 +8,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Record | Role |
 | --- | --- |
+| [v0.33.1 Execution Packet](v0.33.1.md) | Patch preparation; full-delta selection and native/compatibility/artifact gates pending, not published |
 | [v0.33.0 Execution Packet](v0.33.0.md) | Published pin/Preview fixes; candidate/tagged/public bytes, selected Mac/Windows native, scoped reuse and separate warning decisions |
 | [v0.32.1 Execution Packet](v0.32.1.md) | Published UI/path fixes, native and CI evidence, signed assets, Latest and N-1 |
 | [v0.32.0 Execution Packet](v0.32.0.md) | Published source/tag, first candidate and native TC193, retained hosted-runner failure/one targeted recovery, signed tagged/public bytes, Latest and actual N-1 |
