@@ -6,34 +6,34 @@
 
 ## Downloads
 - macOS の `.app` bundle 自体は notarization 用の中間成果物であり、GitHub Release の添付対象には含めない。
-- `FlistWalker-0.33.1-linux-x86_64`
-- `FlistWalker-0.33.1-linux-x86_64.tar.gz`
-- `FlistWalker-0.33.1-linux-x86_64.README.txt`
-- `FlistWalker-0.33.1-linux-x86_64.LICENSE.txt`
-- `FlistWalker-0.33.1-linux-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.33.1-linux-x86_64`
-- `FlistWalker-0.33.1-windows-x86_64.exe`
-- `FlistWalker-0.33.1-windows-x86_64.zip`
-- `FlistWalker-0.33.1-windows-x86_64.README.txt`
-- `FlistWalker-0.33.1-windows-x86_64.LICENSE.txt`
-- `FlistWalker-0.33.1-windows-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.33.1-windows-x86_64.exe`
-- `FlistWalker-0.33.1-macos-x86_64`
-- `FlistWalker-0.33.1-macos-x86_64-app.zip`
-- `FlistWalker-0.33.1-macos-x86_64.tar.gz`
-- `FlistWalker-0.33.1-macos-x86_64.README.txt`
-- `FlistWalker-0.33.1-macos-x86_64.LICENSE.txt`
-- `FlistWalker-0.33.1-macos-x86_64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.33.1-macos-x86_64`
-- `FlistWalker-0.33.1-macos-arm64`
-- `FlistWalker-0.33.1-macos-arm64-app.zip`
-- `FlistWalker-0.33.1-macos-arm64.tar.gz`
-- `FlistWalker-0.33.1-macos-arm64.README.txt`
-- `FlistWalker-0.33.1-macos-arm64.LICENSE.txt`
-- `FlistWalker-0.33.1-macos-arm64.THIRD_PARTY_NOTICES.txt`
-- `fw-0.33.1-macos-arm64`
-- `SHA256SUMS`
-- `SHA256SUMS.sig`
+- [FlistWalker-0.33.1-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-linux-x86_64)
+- [FlistWalker-0.33.1-linux-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-linux-x86_64.tar.gz)
+- [FlistWalker-0.33.1-linux-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-linux-x86_64.README.txt)
+- [FlistWalker-0.33.1-linux-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-linux-x86_64.LICENSE.txt)
+- [FlistWalker-0.33.1-linux-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-linux-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.33.1-linux-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/fw-0.33.1-linux-x86_64)
+- [FlistWalker-0.33.1-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-windows-x86_64.exe)
+- [FlistWalker-0.33.1-windows-x86_64.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-windows-x86_64.zip)
+- [FlistWalker-0.33.1-windows-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-windows-x86_64.README.txt)
+- [FlistWalker-0.33.1-windows-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-windows-x86_64.LICENSE.txt)
+- [FlistWalker-0.33.1-windows-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-windows-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.33.1-windows-x86_64.exe](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/fw-0.33.1-windows-x86_64.exe)
+- [FlistWalker-0.33.1-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64)
+- [FlistWalker-0.33.1-macos-x86_64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64-app.zip)
+- [FlistWalker-0.33.1-macos-x86_64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64.tar.gz)
+- [FlistWalker-0.33.1-macos-x86_64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64.README.txt)
+- [FlistWalker-0.33.1-macos-x86_64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64.LICENSE.txt)
+- [FlistWalker-0.33.1-macos-x86_64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-x86_64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.33.1-macos-x86_64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/fw-0.33.1-macos-x86_64)
+- [FlistWalker-0.33.1-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64)
+- [FlistWalker-0.33.1-macos-arm64-app.zip](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64-app.zip)
+- [FlistWalker-0.33.1-macos-arm64.tar.gz](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64.tar.gz)
+- [FlistWalker-0.33.1-macos-arm64.README.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64.README.txt)
+- [FlistWalker-0.33.1-macos-arm64.LICENSE.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64.LICENSE.txt)
+- [FlistWalker-0.33.1-macos-arm64.THIRD_PARTY_NOTICES.txt](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/FlistWalker-0.33.1-macos-arm64.THIRD_PARTY_NOTICES.txt)
+- [fw-0.33.1-macos-arm64](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/fw-0.33.1-macos-arm64)
+- [SHA256SUMS](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/SHA256SUMS)
+- [SHA256SUMS.sig](https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.33.1/SHA256SUMS.sig)
 
 ## Added
 - なし。
@@ -55,9 +55,11 @@
 ## Security
 - query history は既定で平文永続化される。必要なら runtime config の `history_persist_disabled=true` を案内する。
 - 自動更新の対象ビルドは埋め込み公開鍵で `SHA256SUMS.sig` を検証し、その後 `SHA256SUMS` の checksum を照合する。
-- 当面の暫定運用として、macOS 配布物は未 notarized のまま publish する場合があり、その場合は本 release の `Known issues` または `Security` に明記する。
+- macOS配布物はDeveloper ID署名・notarizationを実施していません。
 
 ## Known issues
+- Settingsで一部のチェックボックス／ラジオボタンと文字の高さがずれる問題は、後続の修正で対応予定。
+- v0.33.1限定の承認済み検証例外として、Mac/WindowsでOS時間帯変更後のReloadと実IME変換中のCtrl+Aはnative未検証（NOT RUN）。時間帯変更後は再起動して表示を確認し、IME変換を確定してからEmacs移動キーを使用してください。
 - macOS配布物は未 notarized。
 - nativeの全frameを連続観測した選択ハイライトの検証は未実施。静止画での観測は全frameの点滅不在を保証しない。
 - 過去の高並列ストレスでの遅延、coverageのSIGSEGV、Windows保存ワーカー終了遅延・自己更新失敗は原因未確定。通常条件の成功や今回の修正を原因解消とは扱わない。
