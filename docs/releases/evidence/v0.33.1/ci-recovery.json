@@ -1,0 +1,747 @@
+{
+  "version": "v0.33.1",
+  "source": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+  "tag_object": "d1c902872ed4a579a96cebc025bca2029b51231e",
+  "run": 41854630515,
+  "run_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/41854630515",
+  "failed_attempts": [
+    {
+      "attempt": 1,
+      "conclusion": "failure",
+      "observed_at": null,
+      "logs_zip_sha256": "854d3703e01b301deac133d5b250399f850041e95631cc2ae6ec77bf9a4f554c",
+      "new_exported_log_files": 81,
+      "actual_new_warning_exports": 0,
+      "jobs": [
+        {
+          "id": 126659789232,
+          "name": "Resolve Release Context",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:35Z",
+          "completed_at": "2026-11-04T15:08:52Z",
+          "steps": 6,
+          "annotations": []
+        },
+        {
+          "id": 126660015457,
+          "name": "Release Preflight (windows-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:57Z",
+          "completed_at": "2026-11-04T15:18:47Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126660015520,
+          "name": "Release Preflight (macos-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:15:49Z",
+          "steps": 10,
+          "annotations": [
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            }
+          ]
+        },
+        {
+          "id": 126660015549,
+          "name": "Release Preflight (linux-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:14:00Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126660015562,
+          "name": "Release Cargo Audit",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:11:46Z",
+          "steps": 8,
+          "annotations": []
+        },
+        {
+          "id": 126666104335,
+          "name": "Build Release Assets (macos-arm64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T15:18:47Z",
+          "completed_at": "2026-11-04T15:33:49Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            }
+          ]
+        },
+        {
+          "id": 126666104343,
+          "name": "Build Release Assets (linux-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:49Z",
+          "completed_at": "2026-11-04T15:23:11Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126666104436,
+          "name": "Build Release Assets (macos-x86_64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T15:18:47Z",
+          "completed_at": "2026-11-04T15:33:49Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            }
+          ]
+        },
+        {
+          "id": 126666104723,
+          "name": "Build Release Assets (windows-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:55Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126682694791,
+          "name": "Assemble Release Bundle",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T15:45:39Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 0,
+          "annotations": []
+        },
+        {
+          "id": 126682695757,
+          "name": "Create Draft Release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T15:45:39Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 0,
+          "annotations": []
+        }
+      ],
+      "confirmed_transient_acquisition_failure_only": true
+    },
+    {
+      "attempt": 2,
+      "conclusion": "failure",
+      "observed_at": "2026-11-04T16:24:00.806337+00:00",
+      "logs_zip_sha256": "8739c76e681f900923b900c9df0ef75cf421d39cabb54650c4b9ad19b6a76d85",
+      "new_exported_log_files": 0,
+      "actual_new_warning_exports": 0,
+      "jobs": [
+        {
+          "id": 126684982009,
+          "name": "Resolve Release Context",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:35Z",
+          "completed_at": "2026-11-04T15:08:52Z",
+          "steps": 6,
+          "annotations": []
+        },
+        {
+          "id": 126684982712,
+          "name": "Release Cargo Audit",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:11:46Z",
+          "steps": 8,
+          "annotations": []
+        },
+        {
+          "id": 126684983909,
+          "name": "Build Release Assets (macos-x86_64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T15:49:22Z",
+          "completed_at": "2026-11-04T16:04:24Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            }
+          ]
+        },
+        {
+          "id": 126684984136,
+          "name": "Build Release Assets (macos-arm64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T15:49:22Z",
+          "completed_at": "2026-11-04T16:04:24Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            }
+          ]
+        },
+        {
+          "id": 126684984645,
+          "name": "Release Preflight (windows-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:57Z",
+          "completed_at": "2026-11-04T15:18:47Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126684987273,
+          "name": "Build Release Assets (linux-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:49Z",
+          "completed_at": "2026-11-04T15:23:11Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126684987350,
+          "name": "Build Release Assets (windows-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:55Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126685050000,
+          "name": "Release Preflight (linux-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:14:00Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126685062570,
+          "name": "Release Preflight (macos-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:15:49Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126692858675,
+          "name": "Assemble Release Bundle",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T16:04:25Z",
+          "completed_at": "2026-11-04T16:04:25Z",
+          "steps": 0,
+          "annotations": []
+        },
+        {
+          "id": 126692860850,
+          "name": "Create Draft Release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T16:04:25Z",
+          "completed_at": "2026-11-04T16:04:25Z",
+          "steps": 0,
+          "annotations": []
+        }
+      ],
+      "confirmed_transient_acquisition_failure_only": true
+    },
+    {
+      "attempt": 3,
+      "conclusion": "failure",
+      "observed_at": "2026-11-04T17:09:52.310434+00:00",
+      "logs_zip_sha256": "afcf2d826f530ab15b0f85d46713df32dbf8e26cc0a09d6950934eba4736a83a",
+      "new_exported_log_files": 13,
+      "actual_new_warning_exports": 0,
+      "jobs": [
+        {
+          "id": 126711385877,
+          "name": "Build Release Assets (macos-arm64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T16:37:42Z",
+          "completed_at": "2026-11-04T16:52:44Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            }
+          ]
+        },
+        {
+          "id": 126711386126,
+          "name": "Build Release Assets (macos-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T16:37:52Z",
+          "completed_at": "2026-11-04T17:08:12Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126711387547,
+          "name": "Resolve Release Context",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:35Z",
+          "completed_at": "2026-11-04T15:08:52Z",
+          "steps": 6,
+          "annotations": []
+        },
+        {
+          "id": 126711388530,
+          "name": "Release Preflight (macos-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:15:49Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126711389001,
+          "name": "Build Release Assets (linux-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:49Z",
+          "completed_at": "2026-11-04T15:23:11Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126711389443,
+          "name": "Build Release Assets (windows-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:55Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126711391148,
+          "name": "Release Preflight (windows-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:57Z",
+          "completed_at": "2026-11-04T15:18:47Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126711463050,
+          "name": "Release Cargo Audit",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:11:46Z",
+          "steps": 8,
+          "annotations": []
+        },
+        {
+          "id": 126711475474,
+          "name": "Release Preflight (linux-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:14:00Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126730349302,
+          "name": "Assemble Release Bundle",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T17:08:13Z",
+          "completed_at": "2026-11-04T17:08:12Z",
+          "steps": 0,
+          "annotations": []
+        },
+        {
+          "id": 126730349627,
+          "name": "Create Draft Release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T17:08:13Z",
+          "completed_at": "2026-11-04T17:08:13Z",
+          "steps": 0,
+          "annotations": []
+        }
+      ],
+      "confirmed_transient_acquisition_failure_only": true
+    },
+    {
+      "attempt": 4,
+      "conclusion": "failure",
+      "observed_at": "2026-11-04T17:47:45.939246+00:00",
+      "logs_zip_sha256": "8739c76e681f900923b900c9df0ef75cf421d39cabb54650c4b9ad19b6a76d85",
+      "new_exported_log_files": 0,
+      "actual_new_warning_exports": 0,
+      "jobs": [
+        {
+          "id": 126732315975,
+          "name": "Build Release Assets (macos-arm64)",
+          "status": "completed",
+          "conclusion": "cancelled",
+          "started_at": "2026-11-04T17:11:27Z",
+          "completed_at": "2026-11-04T17:26:29Z",
+          "steps": 0,
+          "annotations": [
+            {
+              "level": "failure",
+              "message": "The job was not acquired by Runner of type hosted even after multiple attempts"
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            },
+            {
+              "level": "notice",
+              "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times."
+            }
+          ]
+        },
+        {
+          "id": 126732316466,
+          "name": "Release Preflight (macos-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:15:49Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126732316976,
+          "name": "Release Preflight (windows-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:57Z",
+          "completed_at": "2026-11-04T15:18:47Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126732318427,
+          "name": "Build Release Assets (macos-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T16:37:52Z",
+          "completed_at": "2026-11-04T17:08:12Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126732377801,
+          "name": "Build Release Assets (linux-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:49Z",
+          "completed_at": "2026-11-04T15:23:11Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126732389457,
+          "name": "Build Release Assets (windows-x86_64)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:18:55Z",
+          "completed_at": "2026-11-04T15:45:39Z",
+          "steps": 17,
+          "annotations": []
+        },
+        {
+          "id": 126732398470,
+          "name": "Resolve Release Context",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:35Z",
+          "completed_at": "2026-11-04T15:08:52Z",
+          "steps": 6,
+          "annotations": []
+        },
+        {
+          "id": 126732401508,
+          "name": "Release Cargo Audit",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:11:46Z",
+          "steps": 8,
+          "annotations": []
+        },
+        {
+          "id": 126732409172,
+          "name": "Release Preflight (linux-native)",
+          "status": "completed",
+          "conclusion": "success",
+          "started_at": "2026-11-04T15:08:55Z",
+          "completed_at": "2026-11-04T15:14:00Z",
+          "steps": 10,
+          "annotations": []
+        },
+        {
+          "id": 126741119818,
+          "name": "Assemble Release Bundle",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T17:26:29Z",
+          "completed_at": "2026-11-04T17:26:29Z",
+          "steps": 0,
+          "annotations": []
+        },
+        {
+          "id": 126741120583,
+          "name": "Create Draft Release",
+          "status": "completed",
+          "conclusion": "skipped",
+          "started_at": "2026-11-04T17:26:29Z",
+          "completed_at": "2026-11-04T17:26:29Z",
+          "steps": 0,
+          "annotations": []
+        }
+      ],
+      "confirmed_transient_acquisition_failure_only": true
+    }
+  ],
+  "policy": "Completed infrastructure failures remain FAILURE with zero-step product NOT RUN. Failed-only recovery retains original successful executions and artifacts. No cancellation, source/workflow change, threshold weakening or failed-test waiver occurred.",
+  "provider_status_sources": [
+    "https://www.githubstatus.com/incidents/h02n9572mx9y",
+    "https://www.githubstatus.com/incidents/xr3myzj7ms51"
+  ],
+  "provider_causation_limit": "The official incident and later mitigation/recovery informed availability checks. No direct causal claim is made for earlier individual acquisition failures.",
+  "final_successful_attempt": 5,
+  "effective_successful_executions": {
+    "Release Preflight (macos-native)": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126660015520,
+      "current_export_job_id": 126757800596,
+      "started_at": "2026-11-04T15:08:55Z",
+      "completed_at": "2026-11-04T15:15:49Z",
+      "step_files": 11,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/9d598aa04179b7a0fff366960849c6a7e4dbac96/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ],
+      "current_export_annotations": []
+    },
+    "Release Preflight (windows-native)": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126660015457,
+      "current_export_job_id": 126757801346,
+      "started_at": "2026-11-04T15:08:57Z",
+      "completed_at": "2026-11-04T15:18:47Z",
+      "step_files": 11,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Build Release Assets (macos-arm64)": {
+      "actual_execution_attempt": 5,
+      "original_job_id": 126757801359,
+      "current_export_job_id": 126757801359,
+      "started_at": "2026-11-04T17:58:47Z",
+      "completed_at": "2026-11-04T18:10:06Z",
+      "step_files": 12,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/9d598aa04179b7a0fff366960849c6a7e4dbac96/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ],
+      "current_export_annotations": [
+        {
+          "path": ".github",
+          "blob_href": "https://github.com/ShinjiKawamura255/flist-walker/blob/9d598aa04179b7a0fff366960849c6a7e4dbac96/.github",
+          "start_line": 1,
+          "start_column": null,
+          "end_line": 1,
+          "end_column": null,
+          "annotation_level": "notice",
+          "title": "",
+          "message": "Due to capacity constraints, jobs targeting macOS arm64 runners may experience longer queue times.",
+          "raw_details": ""
+        }
+      ]
+    },
+    "Build Release Assets (macos-x86_64)": {
+      "actual_execution_attempt": 3,
+      "original_job_id": 126711386126,
+      "current_export_job_id": 126757803263,
+      "started_at": "2026-11-04T16:37:52Z",
+      "completed_at": "2026-11-04T17:08:12Z",
+      "step_files": 12,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Build Release Assets (windows-x86_64)": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126666104723,
+      "current_export_job_id": 126757803399,
+      "started_at": "2026-11-04T15:18:55Z",
+      "completed_at": "2026-11-04T15:45:39Z",
+      "step_files": 13,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Build Release Assets (linux-x86_64)": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126666104343,
+      "current_export_job_id": 126757803656,
+      "started_at": "2026-11-04T15:18:49Z",
+      "completed_at": "2026-11-04T15:23:11Z",
+      "step_files": 12,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Resolve Release Context": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126659789232,
+      "current_export_job_id": 126757871200,
+      "started_at": "2026-11-04T15:08:35Z",
+      "completed_at": "2026-11-04T15:08:52Z",
+      "step_files": 7,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Release Cargo Audit": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126660015562,
+      "current_export_job_id": 126757877912,
+      "started_at": "2026-11-04T15:08:55Z",
+      "completed_at": "2026-11-04T15:11:46Z",
+      "step_files": 9,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Release Preflight (linux-native)": {
+      "actual_execution_attempt": 1,
+      "original_job_id": 126660015549,
+      "current_export_job_id": 126757881970,
+      "started_at": "2026-11-04T15:08:55Z",
+      "completed_at": "2026-11-04T15:14:00Z",
+      "step_files": 11,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Assemble Release Bundle": {
+      "actual_execution_attempt": 5,
+      "original_job_id": 126764901193,
+      "current_export_job_id": 126764901193,
+      "started_at": "2026-11-04T18:10:10Z",
+      "completed_at": "2026-11-04T18:12:38Z",
+      "step_files": 14,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    },
+    "Create Draft Release": {
+      "actual_execution_attempt": 5,
+      "original_job_id": 126766422226,
+      "current_export_job_id": 126766422226,
+      "started_at": "2026-11-04T18:12:42Z",
+      "completed_at": "2026-11-04T18:13:00Z",
+      "step_files": 7,
+      "aggregate_files": 1,
+      "actual_execution_annotations": [],
+      "current_export_annotations": []
+    }
+  },
+  "effective_successful_log_files": 130,
+  "final_attempt_log_archive_sha256": "7b07a492284b6e2d113c2076a16ab33bd7e557607cc24ea7accbbf93b48dbc2a"
+}

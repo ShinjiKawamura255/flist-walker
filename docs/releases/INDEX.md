@@ -2,13 +2,13 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.33.0 (2026-11-02 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.33.0).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.33.1 (2026-11-04 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.33.1).
 
 ## Release And Candidate Records
 
 | Record | Role |
 | --- | --- |
-| [v0.33.1 Execution Packet](v0.33.1.md) | Patch preparation; full-delta selection and native/compatibility/artifact gates pending, not published |
+| [v0.33.1 Execution Packet](v0.33.1.md) | Published timezone/Ctrl+A fixes; signed candidate/tagged/public bytes, retained infrastructure recovery, scoped native reuse/deviations and exact-run warning decisions |
 | [v0.33.0 Execution Packet](v0.33.0.md) | Published pin/Preview fixes; candidate/tagged/public bytes, selected Mac/Windows native, scoped reuse and separate warning decisions |
 | [v0.32.1 Execution Packet](v0.32.1.md) | Published UI/path fixes, native and CI evidence, signed assets, Latest and N-1 |
 | [v0.32.0 Execution Packet](v0.32.0.md) | Published source/tag, first candidate and native TC193, retained hosted-runner failure/one targeted recovery, signed tagged/public bytes, Latest and actual N-1 |
@@ -31,6 +31,7 @@ GitHub Releases is authoritative for published releases. At this repository revi
 
 | Collection | Contents |
 | --- | --- |
+| `evidence/v0.33.1/` | Actual28 public assets/signatures/N-1/Latest, separate run warnings, original failed attempts and successful execution provenance, selected native results/scoped deviations and full-delta selection |
 | `evidence/v0.32.0/` | Published28 assets/signature/N-1/readback, native raw timing rows, original tagged failure/new logs and explicit carry-forward reconciliation, independent reviews and sanitized observer snapshots |
 | `evidence/v0.31.1/` | Native source/candidate results, signed candidate/tagged/public inventories, per-run warnings/reviews, exact CI timeout/retry and public/latest bindings |
 | `evidence/v0.31.0/` | Original rejected candidates, published tag/source/28 assets, signed manifests, exact-run CI/warning decisions, public downloads, independent reviews and scoped native deviations |

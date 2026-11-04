@@ -1,0 +1,79 @@
+{
+  "version": "v0.33.1",
+  "candidate_source": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+  "candidate_run": 41845673180,
+  "candidate_attempt": 1,
+  "Mac": {
+    "tested_source": "2a3abff324f48235c265a61889b1e49a69b91e6f",
+    "source_reconciliation": "Tree identical to merged9d598aa; pinnedRust1.97.1 locked release/defaultfeatures; production key changes updater only, disabled during native checks; actual formal ARM64libraries/minOS/signature/bundle reviewed; localSDK27.2 versus formalSDK26.5 recorded difference",
+    "tested_binary_sha256": "7f90012d27fbb3ea6c917b1f8276d8dfac8896b66b8501f66d35d074f9b6eea4",
+    "observations": {
+      "initial_file_and_symlink_dates": "PASS created/updated 2026-07-03 04:35 UTC+09:00; UTC fixture2026-07-02 19:35",
+      "metadata_reload": "PASS updated05:35+09 created04:35+09, 40B/two fixture lines",
+      "query_ON": "PASS Ctrl+A no selection in sample; PREFIX-alpha 日本 omega; held800ms start; Cmd+A whole select",
+      "shared_modal_ON": "PASS Walker500000 -> Ctrl+A then1 ->1500000; background query PREFIX-alpha 日本 omega unchanged; numeric restored500000 before Save",
+      "restart": "PASS: old owned process exited; zero owned processes verified before explicit relaunch; distinct new process and Emacs OFF readback, same binary/profile",
+      "query_OFF": "PASS whole alpha 日本 omega selected; pasted置換 replacement replaces whole; Cmd+A whole-select",
+      "shared_modal_OFF": "PASS whole500000 selected;123 replaces; background alpha 日本 omega unchanged; Cancel leaves saved500000 intact",
+      "directory_dates": "PASS: Created/Updated matched independent metadata oracle in the system timezone",
+      "actual_IME": "NOT RUN composition events/window-mode identifiers not available; literal Unicode only",
+      "live_OS_timezone_reload": "NOT RUN owner/safe supported OS-change/restore prerequisite unresolved; no timezone touched",
+      "continuous_native_frames": "NOT RUN snapshot API only"
+    },
+    "formal_package_GUI_startup": "NOT RUN; working-native contract reuse independently reviewed, not exactformal launch",
+    "cleanup": "Owned app/profile/fixture removed; zero ownedprocesses; normal profile/timezone unchanged"
+  },
+  "Windows": {
+    "tested_source": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+    "run": 41845673180,
+    "attempt": 1,
+    "artifact_id": 13332670536,
+    "compiler": "Rust1.97.1",
+    "target": "x86_64-pc-windows-gnu",
+    "profile": "release",
+    "universal_sha256": "7c5b84ae5e17d3e7e85539f4c7f2d7e7a50833d2366ff0ee18c2d8d3f51b4c3a",
+    "CLI_sha256": "da633495c23b541e23bd7f5175eceb6f2ef62a03a0347d204e297d6fa0dd78fa",
+    "observations": {
+      "file_folder_junction_dates_and_boundary": "PASS",
+      "metadata_content_Reload": "PASS",
+      "query_EmacsON_prefix": "PASS",
+      "shared_modal_ON_OFF_background_isolation_and_Cancel": "PASS",
+      "OFF_save_complete_exit_distinct_process_restart_readback": "PASS",
+      "query_OFF_selection_replacement": "PASS",
+      "PE_AMD64_subsystem2_3_imports_asInvoker_version_resource_icon": "PASS",
+      "actual_IME": "NOT RUN; unsupported composition/window-profile/mode identifier prerequisites",
+      "live_OS_timezone_reload": "NOT RUN; safe stable supported OS change/restore unavailable",
+      "physical_hold_and_continuous_frames": "NOT RUN; unsupported observation method; not additional selected release gate"
+    },
+    "signed_bundle_binding": "Main independently matched all6Windowsdistribution bytes including bothtested EXE hashes to anchored-signature verified combined bundle; Windows actor did not itselfclaim combinedsignature verification",
+    "cleanup": "Owned processes/app/fixture/profile/download/sourcecopy removed; normal settings/timezone/autoconfig/worktree unchanged"
+  },
+  "selection": {
+    "history_native_repeat": "NOT REQUIRED separately; same TextEdit ID/preparation/focus/widget/reducer and exhaustive deterministic history cases, nativequery representativeOSadapter",
+    "additional_Windows_physical_hold_and_all_native_frame_capture": "NOT REQUIRED as additionalmethodgate; nohold-specificbranch/flagschange, actualsame-frame mesh/repeat deterministic coverage; original observations remainNOTRUN",
+    "unrelated_DPI_UNC_Open_fullmatrix_performance": "NOT REQUIRED; no implicated source/build boundary change"
+  },
+  "native_deviation": {
+    "status": "ACCEPTED WITH DEVIATION",
+    "version_scope": "v0.33.1 only; bothMac/Windows liveOStimezoneReload and actualJapaneseIME/Ctrl+A remain formalNOTRUN",
+    "approver": "user",
+    "decision": "Explicitly accepted exceptions when not easily achievable; temporaryOSzonechange+restore authorized, adminbypass forbidden",
+    "prerequisite_assessment": "Recent prerequisites remain unavailable: Macowner/admin+saferefreshrestore; Windowsstable supportedtimezone-dialogrestore; bothOS realcomposition+staged-window inputprofile/mode identifier APIs. New consent did not provide these missingprerequisites. No unsafe blindretry, settingschange or alternateinjection.",
+    "risk": "Liveprocess timezone refresh and composition-start/chorddelivery unverified; no productfailure observed. Deterministic/originalUnicode checks do not prove these native axes.",
+    "mitigation": "Restart and check displayed offset after OSzonechange; finish IMEconversion before Emacsnavigationchords.",
+    "followup_owner": "repository maintainer",
+    "followup_trigger": "Safe supported OSchange/restore and realcomposition/windowmode identifier prerequisites become available; no transfer to newversion/newdefect"
+  },
+  "independent_review": "Available native and exactcandidateartifact/key/metadata/binding classification reviewed; required missingaxes retained and explicitlyaccepted; no formalGitHubapprove",
+  "tagged_binding": {
+    "run": 41854630515,
+    "final_attempt": 5,
+    "formal_GUI_execution": "NOT RUN; scoped native reuse only",
+    "Mac_formal_binaries_exact_candidate_bytes": true,
+    "Windows_formal_universal_sha256": "6ddba4373021be950d3f002a8a91b5ad97b62d536ca49adebe532fd37cbaea86",
+    "Windows_formal_CLI_sha256": "4ef2ffd99d0f404f2b4e2b481a42e267cb05004b38f160a751c452905f2cd719",
+    "Windows_candidate_to_formal": "PASS: only valid link timestamp/checksum and same-location fully parsed canonical VERSIONINFO ordering differ. All other bytes, including unparsed resource bytes, exactly equal; both binaries and six payloads bound to signed combined bundle.",
+    "all26_actual_producer_bytes_bound_to_signed_bundle": true,
+    "public_fixed_URL_binding": "PASS all28 actual downloads match signed tagged bundle"
+  }
+}

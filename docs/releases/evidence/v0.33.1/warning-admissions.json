@@ -1,0 +1,447 @@
+{
+  "scope": "Separate exact-run decisions; unchanged diagnosis reused only after code/input/impact reconciliation. No inherited exception or general warning allowlist.",
+  "candidate": {
+    "version": "v0.33.1",
+    "source": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+    "run": 41845673180,
+    "attempt": 1,
+    "event": "workflow_dispatch",
+    "decision": "ADMITTED exact-run minor external Action exception after all selected gates and independent review; unavailable native axes explicitly accepted by user for v0.33.1 only",
+    "logs_zip_sha256": "cf4ad2d5c92b967f514b8dace58abf5357e95cca7c6eef34bbb6cadf21f6fb95",
+    "all_log_files": 122,
+    "all_jobs_expected_result": true,
+    "actual_emissions": [
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "code": "DEP0005",
+        "message": "Buffer() deprecated",
+        "actual_count": 1,
+        "exports": "same event in aggregate and step logs",
+        "pin": "9000827ccba6bdab643e8b6fd33ac0654aef8333"
+      }
+    ],
+    "exported_occurrences": 2,
+    "product_Rust_test_clippy_audit_warnings": 0,
+    "warning_error_annotations": 0,
+    "capacity_notice_records": 3,
+    "official_latest_stable_checks": {
+      "actions/checkout": {
+        "checked_at": "2026-11-04T14:32:42.807124+00:00",
+        "tag": "v7.0.1",
+        "url": "https://github.com/actions/checkout/releases/tag/v7.0.1",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "draft": false,
+        "prerelease": false,
+        "runtime": [
+          "using: node24"
+        ]
+      },
+      "actions/cache": {
+        "checked_at": "2026-11-04T14:32:44.026879+00:00",
+        "tag": "v6.1.0",
+        "url": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+        "draft": false,
+        "prerelease": false,
+        "runtime": [
+          "using: 'node24'"
+        ]
+      },
+      "actions/upload-artifact": {
+        "checked_at": "2026-11-04T14:32:45.207637+00:00",
+        "tag": "v7.0.2",
+        "url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "draft": false,
+        "prerelease": false,
+        "runtime": [
+          "using: 'node24'"
+        ]
+      },
+      "actions/download-artifact": {
+        "checked_at": "2026-11-04T14:32:46.430313+00:00",
+        "tag": "v8.0.2",
+        "url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "draft": false,
+        "prerelease": false,
+        "runtime": [
+          "using: 'node24'"
+        ]
+      }
+    },
+    "observed_runners": [
+      "'2.338.2'"
+    ],
+    "Node24_runner_support": "official runner2.327.1 release; actual2.338.2",
+    "actual_download_calls": [
+      {
+        "id": 13336480528,
+        "name": "release-macos-x86_64",
+        "size_in_bytes": 25401503,
+        "digest": "sha256:0e42f689c6a1d2c3fa3cb93e4ed53f1c5f5ac6f2a291e88344d5275659561255"
+      },
+      {
+        "id": 13332670536,
+        "name": "release-windows-x86_64",
+        "size_in_bytes": 18301141,
+        "digest": "sha256:46edbabe7cc293d4b29d8b0ecf6509bc38d4eae059ce52fac903f30774191836"
+      },
+      {
+        "id": 13332198188,
+        "name": "release-macos-arm64",
+        "size_in_bytes": 23098996,
+        "digest": "sha256:5e4739f89230e4e3d2fc917bcbb0b98a0eca8ae6f9c57dda13be793e0d44db86"
+      },
+      {
+        "id": 13331183603,
+        "name": "release-linux-x86_64",
+        "size_in_bytes": 20145799,
+        "digest": "sha256:e4d70e344f0e66ccb6877089b740848d874f01c273e91bcbb6ba1d16b15008f8"
+      }
+    ],
+    "API_expected_and_actual_download_digests_equal": true,
+    "causal_support": {
+      "official_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+      "size": 4432922,
+      "sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+      "retained_diagnosis_code_identical": true
+    },
+    "retained_diagnosis": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; full unchanged bundle UnzipStream empty-string allocation67720, numeric4 allocation67982 immediately fully initialized writeUInt32LE67983",
+    "observation_inference_boundary": "Hosted pin/runtime/inputs/emission/digests/extraction/final assets observed; hosted callstack/allocation arguments NOT observed. Unchanged full-Action diagnosis supports bounded minor-impact inference only.",
+    "fresh_artifact_gates": "PASS actual global wrapper API digest/CRC,28assets/26checksums,anchored strictEd25519+tamper negative control,all archives/doc bytes,8binaryplatform/key identities,Windows actual PE constraints,actualNminus1",
+    "actual_Nminus": {
+      "status": "PASS",
+      "previous": "0.33.0",
+      "candidate": "0.33.1",
+      "manifest_sha256": "c33901a28aae8d276dc038b1aec82359b36a807da551ca77aa95a052d7c51cf6",
+      "stdout": "N-1 manifest compatibility passed for v0.33.0\n"
+    },
+    "native_scope": "Mac scoped working-native reuse independently admitted; Windows actual GNU native available axes PASS/exact signedbundle bytes; required liveOSzone/actualIME retain NOT RUN under explicit v0.33.1-specific human deviation",
+    "operator": "release owner",
+    "followup_owner": "repository maintainer",
+    "reevaluation": "Every new run/attempt/source/pin/input/callsite/message/count/integrity/function uncertainty; no general DEP0005 allowance or tagged inheritance",
+    "independent_review": "Exact-source/artifact/warning/native-boundary read-only review completed without findings; conditional warning finding fulfilled by this exact version/scope human acceptance; hosted versus inference limitations retained"
+  },
+  "tagged": {
+    "version": "v0.33.1",
+    "source": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+    "run": 41854630515,
+    "attempt": 5,
+    "event": "push",
+    "decision": "ADMITTED exact v0.33.1/source9d598aa/run41854630515/attempt5 minor external Action exception after independent review of all selected current gates; only the two explicitly accepted native axes remain version-scoped NOT RUN",
+    "logs_zip_sha256": "7b07a492284b6e2d113c2076a16ab33bd7e557607cc24ea7accbbf93b48dbc2a",
+    "effective_all_log_files": 130,
+    "current_attempt_export_files": 36,
+    "effective_execution_attempts": {
+      "Release Preflight (macos-native)": 1,
+      "Release Preflight (windows-native)": 1,
+      "Build Release Assets (macos-arm64)": 5,
+      "Build Release Assets (macos-x86_64)": 3,
+      "Build Release Assets (windows-x86_64)": 1,
+      "Build Release Assets (linux-x86_64)": 1,
+      "Resolve Release Context": 1,
+      "Release Cargo Audit": 1,
+      "Release Preflight (linux-native)": 1,
+      "Assemble Release Bundle": 5,
+      "Create Draft Release": 5
+    },
+    "all_jobs_expected_result": true,
+    "actual_emissions": [
+      {
+        "job": "Assemble Release Bundle",
+        "step": "Download packaged assets",
+        "code": "DEP0005",
+        "message": "Buffer() deprecated; use Buffer.alloc, Buffer.allocUnsafe, or Buffer.from",
+        "actual_count": 1,
+        "execution_attempt": 5,
+        "exports": "same event in step and aggregate"
+      },
+      {
+        "job": "Create Draft Release",
+        "step": "Download validated candidate bundle",
+        "code": "DEP0005",
+        "message": "Buffer() deprecated; use Buffer.alloc, Buffer.allocUnsafe, or Buffer.from",
+        "actual_count": 1,
+        "execution_attempt": 5,
+        "exports": "same event in step and aggregate"
+      }
+    ],
+    "exported_occurrences": 4,
+    "product_Rust_test_clippy_audit_warnings": 0,
+    "warning_error_annotations": 0,
+    "capacity_notice_records": 2,
+    "official_latest_stable_checks": {
+      "actions/checkout": {
+        "checked_at": "2026-11-04T18:11:56.097560+00:00",
+        "tag": "v7.0.1",
+        "url": "https://github.com/actions/checkout/releases/tag/v7.0.1",
+        "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "runtime": [
+          "using: node24"
+        ],
+        "official_latest_and_highest_semver_stable_equal": true,
+        "executed_workflow_pin_equal": true
+      },
+      "actions/cache": {
+        "checked_at": "2026-11-04T18:11:56.170778+00:00",
+        "tag": "v6.1.0",
+        "url": "https://github.com/actions/cache/releases/tag/v6.1.0",
+        "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "official_latest_and_highest_semver_stable_equal": true,
+        "executed_workflow_pin_equal": true
+      },
+      "actions/upload-artifact": {
+        "checked_at": "2026-11-04T18:11:56.133639+00:00",
+        "tag": "v7.0.2",
+        "url": "https://github.com/actions/upload-artifact/releases/tag/v7.0.2",
+        "commit": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "official_latest_and_highest_semver_stable_equal": true,
+        "executed_workflow_pin_equal": true
+      },
+      "actions/download-artifact": {
+        "checked_at": "2026-11-04T18:11:56.099450+00:00",
+        "tag": "v8.0.2",
+        "url": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+        "commit": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+        "runtime": [
+          "using: 'node24'"
+        ],
+        "official_latest_and_highest_semver_stable_equal": true,
+        "executed_workflow_pin_equal": true
+      }
+    },
+    "actual_executed_Action_full_SHA_confirmation": {
+      "Release Preflight (macos-native)": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          }
+        ]
+      },
+      "Release Preflight (windows-native)": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          }
+        ]
+      },
+      "Build Release Assets (macos-arm64)": {
+        "actual_execution_attempt": 5,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          },
+          {
+            "action": "actions/upload-artifact",
+            "full_SHA": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+          }
+        ]
+      },
+      "Build Release Assets (macos-x86_64)": {
+        "actual_execution_attempt": 3,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          },
+          {
+            "action": "actions/upload-artifact",
+            "full_SHA": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+          }
+        ]
+      },
+      "Build Release Assets (windows-x86_64)": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          },
+          {
+            "action": "actions/upload-artifact",
+            "full_SHA": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+          }
+        ]
+      },
+      "Build Release Assets (linux-x86_64)": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          },
+          {
+            "action": "actions/upload-artifact",
+            "full_SHA": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+          }
+        ]
+      },
+      "Resolve Release Context": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          }
+        ]
+      },
+      "Release Cargo Audit": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          }
+        ]
+      },
+      "Release Preflight (linux-native)": {
+        "actual_execution_attempt": 1,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/cache",
+            "full_SHA": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9"
+          }
+        ]
+      },
+      "Assemble Release Bundle": {
+        "actual_execution_attempt": 5,
+        "actions": [
+          {
+            "action": "actions/checkout",
+            "full_SHA": "3d3c42e5aac5ba805825da76410c181273ba90b1"
+          },
+          {
+            "action": "actions/download-artifact",
+            "full_SHA": "9000827ccba6bdab643e8b6fd33ac0654aef8333"
+          },
+          {
+            "action": "actions/upload-artifact",
+            "full_SHA": "cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+          }
+        ]
+      },
+      "Create Draft Release": {
+        "actual_execution_attempt": 5,
+        "actions": [
+          {
+            "action": "actions/download-artifact",
+            "full_SHA": "9000827ccba6bdab643e8b6fd33ac0654aef8333"
+          }
+        ]
+      }
+    },
+    "observed_runners": [
+      "'2.338.2'"
+    ],
+    "Node24_runner_support": "official runner2.327.1 release; actual2.338.2",
+    "actual_download_calls": [
+      {
+        "job": "Assemble Release Bundle",
+        "inputs": [
+          {
+            "id": 13350681754,
+            "name": "release-macos-arm64",
+            "size_in_bytes": 23098973,
+            "digest": "sha256:9c39e66f180326c5b6213ae68472e3c6d1eacacd14226b9e25a11494a479b8e2"
+          },
+          {
+            "id": 13346316317,
+            "name": "release-macos-x86_64",
+            "size_in_bytes": 25401296,
+            "digest": "sha256:dba1bb5384d757ae684536c91a67fc19f18b9795deded86ad57d40c4b5caa251"
+          },
+          {
+            "id": 13340145984,
+            "name": "release-windows-x86_64",
+            "size_in_bytes": 18301165,
+            "digest": "sha256:0a029d8706c692b65a92cf22f2f34c5b0276485f520c2d06c08dcb3e2c7ae862"
+          },
+          {
+            "id": 13337393225,
+            "name": "release-linux-x86_64",
+            "size_in_bytes": 20145875,
+            "digest": "sha256:a77aaefd9d74c66fa937ea56b0824ee1fc1ea3d2f1961864f5f9e894413707ec"
+          }
+        ],
+        "API_expected_and_actual_download_digests_equal": true
+      },
+      {
+        "job": "Create Draft Release",
+        "inputs": [
+          {
+            "id": 13351251825,
+            "name": "validated-release-bundle-v0.33.1-9d598aa04179b7a0fff366960849c6a7e4dbac96",
+            "size_in_bytes": 86946593,
+            "digest": "sha256:c06ff2a02defcf4653f38d4b959b5574994b62c73aa788334b990c286db9af0f"
+          }
+        ],
+        "API_expected_and_actual_download_digests_equal": true
+      }
+    ],
+    "causal_support": {
+      "official_git_blob": "e5fe23803e0378f1f365aa0d6326cd288f5b660c",
+      "size": 4432922,
+      "sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+      "retained_diagnosis_code_identical": true
+    },
+    "retained_diagnosis": "docs/releases/evidence/v0.30.1/DOWNLOAD-ARTIFACT-V8.0.2.md; full unchanged bundle UnzipStream empty-string allocation67720, numeric4 allocation67982 immediately fully initialized writeUInt32LE67983",
+    "observation_inference_boundary": "Hosted pin/runtime/inputs/emission/digests/extraction/final assets observed; hosted callstack/allocation arguments NOT observed. Unchanged full-Action diagnosis supports bounded minor-impact inference only.",
+    "fresh_artifact_gates": "Actual tagged wrapper API size/hash/CRC and28 unique assets;26checksums; anchored strict Ed25519 and tampered-manifest rejection; exact archives/modes/notices/8platform+key identities; all26bytes fromfour actualproducers exactly bound to signedbundle. NewMac binaries exactcandidate; Windows normalized comparison independently verified.",
+    "actual_Nminus": {
+      "status": "PASS",
+      "previous": "0.33.0",
+      "candidate": "0.33.1",
+      "exit_code": 0,
+      "stdout": "N-1 manifest compatibility passed for v0.33.0\n",
+      "stderr": "",
+      "manifest_sha256": "2b0f74b8588d185af761d8ed99826cacc23363bad2b076b32b39ee28e9813079"
+    },
+    "native_scope": "Selected fresh Mac working-build and actual Windows GNU candidate native PASS with independently reconciled source/key/toolchain/metadata/byte boundary. Tagged formal GUI execution NOT RUN. Explicit user-accepted v0.33.1-only missing OSzoneReload and actualIME axes remain NOT RUN; no other gate waived.",
+    "operator": "release owner",
+    "followup_owner": "repository maintainer",
+    "reevaluation": "Every new version/source/run/attempt/artifact; changed code/runtime/input/message/callsite/count/security/integrity/function uncertainty stops for reclassification. No inherited candidate exception or general DEP0005 allowlist.",
+    "independent_review": "Independent read-only exact-current source/run/artifact/log/annotation/native-boundary review completed with no remaining blocking, major or minor findings. It supports this bounded exception, not general DEP0005 or inherited candidate admission.",
+    "admitted_at": "2026-11-04T18:19:38.159436+00:00"
+  }
+}
