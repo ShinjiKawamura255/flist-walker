@@ -328,7 +328,12 @@ impl FlistWalkerApp {
         let input_focused = options
             .id
             .is_some_and(|id| ui.memory(|memory| memory.has_focus(id)));
-        Self::consume_disabled_emacs_text_edit_shortcuts(ui.ctx(), input_focused, emacs_enabled);
+        Self::prepare_emacs_text_edit_shortcuts(
+            ui.ctx(),
+            input_focused,
+            emacs_enabled,
+            ime_composition_active,
+        );
         let text_before_widget = text.clone();
         let edit = egui::TextEdit::singleline(text).desired_width(options.desired_width);
         let edit = if options.frame {

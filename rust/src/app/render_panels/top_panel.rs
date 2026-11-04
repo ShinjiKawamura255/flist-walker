@@ -465,10 +465,11 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         let editing_history_search = app.shell.runtime.query_state.history_search_active;
         let query_input_id = app.shell.ui.query_input_id();
         let query_focused_before_text_edit = ctx.memory(|m| m.has_focus(query_input_id));
-        FlistWalkerApp::consume_disabled_emacs_text_edit_shortcuts(
+        FlistWalkerApp::prepare_emacs_text_edit_shortcuts(
             &ctx,
             query_focused_before_text_edit,
             app.shell.runtime.emacs_keybindings_enabled,
+            app.shell.ui.ime_composition_active,
         );
         let text_before_widget = if editing_history_search {
             app.shell.runtime.query_state.history_search_query.clone()
