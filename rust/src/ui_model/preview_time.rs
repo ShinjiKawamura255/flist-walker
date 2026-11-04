@@ -213,10 +213,20 @@ mod windows {
                     );
                 }
             }
-            let before_windows_epoch = UNIX_EPOCH - Duration::from_secs(11_644_473_601);
+            // Windows SystemTime cannot represent an instant before FILETIME's
+            // 1601 epoch. Check that bound without panicking in the fixture.
+            assert!(UNIX_EPOCH
+                .checked_sub(Duration::from_secs(11_644_473_601))
+                .is_none());
+            // The earliest representable instant is valid UTC, but Pacific
+            // local time would fall in 1600, outside the native date range.
+            let earliest = UNIX_EPOCH
+                .checked_sub(Duration::from_secs(11_644_473_600))
+                .expect("1601 epoch is representable");
+            let pacific = registered_zone("Pacific Standard Time");
             assert_eq!(
-                offset_in_zone(before_windows_epoch, &registered_zone("UTC")),
-                None
+                format_with_offset(earliest, |time| offset_in_zone(time, &pacific)).as_deref(),
+                Some("1601-01-01 00:00 UTC")
             );
         }
 
@@ -296,6 +306,13 @@ mod tests {
                 Some("1970-01-01 00:00 UTC")
             );
         }
+        let earliest_windows_time = UNIX_EPOCH
+            .checked_sub(Duration::from_secs(11_644_473_600))
+            .expect("1601 epoch");
+        assert_eq!(
+            format_with_offset(earliest_windows_time, |_| None).as_deref(),
+            Some("1601-01-01 00:00 UTC")
+        );
     }
 
     #[test]
