@@ -14,9 +14,11 @@ pub(super) fn build_ui_state_document(
     extra_patch: Option<&UiStatePatch>,
     history_persist_disabled: bool,
 ) -> std::io::Result<Value> {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::BuildDocument);
     // Startup may fall back to defaults, but a writer must not turn a failed
     // read into permission to replace existing data. Only absence permits seed.
-    let mut document = match fs::read_to_string(path) {
+    let mut document = match observe_persistence_io!(ReadDocument, fs::read_to_string(path)) {
         Ok(text) => {
             let document = serde_json::from_str::<Value>(&text).map_err(|error| {
                 std::io::Error::new(
@@ -95,12 +97,15 @@ pub(super) fn write_pending_ui_state(
     history_persist_disabled: bool,
     lock_timeout: Duration,
 ) -> std::io::Result<()> {
+    #[cfg(test)]
+    let _io = crate::test_io::enter(crate::test_io::Stage::WriteDocument);
     debug_assert!(pending
         .windows(2)
         .all(|writes| writes[0].generation < writes[1].generation));
     let _lock = acquire_sidecar_lock(path, lock_timeout)?;
     let document = build_ui_state_document(path, pending, None, history_persist_disabled)?;
-    let text = serde_json::to_string_pretty(&document).map_err(std::io::Error::other)?;
+    let text = observe_persistence_io!(SerializeDocument, serde_json::to_string_pretty(&document))
+        .map_err(std::io::Error::other)?;
     write_text_atomic(path, &text)
 }
 
@@ -112,9 +117,11 @@ pub(crate) fn canonicalize_last_root_for_persistence(document: &mut Value) {
     else {
         return;
     };
-    let canonical = PathBuf::from(last_root)
-        .canonicalize()
-        .unwrap_or_else(|_| PathBuf::from(last_root));
+    let canonical = observe_persistence_io!(
+        CanonicalizeLastRoot,
+        PathBuf::from(last_root).canonicalize()
+    )
+    .unwrap_or_else(|_| PathBuf::from(last_root));
     if let Value::Object(map) = document {
         map.insert(
             "last_root".to_string(),
@@ -131,9 +138,11 @@ fn canonicalize_default_root_for_persistence(document: &mut Value) {
     else {
         return;
     };
-    let canonical = PathBuf::from(default_root)
-        .canonicalize()
-        .unwrap_or_else(|_| PathBuf::from(default_root));
+    let canonical = observe_persistence_io!(
+        CanonicalizeDefaultRoot,
+        PathBuf::from(default_root).canonicalize()
+    )
+    .unwrap_or_else(|_| PathBuf::from(default_root));
     if let Value::Object(map) = document {
         map.insert(
             "default_root".to_string(),

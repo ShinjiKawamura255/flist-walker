@@ -1,3 +1,15 @@
+// The non-test expansion evaluates only the original expression, exactly once.
+macro_rules! observe_persistence_io {
+    ($stage:ident, $operation:expr) => {{
+        #[cfg(test)]
+        let _io_operation = crate::test_io::enter(crate::test_io::Stage::$stage);
+        $operation
+    }};
+}
+
+#[cfg(test)]
+pub(crate) mod test_io;
+
 pub mod actions;
 pub mod app;
 pub mod cli;
