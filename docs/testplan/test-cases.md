@@ -20,7 +20,7 @@
 | TC-011 | manual | GUI 回帰手順に基づく再検証が可能（`scripts/gui-smoke-fixture.sh` と `docs/GUI-TESTREPORT.template.md` を使用） | SP-011 |
 | TC-012 | unit | プレビューキャッシュが上限件数を超えない | SP-007 |
 | TC-012A | unit | `.vbs` など非 `.txt` でも UTF-8 / UTF-16 / 主要レガシー文字コードなら本文プレビューでき、バイナリは unreadable を維持する | SP-010 |
-| TC-012B | unit | directory previewの4095/4096/4097件境界、最大4097回の列挙、部分error、cancel時の本文非公開、処理中/drain取消terminal、旧応答が新pendingを消さないこと、A→B→Aで再要求することとGUI/TUI最新要求への進行を検証する。File/Directory Preview は `Updated` と取得可能な `Created` を UTC 形式で表示し、Read-only / Windows Hidden 属性と symlink の Target および Target metadata を条件付きで表示する | SP-010 |
+| TC-012B | unit | directory previewの4095/4096/4097件境界、最大4097回の列挙、部分error、cancel時の本文非公開、処理中/drain取消terminal、旧応答が新pendingを消さないこと、A→B→Aで再要求することとGUI/TUI最新要求への進行を検証する。File/Directory Preview は `Updated` と取得可能な `Created` をシステムタイムゾーンで表示し、Read-only / Windows Hidden 属性と symlink の Target および Target metadata を条件付きで表示する | SP-010 |
 | TC-013 | manual | インデックス中に空クエリ一覧が逐次更新され、操作が継続できる | SP-002, SP-007 |
 | TC-014 | unit | FileList 作成の成功/失敗応答で GUI 状態遷移が正しい | SP-010, SP-008 |
 | TC-015 | integration | CLI 非空クエリ出力形式と root 不正系を検証する | SP-006, SP-008 |
@@ -255,6 +255,12 @@
 
 | TC-235 | unit+process+platform | 本番の内部子entrypoint、同じsupervisor/decoderによる停止・再試行、2件停止後の正常要求、pipe背圧/partial frame/EOF/crash、native path/effective settings、physical leaseとexit回収、回収不能時の上限を検証する。in-process algorithm testsを本番process証拠へ昇格しない | SP-027 |
 | TC-236 | unit+GUI+manual | 現在/全停止、保留・遅延更新の取消、停止ボタンの処理中/待機/確定待ち/遅延更新での有効化と完了/停止/失敗後の無効化、背景タブだけ処理中の全停止、描画から実行までに完了した操作の無作用、停止後のtab作成/切替/設定変更/late completion、対象tabだけの明示更新、旧確定snapshot保持を検証する。実共有フォルダ切断・復帰は各platformの実行軸を別記する | SP-027 |
+
+### Preview timezone coverage (TC-012B, TC-221 / SP-010, SP-025)
+
+- `rust/src/ui_model/preview.rs` の `preview_uses_local_timezone_in_isolated_processes` はプロセス単位のTZで、通常・段階的・directory・symlink Previewの日付境界、端数offset、夏時間gap/fold、過去の規則とraw時刻保持を確認する。親runnerとPCの設定は変更しない。
+- `rust/src/ui_model/preview_time.rs` は変換失敗の明示UTC fallbackとepoch前の端数を検証する。Windows専用testsは固定zoneとdynamic DSTのOS APIを検証し、native Windowsで実行する。UnixのPASSやWindows型チェックをWindows実行PASSへ昇格しない。
+- `rust/src/app/tests/paged_preview.rs` の `gui_preview_renders_worker_prepared_local_timestamps` はworker取得後の整形済み日時を通常frameの640/1100px描画まで確認する。実windowの視認性とOS timezone設定変更後のReloadはGSM-003のnative軸として別記する。
 
 ### Theme and Results header regression coverage (SP-010, SP-024)
 

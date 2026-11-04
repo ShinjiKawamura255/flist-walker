@@ -12,6 +12,54 @@ fn settle_preview(app: &mut FlistWalkerApp) {
 }
 
 #[test]
+fn gui_preview_renders_worker_prepared_local_timestamps() {
+    fn contains_text(shape: &egui::Shape, label: &str) -> bool {
+        match shape {
+            egui::Shape::Text(text) => text.galley.text() == label,
+            egui::Shape::Vec(shapes) => shapes.iter().any(|shape| contains_text(shape, label)),
+            _ => false,
+        }
+    }
+    let (mut app, ctx, root) = preview_focus_fixture("preview-local-time-render");
+    let document = app.paged_preview_for_current().expect("worker document");
+    let labels: Vec<_> = document
+        .header
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("Created:") || line.starts_with("Updated:"))
+        .collect();
+    assert_eq!(labels.len(), 2);
+    assert!(labels.iter().all(|line| line == "Created: <unavailable>"
+        || line.contains(" UTC+")
+        || line.contains(" UTC-")));
+    for width in [640.0, 1100.0] {
+        let mut output = egui::FullOutput::default();
+        for _ in 0..3 {
+            output = ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(width, 800.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| app.run_ui_frame(ui),
+            );
+        }
+        for label in &labels {
+            assert!(
+                output
+                    .shapes
+                    .iter()
+                    .any(|shape| contains_text(&shape.shape, label)),
+                "{width}px: missing {label}"
+            );
+        }
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
 fn gui_initial_body_errors_keep_file_information_and_reload_updates_it() {
     let root = test_root("preview-file-information");
     fs::create_dir_all(&root).expect("create root");
