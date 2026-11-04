@@ -155,51 +155,94 @@ mod windows {
         use super::*;
         use std::time::UNIX_EPOCH;
 
-        fn fixed_zone(bias: i32) -> DynamicTimeZoneInformation {
-            // SAFETY: this SDK structure contains only integer fields/arrays.
-            let mut zone: DynamicTimeZoneInformation = unsafe { std::mem::zeroed() };
-            zone.bias = bias;
-            // A custom fixed zone has no registry key. Disable dynamic lookup
-            // so the API uses these fixed rules instead of looking up an empty key.
-            zone.dynamic_daylight_time_disabled = 1;
-            zone
+        #[link(name = "advapi32")]
+        extern "system" {
+            fn EnumDynamicTimeZoneInformation(
+                index: u32,
+                zone: *mut DynamicTimeZoneInformation,
+            ) -> u32;
+        }
+
+        fn registered_zone(key: &str) -> DynamicTimeZoneInformation {
+            let key: Vec<u16> = key.encode_utf16().collect();
+            // Read real OS entries without changing the machine's timezone.
+            // SystemTimeToTzSpecificLocalTimeEx needs a registered key even
+            // for fixed zones; a hand-built bias-only fixture is not valid.
+            for index in 0..1_024 {
+                let mut zone = std::mem::MaybeUninit::<DynamicTimeZoneInformation>::uninit();
+                // SAFETY: the SDK-layout output is valid for the synchronous call.
+                let status = unsafe { EnumDynamicTimeZoneInformation(index, zone.as_mut_ptr()) };
+                if status == 259 {
+                    // ERROR_NO_MORE_ITEMS
+                    break;
+                }
+                assert_eq!(status, 0, "enumerate timezone index={index}");
+                // SAFETY: ERROR_SUCCESS means the API initialized the output.
+                let zone = unsafe { zone.assume_init() };
+                let len = zone
+                    .time_zone_key_name
+                    .iter()
+                    .position(|&c| c == 0)
+                    .unwrap_or(zone.time_zone_key_name.len());
+                if zone.time_zone_key_name[..len] == key {
+                    return zone;
+                }
+            }
+            panic!(
+                "required Windows timezone not registered: {}",
+                String::from_utf16_lossy(&key)
+            );
         }
 
         #[test]
         fn windows_local_time_fixed_offsets_and_pre_epoch() {
             assert_eq!(std::mem::size_of::<DynamicTimeZoneInformation>(), 432);
-            for (bias, offset) in [(-540, 32_400), (-345, 20_700), (480, -28_800), (0, 0)] {
+            for (key, offset) in [
+                ("Tokyo Standard Time", 32_400),
+                ("Nepal Standard Time", 20_700),
+                ("Pacific Standard Time", -28_800),
+                ("UTC", 0),
+            ] {
+                let zone = registered_zone(key);
                 for time in [UNIX_EPOCH, UNIX_EPOCH - Duration::from_nanos(100)] {
                     assert_eq!(
-                        offset_in_zone(time, &fixed_zone(bias)),
+                        offset_in_zone(time, &zone),
                         Some(offset),
-                        "fixed bias={bias}, time={time:?}, OS error={}",
+                        "zone={key}, time={time:?}, OS error={}",
                         std::io::Error::last_os_error()
                     );
                 }
             }
             let before_windows_epoch = UNIX_EPOCH - Duration::from_secs(11_644_473_601);
-            assert_eq!(offset_in_zone(before_windows_epoch, &fixed_zone(0)), None);
+            assert_eq!(
+                offset_in_zone(before_windows_epoch, &registered_zone("UTC")),
+                None
+            );
+        }
+
+        #[test]
+        fn windows_unregistered_timezone_conversion_falls_back_to_explicit_utc() {
+            let mut zone = registered_zone("UTC");
+            zone.time_zone_key_name = [0; 128];
+            for (slot, value) in zone
+                .time_zone_key_name
+                .iter_mut()
+                .zip("FlistWalkerMissingTimezoneForTest".encode_utf16())
+            {
+                *slot = value;
+            }
+            zone.dynamic_daylight_time_disabled = 0;
+            assert_eq!(offset_in_zone(UNIX_EPOCH, &zone), None);
+            assert_eq!(
+                format_with_offset(UNIX_EPOCH, |time| offset_in_zone(time, &zone)).as_deref(),
+                Some("1970-01-01 00:00 UTC")
+            );
         }
 
         #[test]
         fn windows_local_time_uses_dynamic_dst_for_the_timestamp_year() {
-            let mut pacific = fixed_zone(480);
+            let mut pacific = registered_zone("Pacific Standard Time");
             pacific.dynamic_daylight_time_disabled = 0;
-            pacific.daylight_bias = -60;
-            pacific.standard_date.month = 11;
-            pacific.standard_date.day = 1;
-            pacific.standard_date.hour = 2;
-            pacific.daylight_date.month = 3;
-            pacific.daylight_date.day = 2;
-            pacific.daylight_date.hour = 2;
-            for (slot, value) in pacific
-                .time_zone_key_name
-                .iter_mut()
-                .zip("Pacific Standard Time".encode_utf16())
-            {
-                *slot = value;
-            }
             for (seconds, expected) in [
                 (1_772_963_940, "2026-03-08 01:59 UTC-08:00"),
                 (1_772_964_000, "2026-03-08 03:00 UTC-07:00"),
