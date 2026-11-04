@@ -52,7 +52,7 @@
 - 新規タブの継承結果はindex/search完了イベントを生じないため、`create_new_tab`が既存の表示結果kind queueとpreview requestを起動する。default walkへの再indexが必要な場合はその世代の確立後に行い、既存のbounded worker・tab ID/epoch/request IDによる応答制御を使う。
 - 終了キー: `gui_launch.rs` は app creator で egui の `quit_shortcuts` を空にする。macOS は winit の標準メニュー生成後に `gui_launch/macos_menu.rs` が `terminate:` action の key equivalent だけを解除し、メニュー項目と他のキー割り当てを保持する。native close と updater の Close request は既存経路へ渡す。
 - 役割: 検索入力、結果表示、プレビュー、複数選択と一括操作を提供。結果ハイライトは search と同じ query 解釈を shared module 経由で使用する。結果スナップショット更新時は current row を行番号ベースで維持し、結果数が減った場合のみ末尾へ丸める。
-- 役割補足: Preview worker は File/Directory の header に取得可能な size、`Created` / `Updated`、条件付き属性、シンボリックリンクの `Target` を付加する。symlink では size/日時を `Target ...` としてリンク先、属性をリンク自身へ分ける。日時は依存追加なしの UTC 表示とし、metadata の取得失敗は該当行を省略して本文表示を継続する。
+- 役割補足: Preview worker は File/Directory の header に取得可能な size、`Created` / `Updated`、条件付き属性、シンボリックリンクの `Target` を付加する。symlink では size/日時を `Target ...` としてリンク先、属性をリンク自身へ分ける。`ui_model/preview_time.rs` は Unix の `localtime_r` と Windows の dynamic timezone APIで対象日時のoffsetを取得し、SP-010のローカル時刻へ整形する。追加依存・外部コマンドは使わない。段階的Previewはworkerで整形済み文字列をheaderへ保持し、描画はOS timezone lookupを行わない。raw `SystemTime` と比較用fingerprintは維持し、UTC専用formatterはindex取得時刻tooltipに残す。metadata の取得失敗は該当行を省略して本文表示を継続する。
 - 役割補足: 起動直後と `Ctrl+G` / `Esc` の検索キャンセル後は、候補が存在する場合に 1 行目を既定選択として復帰させる。
 - 役割補足: 検索オプションの `Ignore Case` を既定有効で保持し、無効時は検索結果とハイライトを case-sensitive に切り替える。
 - 役割補足: query history の検索順位・exact duplicate 最新化・100件上限は `query_history.rs`、Unicode character index と Emacs 風編集 reducer は `text_editing.rs` に置き、GUI/TUI adapter は event/selection の変換だけを担当する。

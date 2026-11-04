@@ -3,6 +3,7 @@ mod highlight;
 mod on_demand;
 mod paged_preview;
 mod preview;
+mod preview_time;
 mod syntax_preview;
 
 pub(crate) use paged_preview::PreviewHeader;

@@ -28,7 +28,7 @@
 - MUST: 本文プレビューは拡張子で制限せず、UTF-8、BOM 付き UTF-16、および主要 OS で一般的なレガシー文字コードを順に解釈して、テキストとして安全に復号できた内容を表示する。
 - MUST: ファイルの本文プレビューには byte size を `Size:` として人間可読単位で表示する。サイズ取得を含む preview I/O は worker で実行し、UI thread をブロックしてはならない。フォルダサイズの再帰計算は行わない。
 - MUST: directory previewは直接の子の先頭4096項目と最大1項目のlookaheadに列挙を制限し、sample内を名前順にして最大24行を表示する。上限超過は件数の下限とlisting truncatedを表示し、読取errorはpartial listingとして空directoryと区別する。GUI/TUIの新しいpreview要求と終了要求はfilesystem呼出し間で古い処理を中断し、古い本文を公開しない。GUIの取消・drain破棄は要求ID付きterminalでownerのbusy/routingを解放し、非active tabは必要なpreviewを復帰時に再要求する。
-- MUST: Preview は取得できる場合に `Updated:`（filesystem の `modified()`）を表示し、`Created:` は filesystem の `created()` が利用できる場合に表示する。日時は `YYYY-MM-DD HH:mm UTC` 形式とする。
+- MUST: Preview は取得できる場合に `Updated:`（filesystem の `modified()`）を表示し、`Created:` は filesystem の `created()` が利用できる場合に表示する。日時は実行環境のシステムタイムゾーンで `YYYY-MM-DD HH:mm UTC±HH:mm` と表示し、対象日時に適用される夏時間・過去の規則と日付境界を反映する。秒単位の歴史的offsetには `:ss` を付ける。タイムゾーン取得・変換失敗時は `YYYY-MM-DD HH:mm UTC` へfallbackし、取得不能な日時の既存扱いは維持する。Previewの新規取得・Reloadで時刻表示を取得し直し、日時の保存・比較・ソートは変更しない。
 - SHOULD: Preview は `Read-only` / Windows の `Hidden` 属性を `Attributes:` に表示し、シンボリックリンクにはリンク先を `Target:` として表示する。属性またはリンク先を取得できない場合も本文プレビュー全体を失敗させてはならない。
 - MUST: シンボリックリンクでは、本文・`Target Size:`・`Target Created:`・`Target Updated:` はリンク先を対象とし、`Attributes:` はリンク自身を対象とする。リンク先 metadata を取得できない行は省略する。
 - SHOULD: FileList 読み込み直後の未解決候補は背景解決により FILE/DIR/LINK 表示を後追い更新できる。
@@ -210,7 +210,7 @@
 
 ## SP-025 段階的テキストプレビューと色分け
 ### Requirements
-- MUST: GUIのファイル情報は初回本文成否と独立し、binary・empty・本文権限エラー・削除・リンク切れでも取得可能な `Size:` / `Created:` / `Updated:` と本文の理由を表示する。取得不能は `<unavailable>` とし、作成日時へ ctime を代用しない。リンクには既存の `Target ` 接頭辞と `Target:` を維持する。日時は既存の UTC 表記とする。初回失敗にも明示Reloadを提供し、情報を再取得する。メタデータだけを既存preview workerで取得し、本文と同じrequest/tab/path identityで反映する。情報表示のためにon-demand本文を開かず、UI I/O・再帰サイズ計算・独立cacheを追加しない。
+- MUST: GUIのファイル情報は初回本文成否と独立し、binary・empty・本文権限エラー・削除・リンク切れでも取得可能な `Size:` / `Created:` / `Updated:` と本文の理由を表示する。取得不能は `<unavailable>` とし、作成日時へ ctime を代用しない。リンクには既存の `Target ` 接頭辞と `Target:` を維持する。日時は SP-010 のシステムタイムゾーン表示を共用する。初回失敗にも明示Reloadを提供し、情報を再取得する。メタデータだけを既存preview workerで取得し、本文と同じrequest/tab/path identityで反映する。情報表示のためにon-demand本文を開かず、UI I/O・再帰サイズ計算・独立cacheを追加しない。
 - MUST: GUI のファイルプレビューは最初に100論理行または64 KiBの先着上限まで読み、利用者が `Load more` を選ぶたびに最大500追加行または256 KiBを読み込む。累計は5,000行または1 MiBの先着上限とし、終端と上限を区別する。全体行数の事前走査は行わない。
 - MUST: 本文、行番号、ファイル情報、追加操作を別の表示要素とする。本文は読み取り専用で選択可能とし、コピーに行番号・色分け・省略記号を含めない。長い行の画面表示は先頭4,096文字で省略を明示し、元データの表示範囲を誤認させない。
 - MUST: Index/search/sortの結果再適用で同じtab/pathに留まる場合は、確定済みPreviewと既読ページ・scroll identityを維持して既存workerで再確認する。同じfile ID・size・mtimeと表示メタデータなら文書を再構築しない。実変更・削除は反映し、directory/error表示も更新確認する。対象変更・空結果・preview非表示で旧応答を採用せず、読込中の再確認は最後の要求を読込完了後に1回へまとめる。UI threadでfilesystem確認しない。

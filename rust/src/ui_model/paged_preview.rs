@@ -6,9 +6,9 @@ use std::time::SystemTime;
 
 use encoding_rs::{EUC_JP, SHIFT_JIS, WINDOWS_1252};
 
+use super::preview_time::format_local_system_time;
 use super::{
-    format_file_size, format_system_time, metadata_attributes, normalize_path_for_display,
-    should_skip_preview,
+    format_file_size, metadata_attributes, normalize_path_for_display, should_skip_preview,
 };
 use super::{SyntaxHighlight, SyntaxLanguage, SyntaxSpan};
 
@@ -58,6 +58,8 @@ pub struct PreviewHeader {
     pub size: Option<u64>,
     pub created: Option<SystemTime>,
     pub modified: Option<SystemTime>,
+    created_display: Option<String>,
+    modified_display: Option<String>,
     pub is_symlink: bool,
     pub target: Option<String>,
     pub attributes: Vec<&'static str>,
@@ -66,11 +68,15 @@ pub struct PreviewHeader {
 impl PreviewHeader {
     fn from_metadata(path: &Path, metadata: Option<&Metadata>, link: Option<&Metadata>) -> Self {
         let is_symlink = link.is_some_and(|meta| meta.file_type().is_symlink());
+        let created = metadata.and_then(|meta| meta.created().ok());
+        let modified = metadata.and_then(|meta| meta.modified().ok());
         Self {
             path: path.to_path_buf(),
             size: metadata.filter(|meta| meta.is_file()).map(Metadata::len),
-            created: metadata.and_then(|meta| meta.created().ok()),
-            modified: metadata.and_then(|meta| meta.modified().ok()),
+            created,
+            modified,
+            created_display: created.and_then(format_local_system_time),
+            modified_display: modified.and_then(format_local_system_time),
             is_symlink,
             target: is_symlink.then(|| {
                 std::fs::read_link(path)
@@ -128,15 +134,11 @@ impl PreviewHeader {
             ),
             format!(
                 "{prefix}Created: {}",
-                self.created
-                    .and_then(format_system_time)
-                    .unwrap_or_else(unavailable)
+                self.created_display.as_deref().unwrap_or("<unavailable>")
             ),
             format!(
                 "{prefix}Updated: {}",
-                self.modified
-                    .and_then(format_system_time)
-                    .unwrap_or_else(unavailable)
+                self.modified_display.as_deref().unwrap_or("<unavailable>")
             ),
         ];
         if !self.attributes.is_empty() {
@@ -442,6 +444,18 @@ impl PagedTextPreview {
             )
             .saturating_add(self.header.path.as_os_str().len())
             .saturating_add(self.header.target.as_ref().map_or(0, String::capacity))
+            .saturating_add(
+                self.header
+                    .created_display
+                    .as_ref()
+                    .map_or(0, String::capacity),
+            )
+            .saturating_add(
+                self.header
+                    .modified_display
+                    .as_ref()
+                    .map_or(0, String::capacity),
+            )
             .saturating_add(self.header.attributes.capacity() * std::mem::size_of::<&'static str>())
             .saturating_add(std::mem::size_of::<Self>())
     }
@@ -845,6 +859,8 @@ mod tests {
             size: Some(0),
             created: None,
             modified: Some(UNIX_EPOCH),
+            created_display: None,
+            modified_display: Some("1970-01-01 09:00 UTC+09:00".to_string()),
             is_symlink: false,
             target: None,
             attributes: vec![],
@@ -855,10 +871,32 @@ mod tests {
                 "File: sample",
                 "Size: 0 B",
                 "Created: <unavailable>",
-                "Updated: 1970-01-01 00:00 UTC",
+                "Updated: 1970-01-01 09:00 UTC+09:00",
             ]
         );
         assert!(PreviewHeader::read(Path::new("unused"), &|| true).is_none());
+    }
+
+    #[test]
+    fn preview_capacity_accounts_for_prepared_timestamp_buffers() {
+        let path = fixture("timestamp-capacity", b"body\n");
+        let mut preview = PagedTextPreview::initial(&path, &|| false).unwrap();
+        let before = preview.capacity_bytes();
+        let display_capacity = preview
+            .header
+            .created_display
+            .as_ref()
+            .map_or(0, String::capacity)
+            + preview
+                .header
+                .modified_display
+                .as_ref()
+                .map_or(0, String::capacity);
+        assert!(display_capacity > 0);
+        preview.header.created_display = None;
+        preview.header.modified_display = None;
+        assert_eq!(before, preview.capacity_bytes() + display_capacity);
+        fs::remove_file(path).unwrap();
     }
 
     fn fixture(name: &str, bytes: &[u8]) -> PathBuf {

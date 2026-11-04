@@ -9,6 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(test)]
 use encoding_rs::{EUC_JP, SHIFT_JIS, UTF_16BE, UTF_16LE, WINDOWS_1252};
 
+use super::preview_time::format_local_system_time;
 use super::{normalize_path_for_display, should_skip_preview, PagedTextPreview, PreviewPageError};
 pub fn build_preview_text(path: &Path) -> String {
     build_preview_text_with_kind(path, path.is_dir())
@@ -421,10 +422,10 @@ fn build_entry_header(
                 format_file_size(metadata.len())
             ));
         }
-        if let Some(created) = metadata.created().ok().and_then(format_system_time) {
+        if let Some(created) = metadata.created().ok().and_then(format_local_system_time) {
             lines.push(format!("{metadata_prefix}Created: {created}"));
         }
-        if let Some(updated) = metadata.modified().ok().and_then(format_system_time) {
+        if let Some(updated) = metadata.modified().ok().and_then(format_local_system_time) {
             lines.push(format!("{metadata_prefix}Updated: {updated}"));
         }
     }
@@ -464,16 +465,7 @@ pub(crate) fn metadata_attributes(metadata: &Metadata) -> Vec<&'static str> {
 }
 
 pub(crate) fn format_system_time(time: SystemTime) -> Option<String> {
-    let seconds = match time.duration_since(UNIX_EPOCH) {
-        Ok(duration) => i64::try_from(duration.as_secs()).ok()?,
-        Err(error) => {
-            let duration = error.duration();
-            let seconds = i64::try_from(duration.as_secs()).ok()?;
-            seconds
-                .checked_neg()?
-                .checked_sub(i64::from(duration.subsec_nanos() > 0))?
-        }
-    };
+    let seconds = unix_seconds(time)?;
     let days = seconds.div_euclid(86_400);
     let day_seconds = seconds.rem_euclid(86_400);
     let (year, month, day) = civil_date_from_days(days);
@@ -482,6 +474,19 @@ pub(crate) fn format_system_time(time: SystemTime) -> Option<String> {
     Some(format!(
         "{year:04}-{month:02}-{day:02} {hour:02}:{minute:02} UTC"
     ))
+}
+
+pub(super) fn unix_seconds(time: SystemTime) -> Option<i64> {
+    Some(match time.duration_since(UNIX_EPOCH) {
+        Ok(duration) => i64::try_from(duration.as_secs()).ok()?,
+        Err(error) => {
+            let duration = error.duration();
+            let seconds = i64::try_from(duration.as_secs()).ok()?;
+            seconds
+                .checked_neg()?
+                .checked_sub(i64::from(duration.subsec_nanos() > 0))?
+        }
+    })
 }
 
 // Howard Hinnant's proleptic Gregorian conversion, kept dependency-free so
@@ -657,6 +662,106 @@ mod tests {
             format_system_time(timestamp).as_deref(),
             Some("1969-12-31 23:59 UTC")
         );
+    }
+
+    // Run timezone changes in fresh processes, never mutate TZ in the parallel runner.
+    #[cfg(unix)]
+    #[test]
+    fn preview_uses_local_timezone_in_isolated_processes() {
+        for zone in ["Asia/Tokyo", "America/Los_Angeles", "Asia/Kathmandu", "UTC"] {
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args([
+                    "--exact",
+                    "ui_model::preview::tests::preview_local_timezone_child",
+                    "--nocapture",
+                ])
+                .env("TZ", zone)
+                .env("FLISTWALKER_TEST_PREVIEW_TIMEZONE", zone)
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{zone}: {} {}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn preview_local_timezone_child() {
+        let Ok(zone) = std::env::var("FLISTWALKER_TEST_PREVIEW_TIMEZONE") else {
+            return;
+        };
+        let expected = match zone.as_str() {
+            "Asia/Tokyo" => "2026-07-03 04:35 UTC+09:00",
+            "America/Los_Angeles" => "2026-07-02 12:35 UTC-07:00",
+            "Asia/Kathmandu" => "2026-07-03 01:20 UTC+05:45",
+            "UTC" => "2026-07-02 19:35 UTC+00:00",
+            _ => panic!("unexpected test zone"),
+        };
+        let root = test_root("local-timezone");
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join("sample.txt");
+        fs::write(&path, "preview body").unwrap();
+        let timestamp = UNIX_EPOCH + Duration::from_secs(1_783_020_900);
+        fs::File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(timestamp))
+            .unwrap();
+        let text = build_preview_text(&path);
+        assert!(text.contains(&format!("Updated: {expected}")), "{text}");
+        let document = PagedTextPreview::initial(&path, &|| false).unwrap();
+        assert!(document
+            .header
+            .lines()
+            .contains(&format!("Updated: {expected}")));
+        assert_eq!(
+            document.header.modified,
+            Some(timestamp),
+            "raw time unchanged"
+        );
+        if let Some(created) = document.header.created {
+            assert!(document.header.lines().contains(&format!(
+                "Created: {}",
+                format_local_system_time(created).unwrap()
+            )));
+        }
+        fs::File::open(&root)
+            .unwrap()
+            .set_times(fs::FileTimes::new().set_modified(timestamp))
+            .unwrap();
+        assert!(build_preview_text(&root).contains(&format!("Updated: {expected}")));
+        let link = root.join("link.txt");
+        std::os::unix::fs::symlink(&path, &link).unwrap();
+        assert!(build_preview_text(&link).contains(&format!("Target Updated: {expected}")));
+        let linked = PagedTextPreview::initial(&link, &|| false).unwrap();
+        assert!(linked
+            .header
+            .lines()
+            .contains(&format!("Target Updated: {expected}")));
+
+        if zone == "America/Los_Angeles" {
+            // Spring gap, autumn overlap, and the older pre-2007 DST calendar.
+            for (seconds, expected) in [
+                (1_772_963_940, "2026-03-08 01:59 UTC-08:00"),
+                (1_772_964_000, "2026-03-08 03:00 UTC-07:00"),
+                (1_793_521_800, "2026-11-01 01:30 UTC-07:00"),
+                (1_793_525_400, "2026-11-01 01:30 UTC-08:00"),
+                (1_142_856_000, "2006-03-20 04:00 UTC-08:00"),
+            ] {
+                let time = UNIX_EPOCH + Duration::from_secs(seconds);
+                assert_eq!(format_local_system_time(time).as_deref(), Some(expected));
+            }
+            assert_eq!(
+                format_local_system_time(UNIX_EPOCH - Duration::from_nanos(1)).as_deref(),
+                Some("1969-12-31 15:59 UTC-08:00")
+            );
+        }
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[cfg(windows)]
