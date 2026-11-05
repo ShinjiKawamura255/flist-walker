@@ -79,9 +79,11 @@
 - 設定描画は JSON 操作と最下段のリセット／確定操作を分離する。DES-009 の共通フッターに Save → Cancel を表示し、表示項目の既定値リセットは同じ行の左側へ置く。
 
 - 起動時の `bootstrap` は実効configの `restore_queries_enabled` を復元intentのsanitizeに渡す。`gui_launch` は初回描画前に `render_theme` で `ThemeMode` を egui の System/Dark/Light preference に対応付け、OS追従はeguiへ委ねる。
-- `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。Walker 上限の単一行入力は現在の process の Emacs 設定で共有 text-editing adapter を使い、次回起動用の草稿値をその場で適用しない。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
-- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、10個の利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残し、実効 process config は変更しない。
-- `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は次回起動反映の通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
+- `settings_dialog` は保存済み設定の snapshot、草稿、数値入力、reload 確認、状態（closed/loading/editing/saving/failed）を所有する。Walker 上限の単一行入力は現在の process の Emacs 設定で共有 text-editing adapter を使い、未保存の草稿値をその場で適用しない。画面の操作は worker request を発行し、既存 `config_open` service だけを JSON open に再利用する。
+- `runtime_config` は raw JSON bytes を snapshot として読み、保存時に sidecar lock を取得して最新 bytes と比較し、10個の利用者キーだけを patch して atomic replace する。GUI設定workerは raw JSON を64 KiB+1 byteまでの有界読込で検査し、保存前の再読込と生成JSONも64 KiB以下へ制限する。これによりUI側のsnapshot cloneと破棄の最大サイズを固定し、超過時は原本を維持して理由を返す。起動時の欠落キー正規化も同じ lock 下で最新 JSON を再読込してから行う。legacy 移行からの呼出しは取得済み lock を再取得しない。未知キーは残す。worker自体は実効configを変更せず、成功応答を受けたsettings_dialogが10項目だけをprocess内configとUIコピーへ反映する。envを書き換えず、非表示設定は保持する。
+- `config_settings` worker は active 1、queued request 1、response 1 に制限し、modal generation で応答を照合する。UI frame は read、lock、write、opener を実行しない。成功は保存・適用済みの通知をstatus lineの先頭へ置いてからモーダルを閉じ、フッターが省略されても通知を優先する。失敗は草稿を保持して再試行を許す。
+
+- DES-025 の設定描画は render_panels/widgets の共通choice部品を使用し、galleyの最初の行のink中心へ記号を配置する。描画領域と論理行領域の双方を確保し、折返しと空白ラベルを扱う。themeは成功後の次描画でclient/native両方へ反映する。history registry writerは起動時policyを固定せず、enqueue側でfilter済みのdeltaを順序どおり処理する。
 
 ## DES-026 段階的プレビューの所有権と色分け
 - `PreviewHeader` は本文を必要としない共通整形を所有する。初回本文失敗後に既存preview workerが `symlink_metadata`、リンク対象のmetadata、`read_link` のみをcancel確認間で取得し、共通情報を既存 `PreviewResponse.preview` に載せる。前面・背景の同じrequest/tab/path照合後だけ理由と一緒に反映し、初回失敗の文字列をcacheしない。追加失敗では旧文書の本文・情報を維持する。リンクの対象情報が取得不能でもリンク情報は残し、link自体のsize/日時で代用しない。on-demandの本文判定・skipを維持する。workerは未解決リンクのdirectory対象を既存のdirectory previewへ渡し、readerはbody open前にregular fileを確認してFIFO/device等を開かない。

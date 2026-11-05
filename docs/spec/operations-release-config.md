@@ -242,10 +242,12 @@
 
 - 設定モーダルが読み込む raw JSON と保存前に生成する JSON は各64 KiB以下とする。64 KiBを超える入力または保存結果は理由を表示して拒否し、既存bytesを変更しない。失敗画面からも従来の JSON open を使えるようにする。この制限は起動時の runtime config 読込には適用しない。
 - GUI の歯車は設定モーダルを開く。起動・履歴、外観、キー操作、検索の群に、`restore_tabs_enabled`、`restore_queries_enabled`、`theme`、`history_persist_disabled` の反転、`emacs_keybindings_enabled`、`ctrl_w_deletes_word_in_query`、`tab_pin_moves_to_next_row`、`modifier_click_pins_enabled`、`walker_max_entries`、`filelist_auto_check_enabled` を表示する。保存済み JSON を起点とし、現在の実効設定とは分ける。
-- 9項目はすべて次回起動から反映する。保存成功時はモーダルを閉じ、次回起動から反映する旨をフッターの省略表示より前に見える位置へ通知する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
+- 10項目は保存成功後に実効設定へ反映する。草稿・Reset・Cancel・Reloadだけでは反映せず、失敗時も現行設定を維持する。JSON直接編集は再起動時に適用する。保存成功時はモーダルを閉じ、保存・適用済みの通知をフッターの省略表示より前に見える位置へ通知する。保存、キャンセル、既定値へ戻す、JSON を開く、JSON の再読み込みを提供する。既定値へ戻す操作は草稿だけを変更する。Ctrl+W の子設定は Emacs キー操作無効時に操作不可とし、値は保持する。
 - `restore_queries_enabled` は既定 `true`。Restore previous tabs のインデントされた子項目 Restore search queries とし、親が無効なら操作不可だが値は保持する。起動時のタブ復元が有効なときだけ参照し、無効なら全復元タブの検索欄を空にする。root/filter/active tab と履歴設定には影響せず、明示起動引数の優先や同一プロセスの closed-tab restore は変えない。
-- `theme` は `system`（既定）/ `dark` / `light`。外観欄の System / Dark / Light は単一選択とし、起動時に選択を適用する。System は稼働中の OS テーマ変更に追従し、Dark / Light は OS にかかわらず固定する。ネイティブのタイトルバーも同じ選択を使用し、System では OS 追従へ戻す。既存 config の両キー欠落時も同じ既定値を補完する。
+- `theme` は `system`（既定）/ `dark` / `light`。外観欄の System / Dark / Light は単一選択とし、起動時とGUI保存成功後の次の描画で選択を適用する。System は稼働中の OS テーマ変更に追従し、Dark / Light は OS にかかわらず固定する。ネイティブのタイトルバーも同じ選択を使用し、System では OS 追従へ戻す。既存 config の両キー欠落時も同じ既定値を補完する。
 - Walker 上限は正の `usize` 整数だけを受理する。空、0、負、小数、overflow は保存前に拒否し、暗黙に補正しない。
 - JSON を開く操作は従来の既定アプリ→標準エディタ fallback を使用し、モーダルと未保存草稿を維持する。外部編集後の再読み込みは草稿を置き換える明示操作とし、草稿が変更済みなら破棄確認を要求する。再読込失敗では元の草稿を保持する。読込中は取消可能とし、遅延応答は適用しない。
-- 保存は raw JSON と読込時の bytes を比較し、協調 writer の sidecar lock 下で最新内容と一致する場合だけ9キーを更新して atomic replace する。未知キーと developer 設定を保持する。外部変更、削除、不正 JSON、lock または書込失敗時は草稿を保持してエラーを示す。replace 後の directory sync 失敗では元 bytes への rollback を試み、rollback も失敗した場合は両方のエラーを示す。保存中のキャンセル・再保存・再読込・JSON open は受理しない。
-- 読込と保存は有界 worker に置き、応答はモーダル generation と対応付ける。現在の runtime config、既存 tab、履歴 writer、既存 worker を即時更新しない。履歴保存を OFF にしても既存履歴は削除せず、復元 tab の query 保存とは別設定である。明示起動引数は復元 tab より優先する。
+- 保存は raw JSON と読込時の bytes を比較し、協調 writer の sidecar lock 下で最新内容と一致する場合だけ10キーを更新して atomic replace する。未知キーと developer 設定を保持する。外部変更、削除、不正 JSON、lock または書込失敗時は草稿を保持してエラーを示す。replace 後の directory sync 失敗では元 bytes への rollback を試み、rollback も失敗した場合は両方のエラーを示す。保存中のキャンセル・再保存・再読込・JSON open は受理しない。
+- 読込と保存は有界 worker に置き、応答はモーダル generation と対応付ける。保存成功応答の値で利用者向け実効configとUIの設定コピーを更新し、process envは変更しない。既存tabと実行中の探索は維持し、Walker上限は次の要求から使う。タブ・query復元の設定は以後のセッション保存と次回起動の復元に使い、現在のタブを復元し直さない。履歴writerの保存可否は各enqueue時に判定し、切替前に受理済みのdeltaは完了・再試行を維持する。OFF中は新しいhistory deltaを送らず既存履歴を変更しない。ONに戻した後はメモリ内の履歴を通常のsnapshot差分として保存可能にする。履歴保存を OFF にしても既存履歴は削除せず、復元 tab の query 保存とは別設定である。明示起動引数は復元 tab より優先する。
+
+- Settings のチェック・ラジオは共通描画部品で最初の行の可視文字領域に記号を揃え、長いラベルを折り返し、選択・disabled・pointer/keyboard・focusとchanged通知を維持する。

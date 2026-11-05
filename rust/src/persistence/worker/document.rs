@@ -49,7 +49,7 @@ pub(super) fn build_ui_state_document(
     if let Some(patch) = extra_patch {
         merge_json_leaves(&mut document, &patch.0);
     }
-    if !history_persist_disabled {
+    if !history_persist_disabled && pending.iter().any(|write| !write.history_persist_disabled) {
         let history = document
             .get("query_history")
             .and_then(Value::as_array)
@@ -62,7 +62,11 @@ pub(super) fn build_ui_state_document(
             })
             .unwrap_or_default();
         let mut history = normalize_history_recency(history);
-        for delta in pending.iter().flat_map(|write| write.history_delta.iter()) {
+        for delta in pending
+            .iter()
+            .filter(|write| !write.history_persist_disabled)
+            .flat_map(|write| write.history_delta.iter())
+        {
             append_history_delta(&mut history, delta.clone());
         }
         if let Value::Object(map) = &mut document {

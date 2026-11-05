@@ -92,6 +92,9 @@ fn persisted_roots_and_history_from_ui_state(
 }
 
 pub(crate) fn history_persist_disabled() -> bool {
+    if let Some(settings) = crate::runtime_config::gui_editable_settings() {
+        return settings.history_persist_disabled;
+    }
     std::env::var("FLISTWALKER_DISABLE_HISTORY_PERSIST")
         .ok()
         .map(|value| {

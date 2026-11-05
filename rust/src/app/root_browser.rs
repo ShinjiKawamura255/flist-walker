@@ -398,7 +398,7 @@ impl FlistWalkerApp {
             patch: self.settings_patch_for_default_root(default_root.as_deref()),
             saved_roots: Some((saved_roots_path, Self::saved_roots_text(&roots))),
         };
-        match enqueue_settings_commit(ui_state_path, Self::history_persist_disabled(), request) {
+        match enqueue_settings_commit(ui_state_path, request) {
             Ok(response) => {
                 self.shell.features.root_browser.pending_settings_commit =
                     Some(PendingSettingsCommit {
@@ -447,7 +447,7 @@ impl FlistWalkerApp {
             patch: self.settings_patch_for_default_root(Some(&root)),
             saved_roots: None,
         };
-        match enqueue_settings_commit(ui_state_path, Self::history_persist_disabled(), request) {
+        match enqueue_settings_commit(ui_state_path, request) {
             Ok(response) => {
                 self.shell.features.root_browser.pending_settings_commit =
                     Some(PendingSettingsCommit {

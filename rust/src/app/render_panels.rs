@@ -1,5 +1,6 @@
 mod top_panel;
 mod widgets;
+pub(super) use widgets::{aligned_checkbox, aligned_radio_value};
 
 use self::widgets::{centered_top_panel_label, paint_compact_combo_selected_text};
 use super::paged_preview_flow::{PagedPreviewView, PreviewAction};
