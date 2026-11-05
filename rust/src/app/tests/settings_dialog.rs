@@ -5,6 +5,31 @@ use crate::app::worker::config_open::ConfigOpenService;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+// A GUI owns the process-wide runtime config. Exercise each complete settings
+// flow in its own process so parallel tests cannot inherit another app's edits.
+fn isolated_settings_process(name: &str) -> bool {
+    let full_name = format!("app::tests::settings_dialog::{name}");
+    if std::env::var("FLISTWALKER_SETTINGS_TEST_CHILD")
+        .ok()
+        .as_deref()
+        == Some(&full_name)
+    {
+        return false;
+    }
+    let output = std::process::Command::new(std::env::current_exe().expect("test executable"))
+        .args(["--exact", &full_name, "--nocapture", "--test-threads=1"])
+        .env("FLISTWALKER_SETTINGS_TEST_CHILD", &full_name)
+        .output()
+        .expect("isolated settings test");
+    assert!(
+        output.status.success(),
+        "{full_name}:\n{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    true
+}
+
 // Request bookkeeping and UI state are not physical worker timing observations.
 // This formatting is evaluated only by a failed assertion (or its focused test).
 fn settings_wait_diagnostics(app: &FlistWalkerApp, deadline: Instant) -> String {
@@ -47,7 +72,11 @@ fn settle_settings_dialog(app: &mut FlistWalkerApp) {
 }
 
 #[test]
-fn gui_settings_draft_saves_for_next_launch_without_changing_current_session() {
+fn gui_settings_draft_save_updates_current_session_after_success() {
+    if isolated_settings_process("gui_settings_draft_save_updates_current_session_after_success") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-save");
     let path = scope.runtime_config_path();
     fs::write(
@@ -71,7 +100,7 @@ fn gui_settings_draft_saves_for_next_launch_without_changing_current_session() {
     app.request_settings_save();
     settle_settings_dialog(&mut app);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
-    assert_eq!(app.shell.runtime.emacs_keybindings_enabled, old_keys);
+    assert_eq!(app.shell.runtime.emacs_keybindings_enabled, !old_keys);
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(path).expect("saved config")).expect("valid JSON");
     assert_eq!(saved["restore_tabs_enabled"], true);
@@ -81,6 +110,10 @@ fn gui_settings_draft_saves_for_next_launch_without_changing_current_session() {
 
 #[test]
 fn gui_settings_external_edit_keeps_draft_and_external_bytes() {
+    if isolated_settings_process("gui_settings_external_edit_keeps_draft_and_external_bytes") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-conflict");
     let path = scope.runtime_config_path();
     fs::write(&path, "{}").expect("seed config");
@@ -112,6 +145,10 @@ fn gui_settings_external_edit_keeps_draft_and_external_bytes() {
 
 #[test]
 fn gui_settings_invalid_limit_and_cancel_do_not_write() {
+    if isolated_settings_process("gui_settings_invalid_limit_and_cancel_do_not_write") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-cancel");
     let path = scope.runtime_config_path();
     fs::write(&path, "{}").expect("seed config");
@@ -132,6 +169,10 @@ fn gui_settings_invalid_limit_and_cancel_do_not_write() {
 
 #[test]
 fn gui_settings_reload_requires_explicit_discard_of_changed_draft() {
+    if isolated_settings_process("gui_settings_reload_requires_explicit_discard_of_changed_draft") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-reload");
     let path = scope.runtime_config_path();
     fs::write(&path, "{}").expect("seed config");
@@ -164,6 +205,10 @@ fn gui_settings_reload_requires_explicit_discard_of_changed_draft() {
 
 #[test]
 fn gui_settings_failed_reload_keeps_dirty_draft() {
+    if isolated_settings_process("gui_settings_failed_reload_keeps_dirty_draft") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-reload-failure");
     let path = scope.runtime_config_path();
     fs::write(&path, "{}").expect("seed config");
@@ -186,6 +231,10 @@ fn gui_settings_failed_reload_keeps_dirty_draft() {
 
 #[test]
 fn gui_settings_cancel_loading_ignores_delayed_response() {
+    if isolated_settings_process("gui_settings_cancel_loading_ignores_delayed_response") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-cancel-loading");
     fs::write(scope.runtime_config_path(), "{}").expect("seed config");
     let mut app = scope.app(test_root("gui-settings-root"), 30, String::new());
@@ -197,6 +246,12 @@ fn gui_settings_cancel_loading_ignores_delayed_response() {
 
 #[test]
 fn gui_settings_json_open_uses_existing_service_without_discarding_draft() {
+    if isolated_settings_process(
+        "gui_settings_json_open_uses_existing_service_without_discarding_draft",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-json-open");
     fs::write(scope.runtime_config_path(), "{}").expect("seed config");
     let mut app = scope.app(test_root("gui-settings-root"), 30, String::new());
@@ -238,6 +293,10 @@ fn gui_settings_json_open_uses_existing_service_without_discarding_draft() {
 
 #[test]
 fn gui_settings_modal_blocks_background_tab_close_shortcut() {
+    if isolated_settings_process("gui_settings_modal_blocks_background_tab_close_shortcut") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-shortcut");
     fs::write(scope.runtime_config_path(), "{}").expect("seed config");
     let mut app = scope.app(test_root("gui-settings-root"), 30, String::new());
@@ -270,6 +329,12 @@ fn gui_settings_modal_blocks_background_tab_close_shortcut() {
 
 #[test]
 fn gui_settings_limit_uses_runtime_emacs_shortcuts_and_shared_kill_buffer() {
+    if isolated_settings_process(
+        "gui_settings_limit_uses_runtime_emacs_shortcuts_and_shared_kill_buffer",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-emacs-limit");
     fs::write(
         scope.runtime_config_path(),
@@ -333,11 +398,14 @@ fn gui_settings_limit_uses_runtime_emacs_shortcuts_and_shared_kill_buffer() {
 
 #[test]
 fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
+    if isolated_settings_process("tc_216_gui_settings_all_fields_round_trip_to_next_launch") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-six-fields");
     let path = scope.runtime_config_path();
     fs::write(&path, r#"{"future_key":"retained"}"#).expect("seed config");
     let mut app = scope.app(test_root("gui-settings-six-fields-root"), 30, String::new());
-    let effective_emacs = app.shell.runtime.emacs_keybindings_enabled;
     app.open_settings_dialog();
     settle_settings_dialog(&mut app);
     let expected = crate::runtime_config::EditableSettings {
@@ -363,8 +431,11 @@ fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
     app.request_settings_save();
     settle_settings_dialog(&mut app);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
-    assert_eq!(app.shell.runtime.emacs_keybindings_enabled, effective_emacs);
-    assert!(app.shell.runtime.modifier_click_pins_enabled);
+    assert_eq!(
+        app.shell.runtime.emacs_keybindings_enabled,
+        expected.emacs_keybindings_enabled
+    );
+    assert!(!app.shell.runtime.modifier_click_pins_enabled);
     let saved_bytes = fs::read(&path).expect("saved settings");
     let saved_json: serde_json::Value = serde_json::from_slice(&saved_bytes).expect("saved JSON");
     assert_eq!(saved_json["future_key"], "retained");
@@ -427,6 +498,12 @@ fn tc_216_gui_settings_all_fields_round_trip_to_next_launch() {
 
 #[test]
 fn tc_216_gui_settings_rejects_every_invalid_limit_boundary_without_writing() {
+    if isolated_settings_process(
+        "tc_216_gui_settings_rejects_every_invalid_limit_boundary_without_writing",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-limit-boundaries");
     let path = scope.runtime_config_path();
     let original = r#"{"walker_max_entries":500000,"future_key":17}"#;
@@ -475,6 +552,10 @@ fn tc_216_gui_settings_rejects_every_invalid_limit_boundary_without_writing() {
 
 #[test]
 fn tc_216_gui_history_checkbox_inverts_persist_disabled() {
+    if isolated_settings_process("tc_216_gui_history_checkbox_inverts_persist_disabled") {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-history-checkbox");
     fs::write(
         scope.runtime_config_path(),
@@ -560,6 +641,12 @@ fn tc_216_gui_history_checkbox_inverts_persist_disabled() {
 
 #[test]
 fn gui_filelist_auto_check_checkbox_persists_opt_out_for_next_launch() {
+    if isolated_settings_process(
+        "gui_filelist_auto_check_checkbox_persists_opt_out_for_next_launch",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("gui-settings-filelist-auto-check");
     fs::write(
         scope.runtime_config_path(),
@@ -651,6 +738,12 @@ fn gui_filelist_auto_check_checkbox_persists_opt_out_for_next_launch() {
 
 #[test]
 fn regression_narrow_settings_title_and_footer_stay_inside_client_area() {
+    if isolated_settings_process(
+        "regression_narrow_settings_title_and_footer_stay_inside_client_area",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     fn text_rect(shape: &egui::Shape, label: &str) -> Option<egui::Rect> {
         match shape {
             egui::Shape::Text(text) if text.galley.text() == label => {
@@ -763,6 +856,12 @@ fn regression_narrow_settings_title_and_footer_stay_inside_client_area() {
 
 #[test]
 fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() {
+    if isolated_settings_process(
+        "tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     let scope = test_settings_scope("settings-wait-diagnostic");
     fs::write(scope.runtime_config_path(), "{}").expect("seed config");
     let mut app = scope.app(
@@ -845,6 +944,12 @@ fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() 
 
 #[test]
 fn settings_query_restore_subsetting_and_theme_controls_follow_pointer_input() {
+    if isolated_settings_process(
+        "settings_query_restore_subsetting_and_theme_controls_follow_pointer_input",
+    ) {
+        return;
+    }
+    let _config_guard = crate::runtime_config::runtime_config_test_guard();
     use crate::runtime_config::ThemeMode;
     let scope = test_settings_scope("settings-query-theme-controls");
     let path = scope.runtime_config_path();
@@ -945,4 +1050,365 @@ fn settings_query_restore_subsetting_and_theme_controls_follow_pointer_input() {
     click(&mut app, "Cancel");
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
     assert_eq!(fs::read_to_string(&path).unwrap(), original);
+}
+
+#[test]
+fn settings_save_applies_all_fields_and_repeated_changes_after_success() {
+    if isolated_settings_process(
+        "settings_save_applies_all_fields_and_repeated_changes_after_success",
+    ) {
+        return;
+    }
+    let _guard = crate::runtime_config::runtime_config_test_guard();
+    let scope = test_settings_scope("live-settings");
+    fs::write(scope.runtime_config_path(), "{}").unwrap();
+    let mut app = scope.app(test_root("live-root"), 30, "keep query".into());
+    let old = crate::runtime_config::current_runtime_config();
+    let env_before = std::env::var_os("FLISTWALKER_DISABLE_HISTORY_PERSIST");
+    for (index, theme) in [
+        crate::runtime_config::ThemeMode::Dark,
+        crate::runtime_config::ThemeMode::Light,
+        crate::runtime_config::ThemeMode::System,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        app.open_settings_dialog();
+        settle_settings_dialog(&mut app);
+        let mut expected = crate::runtime_config::EditableSettings::default();
+        let enabled = index % 2 == 0;
+        expected.restore_tabs_enabled = enabled;
+        expected.restore_queries_enabled = !enabled;
+        expected.history_persist_disabled = enabled;
+        expected.theme = theme;
+        expected.emacs_keybindings_enabled = !enabled;
+        expected.ctrl_w_deletes_word_in_query = enabled;
+        expected.tab_pin_moves_to_next_row = enabled;
+        expected.modifier_click_pins_enabled = !enabled;
+        expected.filelist_auto_check_enabled = !enabled;
+        expected.walker_max_entries = 17 + index;
+        if let SettingsView::Editing {
+            draft, limit_text, ..
+        } = &mut app.settings_dialog.view
+        {
+            *draft = expected.clone();
+            *limit_text = expected.walker_max_entries.to_string();
+        } else {
+            panic!("editing");
+        }
+        let before = crate::runtime_config::current_runtime_config();
+        app.request_settings_save();
+        assert_eq!(
+            crate::runtime_config::current_runtime_config(),
+            before,
+            "acceptance is not save success"
+        );
+        app.close_settings_dialog();
+        assert!(matches!(
+            app.settings_dialog.view,
+            SettingsView::Saving { .. }
+        ));
+        app.request_settings_save(); // duplicate must not replace the owned request
+        settle_settings_dialog(&mut app);
+        assert_eq!(
+            crate::runtime_config::EditableSettings::from(
+                &crate::runtime_config::current_runtime_config()
+            ),
+            expected
+        );
+        assert_eq!(app.shell.runtime.emacs_keybindings_enabled, !enabled);
+        assert_eq!(app.shell.runtime.ctrl_w_deletes_word_in_query, enabled);
+        assert_eq!(app.shell.runtime.tab_pin_moves_to_next_row, enabled);
+        assert_eq!(app.shell.runtime.modifier_click_pins_enabled, !enabled);
+        assert_eq!(app.filelist_auto_check_enabled, !enabled);
+        assert_eq!(FlistWalkerApp::restore_tabs_enabled(), enabled);
+        assert_eq!(FlistWalkerApp::history_persist_disabled(), enabled);
+        assert_eq!(
+            crate::walker_runtime::walker_runtime_settings(
+                &crate::runtime_config::current_runtime_config()
+            )
+            .max_entries,
+            expected.walker_max_entries
+        );
+        let ctx = egui::Context::default();
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+        assert_eq!(
+            ctx.options(|o| o.theme_preference),
+            match theme {
+                crate::runtime_config::ThemeMode::Dark => egui::ThemePreference::Dark,
+                crate::runtime_config::ThemeMode::Light => egui::ThemePreference::Light,
+                crate::runtime_config::ThemeMode::System => egui::ThemePreference::System,
+            }
+        );
+        assert_eq!(
+            std::env::var_os("FLISTWALKER_DISABLE_HISTORY_PERSIST"),
+            env_before
+        );
+        assert_eq!(
+            crate::runtime_config::current_runtime_config().developer,
+            old.developer
+        );
+        assert_eq!(
+            crate::runtime_config::current_runtime_config().search_threads,
+            old.search_threads
+        );
+    }
+}
+
+#[test]
+fn settings_painted_icons_align_with_label_ink_across_font_metrics() {
+    if isolated_settings_process("settings_painted_icons_align_with_label_ink_across_font_metrics")
+    {
+        return;
+    }
+    let _guard = crate::runtime_config::runtime_config_test_guard();
+    fn collect<'a>(
+        s: &'a egui::Shape,
+        texts: &mut Vec<&'a egui::epaint::TextShape>,
+        icons: &mut Vec<egui::Rect>,
+    ) {
+        match s {
+            egui::Shape::Vec(v) => {
+                for s in v {
+                    collect(s, texts, icons);
+                }
+            }
+            egui::Shape::Text(t) => texts.push(t),
+            egui::Shape::Rect(r) if r.rect.width() < 22.0 && r.rect.height() < 22.0 => {
+                icons.push(r.rect)
+            }
+            egui::Shape::Circle(c) if c.radius > 4.0 && c.radius < 11.0 => icons.push(
+                egui::Rect::from_center_size(c.center, egui::Vec2::splat(c.radius * 2.0)),
+            ),
+            _ => {}
+        }
+    }
+    for scale in [1.0, 1.25, 2.0] {
+        for offset in [-3.0, 0.0, 3.0] {
+            let scope = test_settings_scope("settings-ink");
+            fs::write(scope.runtime_config_path(), "{}").unwrap();
+            let mut app = scope.app(test_root("settings-ink-root"), 30, String::new());
+            app.open_settings_dialog();
+            settle_settings_dialog(&mut app);
+            let ctx = egui::Context::default();
+            ctx.set_pixels_per_point(scale);
+            let mut fonts = egui::FontDefinitions::default();
+            for f in fonts.font_data.values_mut() {
+                Arc::make_mut(f).tweak.y_offset = offset;
+            }
+            ctx.set_fonts(fonts);
+            ctx.all_styles_mut(|style| {
+                style.text_styles.insert(
+                    egui::TextStyle::Button,
+                    egui::FontId::proportional(16.0 + offset),
+                );
+            });
+            let mut output = egui::FullOutput::default();
+            for _ in 0..3 {
+                output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(1200.0, 1100.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| app.run_ui_frame(ui),
+                );
+            }
+            let mut texts = vec![];
+            let mut icons = vec![];
+            for s in &output.shapes {
+                collect(&s.shape, &mut texts, &mut icons);
+            }
+            for label in [
+                "Restore previous tabs",
+                "Restore search queries",
+                "Save search history",
+                "System",
+                "Dark",
+                "Light",
+                "Use Emacs-style shortcuts",
+            ] {
+                let t = texts
+                    .iter()
+                    .find(|t| t.galley.text() == label)
+                    .unwrap_or_else(|| panic!("missing {label}"));
+                let ink = t.visual_bounding_rect();
+                let icon = icons
+                    .iter()
+                    .filter(|r| {
+                        r.right() <= ink.left()
+                            && ink.left() - r.right() < 20.0
+                            && (r.center().y - ink.center().y).abs() < 15.0
+                    })
+                    .min_by(|a, b| {
+                        (a.center().y - ink.center().y)
+                            .abs()
+                            .total_cmp(&(b.center().y - ink.center().y).abs())
+                    })
+                    .unwrap_or_else(|| panic!("missing icon {label}"));
+                assert!(
+                    (icon.center().y - ink.center().y).abs() <= 1.0 / scale,
+                    "{label} scale={scale} offset={offset}: icon={icon:?} ink={ink:?}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn settings_cancel_reload_and_failed_save_preserve_live_config() {
+    if isolated_settings_process("settings_cancel_reload_and_failed_save_preserve_live_config") {
+        return;
+    }
+    let _guard = crate::runtime_config::runtime_config_test_guard();
+    let scope = test_settings_scope("live-failure");
+    let path = scope.runtime_config_path();
+    fs::write(&path, "{}").unwrap();
+    let mut app = scope.app(test_root("live-failure-root"), 30, String::new());
+    let before = crate::runtime_config::current_runtime_config();
+    let env_before = std::env::var_os("FLISTWALKER_DISABLE_HISTORY_PERSIST");
+    app.open_settings_dialog();
+    settle_settings_dialog(&mut app);
+    if let SettingsView::Editing { draft, .. } = &mut app.settings_dialog.view {
+        draft.emacs_keybindings_enabled = !before.emacs_keybindings_enabled;
+    }
+    fs::write(
+        &path,
+        r#"{"theme":"light","history_persist_disabled":true}"#,
+    )
+    .unwrap();
+    app.request_settings_save();
+    settle_settings_dialog(&mut app);
+    assert!(matches!(
+        app.settings_dialog.view,
+        SettingsView::Editing { error: Some(_), .. }
+    ));
+    assert_eq!(crate::runtime_config::current_runtime_config(), before);
+    app.request_settings_reload();
+    app.request_settings_reload();
+    settle_settings_dialog(&mut app);
+    assert_eq!(
+        crate::runtime_config::current_runtime_config(),
+        before,
+        "Reload only replaces the draft"
+    );
+    app.close_settings_dialog();
+    assert_eq!(crate::runtime_config::current_runtime_config(), before);
+    assert_eq!(
+        std::env::var_os("FLISTWALKER_DISABLE_HISTORY_PERSIST"),
+        env_before
+    );
+}
+
+#[test]
+fn settings_choices_wrap_and_preserve_pointer_keyboard_disabled_semantics() {
+    if isolated_settings_process(
+        "settings_choices_wrap_and_preserve_pointer_keyboard_disabled_semantics",
+    ) {
+        return;
+    }
+    use crate::app::render_panels::{aligned_checkbox, aligned_radio_value};
+    let ctx = egui::Context::default();
+    let mut checked = false;
+    let mut selected = 0;
+    let mut response = None;
+    let mut radio = None;
+    let mut disabled = None;
+    let label = "Long choice label with descenders gjpq and accents É to wrap safely";
+    let mut frame = |events, enabled| {
+        let output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(220.0, 320.0),
+                )),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                ui.set_max_width(180.0);
+                response = Some(aligned_checkbox(ui, &mut checked, label));
+                radio = Some(aligned_radio_value(ui, &mut selected, 1, "Selected choice"));
+                disabled = Some(
+                    ui.add_enabled_ui(enabled, |ui| {
+                        aligned_checkbox(ui, &mut false, "Disabled choice")
+                    })
+                    .inner,
+                );
+            },
+        );
+        (
+            output,
+            response.clone().unwrap(),
+            radio.clone().unwrap(),
+            disabled.clone().unwrap(),
+            checked,
+            selected,
+        )
+    };
+    let (output, r, _, _, _, _) = frame(vec![], false);
+    assert!(r.rect.height() > 25.0, "long labels wrap");
+    fn find<'a>(s: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match s {
+            egui::Shape::Text(t) if t.galley.text() == label => Some(t),
+            egui::Shape::Vec(v) => v.iter().find_map(|s| find(s, label)),
+            _ => None,
+        }
+    }
+    let t = output
+        .shapes
+        .iter()
+        .find_map(|s| find(&s.shape, label))
+        .unwrap();
+    assert!(t.galley.rows.len() > 1);
+    assert!(
+        r.rect.contains_rect(t.visual_bounding_rect()),
+        "ink fits hit target: hit={:?}, ink={:?}",
+        r.rect,
+        t.visual_bounding_rect()
+    );
+    let click = |pos, pressed| {
+        vec![
+            egui::Event::PointerMoved(pos),
+            egui::Event::PointerButton {
+                pos,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ]
+    };
+    // Both the icon and the last wrapped line belong to the same clickable target.
+    for pos in [
+        r.rect.left_center() + egui::vec2(7.0, 0.0),
+        t.visual_bounding_rect().center_bottom() - egui::vec2(0.0, 2.0),
+    ] {
+        frame(click(pos, true), false);
+        let (_, response, _, _, _, _) = frame(click(pos, false), false);
+        assert!(response.changed());
+    }
+    let (_, r, radio, disabled, checked, _) = frame(vec![], false);
+    assert!(!checked);
+    ctx.memory_mut(|m| m.request_focus(r.id));
+    let (_, r, _, _, checked, _) = frame(
+        vec![egui::Event::Key {
+            key: egui::Key::Space,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+        false,
+    );
+    assert!(checked && r.changed());
+    for _ in 0..2 {
+        frame(click(radio.rect.center(), true), false);
+        let (_, _, _, _, _, value) = frame(click(radio.rect.center(), false), false);
+        assert_eq!(value, 1, "radio cannot toggle itself off");
+    }
+    frame(click(disabled.rect.center(), true), false);
+    let (_, _, _, r, _, _) = frame(click(disabled.rect.center(), false), false);
+    assert!(!r.changed());
 }

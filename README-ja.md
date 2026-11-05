@@ -11,7 +11,7 @@
 - ドキュメント索引: [docs/INDEX.md](docs/INDEX.md)
 - 保守者向けの現状入口: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
-GUIのResultsではCtrl＋クリック（macOSはCommand＋クリック）でTabと同じPINを切り替え、クリックした行に留まります。既定ONです。Settingsの`modifier_click_pins_enabled`をOFFにして再起動すると従来のクリック動作に戻ります。Shift付き操作は従来どおりです。
+GUIのResultsではCtrl＋クリック（macOSはCommand＋クリック）でTabと同じPINを切り替え、クリックした行に留まります。既定ONです。Settingsの`modifier_click_pins_enabled`をOFFにして保存すると従来のクリック動作に戻ります。Shift付き操作は従来どおりです。
 
 ## 主要機能
 
@@ -27,7 +27,7 @@ GUIのResultsではCtrl＋クリック（macOSはCommand＋クリック）でTab
 - 実行ファイル横の `flistwalker.ignore.txt` による Ignore List
 - Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` による runtime config / session files
 
-GUIのSource表示には、FileListを読み込んだ時刻／Walkerで取得した時刻からの経過を表示します。ホバーで取得元path、UTC取得時刻、確認範囲を確認できます。`filelist_auto_check_enabled=true`（既定）では、アプリとタブがactiveの間、読み込んだroot直下のFileListだけを約5秒間隔で確認します。変更・確認不能の通知から `Refresh Index` を選ぶと、検索語・フィルター・並び順と、残存する選択pathを維持して更新します。子FileList、新規FileList、tree内の増減は確認対象外です。Settings → Searchで無効化でき、保存内容は次回起動から反映します。
+GUIのSource表示には、FileListを読み込んだ時刻／Walkerで取得した時刻からの経過を表示します。ホバーで取得元path、UTC取得時刻、確認範囲を確認できます。`filelist_auto_check_enabled=true`（既定）では、アプリとタブがactiveの間、読み込んだroot直下のFileListだけを約5秒間隔で確認します。変更・確認不能の通知から `Refresh Index` を選ぶと、検索語・フィルター・並び順と、残存する選択pathを維持して更新します。子FileList、新規FileList、tree内の増減は確認対象外です。Settings → Searchで無効化でき、保存内容はすぐに反映します。
 
 GUIの `Refresh Index` は現在のタブを再試行します。応答待ちの探索を止めるには `Stop Indexing`、全タブを止めるには `Stop All Indexing` を使います。停止後も直前の確定結果は残り、明示的なRefreshで対象タブだけを再開できます。全停止後は新規タブも自動で探索を始めません。サーバ停止中は読み取りに失敗します。OSが子処理を終了できず資源上限に達した場合は、理由を表示して再試行を停止します。
 
@@ -143,8 +143,8 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 
 ### runtime config
 
-- 「Restore previous tabs」の子設定「Restore search queries」（`restore_queries_enabled`、既定オン）をオフにすると、検索欄を空にしてタブを復元します。テーマは「System / Dark / Light」（`theme`: `system` / `dark` / `light`、既定 `system`）から選べます。いずれも保存後、次回起動から反映します。
-- GUI ではタブバーの歯車から主な設定を編集できます。保存した変更は次回起動から反映され、キャンセルでは JSON を変更しません。設定画面から従来どおり JSON を開け、外部で編集した後は明示的に再読み込みできます。
+- 「Restore previous tabs」の子設定「Restore search queries」（`restore_queries_enabled`、既定オン）をオフにすると、検索欄を空にしてタブを復元します。テーマは「System / Dark / Light」（`theme`: `system` / `dark` / `light`、既定 `system`）から選べます。テーマは保存後すぐに反映し、クエリ復元設定は次回のタブ復元に使います。
+- GUI ではタブバーの歯車から主な設定を編集できます。保存した変更は再起動せず反映され、キャンセルでは JSON を変更しません。設定画面から従来どおり JSON を開け、外部で編集した後は明示的に再読み込みできます。直接編集だけの場合は再起動後に反映します。
 - runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` とその関連ファイルに保存されます。
 - 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
 - 初回生成時は、一般利用者向けの既定項目を書き込み、詳細項目は実際に環境変数で設定されている値だけを書き込みます。

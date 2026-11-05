@@ -128,6 +128,15 @@ fn record_test_worker_wait_failure(
 
 impl PersistenceSender {
     fn enqueue(&self, patch: UiStatePatch, history_delta: Vec<String>) -> Result<u64, String> {
+        self.enqueue_with_history_policy(patch, history_delta, false)
+    }
+
+    fn enqueue_with_history_policy(
+        &self,
+        patch: UiStatePatch,
+        history_delta: Vec<String>,
+        history_persist_disabled: bool,
+    ) -> Result<u64, String> {
         let history_delta = normalize_history_recency(history_delta);
         let mut state = self
             .state
@@ -147,6 +156,7 @@ impl PersistenceSender {
             generation,
             patch,
             history_delta,
+            history_persist_disabled,
         }) {
             let error = admission_error(error);
             state.status.last_error = Some(error.clone());
@@ -216,6 +226,7 @@ struct PendingUiStateWrite {
     generation: u64,
     patch: UiStatePatch,
     history_delta: Vec<String>,
+    history_persist_disabled: bool,
 }
 
 enum UiStatePersistenceCommand {
@@ -223,6 +234,7 @@ enum UiStatePersistenceCommand {
         generation: u64,
         patch: UiStatePatch,
         history_delta: Vec<String>,
+        history_persist_disabled: bool,
     },
     CommitSettings {
         request: SettingsCommitRequest,
@@ -413,11 +425,7 @@ fn spawn_ui_state_persistence_worker(
         handle,
     )
 }
-fn registry_sender(
-    registry: &mut UiStatePersistenceRegistry,
-    path: PathBuf,
-    history_persist_disabled: bool,
-) -> PersistenceSender {
+fn registry_sender(registry: &mut UiStatePersistenceRegistry, path: PathBuf) -> PersistenceSender {
     let startup_protected = registry.startup_failures.contains(&path);
     #[cfg(not(test))]
     {
@@ -427,7 +435,7 @@ fn registry_sender(
             .or_insert_with(|| {
                 spawn_ui_state_persistence_worker(
                     path,
-                    history_persist_disabled,
+                    false, // History policy is captured by admission, not worker creation.
                     UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
                     startup_protected,
                 )
@@ -442,7 +450,7 @@ fn registry_sender(
         }
         let (sender, handle) = spawn_ui_state_persistence_worker(
             path.clone(),
-            history_persist_disabled,
+            false, // History policy is captured by admission, not worker creation.
             UI_STATE_PERSISTENCE_LOCK_TIMEOUT,
             startup_protected,
         );
@@ -478,33 +486,29 @@ pub(crate) fn enqueue_ui_state_patch(
             .unwrap_or(&[]);
         history_delta_from_snapshot(previous, &history_snapshot)
     };
-    let sender = registry_sender(&mut registry, path.clone(), history_persist_disabled);
-    let generation = sender.enqueue(patch.without_history(), history_delta)?;
+    let sender = registry_sender(&mut registry, path.clone());
+    let generation = sender.enqueue_with_history_policy(
+        patch.without_history(),
+        history_delta,
+        history_persist_disabled,
+    )?;
     // Rejection must not advance this baseline: the next retry still owns its delta.
     if !history_persist_disabled {
         registry.history_snapshots.insert(path, history_snapshot);
     }
     Ok(generation)
 }
-fn persistence_sender_for_path(
-    path: PathBuf,
-    history_persist_disabled: bool,
-) -> Result<PersistenceSender, String> {
+fn persistence_sender_for_path(path: PathBuf) -> Result<PersistenceSender, String> {
     let mut registry = ui_state_persistence_registry()
         .lock()
         .map_err(|_| "UI-state persistence registry is unavailable".to_string())?;
-    Ok(registry_sender(
-        &mut registry,
-        path,
-        history_persist_disabled,
-    ))
+    Ok(registry_sender(&mut registry, path))
 }
 pub(crate) fn enqueue_settings_commit(
     ui_state_path: PathBuf,
-    history_persist_disabled: bool,
     request: SettingsCommitRequest,
 ) -> Result<mpsc::Receiver<SettingsCommitResponse>, String> {
-    let sender = persistence_sender_for_path(ui_state_path, history_persist_disabled)?;
+    let sender = persistence_sender_for_path(ui_state_path)?;
     let state = sender
         .state
         .lock()
@@ -692,10 +696,12 @@ fn run_ui_state_persistence_worker(
                 generation,
                 patch,
                 history_delta,
+                history_persist_disabled,
             }) => pending.push(PendingUiStateWrite {
                 generation,
                 patch,
                 history_delta,
+                history_persist_disabled,
             }),
             Ok(UiStatePersistenceCommand::CommitSettings { request, response }) => {
                 settings_commit = Some((request, response))
@@ -716,10 +722,12 @@ fn run_ui_state_persistence_worker(
                         generation,
                         patch,
                         history_delta,
+                        history_persist_disabled,
                     } => pending.push(PendingUiStateWrite {
                         generation,
                         patch,
                         history_delta,
+                        history_persist_disabled,
                     }),
                     UiStatePersistenceCommand::CommitSettings { request, response } => {
                         settings_commit = Some((request, response));

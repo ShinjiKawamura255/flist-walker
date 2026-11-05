@@ -250,6 +250,9 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn restore_tabs_enabled() -> bool {
+        if let Some(settings) = crate::runtime_config::gui_editable_settings() {
+            return settings.restore_tabs_enabled;
+        }
         std::env::var("FLISTWALKER_RESTORE_TABS")
             .ok()
             .map(|value| {

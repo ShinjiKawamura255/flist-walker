@@ -28,7 +28,7 @@ Language docs:
 - Ignore list support via `flistwalker.ignore.txt` next to the executable
 - Runtime config and session file support under `%LocalAppData%\flistwalker\` on Windows, or under `~/.flistwalker/` on Linux/macOS
 
-The GUI source label shows when its index snapshot was loaded (FileList) or indexed (Walker). Hover it for the source path, UTC acquisition time, and scope. With `filelist_auto_check_enabled=true` (default), only the loaded root FileList is checked about every five seconds while the tab and app are active. Changes or an unavailable check show a notice; its `Refresh Index` preserves the query, filters, sort, and selected path when it still exists. Child FileLists, new FileLists, and filesystem tree changes are outside this check. Disable it in Settings → Search; saved settings take effect after restart.
+The GUI source label shows when its index snapshot was loaded (FileList) or indexed (Walker). Hover it for the source path, UTC acquisition time, and scope. With `filelist_auto_check_enabled=true` (default), only the loaded root FileList is checked about every five seconds while the tab and app are active. Changes or an unavailable check show a notice; its `Refresh Index` preserves the query, filters, sort, and selected path when it still exists. Child FileLists, new FileLists, and filesystem tree changes are outside this check. Disable it in Settings → Search; saved settings apply immediately.
 
 Use `Refresh Index` to retry the current tab, `Stop Indexing` to stop its indexing, or `Stop All Indexing` to stop every tab. The last committed results remain available. An explicit refresh resumes only that tab; new tabs also stay paused after a global stop. An unavailable server can still fail to load. If the OS cannot terminate old work and the process budget is exhausted, the application reports the failure instead of spawning unlimited replacements.
 
@@ -97,14 +97,14 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 ## Session Restore
 
 - Set `restore_tabs_enabled` to `true` in the runtime config file to restore the previous tab state on the next launch. Under Restore previous tabs in Settings, turn off Restore search queries (`restore_queries_enabled`, default `true`) to reopen tabs with empty search boxes.
-- Settings also offers System, Dark and Light themes (`theme`: `system` / `dark` / `light`, default `system`). Saved changes apply on the next launch.
+- Settings also offers System, Dark and Light themes (`theme`: `system` / `dark` / `light`, default `system`). The theme applies immediately after Save; query restoration applies on the next launch.
 - Restored fields include `root`, `query`, `Use FileList`, `Regex`, `Files`, `Folders`, and the active tab.
 - If you explicitly pass `--root` or a startup query, those values take precedence over restore.
 - When this feature is enabled, `Set as default` is disabled because the startup root is determined by tab restore.
 
 ## Runtime Configuration
 
-- In the GUI, click the gear in the tab bar to edit common settings. Save applies them on the next launch; Cancel leaves the JSON unchanged. The dialog can still open the JSON file for advanced edits and reload it after an external change.
+- In the GUI, click the gear in the tab bar to edit common settings. Save applies them immediately; Cancel leaves the JSON unchanged. The dialog can still open the JSON file for advanced edits and reload it after an external change. Direct JSON edits take effect after restart unless saved through the dialog.
 - On Windows, runtime settings files are stored under `%LocalAppData%\flistwalker\`. On Linux/macOS, they are stored under `~/.flistwalker/`.
 - The runtime config file is created from the current `FLISTWALKER_*` environment values on first launch if it does not exist yet.
 - Only values that are actually set by environment variables are written on first launch; unset options are omitted and fall back to built-in defaults when loaded.
@@ -117,7 +117,7 @@ Tab switching still uses `Ctrl+Tab` / `Ctrl+Shift+Tab` on macOS.
 - `walker_max_entries` is also exposed here because it caps large-root Walker scans in both the GUI and TUI.
 - Set `emacs_keybindings_enabled` to `false` to disable Emacs-like shortcuts such as `Ctrl+N`, `Ctrl+P`, `Ctrl+V`, `Alt+V`, `Ctrl+J`, `Ctrl+M`, and text-editing chords in both the GUI and TUI. When enabled (the default), navigation/accept/cancel applies to active result lists, history, root selectors, preset/Named Root screens, overlays, and modals wherever the corresponding arrow/Enter/Esc command exists. Editing chords such as `Ctrl+A/E/B/F/H/D/K/Y/U` apply to every application-owned single-line field, including preset and root-management inputs. GUI `Ctrl+W` remains governed separately by `ctrl_w_deletes_word_in_query` because it conflicts with tab close.
 - Set `ctrl_w_deletes_word_in_query` to `true` to make `Ctrl+W` delete the previous word while the GUI search box or history filter is focused and Emacs keybindings are enabled. It is disabled by default, so `Ctrl+W` continues to close the current tab on Windows/Linux. The TUI has no tab conflict and keeps its existing Emacs `Ctrl+W` behavior.
-- In GUI Results, Ctrl+click (Command+click on macOS) toggles the same pins as Tab and keeps the cursor on the clicked row. This is enabled by default; turn off `modifier_click_pins_enabled` in Settings and restart to restore the previous click behavior. Shift gestures keep their existing actions.
+- In GUI Results, Ctrl+click (Command+click on macOS) toggles the same pins as Tab and keeps the cursor on the clicked row. This is enabled by default; turn off `modifier_click_pins_enabled` in Settings and save to restore the previous click behavior. Shift gestures keep their existing actions.
 - Set `tab_pin_moves_to_next_row` to `true` to move to the next result after `Tab`, `Shift+Tab`, or enabled `Ctrl+I` pin toggles in both the GUI and TUI. It is disabled by default.
 
 Example:

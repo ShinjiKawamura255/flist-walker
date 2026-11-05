@@ -30,6 +30,7 @@ pub(super) enum SettingsView {
 
 pub(super) struct SettingsDialogState {
     pub(super) generation: u64,
+    pub(super) pending_theme: Option<crate::runtime_config::ThemeMode>,
     pub(super) view: SettingsView,
 }
 
@@ -37,6 +38,7 @@ impl Default for SettingsDialogState {
     fn default() -> Self {
         Self {
             generation: 0,
+            pending_theme: None,
             view: SettingsView::Closed,
         }
     }
@@ -232,9 +234,20 @@ impl FlistWalkerApp {
                     _ => SettingsView::Failed(error),
                 };
             }
-            ConfigSettingsCompletion::Saved(Ok(_)) => {
+            ConfigSettingsCompletion::Saved(Ok(snapshot)) => {
+                let settings = snapshot.values;
+                crate::runtime_config::apply_gui_editable_settings(&settings);
+                self.shell.runtime.emacs_keybindings_enabled = settings.emacs_keybindings_enabled;
+                self.shell.runtime.ctrl_w_deletes_word_in_query =
+                    settings.ctrl_w_deletes_word_in_query;
+                self.shell.runtime.tab_pin_moves_to_next_row = settings.tab_pin_moves_to_next_row;
+                self.shell.runtime.modifier_click_pins_enabled =
+                    settings.modifier_click_pins_enabled;
+                self.filelist_auto_check_enabled = settings.filelist_auto_check_enabled;
+                self.settings_dialog.pending_theme = Some(settings.theme);
+                self.mark_ui_state_dirty();
                 self.settings_dialog.view = SettingsView::Closed;
-                self.set_notice("Settings saved. Changes take effect on next launch");
+                self.set_notice("Settings saved and applied");
             }
             ConfigSettingsCompletion::Saved(Err(error)) => {
                 let view = std::mem::replace(&mut self.settings_dialog.view, SettingsView::Closed);

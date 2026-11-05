@@ -76,8 +76,7 @@ pub struct RuntimeConfig {
     pub developer: DeveloperRuntimeConfig,
 }
 
-/// The public settings edited by the GUI. This does not mutate the effective
-/// process configuration until the next application launch.
+/// The public settings edited by the GUI and applied after a successful save.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct EditableSettings {
     pub restore_tabs_enabled: bool,
@@ -326,22 +325,56 @@ struct RuntimeConfigSeed {
     force_update_check_failure: Option<String>,
 }
 
-fn process_runtime_config() -> &'static Mutex<RuntimeConfig> {
-    static CONFIG: OnceLock<Mutex<RuntimeConfig>> = OnceLock::new();
-    CONFIG.get_or_init(|| Mutex::new(RuntimeConfig::default()))
+#[derive(Default)]
+struct ProcessRuntimeConfig {
+    config: RuntimeConfig,
+    gui_settings_applied: bool,
+}
+
+fn process_runtime_config() -> &'static Mutex<ProcessRuntimeConfig> {
+    static CONFIG: OnceLock<Mutex<ProcessRuntimeConfig>> = OnceLock::new();
+    CONFIG.get_or_init(|| Mutex::new(ProcessRuntimeConfig::default()))
 }
 
 pub fn current_runtime_config() -> RuntimeConfig {
     process_runtime_config()
         .lock()
-        .map(|config| config.clone())
+        .map(|current| current.config.clone())
         .unwrap_or_else(|_| RuntimeConfig::from_current_env())
 }
 
 pub fn set_process_runtime_config(config: RuntimeConfig) {
     if let Ok(mut current) = process_runtime_config().lock() {
-        *current = config;
+        *current = ProcessRuntimeConfig {
+            config,
+            gui_settings_applied: false,
+        };
     }
+}
+
+/// Live GUI edits do not mutate the environment of an already multithreaded process.
+/// Legacy env readers use these overrides only after the GUI successfully saves.
+pub(crate) fn gui_editable_settings() -> Option<EditableSettings> {
+    let current = process_runtime_config().lock().ok()?;
+    current
+        .gui_settings_applied
+        .then(|| EditableSettings::from(&current.config))
+}
+
+pub(crate) fn apply_gui_editable_settings(settings: &EditableSettings) {
+    let mut current = process_runtime_config().lock().expect("runtime config");
+    let config = &mut current.config;
+    config.restore_tabs_enabled = settings.restore_tabs_enabled;
+    config.restore_queries_enabled = settings.restore_queries_enabled;
+    config.theme = settings.theme;
+    config.history_persist_disabled = settings.history_persist_disabled;
+    config.emacs_keybindings_enabled = settings.emacs_keybindings_enabled;
+    config.ctrl_w_deletes_word_in_query = settings.ctrl_w_deletes_word_in_query;
+    config.tab_pin_moves_to_next_row = settings.tab_pin_moves_to_next_row;
+    config.modifier_click_pins_enabled = settings.modifier_click_pins_enabled;
+    config.walker_max_entries = settings.walker_max_entries;
+    config.filelist_auto_check_enabled = settings.filelist_auto_check_enabled;
+    current.gui_settings_applied = true;
 }
 
 #[cfg(test)]

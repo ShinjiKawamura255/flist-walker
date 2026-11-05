@@ -1,4 +1,5 @@
 use crate::app::render::{EmacsSinglelineOptions, RenderCommand};
+use crate::app::render_panels::{aligned_checkbox, aligned_radio_value};
 use crate::app::settings_dialog::SettingsView;
 use crate::app::FlistWalkerApp;
 use crate::runtime_config::{EditableSettings, ThemeMode};
@@ -14,6 +15,9 @@ enum Action {
 }
 
 pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
+    if let Some(theme) = app.settings_dialog.pending_theme.take() {
+        crate::app::render_theme::apply_theme(ctx, theme);
+    }
     if !app.settings_dialog.is_open() {
         return;
     }
@@ -30,7 +34,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         // the dirty-draft confirmation. Only the editable body scrolls.
         let body_height = 430.0_f32.min((viewport.height() - 200.0).max(0.0));
         ui.heading("Settings");
-        ui.label("Saved changes take effect the next time FlistWalker starts.");
+        ui.label("Save applies changes immediately. JSON edits apply after restart.");
         ui.add_space(8.0);
         match &mut app.settings_dialog.view {
             SettingsView::Closed => {}
@@ -77,16 +81,15 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             } => {
                 egui::ScrollArea::vertical().max_height(body_height).show(ui, |ui| {
                     ui.heading("Startup and history");
-                    ui.checkbox(&mut draft.restore_tabs_enabled, "Restore previous tabs");
+                    aligned_checkbox(ui, &mut draft.restore_tabs_enabled, "Restore previous tabs");
                     ui.indent("restore-tabs-subsettings", |ui| {
                         ui.add_enabled_ui(draft.restore_tabs_enabled, |ui| {
-                            ui.checkbox(&mut draft.restore_queries_enabled, "Restore search queries");
+                            aligned_checkbox(ui, &mut draft.restore_queries_enabled, "Restore search queries");
                         });
                     });
                     ui.label("Explicit startup options take priority over restored tabs.");
                     let mut persist_history = !draft.history_persist_disabled;
-                    if ui
-                        .checkbox(&mut persist_history, "Save search history")
+                    if aligned_checkbox(ui, &mut persist_history, "Save search history")
                         .changed()
                     {
                         draft.history_persist_disabled = !persist_history;
@@ -96,31 +99,31 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                     ui.heading("Appearance");
                     ui.horizontal_wrapped(|ui| {
                         ui.label("Theme");
-                        ui.radio_value(&mut draft.theme, ThemeMode::System, "System");
-                        ui.radio_value(&mut draft.theme, ThemeMode::Dark, "Dark");
-                        ui.radio_value(&mut draft.theme, ThemeMode::Light, "Light");
+                        aligned_radio_value(ui, &mut draft.theme, ThemeMode::System, "System");
+                        aligned_radio_value(ui, &mut draft.theme, ThemeMode::Dark, "Dark");
+                        aligned_radio_value(ui, &mut draft.theme, ThemeMode::Light, "Light");
                     });
                     ui.add_space(10.0);
                     ui.heading("Keyboard");
-                    ui.checkbox(&mut draft.emacs_keybindings_enabled, "Use Emacs-style shortcuts");
+                    aligned_checkbox(ui, &mut draft.emacs_keybindings_enabled, "Use Emacs-style shortcuts");
                     ui.add_enabled_ui(draft.emacs_keybindings_enabled, |ui| {
-                        ui.checkbox(
+                        aligned_checkbox(ui,
                             &mut draft.ctrl_w_deletes_word_in_query,
                             "Ctrl+W deletes a word in the search box",
                         );
                     });
                     ui.label("When disabled, the Ctrl+W preference is kept for later. Tab close shortcuts remain available outside search editing.");
-                    ui.checkbox(
+                    aligned_checkbox(ui,
                         &mut draft.tab_pin_moves_to_next_row,
                         "Move to the next row after pinning with Tab",
                     );
-                    ui.checkbox(
+                    aligned_checkbox(ui,
                         &mut draft.modifier_click_pins_enabled,
                         if cfg!(target_os = "macos") { "Command+click toggles a result pin" } else { "Ctrl+click toggles a result pin" },
-                    ).on_hover_text("Uses the same pinned selection as Tab. Takes effect after restart.");
+                    ).on_hover_text("Uses the same pinned selection as Tab.");
                     ui.add_space(10.0);
                     ui.heading("Search");
-                    ui.checkbox(
+                    aligned_checkbox(ui,
                         &mut draft.filelist_auto_check_enabled,
                         "Check root FileList for changes",
                     );
@@ -140,7 +143,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             ),
                         );
                     });
-                    ui.label("Maximum candidates collected by Walker, not the number of results shown.");
+                    ui.label("Maximum candidates collected by the next Walker request, not the number of results shown.");
                     if let Some(message) = error {
                         ui.colored_label(ui.visuals().error_fg_color, message);
                     }

@@ -193,7 +193,6 @@ fn tc_168_failed_startup_read_blocks_settings_after_repair_and_keeps_roots() {
     assert!(ui_state_persistence_status(&path).startup_protected);
     assert!(enqueue_settings_commit(
         path.clone(),
-        false,
         SettingsCommitRequest {
             request_id: 1,
             patch: UiStatePatch::from_ui_state(&UiState::default()),
@@ -240,6 +239,7 @@ fn tc_168_old_success_cannot_clear_failure_while_new_generation_is_pending() {
         generation: 1,
         patch: UiStatePatch::default(),
         history_delta: Vec::new(),
+        history_persist_disabled: false,
     }];
     publish_write_result(&state, &mut pending, &Ok(()), true);
     assert_eq!(state.lock().unwrap().status.persisted_generation, 1);
@@ -251,6 +251,7 @@ fn tc_168_old_success_cannot_clear_failure_while_new_generation_is_pending() {
         generation: 2,
         patch: UiStatePatch::default(),
         history_delta: Vec::new(),
+        history_persist_disabled: false,
     });
     publish_write_result(&state, &mut pending, &Ok(()), true);
     assert_eq!(state.lock().unwrap().status.persisted_generation, 2);
@@ -827,7 +828,6 @@ fn tc_167_observed_settings_commit_reports_saved_root_failure_without_changing_u
 
     let response = enqueue_settings_commit(
         ui_state_path.clone(),
-        false,
         SettingsCommitRequest {
             request_id: 41,
             patch: UiStatePatch::from_json(json!({"default_root": "new-root"})),
@@ -1153,7 +1153,6 @@ fn tc_168_observed_settings_commit_enqueue_does_not_wait_for_ui_state_lock() {
     let started = Instant::now();
     let response = enqueue_settings_commit(
         ui_state_path.clone(),
-        false,
         SettingsCommitRequest {
             request_id: 42,
             patch: UiStatePatch::from_json(json!({"default_root": base})),
@@ -1960,5 +1959,87 @@ fn timed_out_test_shutdown_retains_writer_ownership_until_physical_return() {
         .unwrap()
         .senders
         .contains_key(&path));
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_167_registry_history_policy_can_toggle_without_restarting_worker() {
+    let base = temp_dir("live-history-policy");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    fs::write(
+        &path,
+        r#"{"query_history":[" old ","old",""],"unknown":true}"#,
+    )
+    .unwrap();
+    for (disabled, query, expected) in [
+        (true, "off", vec![" old ", "old", ""]),
+        (false, "on", vec!["old", "on"]),
+        (true, "off-again", vec!["old", "on"]),
+        (false, "on-again", vec!["old", "on", "on-again"]),
+    ] {
+        enqueue_ui_state_patch(
+            path.clone(),
+            UiStatePatch::from_json(json!({"show_preview":disabled})),
+            vec![query.into()],
+            disabled,
+        )
+        .unwrap();
+        let sender = ui_state_persistence_registry()
+            .lock()
+            .unwrap()
+            .senders
+            .get(&path)
+            .unwrap()
+            .clone();
+        flush_sender(&sender, Duration::from_secs(2)).unwrap();
+        let written: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+        assert_eq!(written["query_history"], json!(expected));
+        assert_eq!(written["show_preview"], disabled);
+        assert_eq!(written["unknown"], true);
+    }
+    crate::persistence::finish_ui_state_persistence_for_test(&path, Duration::from_secs(2))
+        .unwrap();
+    fs::remove_dir_all(base).unwrap();
+}
+
+#[test]
+fn tc_167_registry_policy_change_keeps_accepted_history_on_retry() {
+    let base = temp_dir("live-history-retry");
+    fs::create_dir_all(&base).unwrap();
+    let path = base.join("state.json");
+    fs::write(&path, "{").unwrap();
+    enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::default(),
+        vec!["accepted-before-off".into()],
+        false,
+    )
+    .unwrap();
+    let sender = ui_state_persistence_registry()
+        .lock()
+        .unwrap()
+        .senders
+        .get(&path)
+        .unwrap()
+        .clone();
+    assert!(flush_sender(&sender, Duration::from_secs(2)).is_err());
+    enqueue_ui_state_patch(
+        path.clone(),
+        UiStatePatch::from_json(json!({"show_preview":false})),
+        vec!["off-query".into()],
+        true,
+    )
+    .unwrap();
+    fs::write(&path, r#"{"query_history":["old"]}"#).unwrap();
+    flush_sender(&sender, Duration::from_secs(2)).unwrap();
+    let written: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(
+        written["query_history"],
+        json!(["old", "accepted-before-off"])
+    );
+    assert_eq!(written["show_preview"], false);
+    crate::persistence::finish_ui_state_persistence_for_test(&path, Duration::from_secs(2))
+        .unwrap();
     fs::remove_dir_all(base).unwrap();
 }
