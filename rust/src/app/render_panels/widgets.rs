@@ -65,7 +65,8 @@ fn aligned_choice(ui: &mut egui::Ui, checked: bool, label: &str, radio: bool) ->
     let galley = ui.painter().layout(
         label.to_owned(),
         font,
-        ui.visuals().text_color(),
+        // Fixed galley colors ignore the interaction-state color supplied when painting.
+        egui::Color32::PLACEHOLDER,
         (ui.available_width() - icon_width - gap).max(1.0),
     );
     let ink = if galley.mesh_bounds.is_finite() && galley.mesh_bounds.is_positive() {

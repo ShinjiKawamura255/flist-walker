@@ -1412,3 +1412,110 @@ fn settings_choices_wrap_and_preserve_pointer_keyboard_disabled_semantics() {
     let (_, _, _, r, _, _) = frame(click(disabled.rect.center(), false), false);
     assert!(!r.changed());
 }
+
+#[test]
+fn settings_choice_text_colors_match_standard_widgets_in_interaction_states() {
+    use crate::app::render_panels::{aligned_checkbox, aligned_radio_value};
+    fn colors(
+        theme: egui::ThemePreference,
+        custom: bool,
+        radio: bool,
+        enabled: bool,
+        hover: bool,
+        pressed: bool,
+    ) -> std::collections::BTreeSet<[u8; 4]> {
+        let ctx = egui::Context::default();
+        ctx.set_theme(theme);
+        let mut rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(80.0, 20.0));
+        let mut output = egui::FullOutput::default();
+        // egui's standard checkbox reads the previous pass's response style.
+        // Hold the pointer state for a pass before comparing the painted glyphs.
+        for frame in 0..4 {
+            let pos = if hover {
+                rect.center()
+            } else {
+                egui::pos2(190.0, 70.0)
+            };
+            let mut events = vec![egui::Event::PointerMoved(pos)];
+            if pressed && frame == 2 {
+                events.push(egui::Event::PointerButton {
+                    pos,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                });
+            }
+            output = ctx.run_ui(
+                egui::RawInput {
+                    time: Some(frame as f64),
+                    events,
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(220.0, 90.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    ui.add_enabled_ui(enabled, |ui| {
+                        rect = match (custom, radio) {
+                            (true, true) => aligned_radio_value(ui, &mut 0, 1, "Choice color").rect,
+                            (true, false) => aligned_checkbox(ui, &mut false, "Choice color").rect,
+                            (false, true) => ui.radio(false, "Choice color").rect,
+                            (false, false) => ui.checkbox(&mut false, "Choice color").rect,
+                        };
+                    });
+                },
+            );
+        }
+        fn text(s: &egui::Shape) -> Option<&egui::epaint::TextShape> {
+            match s {
+                egui::Shape::Text(t) if t.galley.text() == "Choice color" => Some(t),
+                egui::Shape::Vec(v) => v.iter().find_map(text),
+                _ => None,
+            }
+        }
+        let glyph_shape = output
+            .shapes
+            .iter()
+            .find_map(|s| {
+                text(&s.shape).map(|t| egui::epaint::ClippedShape {
+                    clip_rect: s.clip_rect,
+                    shape: egui::Shape::Text(t.clone()),
+                })
+            })
+            .expect("painted choice text");
+        let colors = ctx
+            .tessellate(vec![glyph_shape], 1.0)
+            .into_iter()
+            .flat_map(|p| match p.primitive {
+                egui::epaint::Primitive::Mesh(m) => m
+                    .vertices
+                    .into_iter()
+                    .map(|v| v.color.to_array())
+                    .collect::<Vec<_>>(),
+                _ => vec![],
+            })
+            .collect::<std::collections::BTreeSet<_>>();
+        assert!(!colors.is_empty());
+        colors
+    }
+    for theme in [egui::ThemePreference::Dark, egui::ThemePreference::Light] {
+        for radio in [false, true] {
+            let normal = colors(theme, false, radio, true, false, false);
+            let hover = colors(theme, false, radio, true, true, false);
+            assert_ne!(normal, hover, "control must expose a visible hover state");
+            for (enabled, hover, pressed) in [
+                (true, false, false),
+                (true, true, false),
+                (true, true, true),
+                (false, false, false),
+            ] {
+                assert_eq!(
+                    colors(theme, true, radio, enabled, hover, pressed),
+                    colors(theme, false, radio, enabled, hover, pressed),
+                    "radio={radio}, enabled={enabled}, hover={hover}, pressed={pressed}"
+                );
+            }
+        }
+    }
+}
