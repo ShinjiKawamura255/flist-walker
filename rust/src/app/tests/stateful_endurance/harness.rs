@@ -406,6 +406,19 @@ impl StatefulHarness {
             {
                 owners.extend(self.app.current_tab_id());
             }
+            // complete_frame also drains a promoted background handoff on a
+            // stale-only poll. An empty handoff can still retire its deque and
+            // publish the current build; an unrelated in-flight route cannot.
+            if let (Some(request_id), Some(active_id)) =
+                (indexing.pending_request_id, self.app.current_tab_id())
+            {
+                if indexing.request_tabs.get(&request_id) == Some(&active_id)
+                    && indexing.background_states.contains_key(&request_id)
+                    && !self.app.active_entry_filter_pending()
+                {
+                    owners.insert(active_id);
+                }
+            }
             // complete_frame retries a retained active finish even when the
             // newly submitted response belongs to another request. Attribute
             // only the matching live request route, never every active tab.
@@ -1964,6 +1977,288 @@ mod tests {
         if let Err(error) = result {
             std::panic::resume_unwind(error);
         }
+    }
+
+    fn active_handoff_harness(label: &str) -> (StatefulHarness, u64, u64) {
+        let mut harness = StatefulHarness::new(label);
+        harness.app.create_new_tab();
+        harness.app.create_new_tab();
+        reset_index_request_state_for_test(&mut harness.app);
+        let active_id = harness.app.current_tab_id().unwrap();
+        let request_id = 42;
+        harness.app.shell.indexing.pending_request_id = Some(request_id);
+        harness.app.shell.indexing.in_progress = true;
+        harness
+            .app
+            .shell
+            .indexing
+            .request_tabs
+            .insert(request_id, active_id);
+        harness.app.shell.runtime.query_state.query.clear();
+        harness.app.shell.runtime.include_files = true;
+        harness.app.shell.runtime.include_dirs = true;
+        harness.app.shell.ui.ignore_list_enabled = false;
+        let root = harness.app.shell.runtime.root.clone();
+        harness.app.shell.indexing.build.index.entries = vec![file_entry(root.join("prefix.txt"))];
+        harness.app.apply_incremental_empty_query_results();
+        harness.app.shell.indexing.background_states.insert(
+            request_id,
+            BackgroundIndexState {
+                source: Some(IndexSource::Walker),
+                entries: VecDeque::from([file_entry(root.join("retained.txt"))]),
+                replaced: false,
+            },
+        );
+        (harness, active_id, request_id)
+    }
+
+    #[test]
+    fn tc_184_active_handoff_has_exact_owner_for_plain_stale_terminal_and_stale_data_poll() {
+        let mut observed = Vec::new();
+        for mode in 0..3 {
+            let (mut harness, active_id, _) = active_handoff_harness("endurance-handoff-owner");
+            let event = Event::DeliverStaleIndex;
+            let owners = harness.response_owners(&event).unwrap();
+            assert_eq!(owners, HashSet::from([active_id]));
+            let before = harness.snapshot();
+            assert_eq!(before.results_len, 1);
+            match mode {
+                0 => harness.poll_index_responses_and_track_consumption(),
+                1 => harness.deliver_stale_index(),
+                2 => {
+                    let stale_id = harness.take_stale_request_id();
+                    harness.submitted_index_responses.push_back(stale_id);
+                    harness
+                        .index_responses
+                        .send(IndexResponse::Batch {
+                            request_id: stale_id,
+                            entries: vec![IndexEntry {
+                                path: harness.roots[1].join("stale-must-not-appear.txt"),
+                                kind: EntryKind::file(),
+                                kind_known: true,
+                            }],
+                        })
+                        .unwrap();
+                    harness.poll_index_responses_and_track_consumption();
+                }
+                _ => unreachable!(),
+            }
+            let after = harness.snapshot();
+            assert_eq!(before.active_root, after.active_root);
+            assert_eq!(before.tab_ids, after.tab_ids);
+            assert_eq!(after.results_len, 2);
+            harness.assert_other_tab_content_unchanged(
+                &before,
+                &after,
+                &owners,
+                0x1840_01c0,
+                37,
+                &event,
+            );
+            let paths = harness
+                .app
+                .shell
+                .runtime
+                .results
+                .iter()
+                .map(|(path, _)| path.clone())
+                .collect::<HashSet<_>>();
+            let root = &harness.app.shell.runtime.root;
+            assert_eq!(
+                paths,
+                HashSet::from([root.join("prefix.txt"), root.join("retained.txt")])
+            );
+            observed.push(
+                paths
+                    .into_iter()
+                    .map(|p| p.file_name().unwrap().to_owned())
+                    .collect::<HashSet<_>>(),
+            );
+            // Deliberate oracle self-test: even a legitimate active handoff
+            // must not exempt either unrelated tab from content isolation.
+            for unrelated in before.tabs.iter().filter(|tab| tab.id != active_id) {
+                let mut corrupted = after.clone();
+                corrupted
+                    .tabs
+                    .iter_mut()
+                    .find(|tab| tab.id == unrelated.id)
+                    .unwrap()
+                    .results_digest ^= 1;
+                assert!(std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    harness.assert_other_tab_content_unchanged(
+                        &before,
+                        &corrupted,
+                        &owners,
+                        0x1840_01c0,
+                        37,
+                        &event,
+                    );
+                }))
+                .is_err());
+            }
+            harness.cleanup();
+        }
+        assert!(observed.windows(2).all(|pair| pair[0] == pair[1]));
+    }
+
+    #[test]
+    fn tc_184_active_handoff_owner_requires_current_request_route_and_retained_state() {
+        for negative in 0..5 {
+            let (mut harness, active_id, request_id) =
+                active_handoff_harness("endurance-handoff-negative");
+            let unrelated_id = harness.app.shell.tabs.get(0).unwrap().id;
+            match negative {
+                0 => {
+                    harness
+                        .app
+                        .shell
+                        .indexing
+                        .background_states
+                        .remove(&request_id);
+                }
+                1 => {
+                    harness.app.shell.indexing.pending_request_id = Some(request_id + 1);
+                }
+                2 => {
+                    harness
+                        .app
+                        .shell
+                        .indexing
+                        .request_tabs
+                        .insert(request_id, unrelated_id);
+                }
+                3 => {
+                    harness.app.shell.indexing.request_tabs.remove(&request_id);
+                }
+                4 => {
+                    harness.app.shell.indexing.pending_request_id = None;
+                }
+                _ => unreachable!(),
+            }
+            // An additional in-flight route to the active tab is not retained work.
+            harness
+                .app
+                .shell
+                .indexing
+                .request_tabs
+                .insert(request_id + 2, active_id);
+            assert!(
+                harness
+                    .response_owners(&Event::DeliverStaleIndex)
+                    .unwrap()
+                    .is_empty(),
+                "negative case {negative}"
+            );
+            harness.cleanup();
+        }
+    }
+
+    #[test]
+    fn tc_184_active_handoff_waits_for_filter_and_keeps_empty_allocation_owner_under_pressure() {
+        let (mut harness, active_id, request_id) =
+            active_handoff_harness("endurance-handoff-readiness");
+        // A pending filter prevents drain_ordered_index_entries from advancing.
+        let root = harness.app.shell.runtime.root.clone();
+        harness.app.shell.indexing.build.index.entries = (0..513)
+            .map(|i| file_entry(root.join(format!("filter-{i}.txt"))))
+            .collect();
+        harness.app.shell.runtime.query_state.query = "filter".into();
+        harness.app.request_active_entry_filter(true);
+        assert!(harness.app.active_entry_filter_pending());
+        let owners = harness.response_owners(&Event::DeliverStaleIndex).unwrap();
+        assert!(owners.is_empty());
+        let before = harness.snapshot();
+        harness.deliver_stale_index();
+        let after = harness.snapshot();
+        harness.assert_other_tab_content_unchanged(
+            &before,
+            &after,
+            &owners,
+            0x1840_01c0,
+            37,
+            &Event::DeliverStaleIndex,
+        );
+        assert_eq!(
+            harness.app.shell.indexing.background_states[&request_id]
+                .entries
+                .len(),
+            1
+        );
+        harness.app.shell.indexing.build.active_filter = None;
+        harness.app.shell.runtime.query_state.query.clear();
+
+        let handoff = harness
+            .app
+            .shell
+            .indexing
+            .background_states
+            .get_mut(&request_id)
+            .unwrap();
+        handoff.entries.clear();
+        let pointer = handoff.entries.as_slices().0.as_ptr();
+        let capacity = handoff.entries.capacity();
+        assert!(capacity > 0);
+        harness.app.shell.tabs.pause_resource_reclaimer();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            for _ in 0..TAB_RESOURCE_RECLAIMER_CAPACITY {
+                let mut resources = RetiredIndexBuildResources::empty();
+                resources.set_stale_index_entries(vec![IndexEntry {
+                    path: root.join("retired"),
+                    kind: EntryKind::file(),
+                    kind_known: true,
+                }]);
+                assert!(harness
+                    .app
+                    .shell
+                    .tabs
+                    .try_retire_index_build_resources(resources)
+                    .is_ok());
+            }
+            let owners = harness.response_owners(&Event::DeliverStaleIndex).unwrap();
+            assert_eq!(
+                owners,
+                HashSet::from([active_id]),
+                "an empty handoff still owns its allocation"
+            );
+            let before = harness.snapshot();
+            harness.poll_index_responses_and_track_consumption();
+            harness.assert_other_tab_content_unchanged(
+                &before,
+                &harness.snapshot(),
+                &owners,
+                0x1840_01c0,
+                37,
+                &Event::DeliverStaleIndex,
+            );
+            let handoff = &harness.app.shell.indexing.background_states[&request_id];
+            assert_eq!(handoff.entries.capacity(), capacity);
+            assert_eq!(handoff.entries.as_slices().0.as_ptr(), pointer);
+        }));
+        harness.app.shell.tabs.resume_resource_reclaimer();
+        if let Err(error) = result {
+            harness.cleanup();
+            std::panic::resume_unwind(error);
+        }
+        let deadline = Instant::now() + ENDURANCE_QUIESCENCE_TIMEOUT;
+        while harness
+            .app
+            .shell
+            .indexing
+            .background_states
+            .contains_key(&request_id)
+        {
+            assert!(
+                Instant::now() < deadline,
+                "retained handoff allocation did not retire"
+            );
+            harness.poll_index_responses_and_track_consumption();
+            thread::yield_now();
+        }
+        assert!(harness
+            .response_owners(&Event::DeliverStaleIndex)
+            .unwrap()
+            .is_empty());
+        harness.cleanup();
     }
 
     fn snapshot(index_pending: bool, notice: &str) -> TabSemanticSnapshot {

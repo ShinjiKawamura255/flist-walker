@@ -144,6 +144,11 @@ fn tc_183_interleaved_worker_failures_converge() {
 }
 
 #[test]
+fn tc_184_promoted_index_handoff_progress_is_not_stale_cross_tab_mutation() {
+    run_generated_profile(0x1840_01c0, 1, 1_000, "stateful-active-handoff-regression");
+}
+
+#[test]
 fn tc_184_restored_preview_kind_resolution_survives_index_refresh() {
     run_generated_profile(0x1840_002e, 1, 1_000, "stateful-restore-kind-regression");
 }
