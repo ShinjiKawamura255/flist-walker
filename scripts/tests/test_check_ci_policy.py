@@ -20,6 +20,37 @@ SPEC.loader.exec_module(POLICY)
 
 
 class CiPolicyTests(unittest.TestCase):
+    def test_canary_requires_explicit_latest_stable_blocking_commands(self) -> None:
+        text = (ROOT / ".github/workflows/ci-canary.yml").read_text()
+        self.assertEqual([], POLICY.validate_workflow("ci-canary.yml", text))
+        for step, command in (("Run tests", "test --locked"),
+                              ("Run clippy", "clippy --locked --all-targets -- -D warnings")):
+            run = f"        run: cargo +stable {command}"
+            mutations = [
+                (run, run.replace("+stable ", "")),
+                (run, run.replace("+stable", "+1.97.1")),
+                (run, run.replace("+stable", "+nightly")),
+                (run, f"        # {run.strip()}\n        run: true"),
+                (run, run + " || true"),
+                (run, run + "\n        if: false"),
+                (run, run + "\n        continue-on-error: true"),
+                (f"      - name: {step}", f"      - name: {step} renamed"),
+                (run, "        run: true\n\n  borrowed-command:\n    steps:\n      - name: borrowed\n" + run),
+                (run, run + "\n" + run),
+                ("        working-directory: rust\n" + run,
+                 "        working-directory: .\n" + run),
+            ]
+            for old, new in mutations:
+                with self.subTest(step=step, mutation=new):
+                    candidate = text.replace(old, new)
+                    self.assertNotEqual(text, candidate)
+                    self.assertTrue(any("explicit stable" in item for item in
+                                        POLICY.validate_workflow("ci-canary.yml", candidate)))
+        for prop in ("if: false", "continue-on-error: true", "if : false", "continue-on-error : true"):
+            candidate = text.replace("  latest-compatibility:\n", "  latest-compatibility:\n    " + prop + "\n")
+            self.assertTrue(any("explicit stable" in item for item in
+                                POLICY.validate_workflow("ci-canary.yml", candidate)))
+
     def test_coverage_helpers_cannot_replace_or_remove_the_protected_gate(self) -> None:
         helpers = {"scripts/linux_coverage_diagnostics.py", "scripts/linux_coverage_runner.py",
                    "scripts/linux_coverage_gdb.py"}

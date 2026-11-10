@@ -86,7 +86,7 @@ GitHub-hosted runner の番号付き label は runner 世代を固定するが�
 
 - Cargo 関連 path は任意階層の `Cargo.toml` / `Cargo.lock`、`rust/.cargo/audit.toml`、required/security audit workflow、CI policy checker/test とする。該当 PR は required gate 内で `cargo audit` を実行する。
 - scheduled security audit は毎日実行し、後日公開された advisory も検知する。default branch の失敗時だけ dedicated issue を同じ run で作成または更新し、agent は 24 時間以内に原因を分類する。default branch の後続 run が成功した場合は、完全一致タイトルかつ `github-actions` bot 所有の open issue だけを recovery run URL 付きで自動 close する。
-- latest canary は週次で `ubuntu-latest` / `windows-latest` / `macos-latest` と Rust stable を検証する。default branch の失敗時だけ dedicated issue を同じ run で作成または更新し、agent は 7 日以内に原因を分類する。default branch の後続 run が成功した場合は security audit と同じ bot 所有・完全一致タイトル条件で dedicated issue を自動 close する。
+- latest canary は週次で `ubuntu-latest` / `windows-latest` / `macos-latest` と Rust stable を検証する。test / clippy は `cargo +stable` を明示し、`rust/rust-toolchain.toml` の通常 CI pin が latest 検証を置き換えないようにする。default branch の失敗時だけ dedicated issue を同じ run で作成または更新し、agent は 7 日以内に原因を分類する。default branch の後続 run が成功した場合は security audit と同じ bot 所有・完全一致タイトル条件で dedicated issue を自動 close する。
 - canary と scheduled audit は branch protection の required check に追加しない。前者は将来互換性、後者は時間経過で変化する security intelligence を観測する。
 
 ## Stateful endurance signal
