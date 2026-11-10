@@ -21,3 +21,5 @@ This directory contains completed maintenance and closure records. These documen
 | [Durable History](durable-history.md) | Chronological closure notes that remain useful for later maintenance |
 
 For current project posture, use [CURRENT_STATUS.md](../CURRENT_STATUS.md). For release-specific records and evidence, use [releases/INDEX.md](../releases/INDEX.md).
+
+- [Explicit stable Canary and controlled-rollout evidence (2026-11-10)](canary-stable-rollout-2026-11-10/README.md)
