@@ -297,7 +297,7 @@ fn trace_startup_phase(start: Instant, phase: &str) {
 
 fn premultiplied_to_unmultiplied_rgba(src: &[u8]) -> Vec<u8> {
     let mut out = Vec::with_capacity(src.len());
-    for px in src.chunks_exact(4) {
+    for px in src.as_chunks::<4>().0.iter() {
         let r = px[0] as u32;
         let g = px[1] as u32;
         let b = px[2] as u32;
@@ -424,7 +424,12 @@ mod tests {
 
         assert_eq!((icon.width, icon.height), (256, 256));
         assert_eq!(icon.rgba.len(), 256 * 256 * 4);
-        assert!(icon.rgba.chunks_exact(4).any(|pixel| pixel[3] > 0));
+        assert!(icon
+            .rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .any(|pixel| pixel[3] > 0));
     }
 
     #[test]

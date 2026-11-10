@@ -55,7 +55,7 @@ impl WorkerLoadObserver {
 }
 
 fn decrement_saturating(counter: &AtomicUsize) {
-    let _ = counter.fetch_update(Ordering::AcqRel, Ordering::Acquire, |value| {
+    let _ = counter.try_update(Ordering::AcqRel, Ordering::Acquire, |value| {
         Some(value.saturating_sub(1))
     });
 }

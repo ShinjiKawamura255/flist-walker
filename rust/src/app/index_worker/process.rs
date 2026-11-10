@@ -21,7 +21,7 @@ struct Lease(&'static AtomicUsize);
 impl Lease {
     fn acquire(counter: &'static AtomicUsize, limit: usize) -> Result<Self, String> {
         counter
-            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
                 (n < limit).then_some(n + 1)
             })
             .map(|_| Self(counter))
