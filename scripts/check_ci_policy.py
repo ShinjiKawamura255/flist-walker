@@ -257,10 +257,36 @@ def validate_trusted_policy_update(trusted_root: Path, proposed_root: Path) -> l
     return violations
 
 
+def validate_canary_toolchain_contract(text: str) -> list[str]:
+    """Require executable latest-channel commands, not installer/comment tokens.
+
+    Like the native-clippy contract, accept only the repository's canonical
+    blocking step shape. The nested rust-toolchain file must not select the pin.
+    """
+    violation = "ci-canary.yml: latest-compatibility requires explicit stable blocking test and clippy steps"
+    jobs = [block for name, block in _job_blocks(text) if name == "latest-compatibility"]
+    if len(jobs) != 1:
+        return [violation]
+    job = jobs[0]
+    if re.search(r"(?m)^    (?:if|continue-on-error)[ \t]*:", job):
+        return [violation]
+    for name, command in (("Run tests", "test --locked"),
+                          ("Run clippy", "clippy --locked --all-targets -- -D warnings")):
+        steps = _named_step_blocks(job, name)
+        expected = (f"      - name: {name}\n"
+                    "        working-directory: rust\n"
+                    f"        run: cargo +stable {command}")
+        if len(steps) != 1 or steps[0].strip() != expected.strip():
+            return [violation]
+    return []
+
+
 def validate_workflow(name: str, text: str) -> list[str]:
     violations: list[str] = []
     is_canary = name == "ci-canary.yml"
     is_guardian = name == "ci-policy-guardian.yml"
+    if is_canary:
+        violations.extend(validate_canary_toolchain_contract(text))
 
     uses_pull_request_target = re.search(r"\bpull_request_target\b", text) is not None
     if uses_pull_request_target and not is_guardian:

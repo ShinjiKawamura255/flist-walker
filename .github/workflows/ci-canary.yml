@@ -45,11 +45,11 @@ jobs:
 
       - name: Run tests
         working-directory: rust
-        run: cargo test --locked
+        run: cargo +stable test --locked
 
       - name: Run clippy
         working-directory: rust
-        run: cargo clippy --locked --all-targets -- -D warnings
+        run: cargo +stable clippy --locked --all-targets -- -D warnings
 
   report-failure:
     name: Track Canary Failure
