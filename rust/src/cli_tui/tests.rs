@@ -1078,12 +1078,53 @@ fn tc_162_delayed_preview_worker_cleanup_uses_the_bounded_wait() {
         .expect("start delayed preview worker");
 
     let started = Instant::now();
-    finish_worker(handle, done_rx);
+    let observation = finish_worker(handle, done_rx);
+    let elapsed = started.elapsed();
     assert!(
-        started.elapsed() < Duration::from_millis(450),
-        "preview cleanup exceeded the bounded wait: {:?}",
-        started.elapsed()
+        elapsed < Duration::from_millis(450),
+        "preview cleanup exceeded the bounded wait: {elapsed:?}; receive={:?}, receive_elapsed={:?}, join_elapsed={:?}",
+        observation.receive_result,
+        observation.receive_elapsed,
+        observation.join_elapsed,
     );
+}
+
+#[test]
+fn tc_162_worker_cleanup_observation_distinguishes_done_and_disconnect() {
+    for completed in [true, false] {
+        let (done_tx, done_rx) = mpsc::channel();
+        let handle = thread::spawn(move || {
+            if completed {
+                done_tx.send(()).expect("send completion");
+            }
+        });
+        // Join in the fixture first so this diagnostic test has no timing oracle.
+        handle.join().expect("fixture exits");
+        let handle = thread::spawn(|| {});
+        let observation = finish_worker(handle, done_rx);
+        assert_eq!(observation.receive_result.is_ok(), completed);
+        assert_eq!(observation.join_elapsed.is_some(), completed);
+        if !completed {
+            assert_eq!(
+                observation.receive_result,
+                Err(mpsc::RecvTimeoutError::Disconnected)
+            );
+        }
+    }
+}
+
+#[test]
+fn tc_162_worker_cleanup_observation_distinguishes_timeout() {
+    let (done_tx, done_rx) = mpsc::channel();
+    let handle = thread::spawn(|| {});
+    // Retain the sender until after the call: no message and no disconnect.
+    let observation = finish_worker(handle, done_rx);
+    drop(done_tx);
+    assert_eq!(
+        observation.receive_result,
+        Err(mpsc::RecvTimeoutError::Timeout)
+    );
+    assert!(observation.join_elapsed.is_none());
 }
 
 fn history_state(entries: &[&str], query: &str) -> TuiState {

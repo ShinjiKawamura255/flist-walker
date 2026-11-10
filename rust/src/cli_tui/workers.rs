@@ -620,9 +620,46 @@ pub(super) fn process_index_request_with_config<C, S>(
     }
 }
 
-pub(super) fn finish_worker(handle: thread::JoinHandle<()>, done: mpsc::Receiver<()>) {
-    if done.recv_timeout(WORKER_JOIN_TIMEOUT).is_ok() {
+// Observations exist only in test builds; the production shutdown path is unchanged.
+#[cfg(test)]
+pub(super) struct WorkerFinishObservation {
+    pub(super) receive_result: Result<(), mpsc::RecvTimeoutError>,
+    pub(super) receive_elapsed: std::time::Duration,
+    pub(super) join_elapsed: Option<std::time::Duration>,
+}
+
+#[cfg(test)]
+type WorkerFinishResult = WorkerFinishObservation;
+#[cfg(not(test))]
+type WorkerFinishResult = ();
+
+pub(super) fn finish_worker(
+    handle: thread::JoinHandle<()>,
+    done: mpsc::Receiver<()>,
+) -> WorkerFinishResult {
+    #[cfg(test)]
+    let receive_started = std::time::Instant::now();
+    let receive_result = done.recv_timeout(WORKER_JOIN_TIMEOUT);
+    #[cfg(test)]
+    let receive_elapsed = receive_started.elapsed();
+    #[cfg(test)]
+    let mut join_elapsed = None;
+    if receive_result.is_ok() {
+        #[cfg(test)]
+        let join_started = std::time::Instant::now();
         let _ = handle.join();
+        #[cfg(test)]
+        {
+            join_elapsed = Some(join_started.elapsed());
+        }
+    }
+    #[cfg(test)]
+    {
+        WorkerFinishObservation {
+            receive_result,
+            receive_elapsed,
+            join_elapsed,
+        }
     }
 }
 
