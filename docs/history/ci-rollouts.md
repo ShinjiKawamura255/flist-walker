@@ -192,3 +192,55 @@ Controller SHA256 `4232c9aba95fd6aadf8b7b55675985008d39ffc13d21e0c91d5d630d0206b
 Rebase-only/autodelete, administrators, linear history, approval0, force/delete prohibition and all nontarget settings remain unchanged. [The ordered audit](linux-coverage-rollout-2026-10-19/merged-audit.json) verifies all13source/rebased commits: same count/order/message/author/date/tree/stablepatch ID, one parent each, merge commits0, and automatic remote feature deletion. No direct master push, admin bypass, manual remote deletion, tag or release occurred.
 
 The restored normal-protection proof is the machine PR containing these two meaningful commits: native diagnostic/CI/warning evidence and navigation; then full control/authority/restoration/readback/audit evidence and this record. Exact proof-head checks, one ordinary rebase auto-merge registration, source/merged ordered audit, final outcome and authorized180Draft reopen belong to that proof PR record. The automatic master CI on2654cc5 is [39255018741](https://github.com/ShinjiKawamura255/flist-walker/actions/runs/39255018741); this retained point-in-time record does not assert its still-pending outcome. Proof, master CI and PR180 reopen must be verified separately. Remaining candidate/native release gates and original SIGSEGV investigation stay open; no release approval is implied.
+
+## Explicit stable Canary rollout (2026-11-10)
+
+[Source and original results](canary-stable-rollout-2026-11-10/README.md) bind PR255
+head61515d97/base2c2f2e11, all10 successful pinned-CI jobs and the old Guardian's
+three expected immutable-path rejections. The user explicitly approved removing
+only required Guardian temporarily, merging255, restoring/checking all protection,
+and creating/merging a restored-protection proof. No release authority was implied.
+
+Eight obsolete diagnostic/reference drafts were separately approved for closure
+without merging or deleting their branches. Reference217/fcdea8ee remains intact.
+Diagnostic254 then merged with separate approval. Candidate255 was the sole open
+master PR, ready, with no existing auto-merge when each attempt was admitted.
+
+Before both attempts, snapshot/restore payload/control were independently reviewed.
+Required checks were strict CI Gate and CI Policy Guardian, both app15368; administrator
+protection, linear history, approval0, force/delete prohibition and rebase-only
+repository policy remained fixed. Applied rules/rulesets were empty. Exact check
+inventory retained both original/ready Guardian failures, rather than arbitrarily
+selecting a run. Drift stopped execution; no check was falsified or rerun.
+
+Attempt1 registered auto-rebase16:11:03UTC but did not merge within60seconds. Its
+finally restored both required checks and canceled only its own unmerged registration
+at16:12:23. Independent watchdog and fresh full API comparison confirmed restoration.
+The reason for non-completion is unknown: temporary response/mergeability had not been
+recorded. This original failed attempt is retained, not relabelled successful.
+
+A separately reviewed observational v2 recorded the PATCH response, required-check
+readback and timestamped PR states, without increasing60second merge wait or180second
+watchdog deadline. Unit24 and process3/6 interruption scenarios passed. Initial
+process verification encountered sandbox EPERM in an exit check despite successful
+restoration; the log was retained, host read-only inspection confirmed owned processes
+absent, and a new independent-fixture test passed. No live API was used by fake tests.
+
+One bounded retry of the same authorised operation merged255 at16:19:09UTC to
+`b66e3b5583008fa3b0a41c651c0d51333a13aead`. Observations saw strict CI Gate-only with
+PR unstable, then merged. Controller exit0, finally restoration, independent watchdog
+`verified-main-restoration` and a fresh full repository/protection/rules/rulesets/PR/master
+comparison all passed. Source/replayed single commit tree/message/author/order and
+single-parent structure matched; remote candidate branch was automatically deleted.
+A180second watchdog starts fallback restoration; network availability is not guaranteed.
+
+[Evidence manifest](canary-stable-rollout-2026-11-10/evidence-manifest.json) binds retained
+control/payload/policy-view restoration/test files with verified archive roundtrips.
+Historical manifests and approval records are not reusable authority.
+
+The protected proof is this two-commit documentation PR: source evidence/navigation,
+then control/restoration evidence and this record. It starts only after full restoration.
+Both required checks must pass at its exact head before authorised ordinary rebase
+merge. Source/replayed count/order/message/author/patch-ID/tree/parent and remote branch
+cleanup will be recorded in the proof PR; this pre-merge record does not claim them done.
+Latest1.99.1 compatibility, original TC162 causation and release gates remain separate.

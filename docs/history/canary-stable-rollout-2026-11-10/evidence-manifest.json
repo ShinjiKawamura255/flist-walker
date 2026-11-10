@@ -1,0 +1,136 @@
+{
+  "archive_sha256": "b55fe8f18c73e1c0b2eae5e7cb3d0eb674e2166493e9ce1b7e4ddd1027f52a5e",
+  "members": {
+    "attempt1/bundle/guardian.json": {
+      "size": 353,
+      "sha256": "153f8a1c9f1a9477d396e2cfa5adfbded865c66efa7c64dfc2ac9039eaebd5b6"
+    },
+    "attempt1/bundle/manifest.json": {
+      "size": 582,
+      "sha256": "f2c3798dd4976eb891ea3b207009cacc4ad039f38cbf048f731c775bae824db7"
+    },
+    "attempt1/bundle/restore.json": {
+      "size": 176,
+      "sha256": "e6680f072cb6273052c8bea9a14a089a00272d6caf48535e0428601769e388e2"
+    },
+    "attempt1/bundle/temporary.json": {
+      "size": 102,
+      "sha256": "f294caef2eaa97f3c7a0801416ab727621cf32c02541b236409f63873eac146b"
+    },
+    "attempt1/controller.py": {
+      "size": 22443,
+      "sha256": "f2c2c2971513705fe72423fea29d7f9eb84fe4f9a5d11141d4f71debee385ae9"
+    },
+    "attempt1/execution/registration-admitted.json": {
+      "size": 129,
+      "sha256": "b21dcac32f6b181fc26b44ca7ce8e34627525d7226ab71c1ff0957323befa04a"
+    },
+    "attempt1/execution/temporary-admitted.json": {
+      "size": 129,
+      "sha256": "b21dcac32f6b181fc26b44ca7ce8e34627525d7226ab71c1ff0957323befa04a"
+    },
+    "attempt1/execution/verified-restored.json": {
+      "size": 3040,
+      "sha256": "23e6123877541081dba8319165ecc053a36bfe83cb4284cbb2293190dc38d43b"
+    },
+    "attempt1/execution/watchdog-complete.json": {
+      "size": 44,
+      "sha256": "78d77ca97f321cb0302a35930aa0de50a282ca4b127162969f876bc54e3f3a78"
+    },
+    "attempt1/validation/process-results.log": {
+      "size": 677,
+      "sha256": "e196f612c73c3359db9009917eb5ac883c2967e5496c88e7dd65f64f2424bc17"
+    },
+    "attempt1/validation/unit-results.log": {
+      "size": 120,
+      "sha256": "dd8df92c87ffcd7df8852f5931b01061a4c3a183fe1a267fe8bebbb16813b478"
+    },
+    "attempt2/bundle/guardian.json": {
+      "size": 353,
+      "sha256": "153f8a1c9f1a9477d396e2cfa5adfbded865c66efa7c64dfc2ac9039eaebd5b6"
+    },
+    "attempt2/bundle/manifest.json": {
+      "size": 582,
+      "sha256": "89322d5bc6d1ae2c0a8499b6ebd079568b6c1787922bc265e40afd1de3129385"
+    },
+    "attempt2/bundle/restore.json": {
+      "size": 176,
+      "sha256": "e6680f072cb6273052c8bea9a14a089a00272d6caf48535e0428601769e388e2"
+    },
+    "attempt2/bundle/temporary.json": {
+      "size": 102,
+      "sha256": "f294caef2eaa97f3c7a0801416ab727621cf32c02541b236409f63873eac146b"
+    },
+    "attempt2/controller.py": {
+      "size": 23925,
+      "sha256": "80a508830d60b7c2dc58e0b87518fc9ce3fea96b9c0ce59aa13f2d0fae5900b7"
+    },
+    "attempt2/execution/merge-observation-000.json": {
+      "size": 2332,
+      "sha256": "0a4b75a3af4e7f173a143033d8ed963e4f589e29f4c86221cd3876b89bb5ea80"
+    },
+    "attempt2/execution/merge-observation-001.json": {
+      "size": 2331,
+      "sha256": "28126e821514169fb51d15fee9ae7846519379d3ee739a950ae5010dd48fe2af"
+    },
+    "attempt2/execution/merge-observation-002.json": {
+      "size": 2333,
+      "sha256": "f5f019db9f061c68388c21fafa089e45ab415442be3ea6f0a9bd138f76c93788"
+    },
+    "attempt2/execution/merge-observation-003.json": {
+      "size": 2330,
+      "sha256": "54569a12a81baa748a10a807fa0ed71d88cd5902406e9325a12339dc79f388e2"
+    },
+    "attempt2/execution/merge-observation-004.json": {
+      "size": 2332,
+      "sha256": "eeea511ccdb3271f861a185a0ae214e8e79ee8f2464e15eacbe18a9db23125de"
+    },
+    "attempt2/execution/merge-observation-005.json": {
+      "size": 2332,
+      "sha256": "0d3028cf4ec48eea7978bd8f1cf0a4aa80427e5d434f4fe49183736c082d150e"
+    },
+    "attempt2/execution/merge-observation-006.json": {
+      "size": 2334,
+      "sha256": "804fe9bae927101f5d2be6fd4964360585c9166b764eb6a144c06087906a74b8"
+    },
+    "attempt2/execution/registration-admitted.json": {
+      "size": 129,
+      "sha256": "b21dcac32f6b181fc26b44ca7ce8e34627525d7226ab71c1ff0957323befa04a"
+    },
+    "attempt2/execution/temporary-admitted.json": {
+      "size": 129,
+      "sha256": "b21dcac32f6b181fc26b44ca7ce8e34627525d7226ab71c1ff0957323befa04a"
+    },
+    "attempt2/execution/temporary-response.json": {
+      "size": 494,
+      "sha256": "ad90a4bde63a39d4c55f8b607b3d1f1531a03e3c3cd52a0158959f635d19f7ac"
+    },
+    "attempt2/execution/verified-restored.json": {
+      "size": 3044,
+      "sha256": "3a7106561a7cef36b338aee8f00d51afe443526403e028672c3f3ad6ebc3f12f"
+    },
+    "attempt2/execution/watchdog-complete.json": {
+      "size": 44,
+      "sha256": "78d77ca97f321cb0302a35930aa0de50a282ca4b127162969f876bc54e3f3a78"
+    },
+    "attempt2/validation/process-results-rerun.log": {
+      "size": 677,
+      "sha256": "d6c52e4f9e5ef8241b430ab2fa846be4f888e472f665d85764899d89c24f2bd6"
+    },
+    "attempt2/validation/process-results.log": {
+      "size": 2630,
+      "sha256": "1b48893604c189c132b643c15dc5fb26ed63dd30b76d7de8af13479606af3352"
+    },
+    "attempt2/validation/unit-results.log": {
+      "size": 123,
+      "sha256": "d1c17aa58cde3c7af6924839ccda025a119b0e72e4d183b0499a2f7f67ec0e76"
+    }
+  },
+  "scope": "Selected control, payload, policy-view restoration and test evidence; complete raw API snapshots retained separately. No live authority is granted by these historical files.",
+  "sanitization": {
+    "changed_members": [
+      "attempt2/validation/process-results.log"
+    ],
+    "rule": "Public evidence replaces local home/temp path prefixes with placeholders. Unsanitized originals remain in private execution evidence; these hashes bind publication copies, not original logs."
+  }
+}
