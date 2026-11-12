@@ -12,6 +12,11 @@ use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 use tracing::warn;
 
+mod profiles;
+pub use profiles::{
+    cli_runtime_config_file_path, initialize_cli_runtime_config, CLI_RUNTIME_CONFIG_FILE_NAME,
+};
+
 pub const RUNTIME_CONFIG_FILE_NAME: &str = ".flistwalker_config.json";
 pub const DEFAULT_UPDATE_FEED_URL: &str =
     "https://api.github.com/repos/ShinjiKawamura255/flist-walker/releases/latest";
@@ -479,6 +484,13 @@ impl RuntimeConfig {
     }
 
     fn load_or_seed_at(path: Option<PathBuf>) -> Self {
+        Self::load_or_seed_with(path, load_migrate_or_seed_runtime_config_locked)
+    }
+
+    fn load_or_seed_with(
+        path: Option<PathBuf>,
+        load_locked: impl FnOnce(&Path) -> RuntimeConfig,
+    ) -> Self {
         let Some(path) = path else {
             let (config, _) = Self::seed_from_current_env();
             config.apply_to_process_env();
@@ -491,7 +503,7 @@ impl RuntimeConfig {
         }
 
         let config = match acquire_sidecar_lock(&path, Duration::from_secs(5)) {
-            Ok(_lock) => load_migrate_or_seed_runtime_config_locked(&path),
+            Ok(_lock) => load_locked(&path),
             Err(err) => {
                 warn!(
                     "failed to acquire runtime config lock for {}: {}; using current environment values without writing",
@@ -726,6 +738,10 @@ fn load_migrate_or_seed_runtime_config_locked(current_path: &Path) -> RuntimeCon
     if let Some(config) = try_load_or_migrate_runtime_config_locked(current_path, &legacy_paths) {
         return config;
     }
+    seed_runtime_config_locked(current_path)
+}
+
+fn seed_runtime_config_locked(current_path: &Path) -> RuntimeConfig {
     let (config, seed) = RuntimeConfig::seed_from_current_env();
     if !current_path.exists() {
         if let Err(err) = save_seeded_runtime_config_to_path(current_path, &seed) {

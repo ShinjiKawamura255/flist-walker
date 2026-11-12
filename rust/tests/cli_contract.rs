@@ -911,7 +911,7 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
 
     assert!(human.status.success());
     assert!(
-        settings_dir.join(".flistwalker_config.json").is_file(),
+        settings_dir.join(".flistwalker_cli_config.json").is_file(),
         "saved-root listing must initialize runtime config"
     );
     assert_eq!(
@@ -930,7 +930,7 @@ fn tc_163_list_saved_roots_is_exclusive_and_preserves_framing() {
         .contains("--list-saved-roots cannot be combined with search options"));
     assert!(
         !progress_conflict_settings_dir
-            .join(".flistwalker_config.json")
+            .join(".flistwalker_cli_config.json")
             .exists(),
         "invalid list-saved-roots arguments must not bootstrap runtime config"
     );
@@ -1058,7 +1058,7 @@ fn tc_165_batch_create_filelist_requires_explicit_overwrite_and_keeps_stdout_emp
     assert!(created.status.success());
     assert!(
         created_settings_dir
-            .join(".flistwalker_config.json")
+            .join(".flistwalker_cli_config.json")
             .is_file(),
         "FileList creation must initialize runtime config"
     );
@@ -1963,7 +1963,7 @@ fn tc_170_invalid_exec_template_is_rejected_before_runtime_bootstrap() {
 
     assert_eq!(output.status.code(), Some(2));
     assert!(String::from_utf8_lossy(&output.stderr).contains("standalone {} placeholder"));
-    assert!(!settings_dir.join(".flistwalker_config.json").exists());
+    assert!(!settings_dir.join(".flistwalker_cli_config.json").exists());
 }
 
 #[test]
@@ -2174,4 +2174,63 @@ fn follow_links_cli_search_presets_and_filelist_creation_use_the_same_option() {
     assert!(filelist.status.success(), "{filelist:?}");
     assert!(String::from_utf8_lossy(&filelist.stdout).contains("linked.txt"));
     let _ = fs::remove_dir_all(fixture);
+}
+
+#[test]
+fn tc_111_cli_profiles_copy_gui_config_once_without_changing_it() {
+    for dedicated in [false, true] {
+        let (mut command, settings) = cli_command_with_settings("cli-config-profile");
+        fs::create_dir_all(&settings).expect("create settings");
+        let gui = settings.join(".flistwalker_config.json");
+        let cli = settings.join(".flistwalker_cli_config.json");
+        let original = br#"{"walker_max_entries":123,"future_setting":{"keep":true},"developer":{"adaptive_walk_initial_limit":2}}"#;
+        fs::write(&gui, original).expect("write GUI config");
+        if dedicated {
+            let environment = command
+                .get_envs()
+                .map(|(key, value)| (key.to_owned(), value.map(|v| v.to_owned())))
+                .collect::<Vec<_>>();
+            command = Command::new(fw_bin_path());
+            for (key, value) in environment {
+                match value {
+                    Some(value) => {
+                        command.env(key, value);
+                    }
+                    None => {
+                        command.env_remove(key);
+                    }
+                }
+            }
+        } else {
+            command.arg("--cli");
+        }
+        command
+            .arg("--list-saved-roots")
+            .env("FLISTWALKER_WALKER_MAX_ENTRIES", "999");
+        let first = command.output().expect("run CLI profile bootstrap");
+        assert!(
+            first.status.success(),
+            "{}",
+            String::from_utf8_lossy(&first.stderr)
+        );
+        assert!(cli.is_file(), "CLI must create its own config file");
+        assert_eq!(
+            fs::read(&gui).unwrap(),
+            original,
+            "GUI config must stay byte-identical"
+        );
+        let copied: serde_json::Value = serde_json::from_slice(&fs::read(&cli).unwrap()).unwrap();
+        assert_eq!(copied["walker_max_entries"], 123);
+        assert_eq!(copied["future_setting"]["keep"], true);
+        assert_eq!(copied["developer"]["adaptive_walk_initial_limit"], 2);
+        fs::write(&cli, br#"{"walker_max_entries":456}"#).unwrap();
+        let second = command.output().expect("run existing CLI profile");
+        assert!(second.status.success());
+        let saved: serde_json::Value = serde_json::from_slice(&fs::read(&cli).unwrap()).unwrap();
+        assert_eq!(
+            saved["walker_max_entries"], 456,
+            "CLI file must outrank GUI and env"
+        );
+        assert_eq!(fs::read(&gui).unwrap(), original);
+    }
 }

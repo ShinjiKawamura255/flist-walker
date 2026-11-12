@@ -146,14 +146,15 @@ echo 'export FLISTWALKER_RESTORE_TABS=1' >> ~/.bashrc
 - 「Restore previous tabs」の子設定「Restore search queries」（`restore_queries_enabled`、既定オン）をオフにすると、検索欄を空にしてタブを復元します。テーマは「System / Dark / Light」（`theme`: `system` / `dark` / `light`、既定 `system`）から選べます。テーマは保存後すぐに反映し、クエリ復元設定は次回のタブ復元に使います。
 - GUI ではタブバーの歯車から主な設定を編集できます。保存した変更は再起動せず反映され、キャンセルでは JSON を変更しません。設定画面から従来どおり JSON を開け、外部で編集した後は明示的に再読み込みできます。直接編集だけの場合は再起動後に反映します。
 - runtime settings は Windows では `%LocalAppData%\flistwalker\`、Linux/macOS では `~/.flistwalker/` とその関連ファイルに保存されます。
-- 初回起動でファイルが無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
+- GUI は `.flistwalker_config.json`、CLI/TUI（`fw`、`flistwalker --cli`、対話モード）は同じ保存先の `.flistwalker_cli_config.json` を使います。GUI の設定画面は GUI 側だけを編集します。CLI 側は JSON を直接編集し、次回コマンド起動から反映します。
+- CLI 側が未作成なら、初回 CLI/TUI 起動時に既存の GUI 設定を詳細項目・未知のキーも含めて複製し、元ファイルは変更しません。以後は独立した設定になります。引き継ぐ設定も無い場合は、現在の `FLISTWALKER_*` 環境変数を seed にして自動生成します。
 - 初回生成時は、一般利用者向けの既定項目を書き込み、詳細項目は実際に環境変数で設定されている値だけを書き込みます。
 - いったんファイルができたら、その内容が runtime settings の source of truth になり、同名 env は初期 seed としてのみ使われます。
-- この Windows / home の保存先ルールは UI state、saved roots、window trace にも適用されます。
+- この Windows / home の保存先ルールは UI state、saved roots、window trace にも適用されます。これらのファイル、検索履歴、プリセットは引き続き共有し、runtime config だけを分離します。
 - 旧バージョンから更新した場合は、新しいファイルがまだ無いときに限って、実行ファイル横や home 直下の旧ファイルを新しい platform-specific 保存先へ自動移行します。
 - このファイルは JSON なので直接編集できます。
 - ここでは一般的に使う項目だけを案内しています。高度な項目は意図的に記載していません。
-- ファイルを削除すると、次回起動時に現在の環境変数を seed にして再生成されます。
+- CLI ファイルを削除すると、次回 CLI/TUI 起動時に現在の GUI 設定から再度引き継ぎます。GUI ファイルを削除した場合は従来の旧配置移行または環境変数からの生成を行い、CLI 設定からは引き継ぎません。破損・読込不能なファイルは変更しません。GUI 元ファイルの複製に失敗した CLI は、CLI ファイルを生成せず環境変数・既定値で起動を続けます。
 - `walker_max_entries` は大きい root で効くので、ここでは公開しています。
 - `emacs_keybindings_enabled` を `false` にすると、`Ctrl+N`、`Ctrl+P`、`Ctrl+V`、`Alt+V`、`Ctrl+J`、`Ctrl+M`、text-editing chord などの Emacs 風操作を無効化できます。既定は有効で、有効時の移動・確定・キャンセル chord は、対応する矢印キー・`Enter`・`Esc` 操作がある結果一覧、履歴、root 選択、preset/Named Root 画面、overlay、modal 全体へ適用されます。`Ctrl+A/E/B/F/H/D/K/Y/U` は通常検索・履歴だけでなく、preset と root 管理を含む application-owned の全単一行入力へ適用されます。GUI の `Ctrl+W` はタブ終了と競合するため、従来どおり `ctrl_w_deletes_word_in_query` で別途制御します。
 
