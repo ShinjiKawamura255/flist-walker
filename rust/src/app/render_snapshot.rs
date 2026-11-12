@@ -124,6 +124,7 @@ pub(super) fn gui_surface_snapshot(app: &FlistWalkerApp) -> GuiSurfaceSnapshot {
                 },
                 lines: vec![
                     format!("Name: {}", editor.name),
+                    format!("Search text: {}", editor.search_text),
                     format!("Query: {}", editor.query),
                     editor.max_depth.value().map_or_else(
                         || "Max depth: All".to_string(),

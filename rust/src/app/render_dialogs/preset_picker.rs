@@ -107,7 +107,7 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         EmacsSinglelineOptions::new(
             Some(egui::Id::new(FlistWalkerApp::PRESET_PICKER_QUERY_ID)),
             f32::INFINITY,
-            Some("Filter preset names..."),
+            Some("Filter names or search text..."),
         ),
     );
     let emacs_text_changed = app.shell.features.presets.picker.query != previous_query;
@@ -304,6 +304,23 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 name_response.request_focus();
                 editor.focus_requested = false;
             }
+            ui.end_row();
+
+            ui.label("Search text").on_hover_text(
+                "Optional text used only to find this preset. The displayed name and saved query are unchanged.",
+            );
+            FlistWalkerApp::emacs_singleline_text_edit(
+                ui,
+                &mut editor.search_text,
+                kill_buffer,
+                emacs_enabled,
+                ime_composition_active,
+                EmacsSinglelineOptions::new(
+                    Some(egui::Id::new("preset-editor-search-text")),
+                    430.0,
+                    Some("Optional, e.g. syashin for 写真"),
+                ),
+            );
             ui.end_row();
 
             ui.label("Named root");

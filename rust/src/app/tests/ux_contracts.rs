@@ -476,6 +476,37 @@ fn ux_contract_editor_commit_buttons_follow_windows_order() {
 }
 
 #[test]
+fn ux_contract_preset_search_text_and_commit_buttons_fit_small_window() {
+    let scope = test_settings_scope("preset-search-text-small-window");
+    let mut app = scope.app(
+        test_root("preset-search-text-small-root"),
+        30,
+        String::new(),
+    );
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.search_text = "syashin".into();
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 480.0));
+    for frame in 0..3 {
+        let output = ctx.run_ui(
+            egui::RawInput {
+                screen_rect: Some(screen),
+                time: Some(frame as f64 * 0.02),
+                ..Default::default()
+            },
+            |ui| app.run_ui_frame(ui),
+        );
+        if frame == 2 {
+            for label in ["Search text", "syashin", "Save", "Cancel"] {
+                let rect = text_rect(&output, |text| text == label);
+                assert!(screen.contains_rect(rect), "{label}: {rect:?}");
+            }
+        }
+    }
+}
+
+#[test]
 fn ux_contract_pin_indicator_tracks_repeated_tab_and_hidden_pins() {
     for dark in [false, true] {
         let scope = test_settings_scope("pin-indicator-tab");

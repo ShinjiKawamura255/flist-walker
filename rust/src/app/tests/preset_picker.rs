@@ -8,6 +8,7 @@ use std::collections::BTreeMap;
 fn preset(name: &str, root: &Path, query: &str) -> SearchPreset {
     SearchPreset {
         name: name.to_string(),
+        search_text: String::new(),
         root_name: None,
         root_path: root.to_path_buf(),
         query: query.to_string(),
@@ -109,6 +110,72 @@ fn picker_fuzzy_filters_names_and_resets_selection() {
 
     assert_eq!(app.preset_picker_match_names(), vec!["Rust sources"]);
     assert_eq!(app.shell.features.presets.picker.selected_match, Some(0));
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn picker_search_text_matches_without_renaming_and_names_rank_first() {
+    let root = test_root("preset-search-text-filter");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".into());
+    for (name, search_text) in [
+        ("写真", "syashin"),
+        ("s_y_a_s_h_i_n backup", ""),
+        ("画像", "syashin"),
+        ("Unrelated", ""),
+    ] {
+        let mut value = serde_json::to_value(preset(name, &root, "syashin")).unwrap();
+        value["search_text"] = serde_json::json!(search_text);
+        app.shell
+            .features
+            .presets
+            .catalog
+            .presets
+            .push(serde_json::from_value(value).expect("preset with optional search text"));
+    }
+    app.shell.features.presets.picker.query = "syashin".into();
+    app.refresh_preset_picker_matches();
+    assert_eq!(
+        app.preset_picker_match_names(),
+        vec!["s_y_a_s_h_i_n backup", "写真", "画像"]
+    );
+    assert_eq!(app.shell.runtime.query_state.query, "current query");
+
+    app.shell.features.presets.picker.query = "SYASHIN".into();
+    app.refresh_preset_picker_matches();
+    let names = app.preset_picker_match_names();
+    assert!(names.contains(&"写真"));
+    assert!(names.contains(&"画像"));
+
+    app.shell.features.presets.picker.query = "写真".into();
+    app.refresh_preset_picker_matches();
+    assert_eq!(app.preset_picker_match_names(), vec!["写真"]);
+
+    app.shell.features.presets.picker.query = "  ".into();
+    app.refresh_preset_picker_matches();
+    assert_eq!(
+        app.preset_picker_match_names(),
+        vec!["写真", "s_y_a_s_h_i_n backup", "画像", "Unrelated"]
+    );
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn picker_search_text_does_not_join_fields_or_search_saved_query() {
+    let root = test_root("preset-search-text-boundaries");
+    fs::create_dir_all(&root).unwrap();
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    let mut selected = preset("abc", &root, "saved-query-only");
+    selected.search_text = "xyz".into();
+    app.shell.features.presets.catalog.presets.push(selected);
+    for query in ["cx", "saved-query-only"] {
+        app.shell.features.presets.picker.query = query.into();
+        app.refresh_preset_picker_matches();
+        assert!(app.preset_picker_match_names().is_empty(), "{query}");
+    }
+    app.shell.features.presets.picker.query = "xz".into();
+    app.refresh_preset_picker_matches();
+    assert_eq!(app.preset_picker_match_names(), vec!["abc"]);
     let _ = fs::remove_dir_all(root);
 }
 
@@ -335,6 +402,57 @@ fn regression_emacs_ctrl_e_and_ctrl_h_edit_preset_editor_fields() {
         |ui| app.run_ui_frame(ui),
     );
     assert_eq!(app.shell.features.presets.picker.editor.name, "abc");
+    let _ = fs::remove_dir_all(root);
+}
+
+#[test]
+fn regression_emacs_ctrl_e_and_ctrl_h_edit_preset_search_text() {
+    let root = test_root("preset-search-text-emacs-edit-regression");
+    fs::create_dir_all(&root).expect("create root");
+    let mut app = FlistWalkerApp::new(root.clone(), 50, String::new());
+    app.shell.features.presets.picker.open = true;
+    app.start_add_preset();
+    app.shell.features.presets.picker.editor.search_text = "abcd".to_string();
+    app.shell.features.presets.picker.editor.focus_requested = true;
+    let ctx = egui::Context::default();
+    let input_id = egui::Id::new("preset-editor-search-text");
+
+    let _ = ctx.run_ui(egui::RawInput::default(), |ui| app.run_ui_frame(ui));
+    app.clear_focus_query_request();
+    ctx.memory_mut(|memory| memory.request_focus(input_id));
+    let mut state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state");
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(1),
+        )));
+    state.store(&ctx, input_id);
+
+    let modifiers = emacs_shortcut_modifiers(false);
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::E, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    let state = egui::widgets::text_edit::TextEditState::load(&ctx, input_id)
+        .expect("preset editor name state after Ctrl+E");
+    let range = state.cursor.char_range().expect("preset editor cursor");
+    assert_eq!(range.primary.index.0, 4);
+    assert_eq!(range.secondary.index.0, 4);
+
+    let _ = ctx.run_ui(
+        egui::RawInput {
+            modifiers,
+            events: vec![key_event(egui::Key::H, modifiers)],
+            ..Default::default()
+        },
+        |ui| app.run_ui_frame(ui),
+    );
+    assert_eq!(app.shell.features.presets.picker.editor.search_text, "abc");
     let _ = fs::remove_dir_all(root);
 }
 
@@ -955,6 +1073,7 @@ fn f2_opens_selected_preset_as_a_draft_without_applying_it() {
     fs::create_dir_all(&root).expect("create root");
     let mut app = FlistWalkerApp::new(root.clone(), 50, "current query".to_string());
     let mut selected = preset("Rust", &root.join("saved"), "ext:rs");
+    selected.search_text = "rust code".into();
     selected.source = PresetSource::Auto;
     selected.sort = PresetSortMode::ModifiedDesc;
     app.shell
@@ -976,6 +1095,7 @@ fn f2_opens_selected_preset_as_a_draft_without_applying_it() {
     assert!(editor.open);
     assert_eq!(editor.original_name, "Rust");
     assert_eq!(editor.name, "Rust");
+    assert_eq!(editor.search_text, "rust code");
     assert_eq!(editor.root_path, root.join("saved").display().to_string());
     assert_eq!(editor.query, "ext:rs");
     assert_eq!(editor.source, PresetSource::Auto);
@@ -1187,6 +1307,7 @@ fn escape_discards_the_preset_draft_and_returns_to_the_picker() {
     app.refresh_preset_picker_matches();
     app.start_selected_preset_edit();
     app.shell.features.presets.picker.editor.query = "changed".to_string();
+    app.shell.features.presets.picker.editor.search_text = "discard me".into();
 
     run_shortcuts_frame(
         &mut app,
@@ -1206,6 +1327,15 @@ fn escape_discards_the_preset_draft_and_returns_to_the_picker() {
             .query,
         "ext:rs"
     );
+    assert!(app
+        .shell
+        .features
+        .presets
+        .catalog
+        .preset("Rust")
+        .unwrap()
+        .search_text
+        .is_empty());
     assert!(!app.shell.worker_bus.catalog.in_progress);
     let _ = fs::remove_dir_all(root);
 }
@@ -1227,6 +1357,7 @@ fn saving_a_preset_draft_queues_an_atomic_replace_without_applying_it() {
     app.refresh_preset_picker_matches();
     app.start_selected_preset_edit();
     app.shell.features.presets.picker.editor.name = "Rust source".to_string();
+    app.shell.features.presets.picker.editor.search_text = "rust source code".into();
     app.shell.features.presets.picker.editor.query = "dir:src ext:rs".to_string();
     app.shell.features.presets.picker.editor.entry_type = PresetEntryType::Folder;
     app.shell.features.presets.picker.editor.source = PresetSource::Filelist;
@@ -1247,6 +1378,7 @@ fn saving_a_preset_draft_queues_an_atomic_replace_without_applying_it() {
         } => {
             assert_eq!(original_name, "Rust");
             assert_eq!(preset.name, "Rust source");
+            assert_eq!(preset.search_text, "rust source code");
             assert_eq!(preset.query, "dir:src ext:rs");
             assert_eq!(preset.entry_type, PresetEntryType::Folder);
             assert_eq!(preset.source, PresetSource::Filelist);
@@ -1283,6 +1415,7 @@ fn adding_a_preset_starts_a_draft_from_the_current_pure_search_state() {
     assert!(editor.open);
     assert!(editor.original_name.is_empty());
     assert!(editor.name.is_empty());
+    assert!(editor.search_text.is_empty());
     assert_eq!(editor.root_path, normalize_path_for_display(&root));
     assert_eq!(editor.query, "dir:src ext:rs");
     assert_eq!(editor.entry_type, PresetEntryType::Folder);
@@ -1304,6 +1437,7 @@ fn saving_a_new_preset_draft_queues_an_atomic_add_without_applying_it() {
     app.shell.features.presets.picker.open = true;
     app.start_add_preset();
     app.shell.features.presets.picker.editor.name = "Current search".to_string();
+    app.shell.features.presets.picker.editor.search_text = "current".into();
     let (tx, rx) = mpsc::channel();
     app.shell.worker_bus.catalog.tx = tx;
 
@@ -1313,6 +1447,7 @@ fn saving_a_new_preset_draft_queues_an_atomic_add_without_applying_it() {
     match request.kind {
         CatalogRequestKind::AddPreset { preset } => {
             assert_eq!(preset.name, "Current search");
+            assert_eq!(preset.search_text, "current");
             assert_eq!(preset.query, "current query");
             assert_eq!(preset.root_path, root);
         }
@@ -1545,6 +1680,7 @@ fn failed_preset_edit_response_keeps_the_draft_for_correction() {
     app.refresh_preset_picker_matches();
     app.start_selected_preset_edit();
     app.shell.features.presets.picker.editor.query = "edited".to_string();
+    app.shell.features.presets.picker.editor.search_text = "preserved".into();
     app.shell.features.presets.picker.editor.pending_saved_name = Some("Rust".to_string());
     let (tx, rx) = mpsc::channel();
     app.shell.worker_bus.catalog.rx = rx;
@@ -1560,6 +1696,10 @@ fn failed_preset_edit_response_keeps_the_draft_for_correction() {
 
     assert!(app.shell.features.presets.picker.editor.open);
     assert_eq!(app.shell.features.presets.picker.editor.query, "edited");
+    assert_eq!(
+        app.shell.features.presets.picker.editor.search_text,
+        "preserved"
+    );
     assert!(app
         .shell
         .features

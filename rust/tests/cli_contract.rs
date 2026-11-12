@@ -284,6 +284,62 @@ fn tc_174_named_roots_and_search_presets_round_trip_without_reserving_query_word
 }
 
 #[test]
+fn tc_174_cli_resave_preserves_preset_search_text_and_name_only_lookup() {
+    let root = test_root("preset-search-text-cli");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(root.join("alpha.txt"), "alpha").unwrap();
+    let (mut save, settings_dir) = cli_command_with_settings("preset-search-text-cli");
+    fs::create_dir_all(&settings_dir).unwrap();
+    let path = settings_dir.join(".flistwalker_search_catalog.json");
+    fs::write(
+        &path,
+        serde_json::to_vec(&serde_json::json!({
+            "version": 1,
+            "presets": [{"name": "写真", "root_path": root, "search_text": "syashin", "future": {"keep": true}}]
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    let result = save
+        .args([
+            "--cli",
+            "alpha",
+            "--root",
+            root.to_str().unwrap(),
+            "--save-preset",
+            " 写真 ",
+        ])
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["presets"][0]["search_text"], "syashin");
+    assert_eq!(saved["presets"][0]["future"]["keep"], true);
+    assert_eq!(saved["presets"][0]["query"], "alpha");
+    let settings_root = settings_dir.parent().unwrap();
+    let by_name = cli_command_in_settings(settings_root)
+        .args(["--cli", "--preset", "写真"])
+        .output()
+        .unwrap();
+    assert!(
+        by_name.status.success(),
+        "{}",
+        String::from_utf8_lossy(&by_name.stderr)
+    );
+    let by_search_text = cli_command_in_settings(settings_root)
+        .args(["--cli", "--preset", "syashin"])
+        .output()
+        .unwrap();
+    assert_eq!(by_search_text.status.code(), Some(1));
+    let _ = fs::remove_dir_all(root);
+    let _ = fs::remove_dir_all(settings_root);
+}
+
+#[test]
 fn tc_174_invalid_catalog_names_are_usage_errors_before_settings_bootstrap() {
     let fixture = test_root("catalog-invalid-name");
     fs::create_dir_all(&fixture).unwrap();

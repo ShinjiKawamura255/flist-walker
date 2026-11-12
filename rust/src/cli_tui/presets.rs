@@ -191,6 +191,7 @@ impl TuiState {
     fn preset_snapshot(&self) -> SearchPreset {
         SearchPreset {
             name: String::new(),
+            search_text: String::new(),
             root_name: None,
             root_path: self.root.clone(),
             query: self.query.clone(),

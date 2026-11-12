@@ -170,8 +170,9 @@ fn run_catalog_management_inner(args: &Args) -> Result<()> {
     }
     if let Some(name) = args.save_preset.as_deref() {
         let root = resolve_cli_root(args).map_err(anyhow::Error::msg)?;
-        let preset = SearchPreset {
+        let mut preset = SearchPreset {
             name: name.to_string(),
+            search_text: String::new(),
             root_name: args.named_root.clone(),
             root_path: root,
             query: args.query.clone(),
@@ -185,7 +186,16 @@ fn run_catalog_management_inner(args: &Args) -> Result<()> {
             follow_links: args.follow_links,
             extra: BTreeMap::new(),
         };
-        update_search_catalog(&path, |catalog| catalog.save_preset(preset))?;
+        update_search_catalog(&path, |catalog| {
+            // CLI saves search state, not GUI picker metadata. Read the latest
+            // value under the catalog lock, including when the name is padded.
+            let name = crate::search_catalog::validate_catalog_name(name)?;
+            if let Some(existing) = catalog.preset(&name) {
+                preset.search_text.clone_from(&existing.search_text);
+                preset.extra.clone_from(&existing.extra);
+            }
+            catalog.save_preset(preset)
+        })?;
         return Ok(());
     }
     Ok(())

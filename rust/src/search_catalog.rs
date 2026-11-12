@@ -72,6 +72,8 @@ pub struct NamedRoot {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SearchPreset {
     pub name: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub search_text: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub root_name: Option<String>,
     pub root_path: PathBuf,
@@ -440,6 +442,7 @@ mod tests {
     fn preset(name: &str, root: &Path) -> SearchPreset {
         SearchPreset {
             name: name.to_string(),
+            search_text: String::new(),
             root_name: None,
             root_path: root.to_path_buf(),
             query: "ext:rs".to_string(),
@@ -501,6 +504,47 @@ mod tests {
         let json = serde_json::to_string(&enabled).expect("serialize");
         let restored: SearchPreset = serde_json::from_str(&json).expect("restore");
         assert!(restored.follow_links);
+    }
+
+    #[test]
+    fn preset_search_text_is_optional_and_survives_catalog_edit_and_reload() {
+        let legacy: SearchPreset =
+            serde_json::from_str(r#"{"name":"写真","root_path":"root"}"#).unwrap();
+        assert!(legacy.search_text.is_empty());
+        assert!(serde_json::to_value(&legacy)
+            .unwrap()
+            .get("search_text")
+            .is_none());
+        let root = test_root("search-text-roundtrip");
+        fs::create_dir_all(&root).unwrap();
+        let path = root.join(SEARCH_CATALOG_FILE_NAME);
+        update_search_catalog(&path, |catalog| {
+            let mut photo = preset("写真", &root);
+            photo.search_text = "syashin photo 写真".into();
+            photo.extra.insert("future".into(), Value::Bool(true));
+            catalog.add_preset(photo)?;
+            let mut other = preset("画像", &root);
+            other.search_text = "syashin photo 写真".into();
+            catalog.add_preset(other)
+        })
+        .unwrap();
+        let loaded = load_search_catalog_from_path(&path).unwrap();
+        assert_eq!(loaded.version, 1);
+        assert_eq!(loaded.presets[0].search_text, "syashin photo 写真");
+        assert_eq!(loaded.presets[1].search_text, loaded.presets[0].search_text);
+        update_search_catalog(&path, |catalog| {
+            let mut edited = catalog.preset("写真").unwrap().clone();
+            edited.name = "写真一覧".into();
+            edited.search_text.clear();
+            edited.extra.clear();
+            catalog.replace_preset("写真", edited)
+        })
+        .unwrap();
+        let reloaded = load_search_catalog_from_path(&path).unwrap();
+        assert!(reloaded.preset("写真一覧").unwrap().search_text.is_empty());
+        assert_eq!(reloaded.presets[0].extra["future"], Value::Bool(true));
+        assert_eq!(reloaded.presets[1].search_text, "syashin photo 写真");
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

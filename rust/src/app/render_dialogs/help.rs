@@ -47,7 +47,7 @@ impl FlistWalkerApp {
             "".to_string(),
             "Presets".to_string(),
             format!("{primary}+Shift+P — Open the preset picker"),
-            "Type to filter preset names; Up / Down to select; Enter to apply; Esc to close"
+            "Type to filter preset names or search text; Up / Down to select; Enter to apply; Esc to close"
                 .to_string(),
             "F2 — Edit the selected preset".to_string(),
             "Add / Delete — Save the current pure-search state or remove the selected preset after confirmation"
