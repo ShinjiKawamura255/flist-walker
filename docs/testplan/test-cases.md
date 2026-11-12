@@ -126,7 +126,7 @@
 | TC-108 | ci | `cargo llvm-cov` の line coverage gate は 75% 未満への退行を CI で失敗させ、`lcov.info` artifact を継続生成する | SP-012 |
 | TC-109 | docs | GitHub Issue template と `docs/SUPPORT.md` は、version / OS / launch mode / reproduction / redaction を求めつつ、既定 telemetry や自動 crash upload を導入しない supportability 導線を固定する | SP-010, SP-012 |
 | TC-110 | unit | ignore list ファイルの候補は既定有効で除外され、GUI の `Use Ignore List` チェックボックスで有効/無効を切り替えられる。切替は表示中の committed snapshot を同期置換せず bounded index refresh を開始し、候補全件のscan/cloneを操作frameから外す。単独の Ignore List 切替は、即時refresh、resource reclaim待ち、active→background移動後のrefreshで現在のresult sort mode/scopeを維持する。逆順の増分batchでも非Scoreのsort済みlast-goodと同世代件数を維持し、空queryのShownResults同期sort、空/非空queryのAllMatches full-candidate sort、ShownResults metadata sortが確定した時だけ新snapshotへ切り替える。limit外到着候補、reclaimer Full rollback、worker unavailable、stale sort/search応答、pending Normal/Create File List intent優先を固定する | SP-015 |
-| TC-111 | unit | runtime config file が無い初回起動では current env を seed にした `~/.flistwalker/.flistwalker_config.json` が自動生成され、既存 file がある場合は env 変更より file 内容が優先される | SP-016 |
+| TC-111 | unit+integration | GUI は `.flistwalker_config.json`、CLI/TUI は `.flistwalker_cli_config.json` を独立使用する。CLI 初回は current GUI / legacy の順に raw JSON を複製して原本・未知キー・developer 項目を保持し、既存 CLI は GUI/env より優先する。引継ぎ元なしなら env seed、破損/型不正/複製失敗では原本保持、CLI lock 待ち中の作成では winner を保持する。universal CLI と専用 fw の起動を隔離 settings root で検証する | SP-016 |
 | TC-112 | unit | 回帰: `Files` / `Folders` 両方有効の高速経路でも ignore list は省略されず、`old` / `~` を literal に含む候補が結果へ戻らない | SP-015 |
 | TC-113 | unit | 起動時初期化は embedded ignore sample を `flistwalker.ignore.txt.example` として生成し、既存ファイルを上書きしない | SP-017 |
 | TC-114 | unit | embedded ignore sample の説明文には `flistwalker.ignore.txt` へリネームして live ignore list として使う案内が含まれる | SP-017 |

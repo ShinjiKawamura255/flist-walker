@@ -9,7 +9,7 @@ use tracing::warn;
 use flist_walker::cli;
 use flist_walker::ignore_list::ensure_ignore_list_sample;
 use flist_walker::process_entry::initialize_process_entry;
-use flist_walker::runtime_config::initialize_runtime_config;
+use flist_walker::runtime_config::{initialize_cli_runtime_config, initialize_runtime_config};
 use flist_walker::updater::InternalUpdaterAction;
 
 fn main() -> Result<ExitCode> {
@@ -32,7 +32,7 @@ fn main() -> Result<ExitCode> {
     }
 
     if args.is_cli() {
-        let _runtime_config = initialize_runtime_config();
+        let _runtime_config = initialize_cli_runtime_config();
         return cli::run(&args);
     }
 

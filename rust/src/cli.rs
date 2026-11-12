@@ -4,7 +4,7 @@ mod batch;
 use anyhow::{Context, Result};
 use std::process::ExitCode;
 
-use crate::runtime_config::initialize_runtime_config;
+use crate::runtime_config::initialize_cli_runtime_config;
 use crate::updater::{
     check_for_update, current_version_string, prepare_and_start_update,
     recover_interrupted_update_on_startup, running_binary_command_name, self_update_disabled,
@@ -84,6 +84,6 @@ pub fn run_dedicated() -> Result<ExitCode> {
         eprintln!("error: {error}");
         return Ok(ExitCode::from(2));
     }
-    let _runtime_config = initialize_runtime_config();
+    let _runtime_config = initialize_cli_runtime_config();
     run(&args)
 }
