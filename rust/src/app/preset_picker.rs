@@ -8,7 +8,7 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use std::path::PathBuf;
 
-fn preset_name_score(query: &str, candidate: &str, catalog_index: usize) -> Option<i64> {
+fn preset_text_score(query: &str, candidate: &str, catalog_index: usize) -> Option<i64> {
     if query.trim().is_empty() {
         return Some(-(catalog_index as i64));
     }
@@ -239,15 +239,25 @@ impl FlistWalkerApp {
             .iter()
             .enumerate()
             .filter_map(|(catalog_index, preset)| {
-                preset_name_score(query, &preset.name, catalog_index)
-                    .map(|score| (catalog_index, score))
+                preset_text_score(query, &preset.name, catalog_index)
+                    .map(|score| (catalog_index, true, score))
+                    .or_else(|| {
+                        preset_text_score(query, &preset.search_text, catalog_index)
+                            .map(|score| (catalog_index, false, score))
+                    })
             })
             .collect::<Vec<_>>();
-        scored.sort_by(|left, right| right.1.cmp(&left.1).then_with(|| left.0.cmp(&right.0)));
+        scored.sort_by(|left, right| {
+            right
+                .1
+                .cmp(&left.1)
+                .then_with(|| right.2.cmp(&left.2))
+                .then_with(|| left.0.cmp(&right.0))
+        });
         let picker = &mut self.shell.features.presets.picker;
         picker.matched_catalog_indices = scored
             .into_iter()
-            .map(|(catalog_index, _)| catalog_index)
+            .map(|(catalog_index, _, _)| catalog_index)
             .collect();
         picker.selected_match = (!picker.matched_catalog_indices.is_empty()).then_some(0);
         picker.confirm_delete = false;
@@ -320,6 +330,7 @@ impl FlistWalkerApp {
             open: true,
             original_name: preset.name.clone(),
             name: preset.name,
+            search_text: preset.search_text,
             root_name: preset.root_name,
             root_path: normalize_path_for_display(&preset.root_path),
             query: preset.query,
@@ -349,6 +360,7 @@ impl FlistWalkerApp {
             open: true,
             original_name: String::new(),
             name: String::new(),
+            search_text: String::new(),
             root_name: None,
             root_path: normalize_path_for_display(&runtime.root),
             query: runtime.query_state.query.clone(),
@@ -420,6 +432,7 @@ impl FlistWalkerApp {
         }
         let preset = SearchPreset {
             name: name.clone(),
+            search_text: editor.search_text.clone(),
             root_name: editor.root_name.clone(),
             root_path,
             query: editor.query.clone(),

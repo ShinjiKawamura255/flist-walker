@@ -676,6 +676,7 @@ mod tests {
             .catalog
             .save_preset(SearchPreset {
                 name: "Same conditions".into(),
+                search_text: String::new(),
                 root_name: None,
                 root_path: root.clone(),
                 query: "report".into(),

@@ -51,7 +51,7 @@ Shift+Enter / Shift+ダブルクリックは Explorer / Finder で元ファイ�
 ### 主なショートカット
 
 - `F1`: キーボードショートカットと query 構文のアプリ内 help を開閉（`Help` からも利用可能）
-- `Ctrl+Shift+P`: `Presets...` button と同じ preset picker を開き、preset 名を fuzzy filter して `Enter` で適用、`Add`で現在の検索を追加、`F2`で編集、`Delete`で削除（macOS は `Cmd+Shift+P`）
+- `Ctrl+Shift+P`: `Presets...` button と同じ preset picker を開き、preset 名または任意の検索用文字列を fuzzy filter して `Enter` で適用、`Add`で現在の検索を追加、`F2`で編集、`Delete`で削除（macOS は `Cmd+Shift+P`）
 - `Up` / `Down` または `Ctrl+P` / `Ctrl+N`: 現在行を移動
 - `Ctrl+V` / `Alt+V`: ページ移動
 - `Enter` / `Ctrl+J` / `Ctrl+M`: 開く / 実行
@@ -218,7 +218,7 @@ CLI では:
 
 ### 名前付き root と検索 preset
 
-名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort、最大深さ、リンク追跡の設定を保存します。action や外部 command は保存しません。GUI では `Presets...` button または `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で同じpickerを開き、preset 名を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。preset 適用で変わるのは active tab だけで、深さは2行目の `Depth: All` / `Depth: ≤ N` control または別 preset で変更するまで維持されます。他 tab へは波及せず、新規 tab は `All` で始まり、session 復元でも tab ごとに保持されます。depth control は `Folders` の後、`Preview` の前です。`Add`は現在tabのpure-search stateから新規draftを作ります。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort/max depth/follow links を編集でき、`Delete`から確認付きで削除できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker 見出しの `Manage named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。`Esc` / `Cancel` は未保存 draft または削除確認を破棄します。GUI picker は検索結果を開く／実行せず、メインpanelにはlauncher buttonだけを置いてpresetの選択・管理をmodal内に保ちます。
+名前付き root は検索 root に安定した名前を付けます。preset は名前付き root または root の snapshot と、query、対象種別、source、regex、case、ignore、sort、最大深さ、リンク追跡の設定を保存します。action や外部 command は保存しません。GUI では `Presets...` button または `Ctrl+Shift+P`（macOS は `Cmd+Shift+P`）で同じpickerを開き、preset 名または任意の検索用文字列を fuzzy filter して `Up` / `Down` で選択し、`Enter` で現在 tab へ適用するか `Esc` で現在の検索状態を変えず閉じます。preset 適用で変わるのは active tab だけで、深さは2行目の `Depth: All` / `Depth: ≤ N` control または別 preset で変更するまで維持されます。他 tab へは波及せず、新規 tab は `All` で始まり、session 復元でも tab ごとに保持されます。depth control は `Folders` の後、`Preview` の前です。`Add`は現在tabのpure-search stateから新規draftを作ります。追加・編集画面の任意欄 `Search text` に `syashin` を登録すると、表示名が「写真」のままでも `syashin` で見つけられます。名前の一致を検索用文字列だけの一致より優先し、同じ検索用文字列の重複登録を許可します。自動ローマ字変換は行わず、保存 query や表示名も変更しません。選択中に `F2` または `Edit` を使うと draft editor が開き、名前、root/query/type/source/regex/case/ignore/sort/max depth/follow links を編集でき、`Delete`から確認付きで削除できます。`Ctrl+Enter`（macOS は `Cmd+Enter`）または `Save` は catalog だけを更新し、現在 tab へ適用しません。picker 見出しの `Manage named roots...` または preset editor の `Manage...` から名前付き root の一覧、追加、名称・path編集、削除を行えます。名称変更は参照中presetも追従し、削除後は各presetの保存済みpath snapshotを利用します。`Esc` / `Cancel` は未保存 draft または削除確認を破棄します。GUI picker は検索結果を開く／実行せず、メインpanelにはlauncher buttonだけを置いてpresetの選択・管理をmodal内に保ちます。
 
 ```bash
 # 名前付き root を登録する。path に空白が含まれる場合も NAME=PATH 全体を引用する。
@@ -239,6 +239,8 @@ fw --interactive --preset rust-src
 fw --remove-preset rust-src
 fw --remove-named-root work
 ```
+
+`--preset NAME` は検索用文字列ではなく従来どおり名前で指定します。`--save-preset NAME` で同名presetを再保存しても、検索用文字列とunknown metadataを保持します。検索用文字列のない既存catalogも読み込めます。ただし旧CLIで上書きすると、このmetadataが失われることがあります。
 
 query が1 termだけの場合も、query 引数全体を引用してください。Bash/Zshで `!` を含むqueryを直接渡す場合は、ダブルクォートではなくシングルクォートを使用します。`--preset` は値を preset から復元するため、明示 query や root、対象種別、source、regex、case、ignore、sort、`--max-depth`、`--follow-links` の指定とは併用できません。`--limit`、出力形式、明示 action など invocation 固有の option は適用時にも指定できます。
 

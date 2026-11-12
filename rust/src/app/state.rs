@@ -611,6 +611,7 @@ pub(super) struct PresetEditorState {
     pub(super) open: bool,
     pub(super) original_name: String,
     pub(super) name: String,
+    pub(super) search_text: String,
     pub(super) root_name: Option<String>,
     pub(super) root_path: String,
     pub(super) query: String,

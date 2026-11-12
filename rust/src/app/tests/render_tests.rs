@@ -1489,6 +1489,7 @@ fn gui_surface_snapshot_exposes_preset_picker_only_while_open() {
         .catalog
         .save_preset(SearchPreset {
             name: "Rust sources".to_string(),
+            search_text: String::new(),
             root_name: None,
             root_path: root.clone(),
             query: "ext:rs".to_string(),
@@ -1547,6 +1548,7 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
         .catalog
         .save_preset(SearchPreset {
             name: "Rust sources".to_string(),
+            search_text: String::new(),
             root_name: None,
             root_path: root.clone(),
             query: "ext:rs".to_string(),
@@ -1572,7 +1574,12 @@ fn gui_surface_snapshot_exposes_preset_editor_as_contextual_picker_state() {
     );
     assert_eq!(
         snapshot["preset_picker_dialogs"][0]["lines"],
-        json!(["Name: Rust sources", "Query: ext:rs", "Max depth: All"])
+        json!([
+            "Name: Rust sources",
+            "Search text: ",
+            "Query: ext:rs",
+            "Max depth: All"
+        ])
     );
     assert_eq!(
         snapshot["preset_picker_dialogs"][0]["buttons"],
@@ -1598,6 +1605,7 @@ fn gui_surface_snapshot_exposes_preset_add_and_delete_confirmation_states() {
         .catalog
         .save_preset(SearchPreset {
             name: "Rust sources".to_string(),
+            search_text: String::new(),
             root_name: None,
             root_path: root.clone(),
             query: "ext:rs".to_string(),
