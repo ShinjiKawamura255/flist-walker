@@ -30,6 +30,7 @@ SHIPPED_FAMILY_CAPABILITIES: dict[str, tuple[str, ...]] = {
     "0.32.0": ("FlistWalker-", "fw-"),
     "0.32.1": ("FlistWalker-", "fw-"),
     "0.33.0": ("FlistWalker-", "fw-"),
+    "0.33.1": ("FlistWalker-", "fw-"),
 }
 
 

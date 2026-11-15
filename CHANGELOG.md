@@ -24,6 +24,32 @@
 ### Known issues
 - なし。
 
+## [0.34.0] - 2026-11-15
+### Added
+- GUIのプリセットに任意の検索用文字列を登録できる。ピッカーは表示名と検索用文字列の両方で検索し、表示名の一致を優先する。CLIの `--preset` は引き続き表示名で指定する。
+
+### Changed
+- CLI/TUIの実行時設定をGUIから分離する。CLI側の設定ファイルが初回起動時に無ければ既存のGUI設定を複製し、元のファイルは変更しない。検索履歴やプリセットは引き続き共有する。
+- GUIのSettingsで保存したテーマや検索関連設定を再起動せずに反映する。クエリ復元の設定は次回のタブ復元時に適用し、JSONを直接編集した場合は、Settingsで再読込して保存するか、アプリを再起動すると反映する。
+- リリース検証に、v0.33.1からの自動更新を想定した26件のチェックサム一覧の回帰テストを追加する。実際の配布物に対する検証は別途行う。
+- CIのCanaryでstableツールチェーンを明示し、固定Rustと最新Clippyの両方で検証できるようにする。インデックス引き継ぎの進捗とTUIワーカー終了待ちのテスト診断を改善する。
+
+### Fixed
+- Settingsのチェックボックスとラジオボタンの位置を揃え、無効時や操作中のラベル色を維持する。
+
+### Breaking
+- なし。
+
+### Deprecated
+- なし。
+
+### Security
+- 依存パッケージ、ライセンス種別、更新時の署名検証方式は変更しない。
+
+### Known issues
+- プリセットをv0.33.1のCLIで同名保存すると、新しい検索用文字列は保持されない。検索用文字列を使う場合はGUI版とCLI版を揃える。
+- v0.24.3からの更新は、同じ配布形式のバイナリを手動で取得し、SHA256SUMSで照合して一度置き換える必要がある。
+
 ## [0.33.1] - 2026-11-04
 ### Added
 - なし。
@@ -2383,7 +2409,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.1...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.34.0...HEAD
+[0.34.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.1...v0.34.0
 [0.33.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.1...v0.33.0
 [0.32.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.0...v0.32.1
