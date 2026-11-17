@@ -56,6 +56,12 @@
 - self-update 後も universal の `LICENSE.txt` / `THIRD_PARTY_NOTICES.txt` と CLI の `fw.LICENSE.txt` / `fw.THIRD_PARTY_NOTICES.txt` をvariant別に保持し、同一ディレクトリでversion skewがあっても互いを上書きしない。
 - 依存変更時は、少なくとも `docs/RELEASE.md` に書かれている配布物一覧と矛盾しないことを確認する。
 
+## rustix security update (2026-11-17)
+
+- The release candidate audit reported [RUSTSEC-2026-0486](https://rustsec.org/advisories/RUSTSEC-2026-0486.html) on transitive `rustix 1.1.3`. Refresh that package to the first patched release `1.1.6`, with its required `linux-raw-sys` dependency from0.11.0 to0.12.1. The independent rustix0.38.44 graph is outside the affected range and remains unchanged. No application exposure or incident is inferred and no audit ignore is added.
+- Locked Cargo metadata resolves on Windows GNU292, Linux328, macOS x86_64 304, and macOS arm64 303 packages. Only the two requested package versions/checksums and their references change; normalized package sets, target dependency edges, and active features match the predecessor graph. Windows dependency edges are preserved.
+- The two crates keep their Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT terms; all three license texts in each official crate are byte-identical to the corresponding prior release. `THIRD_PARTY_NOTICES.txt` records the resolved crates. Archive, standalone sidecar, app bundle and variant-specific self-update notice routes are unchanged; verify the actual newly signed artifacts independently.
+
 ## objc2 0.6.5 dependency review (2026-11-02)
 
 - Resolved macOS dependency `objc2` moves from0.6.4 to0.6.5, retaining MIT and MSRV1.71. The upstream release fixes autoreleased-object method-call miscompilation; this does not imply any observed FlistWalker incident was caused by it. Cargo's compatible direct requirement remains0.6.4.
