@@ -882,12 +882,17 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
 
     let available_width = ctx.input(|input| input.content_rect().width());
     egui::Modal::new(egui::Id::new("preset-picker-modal")).show(ctx, |ui| {
-        ui.set_min_width(preset_picker_modal_width(available_width));
-        if app.shell.features.presets.picker.named_roots.open {
-            render_named_root_manager(app, ui);
-        } else if app.shell.features.presets.picker.editor.open {
+        let picker = &app.shell.features.presets.picker;
+        if picker.editor.open && !picker.named_roots.open {
+            // A minimum alone lets the modal inherit a wider Area allocation.
+            ui.set_width((available_width - 24.0).clamp(0.0, 720.0));
             render_editor(app, ui);
-        } else if app.shell.features.presets.picker.confirm_delete {
+            return;
+        }
+        ui.set_min_width(preset_picker_modal_width(available_width));
+        if picker.named_roots.open {
+            render_named_root_manager(app, ui);
+        } else if picker.confirm_delete {
             render_preset_delete_confirmation(app, ui);
         } else {
             render_picker(app, ui);
