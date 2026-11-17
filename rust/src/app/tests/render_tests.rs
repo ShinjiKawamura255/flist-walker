@@ -1716,6 +1716,98 @@ fn preset_picker_layout_uses_responsive_width_and_separate_management_copy() {
 }
 
 #[test]
+fn preset_editor_controls_fit_after_opening_narrow_and_after_shrinking() {
+    fn find_text<'a>(shape: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find_text(shape, label)),
+            _ => None,
+        }
+    }
+
+    let root = test_root("preset-editor-viewport");
+    fs::create_dir_all(&root).expect("fixture root");
+    for widths in [[640.0, 1200.0, 640.0], [1200.0, 640.0, 1200.0]] {
+        let mut app = FlistWalkerApp::new(root.clone(), 30, String::new());
+        let picker = &mut app.shell.features.presets.picker;
+        picker.open = true;
+        picker.editor.open = true;
+        picker.editor.name = "Unsaved preset draft".into();
+        picker.editor.search_text = "syashin".into();
+        picker.editor.root_path = root.display().to_string();
+        let ctx = egui::Context::default();
+        for (index, width) in widths.into_iter().enumerate() {
+            let screen = egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(width, if width == 640.0 { 400.0 } else { 800.0 }),
+            );
+            let mut output = egui::FullOutput::default();
+            for _ in 0..4 {
+                output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        ..Default::default()
+                    },
+                    |ui| app.run_ui_frame(ui),
+                );
+            }
+            let mut cancel_center = None;
+            for label in [
+                "Add preset",
+                "Search text",
+                "syashin",
+                "Browse...",
+                "Cancel",
+                "Save",
+            ] {
+                let (text, clip) = output
+                    .shapes
+                    .iter()
+                    .rev()
+                    .find_map(|shape| {
+                        find_text(&shape.shape, label).map(|text| (text, shape.clip_rect))
+                    })
+                    .unwrap_or_else(|| panic!("missing {label} at {screen:?}"));
+                let bounds = text.galley.rect.translate(text.pos.to_vec2());
+                assert!(
+                    screen.intersect(clip).expand(1.0).contains_rect(bounds),
+                    "{label} is clipped: screen={screen:?}, clip={clip:?}, bounds={bounds:?}"
+                );
+                if label == "Cancel" {
+                    cancel_center = Some(bounds.center());
+                }
+            }
+            if index == 2 && width == 640.0 {
+                let pos = cancel_center.expect("Cancel label");
+                for pressed in [true, false] {
+                    let _ = ctx.run_ui(
+                        egui::RawInput {
+                            screen_rect: Some(screen),
+                            events: vec![
+                                egui::Event::PointerMoved(pos),
+                                egui::Event::PointerButton {
+                                    pos,
+                                    button: egui::PointerButton::Primary,
+                                    pressed,
+                                    modifiers: egui::Modifiers::NONE,
+                                },
+                            ],
+                            ..Default::default()
+                        },
+                        |ui| app.run_ui_frame(ui),
+                    );
+                }
+                assert!(!app.shell.features.presets.picker.editor.open);
+                assert!(app.shell.features.presets.picker.open);
+                assert!(app.shell.features.presets.catalog.presets.is_empty());
+                assert!(!app.shell.worker_bus.catalog.in_progress);
+            }
+        }
+    }
+    fs::remove_dir_all(&root).expect("cleanup");
+}
+
+#[test]
 fn preset_picker_option_labels_cover_every_persisted_variant() {
     use crate::app::render_dialogs::preset_picker::{entry_type_label, sort_label, source_label};
 
