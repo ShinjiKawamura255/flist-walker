@@ -89,6 +89,12 @@ Additional notice-bearing components
   such as dispatch2 / objc2-* on macOS, webbrowser 1.2.2, and xkeysym on
   Linux.
 
+- Unix platform dependencies
+  License: Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
+  Sources: https://github.com/bytecodealliance/rustix
+  https://github.com/sunfishcode/linux-raw-sys
+  Crates: rustix 1.1.6, linux-raw-sys 0.12.1
+
 - native-dialog 0.9.7 backend dependencies
   Licenses: MIT or MIT OR Apache-2.0
   Source: https://github.com/balthild/native-dialog-rs
