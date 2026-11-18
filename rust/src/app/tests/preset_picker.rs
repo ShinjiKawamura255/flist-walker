@@ -25,6 +25,120 @@ fn preset(name: &str, root: &Path, query: &str) -> SearchPreset {
 }
 
 #[test]
+fn open_preset_picker_controls_fit_when_resized_narrow_and_reopened() {
+    fn find_text<'a>(shape: &'a egui::Shape, label: &str) -> Option<&'a egui::epaint::TextShape> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text() == label => Some(text),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| find_text(shape, label)),
+            _ => None,
+        }
+    }
+
+    let root = test_root("open-preset-picker-resize");
+    fs::create_dir_all(&root).expect("fixture root");
+    for populated in [false, true] {
+        let mut app = FlistWalkerApp::new(root.clone(), 30, String::new());
+        let long_query = "NoBreak".repeat(100);
+        if populated {
+            for index in 0..15 {
+                let name = format!("Fixture {index:02}: {}", "WidePreset".repeat(25));
+                app.shell
+                    .features
+                    .presets
+                    .catalog
+                    .save_preset(preset(&name, &root, &long_query))
+                    .unwrap();
+            }
+            app.refresh_preset_picker_matches();
+        }
+        let ctx = egui::Context::default();
+        app.shell.features.presets.picker.open = true;
+        for (phase, (width, height)) in [
+            (1200.0, 800.0),
+            (640.0, 800.0),
+            (640.0, 400.0),
+            (640.0, 400.0),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(width, height));
+            let mut frame = |events| {
+                ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        events,
+                        ..Default::default()
+                    },
+                    |ui| app.run_ui_frame(ui),
+                )
+            };
+            let mut output = egui::FullOutput::default();
+            for _ in 0..4 {
+                output = frame(vec![]);
+            }
+            let mut close_center = None;
+            for label in [
+                "Presets",
+                "Manage named roots...",
+                "Filter names or search text...",
+                "Add",
+                "Close",
+                crate::app::render_dialogs::preset_picker::PRESET_PICKER_FOOTER_HINT,
+            ] {
+                let (text, clip) = output
+                    .shapes
+                    .iter()
+                    .rev()
+                    .find_map(|shape| {
+                        find_text(&shape.shape, label).map(|text| (text, shape.clip_rect))
+                    })
+                    .unwrap_or_else(|| {
+                        panic!("missing {label} at phase={phase} screen={screen:?}")
+                    });
+                let bounds = text.galley.rect.translate(text.pos.to_vec2());
+                assert!(
+                    screen.intersect(clip).expand(1.0).contains_rect(bounds),
+                    "{label} is clipped: screen={screen:?}, clip={clip:?}, bounds={bounds:?}"
+                );
+                if label == "Close" {
+                    close_center = Some(bounds.center());
+                }
+            }
+            let modal_rect = egui::AreaState::load(&ctx, egui::Id::new("preset-picker-modal"))
+                .expect("preset picker area")
+                .rect();
+            assert!(
+                screen.expand(1.0).contains_rect(modal_rect),
+                "modal corners are clipped: screen={screen:?}, modal={modal_rect:?}"
+            );
+            if height == 400.0 {
+                let pos = close_center.expect("Close label");
+                for pressed in [true, false] {
+                    let _ = frame(vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::PointerButton {
+                            pos,
+                            button: egui::PointerButton::Primary,
+                            pressed,
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ]);
+                }
+                assert!(!app.shell.features.presets.picker.open);
+                assert_eq!(
+                    app.shell.features.presets.catalog.presets.len(),
+                    if populated { 15 } else { 0 }
+                );
+                assert!(!app.shell.worker_bus.catalog.in_progress);
+                app.shell.features.presets.picker.open = true;
+            }
+        }
+    }
+    fs::remove_dir_all(&root).expect("cleanup");
+}
+
+#[test]
 fn gui_metadata_sort_preset_preserves_explicit_tab_scope() {
     for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
         let root = test_root("metadata-preset-scope");

@@ -77,7 +77,7 @@ pub(in crate::app) fn sort_label(value: PresetSortMode) -> &'static str {
     }
 }
 
-fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
+fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui, available_height: f32) {
     ui.horizontal(|ui| {
         ui.heading("Presets");
         super::right_actions(ui, |ui| {
@@ -147,7 +147,8 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         let scroll = egui::ScrollArea::vertical()
             .id_salt("preset-picker-results")
             .animated(false)
-            .max_height(320.0)
+            // Keep room for heading, filter, and footer at minimum height.
+            .max_height((available_height - 164.0).clamp(0.0, 320.0))
             .auto_shrink([false, false])
             .show(ui, |ui| {
                 if matched.is_empty() {
@@ -880,22 +881,24 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
         return;
     }
 
-    let available_width = ctx.input(|input| input.content_rect().width());
+    let viewport = ctx.input(|input| input.content_rect());
     egui::Modal::new(egui::Id::new("preset-picker-modal")).show(ctx, |ui| {
         let picker = &app.shell.features.presets.picker;
-        if picker.editor.open && !picker.named_roots.open {
-            // A minimum alone lets the modal inherit a wider Area allocation.
-            ui.set_width((available_width - 24.0).clamp(0.0, 720.0));
-            render_editor(app, ui);
-            return;
+        if !picker.named_roots.open && (picker.editor.open || !picker.confirm_delete) {
+            // A minimum alone lets stretch widgets reuse the modal's older,
+            // wider Area allocation when the viewport shrinks.
+            ui.set_width((viewport.width() - 24.0).clamp(0.0, 720.0));
+        } else {
+            ui.set_min_width(preset_picker_modal_width(viewport.width()));
         }
-        ui.set_min_width(preset_picker_modal_width(available_width));
         if picker.named_roots.open {
             render_named_root_manager(app, ui);
+        } else if picker.editor.open {
+            render_editor(app, ui);
         } else if picker.confirm_delete {
             render_preset_delete_confirmation(app, ui);
         } else {
-            render_picker(app, ui);
+            render_picker(app, ui, viewport.height());
         }
     });
 }
