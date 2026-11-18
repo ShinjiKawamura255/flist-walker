@@ -245,11 +245,11 @@ warning抑制、`continue-on-error`、失敗の無視、digest/署名/N-1検証�
 
 ### GitHub-hosted runner の Action archive 取得警告
 
-外部Action自身の警告とは別に、GitHub-hosted runner の job setup が、公式配布元から immutable な full commit SHA で固定した Action archive を取得するときに出した **transport timeout と対応する標準 retry backoff** の警告だけを、以下をすべて満たす場合に限り条件付きで扱える。runner の他の警告、未回復の失敗、出所・回復経路が不明な警告には適用しない。
+外部Action自身の警告とは別に、改変していない GitHub-hosted runner の標準 job setup が、immutable な full commit SHA で固定した Action archive を `https://codeload.github.com/...` の標準経路で取得するときに出した **transport timeout と対応する標準 retry backoff** の警告だけを、以下をすべて満たす場合に限り条件付きで扱える。runner の他の警告、未回復の失敗、出所・回復経路が不明な警告には適用しない。
 
-1. exact version/source/run/attempt と runner version、job/step、公式配布元と full pin を固定する。全 log の生の warning emission を timeout と対応する backoff の組で確認し、時刻・件数・message を記録する。check annotation や集約 log に写った同じ emission は追加件数にしない。対応の取れない警告や別の警告は独立した停止判定に残す。
-2. 同じ workflow attempt の同じ job setup 内で、runner の通常 retry が同じ公式配布元・同じ full pin の archive を取得し、その Action を実際に実行したことを確認する。別 pin・別経路・fallback、別 attempt、失敗の無視は認めない。観測された runner version の公式実装を照合し、失敗した部分データを後続処理へ渡さないことと、成功した取得後にだけ展開・処理へ進むことを確認する。観測と実装からの推論を区別して記録する。
-3. 説明のつかないセキュリティ・完全性・製品/CI/配布物の問題がなく、exact run の全必須 gate、現物 inventory/digest/署名/archive/notice/N-1 および選択された検証が成功した場合に限り、独立 review 後に判定できる。証跡、分類・根拠、operator、独立 reviewer、再評価条件を Action 自身の警告とは別の exact-run 記録に残す。後続 candidate/tagged run は独立に評価する。
+1. exact version/source/run/attempt と runner version、job/step、初回と retry の同一の完全な `https://codeload.github.com/...` URL と full pin を固定する。全 log の生の warning emission を timeout と対応する backoff の組で確認し、時刻・件数・message を記録する。check annotation や集約 log に写った同じ emission は追加件数にしない。対応の取れない警告や別の警告は独立した停止判定に残す。
+2. 同じ workflow attempt の同じ job setup 内で、runner の標準 retry が初回と同じ完全な `https://codeload.github.com/...` URL・同じ full pin の archive を取得し、その Action を実際に実行したことを確認する。別 URL・別 pin・別経路・fallback、別 attempt、失敗の無視は認めない。workflow 側から proxy、独自取得処理、URL 書き換えを使った場合は対象外とする。観測された runner version の公式実装を照合し、失敗した部分データを後続処理へ渡さないことと、成功した取得後にだけ展開・処理へ進むことを確認する。観測と実装からの推論を区別して記録する。
+3. 説明のつかないセキュリティ・完全性・製品/CI/配布物の問題がなく、exact run の全必須 gate、現物 inventory/digest/署名/archive/notice/N-1 および選択された検証が成功し、新鮮な依存関係 audit に脆弱性・警告がない場合に限り、独立 reviewer がこの個別事例の出所・分類・適用範囲を確認した後で判定できる。証跡、分類・根拠、operator、独立 reviewer、再評価条件を Action 自身の警告とは別の exact-run 記録に残す。後続 candidate/tagged run は独立に評価する。
 4. 警告を消す目的の再実行や抑制は認めない。この規則は適用前に停止した run を事後承認しない。保護された手順でこの規則を取り込んだ source に対して新しい候補を一度作成し、その exact run から評価する。
 
 
