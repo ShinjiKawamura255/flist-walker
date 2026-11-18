@@ -219,7 +219,7 @@
 
 - 実行開始時に `Preparation → Candidate → Native GUI → Tag/Tagged build → Draft review → Publish/readback → Closure PR` のgateを一つのpacketへ固定する。各gateは入力identity、必要証跡、停止条件、外部変更、完了readbackを1箇所だけに持ち、同じ判断を複数のplanへ複製しない。
 - GUI開始前に変更影響によりrequired subflow/axisを選び、`docs/GUI-TESTPLAN.md` のexecution profileと選択範囲だけのprerequisite表を完成させる。利用不能なrequired条件のdeviation判断は1回に集約する。対象外residualの環境準備や承認を要求しない。
-- candidateとtagged runは別identityなのでwarning dispositionを共有しない。各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、[外部Action警告の判定](#external-action-warning-disposition)に従う判断を1 runにつき1つ記録する。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
+- candidateとtagged runは別identityなのでwarning dispositionを共有しない。各runではfull log完了後にactual warning emissionを重複数付きで一括分類し、[外部Action警告の判定](#external-action-warning-disposition)または [GitHub-hosted runner の Action archive 取得警告](#github-hosted-runner-の-action-archive-取得警告)に従う判断を1 runにつき1つにまとめる。両方に該当する場合は出所ごとの判定を分ける。checkout hint、test名、`-D warnings`引数などの文字列一致をwarning emissionへ数えない。
 - residual addendumは選択済みの失敗/未実行axisだけを追加検証する。source/binary変更時は全変更と依存境界を照合し、affectedな証跡だけを無効化する。digest/signature/inventoryなど新artifact固有の確認は毎回実施する。
 - 公開後はrelease URL、release/tag/source identity、本文、asset count/name/size/digestを直ちにread backし、versioned release recordと検証processの恒久修正を同じclosure PRへまとめる。release公開とclosure PR mergeを別の完了条件として追跡する。
 
@@ -243,6 +243,16 @@
 
 warning抑制、`continue-on-error`、失敗の無視、digest/署名/N-1検証の弱化、warningが消えるまでの同条件再試行で判定を成立させてはならない。既存の監査例外は`docs/OSS_COMPLIANCE.md`の独立した条件に従う。
 
+### GitHub-hosted runner の Action archive 取得警告
+
+外部Action自身の警告とは別に、GitHub-hosted runner の job setup が、公式配布元から immutable な full commit SHA で固定した Action archive を取得するときに出した **transport timeout と対応する標準 retry backoff** の警告だけを、以下をすべて満たす場合に限り条件付きで扱える。runner の他の警告、未回復の失敗、出所・回復経路が不明な警告には適用しない。
+
+1. exact version/source/run/attempt と runner version、job/step、公式配布元と full pin を固定する。全 log の生の warning emission を timeout と対応する backoff の組で確認し、時刻・件数・message を記録する。check annotation や集約 log に写った同じ emission は追加件数にしない。対応の取れない警告や別の警告は独立した停止判定に残す。
+2. 同じ workflow attempt の同じ job setup 内で、runner の通常 retry が同じ公式配布元・同じ full pin の archive を取得し、その Action を実際に実行したことを確認する。別 pin・別経路・fallback、別 attempt、失敗の無視は認めない。観測された runner version の公式実装を照合し、失敗した部分データを後続処理へ渡さないことと、成功した取得後にだけ展開・処理へ進むことを確認する。観測と実装からの推論を区別して記録する。
+3. 説明のつかないセキュリティ・完全性・製品/CI/配布物の問題がなく、exact run の全必須 gate、現物 inventory/digest/署名/archive/notice/N-1 および選択された検証が成功した場合に限り、独立 review 後に判定できる。証跡、分類・根拠、operator、独立 reviewer、再評価条件を Action 自身の警告とは別の exact-run 記録に残す。後続 candidate/tagged run は独立に評価する。
+4. 警告を消す目的の再実行や抑制は認めない。この規則は適用前に停止した run を事後承認しない。保護された手順でこの規則を取り込んだ source に対して新しい候補を一度作成し、その exact run から評価する。
+
+
 ## Release 前チェック
 - `rust/Cargo.toml` の `[package].version` が対象 release の `X.Y.Z` と一致していること。
 - `rust/Cargo.lock` の `flist-walker` package version が同じ `X.Y.Z` へ更新済みであること。
@@ -256,7 +266,7 @@ warning抑制、`continue-on-error`、失敗の無視、digest/署名/N-1検証�
 - tag 作成前の manual candidate run が default branch の対象 SHA で成功し、validated bundle artifact と N-1 結果を確認済みであること。candidate mode の draft release 作成 job は `skipped` でなければならない。
 - TC-193性能は [変更triggerと再利用条件](testplan/release-validation.md) に従う。CLI/startup/shared engine/build等の影響変更時に固定200-file fixture、5 warmup+25 sample、ratio≤0.70を満たし、無影響なら既存PASSを再利用する。新Windows assetのsubsystem/import検査は維持する。
 - 同一tagのreleaseが存在しないこと。既存release/assetは更新、削除、上書きしないこと。
-- release candidateの全warningを確認すること。外部Action警告は[外部Action警告の判定](#external-action-warning-disposition)の全条件を満たす軽微ケースに限り、ユーザー承認済みの運用としてexact version/runの例外を記録できる。重大・不明・条件未達、およびこの規則の対象外の警告は停止条件とし、最新版/greenだけで解除しない。次の候補やtag workflowで独立に再判定する。
+- release candidateの全warningを確認すること。[外部Action警告の判定](#external-action-warning-disposition)または [GitHub-hosted runner の Action archive 取得警告](#github-hosted-runner-の-action-archive-取得警告)のいずれか一方に該当し、その全条件を満たした場合に限り、別々の exact version/run 記録で扱う。重大・不明・条件未達、およびいずれの規則にも該当しない警告は停止条件とし、最新版/greenだけで解除しない。次の候補やtag workflowで独立に再判定する。
 - tag workflowのLinux/macOS/Windows native preflightでlocked clippyがすべて実行され、OS条件付きunused/dead code warningがasset build前に失敗すること。
 - Codex で release 前チェックを行うときは `skills/flistwalker-release-preflight/SKILL.md` を使う。
 - CI の Linux / macOS / Windows native test、Windows GNU cross build、`cargo audit` が green であること。
