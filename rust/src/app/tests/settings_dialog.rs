@@ -30,7 +30,7 @@ fn isolated_settings_process(name: &str) -> bool {
     true
 }
 
-// Request bookkeeping and UI state are not physical worker timing observations.
+// UI bookkeeping is independent of physical timings, which are opt-in for the Save test only.
 // This formatting is evaluated only by a failed assertion (or its focused test).
 fn settings_wait_diagnostics(app: &FlistWalkerApp, deadline: Instant) -> String {
     let phase = match &app.settings_dialog.view {
@@ -51,8 +51,14 @@ fn settings_wait_diagnostics(app: &FlistWalkerApp, deadline: Instant) -> String 
         |(generation, _)| generation.to_string(),
     );
     let operation = pending.map_or("none", |(_, is_save)| if is_save { "save" } else { "load" });
+    let timing = app
+        .shell
+        .worker_bus
+        .config_settings
+        .describe_save_timing_for_test(app.settings_dialog.generation, deadline)
+        .unwrap_or_else(|| "not_traced".to_owned());
     format!(
-        "settings worker did not settle; ui_phase={phase} expected_generation={} pending_generation={generation} pending_operation={operation} overdue_ms={} (after poll; physical worker phase unobserved)",
+        "settings worker did not settle; ui_phase={phase} expected_generation={} pending_generation={generation} pending_operation={operation} overdue_ms={} (after poll) save_timing={timing}",
         app.settings_dialog.generation,
         Instant::now().saturating_duration_since(deadline).as_millis(),
     )
@@ -541,6 +547,10 @@ fn tc_216_gui_settings_rejects_every_invalid_limit_boundary_without_writing() {
         panic!("settings draft remains open")
     };
     *limit_text = usize::MAX.to_string();
+    app.shell
+        .worker_bus
+        .config_settings
+        .observe_save_timing_for_test();
     app.request_settings_save();
     settle_settings_dialog(&mut app);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
@@ -915,6 +925,10 @@ fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() 
         panic!("owned real load must reach Editing");
     };
     *limit_text = "1234".into();
+    app.shell
+        .worker_bus
+        .config_settings
+        .observe_save_timing_for_test();
     app.request_settings_save();
     let generation = app.settings_dialog.generation;
     assert_eq!(
@@ -936,7 +950,20 @@ fn tc_216_settings_wait_diagnostic_identifies_owned_operations_and_completion() 
     );
     settle_settings_dialog(&mut app);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
-    assert!(settings_wait_diagnostics(&app, deadline).contains("ui_phase=closed"));
+    let diagnostic = settings_wait_diagnostics(&app, deadline);
+    assert!(diagnostic.contains("ui_phase=closed"), "{diagnostic}");
+    for stage in [
+        "pickup",
+        "lock_acquired",
+        "write_complete",
+        "response_notify_attempt",
+    ] {
+        assert!(diagnostic.contains(&format!("{stage}=")), "{diagnostic}");
+        assert!(
+            !diagnostic.contains(&format!("{stage}=unobserved")),
+            "{diagnostic}"
+        );
+    }
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(scope.runtime_config_path()).unwrap()).unwrap();
     assert_eq!(saved["walker_max_entries"], 1234);
