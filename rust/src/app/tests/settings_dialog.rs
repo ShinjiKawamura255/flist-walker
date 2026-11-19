@@ -58,17 +58,105 @@ fn settings_wait_diagnostics(app: &FlistWalkerApp, deadline: Instant) -> String 
     )
 }
 
-fn settle_settings_dialog(app: &mut FlistWalkerApp) {
-    let deadline = Instant::now() + Duration::from_secs(2);
-    while app.shell.worker_bus.config_settings.in_progress() {
-        app.poll_config_settings_response();
-        assert!(
-            Instant::now() < deadline,
-            "{}",
-            settings_wait_diagnostics(app, deadline)
-        );
-        thread::yield_now();
+const SETTINGS_WATCHDOG: Duration = Duration::from_secs(2);
+
+// The real MAX Save may spend five seconds acquiring the sidecar lock before
+// even attempting the write. Retain the ordinary two-second allowance for
+// worker scheduling and atomic filesystem I/O, on top of that lock budget.
+// This is a test hang watchdog, not a product latency requirement.
+const TC_216_MAX_SAVE_WATCHDOG: Duration = Duration::from_secs(7);
+
+fn wait_for_settings_settlement(
+    deadline: Instant,
+    mut poll_pending: impl FnMut() -> bool,
+    mut now: impl FnMut() -> Instant,
+    mut idle: impl FnMut(),
+) -> bool {
+    loop {
+        // A poll that already consumed the response settles the wait, even
+        // at the deadline. The caller still checks the actual save outcome.
+        if !poll_pending() {
+            return true;
+        }
+        if now() >= deadline {
+            return false;
+        }
+        idle();
     }
+}
+
+fn settle_settings_dialog(app: &mut FlistWalkerApp) {
+    settle_settings_dialog_with_watchdog(app, SETTINGS_WATCHDOG);
+}
+
+fn settle_settings_dialog_with_watchdog(app: &mut FlistWalkerApp, watchdog: Duration) {
+    let deadline = Instant::now() + watchdog;
+    let settled = wait_for_settings_settlement(
+        deadline,
+        || {
+            if app.shell.worker_bus.config_settings.in_progress() {
+                app.poll_config_settings_response();
+            }
+            app.shell.worker_bus.config_settings.in_progress()
+        },
+        Instant::now,
+        thread::yield_now,
+    );
+    assert!(settled, "{}", settings_wait_diagnostics(app, deadline));
+}
+
+#[test]
+fn tc_216_settings_wait_accepts_consumed_completion_at_deadline() {
+    use std::cell::Cell;
+
+    let before = Instant::now();
+    let deadline = before + Duration::from_millis(1);
+    for completion_at in [deadline, deadline + Duration::from_millis(1)] {
+        let clock = Cell::new(before);
+        let polls = Cell::new(0);
+        let mut idles = 0;
+        assert!(wait_for_settings_settlement(
+            deadline,
+            || match polls.replace(polls.get() + 1) {
+                0 => true,
+                1 => {
+                    clock.set(completion_at);
+                    false
+                }
+                _ => panic!("polled after consuming completion"),
+            },
+            || clock.get(),
+            || idles += 1,
+        ));
+        assert_eq!(polls.get(), 2);
+        assert_eq!(idles, 1);
+    }
+}
+
+#[test]
+fn tc_216_settings_wait_rejects_pending_work_at_deadline() {
+    use std::cell::Cell;
+
+    let before = Instant::now();
+    let deadline = before + Duration::from_millis(1);
+    let clock = Cell::new(before);
+    let polls = Cell::new(0);
+    let mut idles = 0;
+    assert!(!wait_for_settings_settlement(
+        deadline,
+        || match polls.replace(polls.get() + 1) {
+            0 => true,
+            1 => {
+                clock.set(deadline);
+                true
+            }
+            _ => panic!("polled after watchdog expiry"),
+        },
+        || clock.get(),
+        || idles += 1,
+    ));
+    assert_eq!(polls.get(), 2);
+    assert_eq!(idles, 1);
 }
 
 #[test]
@@ -542,7 +630,7 @@ fn tc_216_gui_settings_rejects_every_invalid_limit_boundary_without_writing() {
     };
     *limit_text = usize::MAX.to_string();
     app.request_settings_save();
-    settle_settings_dialog(&mut app);
+    settle_settings_dialog_with_watchdog(&mut app, TC_216_MAX_SAVE_WATCHDOG);
     assert!(matches!(app.settings_dialog.view, SettingsView::Closed));
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(&path).expect("saved config")).expect("valid JSON");
