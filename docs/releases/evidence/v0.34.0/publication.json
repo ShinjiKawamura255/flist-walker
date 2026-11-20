@@ -1,0 +1,360 @@
+{
+  "release": {
+    "id": 452275009,
+    "tag": "v0.34.0",
+    "tag_object": "4d00b9785ac30b9d87d2dc971b51a5097ee86e7b",
+    "source": "38b96b7324b500d77c075515b2be4f0a6267858e",
+    "published_at": "2026-11-20T04:43:38Z",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.34.0",
+    "latest": true,
+    "previous": {
+      "tag": "v0.33.1",
+      "id": 434277133,
+      "source": "9d598aa04179b7a0fff366960849c6a7e4dbac96"
+    },
+    "draft": false,
+    "prerelease": false,
+    "public_readback": "Anonymous fixed-URL bytes retained and independently compared again with exact tagged ZIP. Metadata read back with public release-ID and releases/latest endpoints."
+  },
+  "candidate": {
+    "event": "workflow_dispatch",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/44653474987",
+    "attempt": 1,
+    "mandatory_successes": 10,
+    "draft_job": "skipped",
+    "artifact": {
+      "id": 14594410141,
+      "size": 86984945,
+      "sha256": "35c95179c6be5653e8fd829cb19b99d9c028121d317635748752c8b5a6528f38",
+      "producers": [
+        {
+          "id": 14594150128,
+          "size": 18309560,
+          "sha256": "1be93f7c4248698ab3854090f87f2ce199fe9250674a3076e45febe02211e949",
+          "platform": "Windows x86_64"
+        },
+        {
+          "id": 14593815098,
+          "size": 25412265,
+          "sha256": "a487bc57dd1338b8ecf442e06c16c226bf895a356ca7299ff9acf849bf72ef95",
+          "platform": "macOS x86_64"
+        },
+        {
+          "id": 14592807627,
+          "size": 20153539,
+          "sha256": "ff94be52e2d266debaabb28241b7d3c80c3a442fd6cbac7343510c2ba506afb8",
+          "platform": "Linux x86_64"
+        },
+        {
+          "id": 14591989477,
+          "size": 23110299,
+          "sha256": "e1d381efe5f18893469e6c37e12156dcb77ef6f9ac35fcfe02b15ffb00a02e4c",
+          "platform": "macOS arm64"
+        }
+      ]
+    }
+  },
+  "tagged": {
+    "event": "push",
+    "ref": "refs/tags/v0.34.0",
+    "url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/44671408349",
+    "attempt": 1,
+    "mandatory_successes": 11,
+    "draft_job": "success",
+    "artifact": {
+      "id": 14601199113,
+      "size": 86985205,
+      "sha256": "67bbb9e396a3cc27ad7431d0280e04539d25d4b6f07280e6470a51f9fbbccb74",
+      "producers": [
+        {
+          "id": 14601059073,
+          "size": 18309486,
+          "sha256": "e4e011e6785fdca9ca36c0388f290022e9a758ea380302dc8095cfd34bf5813c",
+          "platform": "Windows x86_64"
+        },
+        {
+          "id": 14602230639,
+          "size": 25412401,
+          "sha256": "3e3923a055f4db9533f8ad0ec2777c72cac55f0004330b8713e9010d69809fe2",
+          "platform": "macOS x86_64"
+        },
+        {
+          "id": 14601050079,
+          "size": 20153405,
+          "sha256": "f8942a6661445cdb5d89f3a48243d6404f5db004742ef62fd72a259465bf1981",
+          "platform": "Linux x86_64"
+        },
+        {
+          "id": 14600099385,
+          "size": 23110623,
+          "sha256": "73a85957e95ae6ec10d73197e119cd36346f4f2ee4aae294dbac8d567ecd5a5b",
+          "platform": "macOS arm64"
+        }
+      ]
+    }
+  },
+  "manifest": {
+    "entries": 26,
+    "sha256": "002f546c0b4eacb62c25cd540d07037442de2f97eae381fcf94378bada6071a2",
+    "signature_sha256": "a14999ef295b07acc9cf881efa61cc582863d3479091fed0a924f483ab08d3af",
+    "anchored_ed25519_der_sha256": "96d1116f5b899e1bb0273c41f0532abc2d95832d7ee301b121674ba1fe361dfa",
+    "previous_and_new_signatures": "PASS",
+    "exact_public_validator": "PASS; 28 assets with 26 checksums, approved archive/notice inventory and members",
+    "actual_n_minus_one_checked_manifest": "0.33.1 to 0.34.0 PASS",
+    "public_bytes": "28/28 digest and byte equality"
+  },
+  "assets": [
+    {
+      "id": 770472201,
+      "name": "FlistWalker-0.34.0-linux-x86_64",
+      "size": 19609168,
+      "digest": "sha256:4fa9ae05684415e0c26486752d775f771dea7d3d7acbb2ea1000614ba3aa5835",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-linux-x86_64",
+      "public_sha256": "4fa9ae05684415e0c26486752d775f771dea7d3d7acbb2ea1000614ba3aa5835",
+      "tagged_sha256": "4fa9ae05684415e0c26486752d775f771dea7d3d7acbb2ea1000614ba3aa5835"
+    },
+    {
+      "id": 770472191,
+      "name": "FlistWalker-0.34.0-linux-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-linux-x86_64.LICENSE.txt",
+      "public_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "tagged_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "id": 770472200,
+      "name": "FlistWalker-0.34.0-linux-x86_64.README.txt",
+      "size": 6871,
+      "digest": "sha256:0eb3c8af1cbd98528dd3bb927b88330dce0f6a655d6b67056140d67449aad91a",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-linux-x86_64.README.txt",
+      "public_sha256": "0eb3c8af1cbd98528dd3bb927b88330dce0f6a655d6b67056140d67449aad91a",
+      "tagged_sha256": "0eb3c8af1cbd98528dd3bb927b88330dce0f6a655d6b67056140d67449aad91a"
+    },
+    {
+      "id": 770472194,
+      "name": "FlistWalker-0.34.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "tagged_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8"
+    },
+    {
+      "id": 770472193,
+      "name": "FlistWalker-0.34.0-linux-x86_64.tar.gz",
+      "size": 8506578,
+      "digest": "sha256:d2e9aa79feb28ee06332c83218d24e744a583e87d24501462aa995450dd2511f",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-linux-x86_64.tar.gz",
+      "public_sha256": "d2e9aa79feb28ee06332c83218d24e744a583e87d24501462aa995450dd2511f",
+      "tagged_sha256": "d2e9aa79feb28ee06332c83218d24e744a583e87d24501462aa995450dd2511f"
+    },
+    {
+      "id": 770472213,
+      "name": "FlistWalker-0.34.0-macos-arm64",
+      "size": 13650992,
+      "digest": "sha256:fd8b93c62df56050686df9134c89642c367c9432672edaca53dcb4509ac9626e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64",
+      "public_sha256": "fd8b93c62df56050686df9134c89642c367c9432672edaca53dcb4509ac9626e",
+      "tagged_sha256": "fd8b93c62df56050686df9134c89642c367c9432672edaca53dcb4509ac9626e"
+    },
+    {
+      "id": 770472221,
+      "name": "FlistWalker-0.34.0-macos-arm64-app.zip",
+      "size": 6816175,
+      "digest": "sha256:2bb135d7ee4efd2736bb9a89341befeb1bebc49bd28ab71457383f624c778a1d",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64-app.zip",
+      "public_sha256": "2bb135d7ee4efd2736bb9a89341befeb1bebc49bd28ab71457383f624c778a1d",
+      "tagged_sha256": "2bb135d7ee4efd2736bb9a89341befeb1bebc49bd28ab71457383f624c778a1d"
+    },
+    {
+      "id": 770472238,
+      "name": "FlistWalker-0.34.0-macos-arm64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64.LICENSE.txt",
+      "public_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "tagged_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "id": 770472223,
+      "name": "FlistWalker-0.34.0-macos-arm64.README.txt",
+      "size": 6798,
+      "digest": "sha256:d385d1536a08c0d56300d4a835c36954e77713159e69b8dd1417692c715cf158",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64.README.txt",
+      "public_sha256": "d385d1536a08c0d56300d4a835c36954e77713159e69b8dd1417692c715cf158",
+      "tagged_sha256": "d385d1536a08c0d56300d4a835c36954e77713159e69b8dd1417692c715cf158"
+    },
+    {
+      "id": 770472232,
+      "name": "FlistWalker-0.34.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "public_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "tagged_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8"
+    },
+    {
+      "id": 770472234,
+      "name": "FlistWalker-0.34.0-macos-arm64.tar.gz",
+      "size": 6717155,
+      "digest": "sha256:f77a44c110f4c5d3af94b5460ac0c129326c529237b56ae3c8eea9eb5cc0624b",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-arm64.tar.gz",
+      "public_sha256": "f77a44c110f4c5d3af94b5460ac0c129326c529237b56ae3c8eea9eb5cc0624b",
+      "tagged_sha256": "f77a44c110f4c5d3af94b5460ac0c129326c529237b56ae3c8eea9eb5cc0624b"
+    },
+    {
+      "id": 770472241,
+      "name": "FlistWalker-0.34.0-macos-x86_64",
+      "size": 15955584,
+      "digest": "sha256:45798a3bd71c14155e68bb6e92f393c7f47c338a0affc814279e26f2981b45e5",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64",
+      "public_sha256": "45798a3bd71c14155e68bb6e92f393c7f47c338a0affc814279e26f2981b45e5",
+      "tagged_sha256": "45798a3bd71c14155e68bb6e92f393c7f47c338a0affc814279e26f2981b45e5"
+    },
+    {
+      "id": 770472245,
+      "name": "FlistWalker-0.34.0-macos-x86_64-app.zip",
+      "size": 7550613,
+      "digest": "sha256:048e12b5c6db2e9bb5e625f804728a7501679b7218d698c0ad5d78c52b59c437",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64-app.zip",
+      "public_sha256": "048e12b5c6db2e9bb5e625f804728a7501679b7218d698c0ad5d78c52b59c437",
+      "tagged_sha256": "048e12b5c6db2e9bb5e625f804728a7501679b7218d698c0ad5d78c52b59c437"
+    },
+    {
+      "id": 770472250,
+      "name": "FlistWalker-0.34.0-macos-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64.LICENSE.txt",
+      "public_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "tagged_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "id": 770472247,
+      "name": "FlistWalker-0.34.0-macos-x86_64.README.txt",
+      "size": 6802,
+      "digest": "sha256:6c6d078fa06b8d45bf3502d80098f078f9508fbe4f80ce17a6d50f76ad2969fa",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64.README.txt",
+      "public_sha256": "6c6d078fa06b8d45bf3502d80098f078f9508fbe4f80ce17a6d50f76ad2969fa",
+      "tagged_sha256": "6c6d078fa06b8d45bf3502d80098f078f9508fbe4f80ce17a6d50f76ad2969fa"
+    },
+    {
+      "id": 770472252,
+      "name": "FlistWalker-0.34.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "tagged_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8"
+    },
+    {
+      "id": 770472295,
+      "name": "FlistWalker-0.34.0-macos-x86_64.tar.gz",
+      "size": 7451011,
+      "digest": "sha256:939042ff079e789d00665361061902e61044880a8eb6b0330e0fd9ddcbdecbbf",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-macos-x86_64.tar.gz",
+      "public_sha256": "939042ff079e789d00665361061902e61044880a8eb6b0330e0fd9ddcbdecbbf",
+      "tagged_sha256": "939042ff079e789d00665361061902e61044880a8eb6b0330e0fd9ddcbdecbbf"
+    },
+    {
+      "id": 770472313,
+      "name": "FlistWalker-0.34.0-windows-x86_64.LICENSE.txt",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-windows-x86_64.LICENSE.txt",
+      "public_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "tagged_sha256": "9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e"
+    },
+    {
+      "id": 770472307,
+      "name": "FlistWalker-0.34.0-windows-x86_64.README.txt",
+      "size": 7208,
+      "digest": "sha256:27816fd08b5b46cd2bcf709d668294268748c97f96b51e53dce700f16f311284",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-windows-x86_64.README.txt",
+      "public_sha256": "27816fd08b5b46cd2bcf709d668294268748c97f96b51e53dce700f16f311284",
+      "tagged_sha256": "27816fd08b5b46cd2bcf709d668294268748c97f96b51e53dce700f16f311284"
+    },
+    {
+      "id": 770472305,
+      "name": "FlistWalker-0.34.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "public_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "tagged_sha256": "5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8"
+    },
+    {
+      "id": 770472308,
+      "name": "FlistWalker-0.34.0-windows-x86_64.exe",
+      "size": 16631296,
+      "digest": "sha256:6c569839da2fad9732522e229a63833ed7a2837c1d7c2e8e70c58007ba23dbcc",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-windows-x86_64.exe",
+      "public_sha256": "6c569839da2fad9732522e229a63833ed7a2837c1d7c2e8e70c58007ba23dbcc",
+      "tagged_sha256": "6c569839da2fad9732522e229a63833ed7a2837c1d7c2e8e70c58007ba23dbcc"
+    },
+    {
+      "id": 770472320,
+      "name": "FlistWalker-0.34.0-windows-x86_64.zip",
+      "size": 7589858,
+      "digest": "sha256:8ad7d75588484ff10f6e6f0e197b56c586437c7b3d28d5345f19f75d22208ead",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/FlistWalker-0.34.0-windows-x86_64.zip",
+      "public_sha256": "8ad7d75588484ff10f6e6f0e197b56c586437c7b3d28d5345f19f75d22208ead",
+      "tagged_sha256": "8ad7d75588484ff10f6e6f0e197b56c586437c7b3d28d5345f19f75d22208ead"
+    },
+    {
+      "id": 770472327,
+      "name": "SHA256SUMS",
+      "size": 2754,
+      "digest": "sha256:002f546c0b4eacb62c25cd540d07037442de2f97eae381fcf94378bada6071a2",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/SHA256SUMS",
+      "public_sha256": "002f546c0b4eacb62c25cd540d07037442de2f97eae381fcf94378bada6071a2",
+      "tagged_sha256": "002f546c0b4eacb62c25cd540d07037442de2f97eae381fcf94378bada6071a2"
+    },
+    {
+      "id": 770472328,
+      "name": "SHA256SUMS.sig",
+      "size": 64,
+      "digest": "sha256:a14999ef295b07acc9cf881efa61cc582863d3479091fed0a924f483ab08d3af",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/SHA256SUMS.sig",
+      "public_sha256": "a14999ef295b07acc9cf881efa61cc582863d3479091fed0a924f483ab08d3af",
+      "tagged_sha256": "a14999ef295b07acc9cf881efa61cc582863d3479091fed0a924f483ab08d3af"
+    },
+    {
+      "id": 770472334,
+      "name": "fw-0.34.0-linux-x86_64",
+      "size": 6728512,
+      "digest": "sha256:1a737e7edfcf68c40da1a889cc271efc597fbdac716c6d62be178e52236e566a",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/fw-0.34.0-linux-x86_64",
+      "public_sha256": "1a737e7edfcf68c40da1a889cc271efc597fbdac716c6d62be178e52236e566a",
+      "tagged_sha256": "1a737e7edfcf68c40da1a889cc271efc597fbdac716c6d62be178e52236e566a"
+    },
+    {
+      "id": 770472339,
+      "name": "fw-0.34.0-macos-arm64",
+      "size": 5183232,
+      "digest": "sha256:fbdd6488db63842a1079a5ea4f49020f9b076261b4269fd0e418fbd13a01b7fb",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/fw-0.34.0-macos-arm64",
+      "public_sha256": "fbdd6488db63842a1079a5ea4f49020f9b076261b4269fd0e418fbd13a01b7fb",
+      "tagged_sha256": "fbdd6488db63842a1079a5ea4f49020f9b076261b4269fd0e418fbd13a01b7fb"
+    },
+    {
+      "id": 770472340,
+      "name": "fw-0.34.0-macos-x86_64",
+      "size": 5984916,
+      "digest": "sha256:15cc711c68bc531d42457e3edbdbc5d8508f49b74f37b6b24a31e048b98ba232",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/fw-0.34.0-macos-x86_64",
+      "public_sha256": "15cc711c68bc531d42457e3edbdbc5d8508f49b74f37b6b24a31e048b98ba232",
+      "tagged_sha256": "15cc711c68bc531d42457e3edbdbc5d8508f49b74f37b6b24a31e048b98ba232"
+    },
+    {
+      "id": 770472349,
+      "name": "fw-0.34.0-windows-x86_64.exe",
+      "size": 6279680,
+      "digest": "sha256:9ef84fafd03b70c036f144bee4f533c208f5c6993fafe36cbcc7c018c527b096",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.0/fw-0.34.0-windows-x86_64.exe",
+      "public_sha256": "9ef84fafd03b70c036f144bee4f533c208f5c6993fafe36cbcc7c018c527b096",
+      "tagged_sha256": "9ef84fafd03b70c036f144bee4f533c208f5c6993fafe36cbcc7c018c527b096"
+    }
+  ]
+}

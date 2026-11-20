@@ -1,0 +1,106 @@
+{
+  "base": "9d598aa04179b7a0fff366960849c6a7e4dbac96",
+  "tagged_source": "38b96b7324b500d77c075515b2be4f0a6267858e",
+  "commits": [
+    {
+      "sha": "1236000012f03bba3bf48d1e5418471892ea6529",
+      "subject": "docs(release): record v0.33.1 publication",
+      "disposition": "Historical previous-version publication record; not a new feature."
+    },
+    {
+      "sha": "15be26462de5d6c76cc56900cbaba1a8acf5271e",
+      "subject": "docs(release): retain v0.33.1 artifact expiry",
+      "disposition": "Historical previous-version artifact expiry; not a new feature."
+    },
+    {
+      "sha": "8ee7b1ee309ff21db6f5e5054253b2cb7179a226",
+      "subject": "fix(settings): align controls and apply saved preferences immediately",
+      "disposition": "Settings alignment and immediate apply; documented in published notes."
+    },
+    {
+      "sha": "94400a9f3fa8337b5154aca7fe592250fc95deb7",
+      "subject": "docs(gui): align theme report with immediate settings apply",
+      "disposition": "Companion GUI evidence for immediate apply."
+    },
+    {
+      "sha": "904c83511b97d417279887f8a83b7947dd9fb7ef",
+      "subject": "fix(settings): preserve interaction-state label colors",
+      "disposition": "Settings active/disabled label colors."
+    },
+    {
+      "sha": "fe5aa10a9a4de812890749d5334a673ba09a2f87",
+      "subject": "test(endurance): attribute promoted index handoff progress",
+      "disposition": "Test-only index handoff diagnostics."
+    },
+    {
+      "sha": "2c2f2e1166374b3692565c9a6f8759d59edccef5",
+      "subject": "test(tui): retain worker cleanup wait diagnostics",
+      "disposition": "Test-only TUI worker shutdown diagnostics."
+    },
+    {
+      "sha": "b66e3b5583008fa3b0a41c651c0d51333a13aead",
+      "subject": "fix(ci): select stable explicitly in latest canary",
+      "disposition": "Canary selects stable explicitly."
+    },
+    {
+      "sha": "4c1c77e9ee923dfe9051f8b01ec2965b7a158f74",
+      "subject": "docs(ci): retain explicit stable Canary source evidence",
+      "disposition": "Canary source evidence."
+    },
+    {
+      "sha": "585a41e8f5eabefff6aabef62d492ec916cda37e",
+      "subject": "docs(ci): record restored Canary policy rollout and proof plan",
+      "disposition": "Canary restored-policy evidence and proof plan."
+    },
+    {
+      "sha": "f5aa2b2d7110526d357436d7791bc03fa3708640",
+      "subject": "fix: retain pinned Rust compatibility with latest Clippy APIs",
+      "disposition": "Pinned Rust/current Clippy compatibility."
+    },
+    {
+      "sha": "199ec5e062a5ffa8a8dba359657f19c3bd833790",
+      "subject": "feat(config): separate CLI and GUI runtime settings",
+      "disposition": "CLI/TUI and GUI runtime profiles split; histories/catalogs remain shared."
+    },
+    {
+      "sha": "8935e7451efa02c94d721ed9fe32bfca52a297c5",
+      "subject": "feat(presets): add optional picker search text",
+      "disposition": "Optional Preset Search text, strict display-name CLI lookup."
+    },
+    {
+      "sha": "decfef0bc97ec059a699e4328d3250e10a23028d",
+      "subject": "chore(release): prepare v0.34.0 and v0.33.1 updater preflight",
+      "disposition": "Version, notes, and v0.33.1 updater preflight fixture."
+    },
+    {
+      "sha": "26ef3799307c845bb2c4dcd5a84185510946d01f",
+      "subject": "fix(release): update rustix for RUSTSEC-2026-0486",
+      "disposition": "rustix 1.1.6 advisory response."
+    },
+    {
+      "sha": "f2fae5a4b680f057f6ff13f54349cd5ee1cf1c6e",
+      "subject": "fix(gui): keep preset editor within the viewport",
+      "disposition": "Bound Preset Add/Edit to viewport on resize."
+    },
+    {
+      "sha": "56c76c7b68f3c1b1d432a5d420015027bd83e83f",
+      "subject": "fix(gui): keep the open preset picker inside the viewport",
+      "disposition": "Bound open Preset Picker to viewport on resize."
+    },
+    {
+      "sha": "82dd4b549e3979ab864f10d24219931aa3d00e35",
+      "subject": "docs(release): classify exact recovered runner archive timeouts",
+      "disposition": "Operation procedure for scoped runner archive retries."
+    },
+    {
+      "sha": "600b68a4e0130247b6550f11a6acc2159a4864db",
+      "subject": "docs(release): confine runner recovery to exact codeload route",
+      "disposition": "Procedure confines the exception to exact standard codeload route."
+    },
+    {
+      "sha": "38b96b7324b500d77c075515b2be4f0a6267858e",
+      "subject": "test: make settings save settlement checks deterministic",
+      "disposition": "Test-only TC216 response-vs-watchdog ordering and timed boundary tests."
+    }
+  ]
+}

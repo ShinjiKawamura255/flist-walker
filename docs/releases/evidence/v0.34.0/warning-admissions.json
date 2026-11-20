@@ -1,0 +1,88 @@
+{
+  "upstream": {
+    "repository": "https://github.com/actions/download-artifact",
+    "latest_stable_release": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+    "pin": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+    "bundle_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+    "runtime": "Node 24",
+    "runner": "2.338.2",
+    "runtime_patch": "24.22.1 inferred from upstream runner externals.sh; hosted job did not print Node patch",
+    "runner_source": "https://github.com/actions/runner/blob/v2.338.2/src/Misc/externals.sh",
+    "official_node_archive_sha256": "6c172a9ab6718f7b801fb5a7bd486af2ee5e32758086a04b84fcce2aa77095e6"
+  },
+  "classification": "Minor, bounded to these exact runs/attempts and download steps after independent read-only review. Extractor initializes an empty buffer; separate fixed numeric allocation is immediately fully written. No evidence of adverse security, integrity or functional impact. Metadata/transport/auth were synthetically replaced only for the controlled localhost diagnostics; actual hosted logs show digest equality and success but no stack. Do not generalize to future runs or other sites.",
+  "candidate": {
+    "run": 44653474987,
+    "attempt": 1,
+    "image": "ubuntu-24.04 20261111.370.1",
+    "completed_raw_job_logs": 10,
+    "annotation_jobs_checked": 11,
+    "warning_error_annotations": 0,
+    "notices": 2,
+    "emissions": [
+      {
+        "job": 136024140306,
+        "job_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/44653474987/job/136024140306",
+        "step": "Download packaged assets",
+        "emitted_at": "2026-11-20T01:51:17.6419508Z",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated due to security and usability issues.",
+        "occurrences": 1,
+        "inputs": "four producer ZIPs, pattern release-*, exact IDs/digests in publication evidence",
+        "diagnostic": {
+          "action": "Official unmodified full Action, Node 24.22.1, local synthetic metadata and transport, actual hosted ZIP inputs.",
+          "extraction": "Exit 0; exact payload bytes, one warning at new UnzipStream lowercase source dist/index.js:67720:17 (new Buffer('')), via Extract and streamExtractExternal:126654.",
+          "raw_control": "Exit 0, identical raw ZIP(s), warning count zero; no production workflow change.",
+          "trace_sha256": "0f0d51b5a490da2c6a59f1a4d3c4e0b21bbfa7d14f4dba4f6eb855d2f6f7fdb6",
+          "raw_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ]
+  },
+  "tagged": {
+    "run": 44671408349,
+    "attempt": 1,
+    "image": "ubuntu-24.04 20261116.376.1",
+    "completed_raw_job_logs": 11,
+    "annotation_jobs_checked": 11,
+    "warning_error_annotations": 0,
+    "notices": 2,
+    "emissions": [
+      {
+        "job": 136086883073,
+        "job_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/44671408349/job/136086883073",
+        "step": "Download packaged assets",
+        "emitted_at": "2026-11-20T04:38:12.6175796Z",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated due to security and usability issues.",
+        "occurrences": 1,
+        "inputs": "four tagged producer ZIPs, pattern release-*, exact IDs/digests in publication evidence",
+        "diagnostic": {
+          "action": "Official unmodified full Action, Node 24.22.1, local synthetic metadata and transport, actual hosted ZIP inputs.",
+          "extraction": "Exit 0; exact payload bytes, one warning at new UnzipStream lowercase source dist/index.js:67720:17 (new Buffer('')), via Extract and streamExtractExternal:126654.",
+          "raw_control": "Exit 0, identical raw ZIP(s), warning count zero; no production workflow change.",
+          "trace_sha256": "46285e3405296a79d82a79e1b6fb880bcc077b80ac70ac40f49b441fdb487878",
+          "raw_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "job": 136087604906,
+        "job_url": "https://github.com/ShinjiKawamura255/flist-walker/actions/runs/44671408349/job/136087604906",
+        "step": "Download validated candidate bundle",
+        "emitted_at": "2026-11-20T04:40:00.8286415Z",
+        "code": "DEP0005",
+        "message": "Buffer() is deprecated due to security and usability issues.",
+        "occurrences": 1,
+        "inputs": "single named exact consolidated tagged ZIP 14601199113, no merge",
+        "diagnostic": {
+          "action": "Official unmodified full Action, Node 24.22.1, local synthetic metadata and transport, actual hosted ZIP inputs.",
+          "extraction": "Exit 0; exact payload bytes, one warning at new UnzipStream lowercase source dist/index.js:67720:17 (new Buffer('')), via Extract and streamExtractExternal:126654.",
+          "raw_control": "Exit 0, identical raw ZIP(s), warning count zero; no production workflow change.",
+          "trace_sha256": "635dfbe201e3111acab0ca8fb7ae74dd777cae4cb020e676e96f2629d1fc6dde",
+          "raw_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      }
+    ]
+  },
+  "recheck": "Release operator and independent reviewer reevaluate applicable latest, runner, identities, exact inputs, every log and annotation, and actual signed package tests on any later candidate or tagged run; no suppression, pin bypass, or inheritance."
+}
