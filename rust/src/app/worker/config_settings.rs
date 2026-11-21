@@ -7,6 +7,14 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError};
 use std::sync::Arc;
 use std::thread;
 
+#[cfg(test)]
+use crate::runtime_config::settings_timing::{with_save_timing, Milestone, SaveTiming};
+
+#[cfg(not(test))]
+type RequestMessage = (u64, ConfigSettingsRequest);
+#[cfg(test)]
+type RequestMessage = (u64, ConfigSettingsRequest, Option<SaveTiming>);
+
 pub(in crate::app) enum ConfigSettingsRequest {
     Load(PathBuf),
     Save {
@@ -22,21 +30,33 @@ pub(in crate::app) enum ConfigSettingsCompletion {
 }
 
 pub(in crate::app) struct ConfigSettingsService {
-    tx: Option<SyncSender<(u64, ConfigSettingsRequest)>>,
+    tx: Option<SyncSender<RequestMessage>>,
     rx: Receiver<(u64, ConfigSettingsCompletion)>,
     pending: Option<(u64, bool)>,
+    #[cfg(test)]
+    observe_save_timing: bool,
+    #[cfg(test)]
+    last_save_timing: Option<(u64, SaveTiming)>,
 }
 
 impl ConfigSettingsService {
     pub(in crate::app) fn spawn(shutdown: Arc<AtomicBool>) -> (Self, thread::JoinHandle<()>) {
-        let (tx, requests) = mpsc::sync_channel::<(u64, ConfigSettingsRequest)>(1);
+        let (tx, requests) = mpsc::sync_channel::<RequestMessage>(1);
         let (responses, rx) = mpsc::sync_channel(1);
         let handle = thread::Builder::new()
             .name("flistwalker-config-settings".into())
             .spawn(move || {
-                while let Ok((generation, request)) = requests.recv() {
+                while let Ok(message) = requests.recv() {
+                    #[cfg(not(test))]
+                    let (generation, request) = message;
+                    #[cfg(test)]
+                    let (generation, request, timing) = message;
                     if shutdown.load(Ordering::Acquire) {
                         break;
+                    }
+                    #[cfg(test)]
+                    if let Some(timing) = &timing {
+                        timing.mark(Milestone::Pickup);
                     }
                     let completion = match request {
                         ConfigSettingsRequest::Load(path) => ConfigSettingsCompletion::Loaded(
@@ -46,13 +66,29 @@ impl ConfigSettingsService {
                             path,
                             baseline,
                             draft,
-                        } => ConfigSettingsCompletion::Saved(
-                            save_editable_settings(&path, &baseline, &draft)
-                                .map_err(|error| format!("{error:#}")),
-                        ),
+                        } => {
+                            let save = || {
+                                save_editable_settings(&path, &baseline, &draft)
+                                    .map_err(|error| format!("{error:#}"))
+                            };
+                            #[cfg(test)]
+                            let result = with_save_timing(timing.as_ref(), save);
+                            #[cfg(not(test))]
+                            let result = save();
+                            ConfigSettingsCompletion::Saved(result)
+                        }
                     };
+                    #[cfg(test)]
+                    if let Some(timing) = &timing {
+                        timing.mark(Milestone::NotifyAttempt);
+                    }
                     if responses.try_send((generation, completion)).is_err() {
                         break;
+                    }
+                    #[cfg(test)]
+                    if let Some(timing) = &timing {
+                        // This records the return, not the exact instant the receiver could poll.
+                        timing.mark(Milestone::NotifySucceeded);
                     }
                 }
             })
@@ -62,6 +98,10 @@ impl ConfigSettingsService {
                 tx: Some(tx),
                 rx,
                 pending: None,
+                #[cfg(test)]
+                observe_save_timing: false,
+                #[cfg(test)]
+                last_save_timing: None,
             },
             handle,
         )
@@ -76,12 +116,22 @@ impl ConfigSettingsService {
             return Err("Settings operation is already running");
         }
         let is_save = matches!(request, ConfigSettingsRequest::Save { .. });
+        #[cfg(not(test))]
+        let message = (generation, request);
+        #[cfg(test)]
+        let timing = (self.observe_save_timing && is_save).then(SaveTiming::new);
+        #[cfg(test)]
+        let message = (generation, request, timing.clone());
         self.tx
             .as_ref()
             .ok_or("Settings worker is unavailable")?
-            .try_send((generation, request))
+            .try_send(message)
             .map_err(|_| "Settings worker is unavailable")?;
         self.pending = Some((generation, is_save));
+        #[cfg(test)]
+        {
+            self.last_save_timing = timing.map(|timing| (generation, timing));
+        }
         Ok(())
     }
 
@@ -114,6 +164,21 @@ impl ConfigSettingsService {
     #[cfg(test)]
     pub(in crate::app) fn pending_operation_for_test(&self) -> Option<(u64, bool)> {
         self.pending
+    }
+
+    #[cfg(test)]
+    pub(in crate::app) fn observe_save_timing_for_test(&mut self) {
+        self.observe_save_timing = true;
+    }
+
+    #[cfg(test)]
+    pub(in crate::app) fn describe_save_timing_for_test(
+        &self,
+        generation: u64,
+        deadline: std::time::Instant,
+    ) -> Option<String> {
+        let (owner, timing) = self.last_save_timing.as_ref()?;
+        (*owner == generation).then(|| timing.describe(deadline))
     }
 
     pub(in crate::app) fn disconnect(&mut self) {
