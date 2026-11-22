@@ -157,9 +157,22 @@ impl Request {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Entry {
+    #[cfg_attr(test, serde(serialize_with = "observe_entry_serialization"))]
     pub(super) path: NativePath,
     kind: u8,
     kind_known: bool,
+}
+#[cfg(test)]
+thread_local! {
+    pub(super) static SERIALIZED_ENTRIES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+#[cfg(test)]
+fn observe_entry_serialization<S: serde::Serializer>(
+    path: &NativePath,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    SERIALIZED_ENTRIES.with(|count| count.set(count.get() + 1));
+    path.serialize(serializer)
 }
 impl Entry {
     pub(super) fn encode(e: IndexEntry) -> Result<Self, String> {

@@ -416,7 +416,6 @@ fn run_cli_with_backend(
 
     let ignore_terms = load_cli_ignore_terms(args)?;
     let ignore_case = !args.case_sensitive;
-    let compiled_ignore_terms = CompiledIgnoreTerms::compile(&ignore_terms, ignore_case);
 
     let index_started = Instant::now();
     if args.progress {
@@ -448,22 +447,26 @@ fn run_cli_with_backend(
             index_started.elapsed().as_millis()
         );
     }
-    let mut entries = Vec::with_capacity(indexed_entries.len());
-    for entry in indexed_entries {
-        if cancelled.load(Ordering::Relaxed) {
-            return Ok(BatchOutcome::Cancelled);
+    let entries = if ignore_terms.is_empty() {
+        indexed_entries
+    } else {
+        let ignore = CompiledIgnoreTerms::compile(&ignore_terms, ignore_case);
+        let scope = QueryScope {
+            root: Some(root),
+            prefer_relative: true,
+            ignore_case,
+        };
+        let mut visible = Vec::with_capacity(indexed_entries.len());
+        for entry in indexed_entries {
+            if cancelled.load(Ordering::Relaxed) {
+                return Ok(BatchOutcome::Cancelled);
+            }
+            if !ignore.matches_path(entry.path(), scope) {
+                visible.push(entry);
+            }
         }
-        if !compiled_ignore_terms.matches_path(
-            entry.path(),
-            QueryScope {
-                root: Some(root),
-                prefer_relative: true,
-                ignore_case,
-            },
-        ) {
-            entries.push(entry);
-        }
-    }
+        visible
+    };
     if cancelled.load(Ordering::Relaxed) {
         return Ok(BatchOutcome::Cancelled);
     }
@@ -983,6 +986,38 @@ mod tests {
         CliFileListOutcome,
     };
     use crate::cli::args::{Args, CliColorMode};
+
+    #[test]
+    fn empty_ignore_uses_the_unfiltered_index_for_batch_actions() {
+        let root = action_test_root("empty-ignore");
+        fs::create_dir_all(&root).unwrap();
+        for name in ["z.txt", "日本語.txt", "a.txt"] {
+            fs::write(root.join(name), name).unwrap();
+        }
+        fs::write(root.join("FileList.txt"), "z.txt\n日本語.txt\na.txt\n").unwrap();
+        let empty_list = root.join("empty.ignore");
+        fs::write(&empty_list, "").unwrap();
+        let canceled = Arc::new(AtomicBool::new(false));
+        for no_ignore in [true, false] {
+            let mut args = action_args("open", true);
+            args.no_ignore = no_ignore;
+            args.ignore_file = (!no_ignore).then(|| empty_list.clone());
+            let backend = RecordingCliActionBackend::successful();
+            let before = crate::query::ignore_compile_count();
+            super::run_cli_with_backend(&args, &root, &canceled, &backend).unwrap();
+            assert_eq!(crate::query::ignore_compile_count(), before);
+            let names = backend
+                .calls()
+                .into_iter()
+                .map(|(_, path)| path.file_name().unwrap().to_owned())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                names,
+                ["z.txt", "日本語.txt", "a.txt"].map(std::ffi::OsString::from)
+            );
+        }
+        fs::remove_dir_all(root).unwrap();
+    }
 
     struct RecordingCliActionBackend {
         calls: Mutex<Vec<(AuthorizedActionMode, PathBuf)>>,
