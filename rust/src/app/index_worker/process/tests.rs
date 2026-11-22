@@ -448,6 +448,131 @@ fn tc_235_real_supervisor_recovers_stalls_crashes_partial_frames_and_backpressur
     assert_eq!(ACTIVE.load(Ordering::Acquire), 0);
 }
 
+fn data_entry(path: impl Into<PathBuf>) -> IndexEntry {
+    IndexEntry {
+        path: path.into(),
+        kind: crate::entry::EntryKind::file(),
+        kind_known: true,
+    }
+}
+
+fn assert_v1_data_frames(entries: Vec<IndexEntry>, replace: bool, counts: &[usize]) {
+    let total = entries.len();
+    let mut expected = Vec::new();
+    let mut offset = 0;
+    for (i, count) in counts.iter().enumerate() {
+        let batch = entries[offset..offset + count]
+            .iter()
+            .cloned()
+            .map(|entry| wire::Entry::encode(entry).unwrap())
+            .collect();
+        offset += count;
+        let event = if replace && i == 0 {
+            Event::ReplaceAll { entries: batch }
+        } else {
+            Event::Batch { entries: batch }
+        };
+        let data = serde_json::to_vec(&Frame {
+            version: 1,
+            request_id: u64::MAX,
+            tab_id: 123,
+            sequence: 99 + i as u64,
+            event,
+        })
+        .unwrap();
+        expected.extend_from_slice(&(data.len() as u32).to_le_bytes());
+        expected.extend_from_slice(&data);
+    }
+    assert_eq!(offset, total);
+    wire::SERIALIZED_ENTRIES.with(|count| count.set(0));
+    let mut writer = ChildWriter::new(Vec::new(), u64::MAX, 123);
+    writer.sequence = 99;
+    writer.write_entries(entries, replace).unwrap();
+    assert_eq!(writer.sequence, 99 + counts.len() as u64);
+    assert_eq!(wire::SERIALIZED_ENTRIES.with(|count| count.get()), total);
+    assert!(
+        writer.output == expected,
+        "length prefix or v1 JSON frame bytes changed"
+    );
+}
+
+#[test]
+fn tc_235_data_frames_serialize_each_entry_once() {
+    let mut entries = (0..1024)
+        .map(|i| data_entry(format!("folder/資料-{i}")))
+        .collect::<Vec<_>>();
+    #[cfg(unix)]
+    let native = {
+        use std::os::unix::ffi::OsStringExt;
+        std::ffi::OsString::from_vec(vec![0xff, b'x'])
+    };
+    #[cfg(windows)]
+    let native = {
+        use std::os::windows::ffi::OsStringExt;
+        std::ffi::OsString::from_wide(&[0xd800, 0x5c, 0x6f22])
+    };
+    entries.push(IndexEntry {
+        path: native.into(),
+        kind: crate::entry::EntryKind::link_unknown(),
+        kind_known: false,
+    });
+    assert_v1_data_frames(entries.clone(), true, &[1024, 1]);
+    entries.pop();
+    assert_v1_data_frames(entries, false, &[1024]);
+    assert_v1_data_frames(Vec::new(), false, &[]);
+    assert_v1_data_frames(Vec::new(), true, &[0]);
+}
+
+#[test]
+fn tc_235_data_frames_split_only_above_one_mib_of_entry_bytes() {
+    fn encoded_len(path: &str) -> usize {
+        serde_json::to_vec(&wire::Entry::encode(data_entry(path)).unwrap())
+            .unwrap()
+            .len()
+    }
+    let long_path = "a".repeat(20_000);
+    let first_bytes = 16 * encoded_len(&long_path);
+    // Each extra 'a' is ",97" in the native-unit array on both platforms.
+    // Replacing one with 'x' adds exactly one byte (120 instead of 97).
+    for target in [1_048_575, 1_048_576, 1_048_577] {
+        let remainder = target - first_bytes - encoded_len("a");
+        let mut last = "a".repeat(1 + remainder / 3);
+        last.replace_range(..remainder % 3, &"x".repeat(remainder % 3));
+        assert_eq!(first_bytes + encoded_len(&last), target);
+        let mut entries = vec![data_entry(&long_path); 16];
+        entries.push(data_entry(last));
+        entries.push(data_entry("tail"));
+        let counts = if target <= 1_048_576 {
+            [17, 1]
+        } else {
+            [16, 2]
+        };
+        assert_v1_data_frames(entries, true, &counts);
+    }
+}
+
+#[test]
+fn tc_235_data_writer_retains_native_path_frame_and_sequence_limits() {
+    let maximum_path = "a".repeat(65_536);
+    assert_v1_data_frames(vec![data_entry(&maximum_path)], false, &[1]);
+    let mut writer = ChildWriter::new(Vec::new(), 7, 11);
+    assert!(writer
+        .write_entries(vec![data_entry(maximum_path + "a")], false)
+        .is_err());
+    assert_eq!(writer.sequence, 0);
+    assert!(writer.output.is_empty());
+    writer.sequence = u64::MAX;
+    assert!(writer.write_entries(Vec::new(), true).is_err());
+    assert!(writer.output.is_empty());
+
+    let data = vec![0; wire::MAX_FRAME + 1];
+    let mut writer = ChildWriter::new(std::io::sink(), 7, 11);
+    assert!(writer.write_frame(&data).is_err());
+    assert_eq!(writer.sequence, 0);
+    writer.write_frame(&data[..wire::MAX_FRAME]).unwrap();
+    assert_eq!(writer.sequence, 1);
+}
+
 #[test]
 fn tc_235_large_replace_all_splits_by_bytes_without_reordering() {
     let prefix = "segment/".repeat(500);
@@ -460,7 +585,14 @@ fn tc_235_large_replace_all_splits_by_bytes_without_reordering() {
         .collect();
     let mut count = 0;
     let mut frames = 0;
-    emit_entries(entries, true, &mut |event| {
+    let mut writer = ChildWriter::new(Vec::new(), 7, 11);
+    writer.write_entries(entries, true).unwrap();
+    let mut remaining = writer.output.as_slice();
+    while !remaining.is_empty() {
+        let len = u32::from_le_bytes(remaining[..4].try_into().unwrap()) as usize;
+        let frame: Frame = serde_json::from_slice(&remaining[4..4 + len]).unwrap();
+        remaining = &remaining[4 + len..];
+        let event = frame.event;
         let bytes = serde_json::to_vec(&event).unwrap();
         assert!(bytes.len() < 2 * 1024 * 1024, "bounded serialization chunk");
         let entries = match event {
@@ -482,9 +614,7 @@ fn tc_235_large_replace_all_splits_by_bytes_without_reordering() {
             count += 1;
         }
         frames += 1;
-        Ok(())
-    })
-    .unwrap();
+    }
     assert_eq!(count, 1024);
     assert!(frames > 1);
 }

@@ -13,6 +13,7 @@ use std::path::Path;
 thread_local! {
     static QUERY_COMPILE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
     static IGNORE_COMPILE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static FULL_CANDIDATE_COUNT: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 #[cfg(test)]
@@ -73,32 +74,77 @@ pub struct PreparedCandidate {
     extension_start: usize,
 }
 
+// Ranking always uses the basename and visible path. Only scoped clauses need
+// the other path projections, and only highlight callers need display offsets.
+#[derive(Clone, Copy)]
+struct MatchText<'a> {
+    name: &'a str,
+    full: &'a str,
+    prepared: Option<&'a PreparedCandidate>,
+}
+
+impl<'a> MatchText<'a> {
+    fn field(self, field: QueryField) -> (&'a str, &'a str) {
+        match (field, self.prepared) {
+            (QueryField::Any, _) => (self.name, self.full),
+            (QueryField::Name, _) => (self.name, self.name),
+            (QueryField::Path, Some(candidate)) => {
+                let path = &candidate.path[candidate.field_path_byte_start..];
+                (path, path)
+            }
+            (QueryField::Dir, Some(candidate)) => (&candidate.dir, &candidate.dir),
+            (QueryField::Ext, Some(candidate)) => (&candidate.extension, &candidate.extension),
+            (_, None) => unreachable!("scoped rank query requires its prepared fields"),
+        }
+    }
+}
+
+fn filename_and_visible<'a>(normalized_path: &'a Path, scope: QueryScope<'_>) -> (&'a str, String) {
+    let filename = normalized_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default();
+    let visible = display_path_with_mode(
+        normalized_path,
+        scope.root.unwrap_or_else(|| Path::new("")),
+        scope.prefer_relative && scope.root.is_some(),
+    );
+    (filename, visible)
+}
+
 impl PreparedCandidate {
+    fn match_text(&self) -> MatchText<'_> {
+        MatchText {
+            name: &self.name,
+            full: &self.full,
+            prepared: Some(self),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn full_preparation_count() -> usize {
+        FULL_CANDIDATE_COUNT.get()
+    }
+
     fn from_path(path: &Path, scope: QueryScope<'_>, is_dir: Option<bool>) -> Self {
+        #[cfg(test)]
+        FULL_CANDIDATE_COUNT.set(FULL_CANDIDATE_COUNT.get() + 1);
         let normalized_path = normalize_windows_path(path);
-        let filename = normalized_path
-            .file_name()
-            .and_then(|value| value.to_str())
-            .unwrap_or_default()
-            .to_string();
-        let visible_root = scope.root.unwrap_or_else(|| Path::new(""));
-        let visible = display_path_with_mode(
-            &normalized_path,
-            visible_root,
-            scope.prefer_relative && scope.root.is_some(),
-        );
+        let (filename, visible) = filename_and_visible(&normalized_path, scope);
         let filename_start = visible
             .chars()
             .count()
             .saturating_sub(filename.chars().count());
         // Field matching is rooted independently of display mode; offsets alone depend
         // on the visible representation. Keep `path` below for legacy ignore scope.
-        let field_path_byte_start = if scope.prefer_relative || scope.root.is_none() {
-            0
-        } else {
-            let relative = display_path_with_mode(&normalized_path, visible_root, true);
-            visible.len().saturating_sub(relative.len())
-        };
+        let field_path_byte_start =
+            scope
+                .root
+                .filter(|_| !scope.prefer_relative)
+                .map_or(0, |root| {
+                    let relative = display_path_with_mode(&normalized_path, root, true);
+                    visible.len().saturating_sub(relative.len())
+                });
         let field_path_start = visible[..field_path_byte_start].chars().count();
         let field_path_visible = &visible[field_path_byte_start..];
         let directory_visible = field_path_visible
@@ -118,7 +164,7 @@ impl PreparedCandidate {
             .count()
             .saturating_sub(extension.chars().count());
         Self {
-            name: normalize_text(&filename, scope.ignore_case),
+            name: normalize_text(filename, scope.ignore_case),
             full: normalize_text(&visible, scope.ignore_case),
             path: normalize_field_path(&visible, scope.ignore_case),
             field_path_byte_start,
@@ -127,7 +173,7 @@ impl PreparedCandidate {
             extension: normalize_text(&extension, scope.ignore_case),
             extension_visible: extension,
             visible,
-            filename,
+            filename: filename.to_owned(),
             filename_start,
             directory_visible,
             extension_start,
@@ -194,7 +240,14 @@ pub struct CompiledQuery {
     include_exact_bonus_terms: Vec<(QueryField, LiteralPattern)>,
     score_query: String,
     ignore_case: bool,
-    requires_file_kind: bool,
+    rank_projection: RankProjection,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum RankProjection {
+    NameAndFull,
+    ScopedPath,
+    Extension,
 }
 
 #[derive(Debug, Clone)]
@@ -302,12 +355,18 @@ impl CompiledQuery {
                 options.ignore_case,
             ),
             ignore_case: options.ignore_case,
-            requires_file_kind: spec
+            rank_projection: spec
                 .include_terms
                 .iter()
                 .chain(spec.exact_terms.iter())
                 .chain(spec.exclude_terms.iter())
-                .any(|term| term.field == QueryField::Ext),
+                .map(|term| match term.field {
+                    QueryField::Any | QueryField::Name => RankProjection::NameAndFull,
+                    QueryField::Path | QueryField::Dir => RankProjection::ScopedPath,
+                    QueryField::Ext => RankProjection::Extension,
+                })
+                .max()
+                .unwrap_or(RankProjection::NameAndFull),
         })
     }
 
@@ -316,7 +375,12 @@ impl CompiledQuery {
         candidate: &PreparedCandidate,
         evidence: EvidenceLevel,
     ) -> Option<QueryEvaluation> {
-        self.evaluate_with_matcher(candidate, evidence, &SkimMatcherV2::default())
+        let score = self.rank_text(candidate.match_text(), &SkimMatcherV2::default())?;
+        let spans = match evidence {
+            EvidenceLevel::RankOnly => Vec::new(),
+            EvidenceLevel::WithSpans => collect_spans(self, candidate),
+        };
+        Some(QueryEvaluation { score, spans })
     }
 
     pub fn prepare_candidate(
@@ -358,67 +422,65 @@ impl CompiledQuery {
     // clauses only. Do not replace these helpers with full evaluate() without updating the
     // paired tc_155_regression_* tests and the public compatibility contract.
     pub(crate) fn matches_positive_projection(&self, candidate: &PreparedCandidate) -> bool {
-        matches_positive_terms(self, candidate)
+        matches_positive_terms(self, candidate.match_text())
     }
 
     pub(crate) fn positive_projection_spans(&self, candidate: &PreparedCandidate) -> Vec<usize> {
         collect_spans(self, candidate)
     }
 
-    pub(crate) fn evaluate_with_matcher(
-        &self,
-        candidate: &PreparedCandidate,
-        evidence: EvidenceLevel,
-        matcher: &SkimMatcherV2,
-    ) -> Option<QueryEvaluation> {
-        if !matches_compiled_query(self, candidate) {
-            return None;
-        }
-        let spans = match evidence {
-            EvidenceLevel::RankOnly => Vec::new(),
-            EvidenceLevel::WithSpans => collect_spans(self, candidate),
-        };
-        Some(QueryEvaluation {
-            score: score_entry(matcher, self, candidate),
-            spans,
-        })
+    fn rank_text(&self, text: MatchText<'_>, matcher: &SkimMatcherV2) -> Option<f64> {
+        matches_compiled_query(self, text).then(|| score_entry(matcher, self, text))
     }
 
-    pub(crate) fn evaluate_unknown_kind_with_matcher<F>(
+    pub(crate) fn rank_path_with_matcher(
         &self,
         path: &Path,
         root: Option<&Path>,
         prefer_relative: bool,
-        evidence: EvidenceLevel,
+        is_dir: Option<bool>,
         matcher: &SkimMatcherV2,
-        resolve_is_dir: F,
-    ) -> Option<QueryEvaluation>
-    where
-        F: FnOnce() -> bool,
-    {
-        let mut candidate =
-            self.prepare_candidate_with_kind(path, root, prefer_relative, Some(false));
-        let file_evaluation = self.evaluate_with_matcher(&candidate, evidence, matcher);
-        if candidate.extension.is_empty() {
-            return file_evaluation;
+        resolve_is_dir: impl FnOnce() -> bool,
+    ) -> Option<f64> {
+        if self.rank_projection == RankProjection::NameAndFull {
+            let scope = QueryScope {
+                root,
+                prefer_relative,
+                ignore_case: self.ignore_case,
+            };
+            let normalized_path = normalize_windows_path(path);
+            let (filename, mut full) = filename_and_visible(&normalized_path, scope);
+            let name = normalize_text(filename, self.ignore_case);
+            if self.ignore_case {
+                full.make_ascii_lowercase();
+            }
+            return self.rank_text(
+                MatchText {
+                    name: &name,
+                    full: &full,
+                    prepared: None,
+                },
+                matcher,
+            );
+        }
+        let mut candidate = self.prepare_candidate_with_kind(path, root, prefer_relative, is_dir);
+        let score = self.rank_text(candidate.match_text(), matcher);
+        if self.rank_projection != RankProjection::Extension
+            || is_dir.is_some()
+            || candidate.extension.is_empty()
+        {
+            return score;
         }
 
+        // Unknown kinds start with their filename suffix. Only probe the
+        // filesystem if removing it for a directory changes the result.
         candidate.extension.clear();
-        candidate.extension_visible.clear();
-        let directory_evaluation = self.evaluate_with_matcher(&candidate, evidence, matcher);
-        if file_evaluation == directory_evaluation {
-            return file_evaluation;
-        }
-
-        if resolve_is_dir() {
-            directory_evaluation
+        let directory_score = self.rank_text(candidate.match_text(), matcher);
+        if score != directory_score && resolve_is_dir() {
+            directory_score
         } else {
-            file_evaluation
+            score
         }
-    }
-
-    pub(crate) fn requires_file_kind(&self) -> bool {
-        self.requires_file_kind
     }
 }
 
@@ -691,19 +753,6 @@ fn matches_alternative_set(set: &AlternativeSet, name: &str, full: &str) -> bool
     })
 }
 
-fn candidate_field_texts(candidate: &PreparedCandidate, field: QueryField) -> (&str, &str) {
-    match field {
-        QueryField::Any => (&candidate.name, &candidate.full),
-        QueryField::Name => (&candidate.name, &candidate.name),
-        QueryField::Path => {
-            let path = &candidate.path[candidate.field_path_byte_start..];
-            (path, path)
-        }
-        QueryField::Dir => (&candidate.dir, &candidate.dir),
-        QueryField::Ext => (&candidate.extension, &candidate.extension),
-    }
-}
-
 fn literal_occurrence_count(text: &str, needle: &str) -> usize {
     if needle.is_empty() {
         return 0;
@@ -717,8 +766,8 @@ fn literal_occurrence_count(text: &str, needle: &str) -> usize {
     count
 }
 
-fn matches_exact_term(term: &ExactTermMatcher, candidate: &PreparedCandidate) -> bool {
-    let (name, full) = candidate_field_texts(candidate, term.field);
+fn matches_exact_term(term: &ExactTermMatcher, candidate: MatchText<'_>) -> bool {
+    let (name, full) = candidate.field(term.field);
     if term.required_unanchored_count <= 1 {
         return matches_alternative_set(&term.set, name, full);
     }
@@ -746,8 +795,8 @@ fn matches_include_literal(pattern: &LiteralPattern, name: &str, full: &str) -> 
         || is_subsequence(&pattern.core_chars, full)
 }
 
-fn matches_include_matcher(matcher: &ScopedIncludeMatcher, candidate: &PreparedCandidate) -> bool {
-    let (name, full) = candidate_field_texts(candidate, matcher.field);
+fn matches_include_matcher(matcher: &ScopedIncludeMatcher, candidate: MatchText<'_>) -> bool {
+    let (name, full) = candidate.field(matcher.field);
     match &matcher.matcher {
         IncludeMatcher::Regex(regex) => regex.is_match(name) || regex.is_match(full),
         IncludeMatcher::Alternatives(alternatives) => alternatives.iter().any(|alternative| {
@@ -761,14 +810,14 @@ fn matches_include_matcher(matcher: &ScopedIncludeMatcher, candidate: &PreparedC
     }
 }
 
-fn matches_compiled_query(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> bool {
+fn matches_compiled_query(compiled: &CompiledQuery, candidate: MatchText<'_>) -> bool {
     !compiled.exclude_terms.iter().any(|term| {
-        let (name, full) = candidate_field_texts(candidate, term.field);
+        let (name, full) = candidate.field(term.field);
         matches_alternative_set(&term.set, name, full)
     }) && matches_positive_terms(compiled, candidate)
 }
 
-fn matches_positive_terms(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> bool {
+fn matches_positive_terms(compiled: &CompiledQuery, candidate: MatchText<'_>) -> bool {
     compiled
         .exact_terms
         .iter()
@@ -793,8 +842,8 @@ fn fallback_score(query: &str, text: &str) -> f64 {
     score + query.len().min(text.len()) as f64
 }
 
-fn bonus_for_alternative_set(set: &ScopedAlternativeSet, candidate: &PreparedCandidate) -> f64 {
-    let (name, full) = candidate_field_texts(candidate, set.field);
+fn bonus_for_alternative_set(set: &ScopedAlternativeSet, candidate: MatchText<'_>) -> f64 {
+    let (name, full) = candidate.field(set.field);
     let mut bonus = 0.0;
     if set.set.alternatives.iter().any(|pattern| {
         matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full)
@@ -812,18 +861,14 @@ fn bonus_for_alternative_set(set: &ScopedAlternativeSet, candidate: &PreparedCan
     bonus
 }
 
-fn score_entry(
-    matcher: &SkimMatcherV2,
-    compiled: &CompiledQuery,
-    candidate: &PreparedCandidate,
-) -> f64 {
+fn score_entry(matcher: &SkimMatcherV2, compiled: &CompiledQuery, candidate: MatchText<'_>) -> f64 {
     let mut score = if compiled.score_query.is_empty() {
         0.0
     } else {
         matcher
-            .fuzzy_match(&candidate.full, &compiled.score_query)
+            .fuzzy_match(candidate.full, &compiled.score_query)
             .map(|value| value as f64)
-            .unwrap_or_else(|| fallback_score(&compiled.score_query, &candidate.full))
+            .unwrap_or_else(|| fallback_score(&compiled.score_query, candidate.full))
     };
     if !compiled.score_query.is_empty() && candidate.name == compiled.score_query {
         score += 1000.0;
@@ -839,7 +884,7 @@ fn score_entry(
         score += bonus_for_alternative_set(term, candidate);
     }
     for (field, pattern) in &compiled.include_exact_bonus_terms {
-        let (name, full) = candidate_field_texts(candidate, *field);
+        let (name, full) = candidate.field(*field);
         if matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full) {
             score += 300.0;
             if name == pattern.core {
@@ -993,8 +1038,9 @@ fn add_pattern_positions(
 
 fn collect_spans(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> Vec<usize> {
     let mut spans = BTreeSet::new();
+    let text = candidate.match_text();
     for term in &compiled.exact_terms {
-        let (name, full) = candidate_field_texts(candidate, term.field);
+        let (name, full) = text.field(term.field);
         if let Some(pattern) = term.set.alternatives.iter().find(|pattern| {
             matches_anchored_literal(pattern, name) || matches_anchored_literal(pattern, full)
         }) {
@@ -1009,7 +1055,7 @@ fn collect_spans(compiled: &CompiledQuery, candidate: &PreparedCandidate) -> Vec
         }
     }
     for matcher in &compiled.include_terms {
-        let (name, full) = candidate_field_texts(candidate, matcher.field);
+        let (name, full) = text.field(matcher.field);
         match &matcher.matcher {
             IncludeMatcher::Regex(regex) => {
                 if matcher.field == QueryField::Any {

@@ -576,6 +576,53 @@ fn shared_all_match_path_sort_uses_the_complete_normalized_path() {
 }
 
 #[test]
+fn all_match_path_top_k_matches_full_order_across_normalized_ties() {
+    // Each numbered path appears with both separators. Use the number as the
+    // reference key so the oracle is independent of the production path sorter.
+    let entries = (0..257)
+        .map(|index| {
+            let separator = if index % 2 == 0 { '/' } else { '\\' };
+            Entry::unknown(format!("root{separator}item-{:02}.rs", index % 37).into())
+        })
+        .collect::<Vec<_>>();
+    let candidates = (0..entries.len())
+        .map(|ordinal| {
+            let index = ordinal * 73 % entries.len();
+            SearchCandidateScore {
+                index,
+                score: index as f64 + 0.5,
+                ordinal,
+            }
+        })
+        .collect::<Vec<_>>();
+
+    for mode in [SearchSortMode::PathAsc, SearchSortMode::PathDesc] {
+        let mut reference = candidates.clone();
+        reference.sort_by_key(|candidate| (candidate.index % 37, candidate.ordinal));
+        if mode == SearchSortMode::PathDesc {
+            reference.reverse();
+        }
+        let expected = reference
+            .iter()
+            .map(|candidate| IndexedScore {
+                index: candidate.index,
+                score: candidate.score,
+            })
+            .collect::<Vec<_>>();
+        let count = entries.len();
+        for input in [&candidates, &reference] {
+            for limit in [0, 1, 3, 100, count - 1, count, count + 1] {
+                assert_eq!(
+                    top_path_sorted_scores(&entries, input.clone(), limit, mode),
+                    expected[..limit.min(count)],
+                    "mode={mode:?} limit={limit}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn tc_057b_tc_163_shared_all_match_sort_returns_no_results_at_zero_limit() {
     let entries = Arc::new(vec![Entry::new(PathBuf::from("/tmp/module.rs"), None)]);
     let mut cache = SearchPrefixCache::default();

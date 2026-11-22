@@ -397,6 +397,9 @@ fn top_path_sorted_scores(
     limit: usize,
     mode: SearchSortMode,
 ) -> Vec<IndexedScore> {
+    if limit == 0 {
+        return Vec::new();
+    }
     let desc = mode == SearchSortMode::PathDesc;
     let mut items = scored
         .into_iter()
@@ -405,17 +408,26 @@ fn top_path_sorted_scores(
             Some((item, entry_path_key(entry)))
         })
         .collect::<Vec<_>>();
-    items.sort_unstable_by(|a, b| {
+    let compare = |a: &(SearchCandidateScore, String), b: &(SearchCandidateScore, String)| {
         let cmp = a.1.cmp(&b.1).then_with(|| a.0.ordinal.cmp(&b.0.ordinal));
         if desc {
             cmp.reverse()
         } else {
             cmp
         }
-    });
+    };
+    if items.len() > limit {
+        // A FileList can already be in the requested path order.
+        if !items.is_sorted_by(|a, b| compare(a, b).is_le()) {
+            items.select_nth_unstable_by(limit - 1, compare);
+            items[..limit].sort_unstable_by(compare);
+        }
+        items.truncate(limit);
+    } else {
+        items.sort_unstable_by(compare);
+    }
     items
         .into_iter()
-        .take(limit)
         .map(|(item, _)| IndexedScore {
             index: item.index,
             score: item.score,

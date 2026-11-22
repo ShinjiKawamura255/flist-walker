@@ -380,37 +380,105 @@ impl PollableOutput {
         }
     }
 }
-struct ChildWriter {
-    output: std::io::Stdout,
+struct ChildWriter<W> {
+    output: W,
+    request_id: u64,
+    tab_id: u64,
     sequence: u64,
     baseline: Option<(Source, FileObservation)>,
 }
+impl<W: Write> ChildWriter<W> {
+    fn new(output: W, request_id: u64, tab_id: u64) -> Self {
+        Self {
+            output,
+            request_id,
+            tab_id,
+            sequence: 0,
+            baseline: None,
+        }
+    }
+
+    fn serialize_event(&self, event: Event) -> Result<Vec<u8>, ()> {
+        serde_json::to_vec(&Frame {
+            version: 1,
+            request_id: self.request_id,
+            tab_id: self.tab_id,
+            sequence: self.sequence,
+            event,
+        })
+        .map_err(|_| ())
+    }
+
+    fn write_frame(&mut self, data: &[u8]) -> Result<(), ()> {
+        if data.len() > wire::MAX_FRAME {
+            return Err(());
+        }
+        self.sequence = self.sequence.checked_add(1).ok_or(())?;
+        self.output
+            .write_all(&(data.len() as u32).to_le_bytes())
+            .map_err(|_| ())?;
+        self.output.write_all(data).map_err(|_| ())?;
+        self.output.flush().map_err(|_| ())
+    }
+
+    fn begin_data_frame(&self, replace: bool) -> Result<Vec<u8>, ()> {
+        let entries = Vec::new();
+        let event = if replace {
+            Event::ReplaceAll { entries }
+        } else {
+            Event::Batch { entries }
+        };
+        let mut data = self.serialize_event(event)?;
+        // Keep the canonical v1 envelope and open its trailing entries array.
+        // Reject a schema change before publishing an incorrectly framed batch.
+        if !data.ends_with(br#""entries":[]}}"#) {
+            return Err(());
+        }
+        data.truncate(data.len() - DATA_FRAME_TRAILER.len());
+        Ok(data)
+    }
+
+    fn write_entries(&mut self, entries: Vec<IndexEntry>, replace: bool) -> Result<(), ()> {
+        if entries.is_empty() && !replace {
+            return Ok(());
+        }
+        let mut data = self.begin_data_frame(replace)?;
+        let mut encoded = Vec::new();
+        let mut count = 0;
+        let mut size = 0;
+        for entry in entries {
+            encoded.clear();
+            serde_json::to_writer(&mut encoded, &wire::Entry::encode(entry).map_err(|_| ())?)
+                .map_err(|_| ())?;
+            // v1 counts encoded entry bytes only, excluding commas and envelope.
+            if count > 0 && (size + encoded.len() > 1024 * 1024 || count == wire::MAX_ENTRIES) {
+                data.extend_from_slice(DATA_FRAME_TRAILER);
+                self.write_frame(&data)?;
+                data = self.begin_data_frame(false)?;
+                count = 0;
+                size = 0;
+            }
+            if count > 0 {
+                data.push(b',');
+            }
+            data.extend_from_slice(&encoded);
+            count += 1;
+            size += encoded.len();
+        }
+        data.extend_from_slice(DATA_FRAME_TRAILER);
+        self.write_frame(&data)
+    }
+}
+const DATA_FRAME_TRAILER: &[u8] = b"]}}";
+
 struct ChildSink {
-    request_id: u64,
-    tab_id: u64,
-    writer: Mutex<ChildWriter>,
+    writer: Mutex<ChildWriter<std::io::Stdout>>,
 }
 impl ChildSink {
     fn emit(&self, event: Event) -> Result<(), ()> {
         let mut writer = self.writer.lock().map_err(|_| ())?;
-        let frame = Frame {
-            version: 1,
-            request_id: self.request_id,
-            tab_id: self.tab_id,
-            sequence: writer.sequence,
-            event,
-        };
-        let data = serde_json::to_vec(&frame).map_err(|_| ())?;
-        if data.len() > wire::MAX_FRAME {
-            return Err(());
-        }
-        writer.sequence = writer.sequence.checked_add(1).ok_or(())?;
-        writer
-            .output
-            .write_all(&(data.len() as u32).to_le_bytes())
-            .map_err(|_| ())?;
-        writer.output.write_all(&data).map_err(|_| ())?;
-        writer.output.flush().map_err(|_| ())
+        let data = writer.serialize_event(event)?;
+        writer.write_frame(&data)
     }
     fn phase(&self, phase: &str) -> Result<(), ()> {
         self.emit(Event::Phase {
@@ -449,45 +517,11 @@ impl ChildSink {
         })
     }
     fn entries(&self, entries: Vec<IndexEntry>, replace: bool) -> Result<(), ()> {
-        emit_entries(entries, replace, &mut |event| self.emit(event))
+        self.writer
+            .lock()
+            .map_err(|_| ())?
+            .write_entries(entries, replace)
     }
-}
-fn emit_entries(
-    entries: Vec<IndexEntry>,
-    replace: bool,
-    emit: &mut impl FnMut(Event) -> Result<(), ()>,
-) -> Result<(), ()> {
-    // Stream large replacements as a replacement chunk followed by append
-    // chunks, preserving original entry order and bounded frame buffers.
-    let mut chunk = Vec::new();
-    let mut size = 0usize;
-    let mut first = true;
-    for entry in entries {
-        let entry = wire::Entry::encode(entry).map_err(|_| ())?;
-        let encoded = serde_json::to_vec(&entry).map_err(|_| ())?;
-        if !chunk.is_empty()
-            && (size + encoded.len() > 1024 * 1024 || chunk.len() >= wire::MAX_ENTRIES)
-        {
-            let old = std::mem::take(&mut chunk);
-            emit(if replace && first {
-                Event::ReplaceAll { entries: old }
-            } else {
-                Event::Batch { entries: old }
-            })?;
-            first = false;
-            size = 0;
-        }
-        size += encoded.len();
-        chunk.push(entry);
-    }
-    if !chunk.is_empty() || replace && first {
-        emit(if replace && first {
-            Event::ReplaceAll { entries: chunk }
-        } else {
-            Event::Batch { entries: chunk }
-        })?;
-    }
-    Ok(())
 }
 impl IndexResponseSink for ChildSink {
     fn send(&self, response: IndexResponse) -> Result<(), ()> {
@@ -535,13 +569,11 @@ pub(crate) fn run_internal_if_requested() -> anyhow::Result<bool> {
         .into_request(root)
         .map_err(anyhow::Error::msg)?;
     let sink = ChildSink {
-        request_id: req.request_id,
-        tab_id: req.tab_id,
-        writer: Mutex::new(ChildWriter {
-            output: std::io::stdout(),
-            sequence: 0,
-            baseline: None,
-        }),
+        writer: Mutex::new(ChildWriter::new(
+            std::io::stdout(),
+            req.request_id,
+            req.tab_id,
+        )),
     };
     let shutdown = AtomicBool::new(false);
     let latest = Mutex::new(HashMap::from([(req.tab_id, req.request_id)]));
