@@ -7,6 +7,7 @@ use super::paged_preview_flow::{PagedPreviewView, PreviewAction};
 use super::{
     render_theme, EntryDisplayKind, EntryKind, FlistWalkerApp, ResultSortMode, ResultSortScope,
 };
+use crate::app::render::{action_button, baseline_button};
 use crate::ui_model::{PagedTextPreview, PreviewPageState, SyntaxTokenKind};
 use eframe::egui;
 #[cfg(test)]
@@ -133,25 +134,6 @@ pub(super) fn centered_checkbox(
 }
 
 #[cfg(test)]
-pub(super) fn centered_checkbox_layout(
-    rect: egui::Rect,
-    checkbox_size: f32,
-    icon_spacing: f32,
-    text_size: egui::Vec2,
-    label_y_offset: f32,
-    checkbox_y_offset: f32,
-) -> (egui::Rect, egui::Pos2) {
-    top_panel::centered_checkbox_layout(
-        rect,
-        checkbox_size,
-        icon_spacing,
-        text_size,
-        label_y_offset,
-        checkbox_y_offset,
-    )
-}
-
-#[cfg(test)]
 pub(super) fn update_max_depth_draft_for_unlimited(draft: &mut usize, unlimited: bool) {
     top_panel::update_max_depth_draft_for_unlimited(draft, unlimited);
 }
@@ -198,7 +180,7 @@ pub(super) fn render_status_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     if ui
                         .add_enabled(
                             !app.shell.features.filelist.workflow.cancel_requested,
-                            egui::Button::new(cancel_label),
+                            action_button(cancel_label),
                         )
                         .clicked()
                     {
@@ -279,7 +261,7 @@ fn preview_token_color(kind: SyntaxTokenKind, dark: bool) -> egui::Color32 {
         (SyntaxTokenKind::Number, false) => (151, 82, 27),
         (SyntaxTokenKind::Heading | SyntaxTokenKind::Tag, false) => (29, 92, 157),
         (SyntaxTokenKind::Attribute | SyntaxTokenKind::Preprocessor, false) => (135, 88, 16),
-        (SyntaxTokenKind::Delimiter, false) => (120, 120, 120),
+        (SyntaxTokenKind::Delimiter, false) => (100, 100, 100),
         (SyntaxTokenKind::Column(column), false) => COLUMN_LIGHT[column as usize % 8],
     };
     egui::Color32::from_rgb(r, g, b)
@@ -451,7 +433,7 @@ fn render_paged_preview(
             } else {
                 ui.visuals().widgets.inactive.bg_stroke
             });
-            let response = ui.add_enabled(candidate.available(document, busy, error), button)
+            let response = ui.add_enabled(candidate.available(document, busy, error), baseline_button(button))
                 .on_hover_text(format!("{focus_hint}\nLeft / Right: select; Enter / Space: activate; Esc: return to search"));
             if selected && !ui.clip_rect().contains_rect(response.rect) {
                 response.scroll_to_me(Some(egui::Align::Center));
@@ -481,6 +463,8 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
     if app.shell.ui.show_preview() {
         let paged_document = app.paged_preview_for_current().cloned();
         let mut preview_action = None;
+        let header_height = results_header_height(ui);
+        let header_center_y = ui.available_rect_before_wrap().top() + header_height / 2.0;
         let max_preview_width = (ui.available_width() - FlistWalkerApp::MIN_RESULTS_PANEL_WIDTH)
             .max(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH);
         let panel = egui::Panel::right("preview-panel")
@@ -489,7 +473,7 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
             .min_size(FlistWalkerApp::MIN_PREVIEW_PANEL_WIDTH)
             .max_size(max_preview_width);
         let response = panel.show(ui, |ui| {
-            ui.heading("Preview");
+            widgets::centered_panel_heading(ui, "Preview", header_height, header_center_y);
             let preview_width = ui.available_width();
             let preview_height = ui.available_height();
             ui.allocate_ui_with_layout(
@@ -516,7 +500,7 @@ pub(super) fn render_results_and_preview(app: &mut FlistWalkerApp, ui: &mut egui
                                 });
                         } else {
                             if app.initial_preview_reload_available()
-                                && ui.button("Reload").clicked()
+                                && ui.add(action_button("Reload")).clicked()
                             {
                                 preview_action = Some(PreviewAction::Reload);
                             }
@@ -596,11 +580,17 @@ fn labeled_results_combo(
         egui::Layout::left_to_right(egui::Align::Center),
         |ui| {
             ui.spacing_mut().interact_size.y = row_height;
-            centered_top_panel_label(ui, label);
+            centered_top_panel_label(ui, label, egui::Vec2::ZERO);
             render_combo(ui)
         },
     )
     .inner
+}
+
+fn results_header_height(ui: &egui::Ui) -> f32 {
+    ui.text_style_height(&egui::TextStyle::Heading)
+        .max(ui.text_style_height(&egui::TextStyle::Body) + 2.0 * ui.spacing().button_padding.y)
+        .max(ui.spacing().interact_size.y)
 }
 
 pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
@@ -610,10 +600,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             active.result.header_bounds = Some(ui.available_rect_before_wrap());
         }
     });
-    let row_height = ui
-        .text_style_height(&egui::TextStyle::Heading)
-        .max(ui.text_style_height(&egui::TextStyle::Body) + 2.0 * ui.spacing().button_padding.y)
-        .max(ui.spacing().interact_size.y);
+    let row_height = results_header_height(ui);
+    let header_center_y = ui.available_rect_before_wrap().top() + row_height / 2.0;
     let text_width = |text: &str, style: egui::TextStyle| {
         ui.painter()
             .layout_no_wrap(
@@ -649,8 +637,8 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         egui::vec2(available_width, row_height),
         egui::Layout::left_to_right(egui::Align::Center).with_main_wrap(true),
         |ui| {
-            ui.heading("Results");
-            ui.label(shown_label);
+            widgets::centered_panel_heading(ui, "Results", row_height, header_center_y);
+            centered_top_panel_label(ui, shown_label, egui::Vec2::ZERO);
             if separate_controls {
                 ui.end_row();
             }
@@ -691,7 +679,12 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                 ResultSortMode::SizeDesc,
                                 ResultSortMode::SizeAsc,
                             ] {
-                                ui.selectable_value(&mut selected, mode, mode.label());
+                                super::render::baseline_selectable_value(
+                                    ui,
+                                    &mut selected,
+                                    mode,
+                                    mode.label(),
+                                );
                             }
                         })
                         .response
@@ -719,7 +712,12 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     .show_ui(ui, |ui| {
                         ui.set_min_width(126.0);
                         for scope in [ResultSortScope::ShownResults, ResultSortScope::AllMatches] {
-                            ui.selectable_value(&mut selected_scope, scope, scope.label());
+                            super::render::baseline_selectable_value(
+                                ui,
+                                &mut selected_scope,
+                                scope,
+                                scope.label(),
+                            );
                         }
                     })
                     .response
@@ -862,6 +860,11 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     }
     let scroll_output = scroll_area.show_rows(ui, row_height, total_rows, |ui, visible_rows| {
         let row_width = ui.available_width().max(0.0);
+        let text_center = super::render::single_line_reference_center_y(
+            ui,
+            egui::TextFormat::default().font_id,
+            "Hg",
+        );
         // Regression guard: only visible rows may clone paths or allocate widgets;
         // iterating the full result set here makes every frame O(total results).
         for i in visible_rows {
@@ -872,7 +875,15 @@ pub(super) fn render_results_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let is_current = app.shell.runtime.current_row == Some(i);
             let (rect, response) =
                 ui.allocate_exact_size(egui::vec2(row_width, row_height), egui::Sense::click());
-            render_result_row(app, ui, rect, &path, is_current, prefer_relative);
+            render_result_row(
+                app,
+                ui,
+                rect,
+                &path,
+                is_current,
+                prefer_relative,
+                text_center,
+            );
             visible_targets.push((
                 app.current_tab_id().unwrap_or_default(),
                 rect.intersect(ui.clip_rect()),
@@ -1109,6 +1120,7 @@ fn render_result_row(
     path: &Path,
     is_current: bool,
     prefer_relative: bool,
+    text_center: f32,
 ) {
     let is_pinned = app.shell.runtime.pinned_paths.contains(path);
     let kind = app.find_entry_kind(path);
@@ -1131,12 +1143,10 @@ fn render_result_row(
         );
     }
 
-    let inner_rect = rect.shrink2(egui::vec2(
-        FlistWalkerApp::RESULT_ROW_H_MARGIN,
-        FlistWalkerApp::RESULT_ROW_V_MARGIN,
-    ));
     let galley = ui.painter().layout_job(job);
-    let text_pos = FlistWalkerApp::result_row_text_pos(inner_rect, galley.size());
+    let ink = super::render::single_line_ink_bounds(&galley);
+    let y = super::render::control_text_top(rect, ink, text_center);
+    let text_pos = egui::pos2(rect.left() + FlistWalkerApp::RESULT_ROW_H_MARGIN, y);
     ui.painter()
         .galley(text_pos, galley, ui.visuals().text_color());
 }
@@ -1221,58 +1231,140 @@ pub(super) fn render_central_panel(app: &mut FlistWalkerApp, ui: &mut egui::Ui) 
 #[cfg(test)]
 mod preview_render_tests {
     use super::*;
+    use crate::app::tests::text_contrast;
+    use crate::runtime_config::ThemeMode;
+    use std::fs;
+
+    #[test]
+    fn result_path_and_markers_fit_the_highlighted_row_across_font_offsets() {
+        let root = std::path::PathBuf::from("example");
+        let mut app = FlistWalkerApp::new(root.clone(), 30, String::new());
+        for offset in [-4.0, 4.0] {
+            let ctx = egui::Context::default();
+            let mut fonts = egui::FontDefinitions::default();
+            for font in fonts.font_data.values_mut() {
+                std::sync::Arc::make_mut(font).tweak.y_offset = offset;
+            }
+            ctx.set_fonts(fonts);
+            let mut row = egui::Rect::NOTHING;
+            let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                row = egui::Rect::from_min_size(
+                    egui::pos2(12.0, 20.0),
+                    egui::vec2(240.0, result_row_height(ui)),
+                );
+                let center = super::super::render::single_line_reference_center_y(
+                    ui,
+                    egui::TextFormat::default().font_id,
+                    "Hg",
+                );
+                render_result_row(
+                    &mut app,
+                    ui,
+                    row,
+                    &root.join("Report.md"),
+                    true,
+                    true,
+                    center,
+                );
+            });
+            let text = output
+                .shapes
+                .iter()
+                .find_map(|shape| match &shape.shape {
+                    egui::Shape::Text(text) if text.galley.text().contains("Report.md") => {
+                        Some(text)
+                    }
+                    _ => None,
+                })
+                .unwrap();
+            let ink = text.visual_bounding_rect();
+            assert!(row.contains_rect(ink));
+            assert!(
+                (ink.center().y - row.center().y).abs() <= 1.5,
+                "ink={ink:?}, row={row:?}"
+            );
+            assert_eq!(text.pos.x, row.left() + FlistWalkerApp::RESULT_ROW_H_MARGIN);
+        }
+    }
 
     #[test]
     fn result_row_colors_stay_readable_on_normal_and_selected_backgrounds() {
-        fn luminance(color: egui::Color32) -> f64 {
-            let linear = [color.r(), color.g(), color.b()].map(|channel| {
-                let value = f64::from(channel) / 255.0;
-                if value <= 0.04045 {
-                    value / 12.92
-                } else {
-                    ((value + 0.055) / 1.055).powf(2.4)
-                }
-            });
-            linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
-        }
-        for dark in [false, true] {
+        for theme in [ThemeMode::Light, ThemeMode::Dark] {
             let ctx = egui::Context::default();
-            ctx.set_visuals(if dark {
-                egui::Visuals::dark()
-            } else {
-                egui::Visuals::light()
-            });
+            render_theme::apply_theme(&ctx, theme);
             let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+                let dark = ui.visuals().dark_mode;
+                assert_eq!(dark, theme == ThemeMode::Dark);
                 for current in [false, true] {
                     let background = if current {
                         render_theme::selected_fill(dark)
                     } else {
                         ui.visuals().panel_fill
                     };
-                    for kind in [EntryKind::dir(), EntryKind::file(), EntryKind::link(false), EntryKind::other()] {
-                        let job = build_result_row_job(ui, "alpha.txt", &[0, 1, 2, 3, 4], current, true, Some(kind));
+                    for kind in [
+                        None,
+                        Some(EntryKind::dir()),
+                        Some(EntryKind::file()),
+                        Some(EntryKind::link(false)),
+                        Some(EntryKind::other()),
+                    ] {
+                        let job =
+                            build_result_row_job(ui, "alpha.txt", &[0, 1, 2, 3, 4], current, true, kind);
                         for (index, section) in job.sections.iter().enumerate() {
-                            let text = &job.text[section.byte_range.start.0..section.byte_range.end.0];
-                            if text.trim().is_empty() || (index == 0 && !current) {
-                                continue;
-                            }
                             let foreground = section.format.color;
-                            // egui owns ordinary path text; this guard covers the
-                            // explicit kind, match and current-row colors we own.
-                            if index >= 3 && foreground == ui.visuals().text_color() {
+                            // Dark mode retains egui's default normal and weak text.
+                            let uses_default = match index {
+                                0 => !current,       // weak markers
+                                1 => kind.is_none(), // unresolved kind
+                                _ => foreground == ui.visuals().text_color(),
+                            };
+                            let range = section.byte_range.start.0..section.byte_range.end.0;
+                            let text = &job.text[range];
+                            if text.trim().is_empty() || (dark && uses_default) {
                                 continue;
                             }
-                            let a = luminance(foreground);
-                            let b = luminance(background);
-                            let ratio = (a.max(b) + 0.05) / (a.min(b) + 0.05);
-                            assert!(ratio >= 4.5, "dark={dark} current={current} kind={kind:?} text={text:?} color={foreground:?} background={background:?} contrast={ratio:.2}");
+                            let ratio = text_contrast(foreground, background);
+                            assert!(
+                                ratio >= 4.5,
+                                "{theme:?} current={current} kind={kind:?} text={text:?} contrast={ratio:.2}"
+                            );
                         }
                     }
                 }
             });
         }
     }
-    use std::fs;
+
+    #[test]
+    fn light_preview_text_stays_readable_on_the_preview_background() {
+        use SyntaxTokenKind::*;
+        let ctx = egui::Context::default();
+        render_theme::apply_theme(&ctx, ThemeMode::Light);
+        let _ = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let visuals = ui.visuals();
+            assert!(!visuals.dark_mode);
+            let background = visuals.extreme_bg_color;
+            let tokens = [
+                Keyword,
+                String,
+                Comment,
+                Number,
+                Heading,
+                Tag,
+                Attribute,
+                Preprocessor,
+                Delimiter,
+            ];
+            for token in tokens.into_iter().chain((0..8).map(Column)) {
+                let ratio = text_contrast(preview_token_color(token, false), background);
+                assert!(ratio >= 4.5, "preview {token:?} contrast={ratio:.2}");
+            }
+            for color in [visuals.text_color(), visuals.weak_text_color()] {
+                let ratio = text_contrast(color, background);
+                assert!(ratio >= 4.5, "preview text {color:?} contrast={ratio:.2}");
+            }
+        });
+    }
 
     #[test]
     fn delimited_column_colors_are_distinct_and_cycle_in_both_themes() {

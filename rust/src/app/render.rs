@@ -26,6 +26,135 @@ pub(super) fn single_line_text_bounds(galley: &egui::Galley) -> egui::Rect {
     galley.rect.union(galley.mesh_bounds)
 }
 
+pub(super) fn single_line_ink_bounds(galley: &egui::Galley) -> egui::Rect {
+    if galley.mesh_bounds.is_finite() && galley.mesh_bounds.is_positive() {
+        galley.mesh_bounds
+    } else {
+        galley.rect
+    }
+}
+
+pub(super) fn control_text_top(rect: egui::Rect, ink: egui::Rect, reference_y: f32) -> f32 {
+    let min_y = rect.top() - ink.top();
+    let max_y = rect.bottom() - ink.bottom();
+    if min_y <= max_y {
+        (rect.center().y - reference_y).clamp(min_y, max_y)
+    } else {
+        rect.center().y - ink.center().y
+    }
+}
+
+/// Adjacent captions share a baseline even when only one has a descender.
+pub(super) fn single_line_reference_center_y(
+    ui: &egui::Ui,
+    font: egui::FontId,
+    sample: &str,
+) -> f32 {
+    let reference =
+        ui.painter()
+            .layout_no_wrap(sample.to_owned(), font, egui::Color32::PLACEHOLDER);
+    single_line_ink_bounds(&reference).center().y
+}
+
+pub(super) fn single_line_editor<'a>(ui: &egui::Ui, text: &'a mut String) -> egui::TextEdit<'a> {
+    let font = egui::FontSelection::Default.resolve(ui.style());
+    let sample = ui
+        .painter()
+        .layout_no_wrap("Hg".to_owned(), font, egui::Color32::PLACEHOLDER);
+    // Redistribute the editor's own vertical padding. Its hit testing, hint,
+    // caret, selection and IME then all use the same content rectangle.
+    let mut margin = egui::Margin::symmetric(4, 2);
+    let shift = (sample.rect.center().y - single_line_ink_bounds(&sample).center().y)
+        .round()
+        .clamp(-f32::from(margin.top), f32::from(margin.bottom)) as i8;
+    margin.top += shift;
+    margin.bottom -= shift;
+    egui::TextEdit::singleline(text).margin(margin)
+}
+
+pub(super) fn action_button<'a>(label: impl egui::IntoAtoms<'a>) -> impl egui::Widget + 'a {
+    baseline_button(egui::Button::new(label))
+}
+
+pub(super) fn baseline_button(button: egui::Button<'_>) -> impl egui::Widget + '_ {
+    move |ui: &mut egui::Ui| baseline_control(ui, |ui| ui.add(button))
+}
+
+pub(super) fn ink_centered_button(button: egui::Button<'_>) -> impl egui::Widget + '_ {
+    move |ui: &mut egui::Ui| align_control(ui, CaptionAlignment::InkCenter, |ui| ui.add(button))
+}
+
+pub(super) fn baseline_selectable_value<'a, T: PartialEq>(
+    ui: &mut egui::Ui,
+    current: &mut T,
+    value: T,
+    label: impl egui::IntoAtoms<'a>,
+) -> egui::Response {
+    baseline_control(ui, |ui| ui.selectable_value(current, value, label))
+}
+
+pub(super) fn baseline_control(
+    ui: &mut egui::Ui,
+    draw: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    align_control(ui, CaptionAlignment::SharedBaseline, draw)
+}
+
+enum CaptionAlignment {
+    InkCenter,
+    SharedBaseline,
+}
+
+fn align_control(
+    ui: &mut egui::Ui,
+    alignment: CaptionAlignment,
+    draw: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    let layer = ui.layer_id();
+    let start = ui
+        .ctx()
+        .graphics(|layers| layers.get(layer).map_or(0, |list| list.next_idx().0));
+    let response = draw(ui);
+    // Only inspect the shapes appended by this control. Popup contents are on a
+    // separate layer, and wrapped captions retain the widget's original layout.
+    let painted = ui.ctx().graphics(|layers| {
+        layers
+            .get(layer)?
+            .all_entries()
+            .enumerate()
+            .skip(start)
+            .find_map(|(index, entry)| {
+                let egui::Shape::Text(text) = &entry.shape else {
+                    return None;
+                };
+                (text.galley.rows.len() == 1)
+                    .then(|| (egui::layers::ShapeIdx(index), text.galley.clone()))
+            })
+    });
+    let Some((index, galley)) = painted else {
+        return response;
+    };
+    let ink = single_line_ink_bounds(&galley);
+    let reference = match alignment {
+        CaptionAlignment::InkCenter => ink.center().y,
+        CaptionAlignment::SharedBaseline => {
+            let Some(section) = galley.job.sections.first() else {
+                return response;
+            };
+            single_line_reference_center_y(ui, section.format.font_id.clone(), "H")
+        }
+    };
+    let y = control_text_top(response.rect, ink, reference);
+    ui.ctx().graphics_mut(|layers| {
+        layers.entry(layer).mutate_shape(index, |entry| {
+            if let egui::Shape::Text(text) = &mut entry.shape {
+                text.pos.y = y;
+            }
+        });
+    });
+    response
+}
+
 // Render command surface. Render.rs stays focused on drawing and input
 // collection while FlistWalkerApp dispatches the resulting commands.
 #[derive(Clone, Copy)]
@@ -241,11 +370,7 @@ impl FlistWalkerApp {
             );
             // Center the visible ink, including accents and font-specific offsets,
             // rather than centering a nominal line box that may exclude them.
-            let bounds = if galley.mesh_bounds.is_positive() {
-                galley.mesh_bounds
-            } else {
-                galley.rect
-            };
+            let bounds = single_line_ink_bounds(&galley);
             let visuals = ui.style().interact_selectable(&response, selected);
             if selected || response.hovered() || response.has_focus() {
                 ui.painter().rect(
@@ -294,12 +419,18 @@ impl FlistWalkerApp {
             .response
             .response;
         }
-        egui::Frame::new()
-            .fill(egui::Color32::from_rgba_unmultiplied(160, 40, 40, 28))
-            .stroke(egui::Stroke::new(
-                1.0_f32,
+        let (fill, outline) = if ui.visuals().dark_mode {
+            (
+                egui::Color32::from_rgba_unmultiplied(160, 40, 40, 28),
                 egui::Color32::from_rgb(224, 92, 92),
-            ))
+            )
+        } else {
+            let error_color = ui.visuals().error_fg_color;
+            (error_color.gamma_multiply_u8(20), error_color)
+        };
+        egui::Frame::new()
+            .fill(fill)
+            .stroke(egui::Stroke::new(1.0, outline))
             .corner_radius(3.0)
             .inner_margin(1.0)
             .show(ui, |ui| {
@@ -335,7 +466,7 @@ impl FlistWalkerApp {
             ime_composition_active,
         );
         let text_before_widget = text.clone();
-        let edit = egui::TextEdit::singleline(text).desired_width(options.desired_width);
+        let edit = single_line_editor(ui, text).desired_width(options.desired_width);
         let edit = if options.frame {
             edit
         } else {
@@ -389,8 +520,13 @@ impl FlistWalkerApp {
     }
 
     pub(super) fn manage_root_list_error_label(ui: &mut egui::Ui, error: &str) {
+        let color = if ui.visuals().dark_mode {
+            egui::Color32::from_rgb(238, 105, 105)
+        } else {
+            ui.visuals().error_fg_color
+        };
         ui.colored_label(
-            egui::Color32::from_rgb(238, 105, 105),
+            color,
             format!("Error: {}", normalize_text_for_display(error)),
         );
     }
@@ -419,7 +555,7 @@ impl FlistWalkerApp {
         if selected {
             button = button.fill(render_theme::selected_fill(ui.visuals().dark_mode));
         }
-        ui.add(button)
+        ui.add(baseline_button(button))
     }
 
     pub(super) fn top_action_labels(&self) -> Vec<&'static str> {
@@ -602,16 +738,6 @@ impl FlistWalkerApp {
 
     pub(super) fn results_scroll_enabled(preview_resize_in_progress: bool) -> bool {
         !preview_resize_in_progress
-    }
-
-    pub(super) fn result_row_text_pos(
-        inner_rect: egui::Rect,
-        galley_size: egui::Vec2,
-    ) -> egui::Pos2 {
-        egui::pos2(
-            inner_rect.left(),
-            inner_rect.center().y - (galley_size.y * 0.5),
-        )
     }
 
     pub(super) fn render_central_panel(&mut self, ui: &mut egui::Ui) {

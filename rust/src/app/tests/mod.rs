@@ -67,6 +67,23 @@ pub(super) fn dir_entry(path: PathBuf) -> Entry {
     Entry::dir(path)
 }
 
+pub(super) fn text_contrast(foreground: egui::Color32, background: egui::Color32) -> f64 {
+    fn luminance(color: egui::Color32) -> f64 {
+        let linear = [color.r(), color.g(), color.b()].map(|channel| {
+            let value = f64::from(channel) / 255.0;
+            if value <= 0.04045 {
+                value / 12.92
+            } else {
+                ((value + 0.055) / 1.055).powf(2.4)
+            }
+        });
+        linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+    }
+    let a = luminance(background.blend(foreground));
+    let b = luminance(background);
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
 mod action_commands;
 mod activation_contract;
 mod app_core;
