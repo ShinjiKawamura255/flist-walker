@@ -1,3 +1,4 @@
+use crate::app::render::{action_button, baseline_control, baseline_selectable_value};
 use crate::app::{
     render::{EmacsSinglelineOptions, RenderPresetPickerCommand},
     render_panels, FlistWalkerApp,
@@ -84,7 +85,7 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui, available_height: 
             if ui
                 .add_enabled(
                     !app.shell.worker_bus.catalog.in_progress,
-                    egui::Button::new(MANAGE_NAMED_ROOTS_LABEL),
+                    action_button(MANAGE_NAMED_ROOTS_LABEL),
                 )
                 .clicked()
             {
@@ -215,25 +216,19 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui, available_height: 
     ui.label(PRESET_PICKER_FOOTER_HINT);
     ui.add_space(4.0);
     super::right_actions(ui, |ui| {
-        if ui.button("Close").clicked() {
+        if ui.add(action_button("Close")).clicked() {
             app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                 RenderPresetPickerCommand::Close,
             ));
         }
         let can_edit = !app.shell.worker_bus.catalog.in_progress
             && app.shell.features.presets.picker.selected_match.is_some();
-        if ui
-            .add_enabled(can_edit, egui::Button::new("Edit"))
-            .clicked()
-        {
+        if ui.add_enabled(can_edit, action_button("Edit")).clicked() {
             app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                 RenderPresetPickerCommand::StartEdit,
             ));
         }
-        if ui
-            .add_enabled(can_edit, egui::Button::new("Delete"))
-            .clicked()
-        {
+        if ui.add_enabled(can_edit, action_button("Delete")).clicked() {
             app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                 RenderPresetPickerCommand::StartDelete,
             ));
@@ -241,7 +236,7 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui, available_height: 
         if ui
             .add_enabled(
                 !app.shell.worker_bus.catalog.in_progress,
-                egui::Button::new("Add"),
+                action_button("Add"),
             )
             .clicked()
         {
@@ -250,6 +245,42 @@ fn render_picker(app: &mut FlistWalkerApp, ui: &mut egui::Ui, available_height: 
             ));
         }
     });
+}
+
+fn editor_combo(
+    ui: &mut egui::Ui,
+    id: &'static str,
+    selected_text: impl Into<egui::WidgetText>,
+    options: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    baseline_control(ui, |ui| {
+        egui::ComboBox::from_id_salt(id)
+            .selected_text(selected_text)
+            .show_ui(ui, options)
+            .response
+    })
+}
+
+fn editor_combo_row(
+    ui: &mut egui::Ui,
+    label: &str,
+    draw_combo: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) {
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let reference = crate::app::render::single_line_reference_center_y(ui, font.clone(), "H");
+    let galley = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font, egui::Color32::PLACEHOLDER);
+    let (_, cell) = ui.allocate_space(galley.size());
+    let combo = draw_combo(ui);
+    // Grid cells and the native combo's inner content can have slightly
+    // different centers. Place the actual selectable label at its final y.
+    let origin = egui::pos2(cell.left(), combo.rect.center().y - reference);
+    ui.place(
+        egui::Rect::from_min_size(origin, galley.size()),
+        egui::Label::new(galley),
+    );
+    ui.end_row();
 }
 
 fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
@@ -324,25 +355,22 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             );
             ui.end_row();
 
-            ui.label("Named root");
             let root_label = editor
                 .root_name
                 .clone()
                 .unwrap_or_else(|| "Path snapshot".to_string());
-            ui.horizontal(|ui| {
-                egui::ComboBox::from_id_salt("preset-editor-named-root")
-                    .selected_text(&root_label)
-                    .show_ui(ui, |ui| {
-                        ui.selectable_value(&mut editor.root_name, None, "Path snapshot");
-                        for name in &named_roots {
-                            ui.selectable_value(&mut editor.root_name, Some(name.clone()), name);
-                        }
-                    });
-                if ui.button("Manage...").clicked() {
+            editor_combo_row(ui, "Named root", |ui| ui.horizontal(|ui| {
+                let combo = editor_combo(ui, "preset-editor-named-root", root_label, |ui| {
+                    baseline_selectable_value(ui, &mut editor.root_name, None, "Path snapshot");
+                    for name in &named_roots {
+                        baseline_selectable_value(ui, &mut editor.root_name, Some(name.clone()), name);
+                    }
+                });
+                if ui.add(action_button("Manage...")).clicked() {
                     manage_named_roots = true;
                 }
-            });
-            ui.end_row();
+                combo
+            }).inner);
 
             ui.label(if editor.root_name.is_some() {
                 "Fallback root"
@@ -363,7 +391,7 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     ),
                 );
                 if ui
-                    .add_enabled(!busy, egui::Button::new("Browse..."))
+                    .add_enabled(!busy, action_button("Browse..."))
                     .clicked()
                 {
                     browse_root = true;
@@ -386,38 +414,32 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             );
             ui.end_row();
 
-            ui.label("Entry type");
-            egui::ComboBox::from_id_salt("preset-editor-entry-type")
-                .selected_text(entry_type_label(editor.entry_type))
-                .show_ui(ui, |ui| {
+            editor_combo_row(ui, "Entry type", |ui| {
+            editor_combo(ui, "preset-editor-entry-type", entry_type_label(editor.entry_type), |ui| {
                     for value in [
                         PresetEntryType::All,
                         PresetEntryType::File,
                         PresetEntryType::Folder,
                     ] {
-                        ui.selectable_value(&mut editor.entry_type, value, entry_type_label(value));
+                        baseline_selectable_value(ui, &mut editor.entry_type, value, entry_type_label(value));
                     }
-                });
-            ui.end_row();
+                })
+            });
 
-            ui.label("Source");
-            egui::ComboBox::from_id_salt("preset-editor-source")
-                .selected_text(source_label(editor.source))
-                .show_ui(ui, |ui| {
+            editor_combo_row(ui, "Source", |ui| {
+            editor_combo(ui, "preset-editor-source", source_label(editor.source), |ui| {
                     for value in [
                         PresetSource::Auto,
                         PresetSource::Filelist,
                         PresetSource::Walker,
                     ] {
-                        ui.selectable_value(&mut editor.source, value, source_label(value));
+                        baseline_selectable_value(ui, &mut editor.source, value, source_label(value));
                     }
-                });
-            ui.end_row();
+                })
+            });
 
-            ui.label("Sort");
-            egui::ComboBox::from_id_salt("preset-editor-sort")
-                .selected_text(sort_label(editor.sort))
-                .show_ui(ui, |ui| {
+            editor_combo_row(ui, "Sort", |ui| {
+            editor_combo(ui, "preset-editor-sort", sort_label(editor.sort), |ui| {
                     for value in [
                         PresetSortMode::Score,
                         PresetSortMode::NameAsc,
@@ -431,10 +453,10 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         PresetSortMode::SizeDesc,
                         PresetSortMode::SizeAsc,
                     ] {
-                        ui.selectable_value(&mut editor.sort, value, sort_label(value));
+                        baseline_selectable_value(ui, &mut editor.sort, value, sort_label(value));
                     }
-                });
-            ui.end_row();
+                })
+            });
 
             ui.label("Max depth");
             ui.horizontal(|ui| {
@@ -483,12 +505,12 @@ fn render_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             format!("{primary}+Enter to save · Esc to discard draft")
         });
         super::right_actions(ui, |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+            if ui.add_enabled(!busy, action_button("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelEdit,
                 ));
             }
-            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
+            if ui.add_enabled(!busy, action_button("Save")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::SaveEdit,
                 ));
@@ -557,13 +579,13 @@ fn render_preset_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui::Ui
             "Esc to cancel"
         });
         super::right_actions(ui, |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+            if ui.add_enabled(!busy, action_button("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelDelete,
                 ));
             }
             if ui
-                .add_enabled(!busy, egui::Button::new("Delete preset"))
+                .add_enabled(!busy, action_button("Delete preset"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
@@ -639,13 +661,10 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                         Some("Absolute path"),
                     ),
                 );
-                if ui
-                    .add_enabled(!busy, egui::Button::new("Browse..."))
-                    .clicked()
-                {
+                if ui.add_enabled(!busy, action_button("Browse...")).clicked() {
                     browse_path = true;
                 }
-                if ui.button("Use current root").clicked() {
+                if ui.add(action_button("Use current root")).clicked() {
                     editor.path.clone_from(&current_root);
                 }
             });
@@ -667,12 +686,12 @@ fn render_named_root_editor(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             format!("{primary}+Enter to save · Esc to cancel")
         });
         super::right_actions(ui, |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+            if ui.add_enabled(!busy, action_button("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelNamedRootEdit,
                 ));
             }
-            if ui.add_enabled(!busy, egui::Button::new("Save")).clicked() {
+            if ui.add_enabled(!busy, action_button("Save")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::SaveNamedRoot,
                 ));
@@ -734,13 +753,13 @@ fn render_named_root_delete_confirmation(app: &mut FlistWalkerApp, ui: &mut egui
             "This removes only the named root entry."
         });
         super::right_actions(ui, |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Cancel")).clicked() {
+            if ui.add_enabled(!busy, action_button("Cancel")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CancelDeleteNamedRoot,
                 ));
             }
             if ui
-                .add_enabled(!busy, egui::Button::new("Delete root"))
+                .add_enabled(!busy, action_button("Delete root"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
@@ -836,13 +855,13 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.label("Up/Down to select · F2 to edit · Delete to remove · Esc to go back");
         super::right_actions(ui, |ui| {
-            if ui.add_enabled(!busy, egui::Button::new("Back")).clicked() {
+            if ui.add_enabled(!busy, action_button("Back")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::CloseNamedRoots,
                 ));
             }
             if ui
-                .add_enabled(!busy && has_selection, egui::Button::new("Delete"))
+                .add_enabled(!busy && has_selection, action_button("Delete"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
@@ -850,14 +869,14 @@ fn render_named_root_list(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 ));
             }
             if ui
-                .add_enabled(!busy && has_selection, egui::Button::new("Edit"))
+                .add_enabled(!busy && has_selection, action_button("Edit"))
                 .clicked()
             {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::EditNamedRoot,
                 ));
             }
-            if ui.add_enabled(!busy, egui::Button::new("Add")).clicked() {
+            if ui.add_enabled(!busy, action_button("Add")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::PresetPicker(
                     RenderPresetPickerCommand::AddNamedRoot,
                 ));

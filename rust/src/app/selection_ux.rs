@@ -1,4 +1,5 @@
 use super::{normalize_path_for_display, FlistWalkerApp};
+use crate::app::render::{action_button, baseline_button};
 use eframe::egui;
 use std::collections::BTreeSet;
 use std::ops::Bound::{Excluded, Included, Unbounded};
@@ -148,7 +149,10 @@ impl FlistWalkerApp {
                     let path = &page[index];
                     ui.push_id(path, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.small_button("Remove").clicked() {
+                            if ui
+                                .add(baseline_button(egui::Button::new("Remove").small()))
+                                .clicked()
+                            {
                                 remove = Some(path.clone());
                             }
                             let display = normalize_path_for_display(path);
@@ -160,14 +164,14 @@ impl FlistWalkerApp {
             });
             ui.horizontal(|ui| {
                 if ui
-                    .add_enabled(previous.is_some(), egui::Button::new("Previous"))
+                    .add_enabled(previous.is_some(), action_button("Previous"))
                     .clicked()
                 {
                     inspector.first = previous;
                     inspector.reset_scroll = true;
                 }
                 if ui
-                    .add_enabled(next.is_some(), egui::Button::new("Next"))
+                    .add_enabled(next.is_some(), action_button("Next"))
                     .clicked()
                 {
                     inspector.first = next;
@@ -175,7 +179,8 @@ impl FlistWalkerApp {
                 }
                 ui.label(format!("{} shown · up to {PAGE_SIZE} per page", page.len()));
             });
-            let close_button = super::render_dialogs::right_actions(ui, |ui| ui.button("Close"));
+            let close_button =
+                super::render_dialogs::right_actions(ui, |ui| ui.add(action_button("Close")));
             if close_button.clicked() {
                 close = true;
             }

@@ -149,8 +149,10 @@
 - タブ並び替えは `render_tab_bar` がドラッグ開始/ホバー/ドロップを扱い、実際の `Vec<AppTabState>` 更新は `move_tab(from, to)` に集約する。
 - `move_tab` は並び替え前に `sync_active_tab_state()` を実行し、active tab の `tab.id` を基準に移動後 index を再解決することで UI 状態の取り違えを防ぐ。
 - タブ accent は `DropSendTo` の Slot Color palette を参照し、light/dark theme ごとに background/border/foreground を切り替える。
+- `render_theme` は egui の Light 用スタイルに面・文字・操作状態の色を登録する。現在行とテキスト選択は同じ背景色を使い、検索一致は濃い琥珀色で示す。
 - `render_tab_bar` は active tab の accent を full-fill、inactive tab の accent を下辺の glow/line 装飾として描画し、右クリックメニューから accent の設定/解除を行う。
-- タブ close ボタンは固定サイズの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
+- タブ close ボタンは固定幅とタイトルに揃えた高さの押下領域として描画し、hover 時はタブ accent または clear outline と同系色の背景・細い枠・カーソルを切り替えて close hit area を明示する。タブ本体の click/drag 領域とは別 response として扱う。
+- タブはタイトルと閉じる記号の高さを先に揃え、各字形の描画範囲を縦中央に置く。同じ行の操作や一覧の本文は使用中のフォントから測った共通の基準線に置く。上部のチェック枠は横一列に揃え、ラベルには上や下に伸びる文字の両方を考慮した基準線を使う。単行入力では上下の内余白を配分して入力位置と表示を揃える。
 - Root 変更時は query 自体を維持しつつ、履歴参照位置と draft query のみ破棄して root 跨ぎの戻り操作を防ぐ。
 - 検索窓フォーカス中でも `ArrowUp` / `ArrowDown` / `Ctrl+I` / `Ctrl+J` / `Ctrl+M` はアプリ側ショートカットを優先処理し、結果移動・PIN トグル・実行を抑止しない。
 - GUI/TUI は `tab_pin_moves_to_next_row=true` のとき `Tab` / `Shift+Tab` と、`emacs_keybindings_enabled=true` の `Ctrl+I` による PIN トグル後に次行へ移動する。既定の `false` では current row を維持する。TUI event-loop state は process runtime config の両値を起動時に取り込む。

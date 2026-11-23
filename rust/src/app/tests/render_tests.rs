@@ -606,6 +606,33 @@ fn filelist_use_walker_dialog_lines_are_stable() {
 }
 
 #[test]
+fn light_theme_root_list_validation_uses_the_error_color_for_text_and_outline() {
+    let ctx = egui::Context::default();
+    render_theme::apply_theme(&ctx, crate::runtime_config::ThemeMode::Light);
+    let expected = ctx.style_of(egui::Theme::Light).visuals.error_fg_color;
+    let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+        FlistWalkerApp::manage_root_list_text_edit(
+            ui,
+            &mut String::from("missing"),
+            &mut String::new(),
+            false,
+            false,
+            true,
+            crate::app::render::EmacsSinglelineOptions::new(None, 160.0, None),
+        );
+        FlistWalkerApp::manage_root_list_error_label(ui, "Missing folder");
+    });
+    assert!(output.shapes.iter().any(|clipped| matches!(
+        &clipped.shape,
+        egui::Shape::Text(text) if text.galley.text() == "Error: Missing folder"
+            && text.galley.job.sections[0].format.color == expected
+    )));
+    assert!(output.shapes.iter().any(|clipped| matches!(
+        &clipped.shape, egui::Shape::Rect(rect) if rect.stroke.color == expected
+    )));
+}
+
+#[test]
 fn manage_root_list_action_button_rects_share_same_axis() {
     let row = egui::Rect::from_min_size(egui::pos2(8.4, 467.6), egui::vec2(700.0, 22.0));
     let rects = FlistWalkerApp::manage_root_list_action_button_rects(row, 22.0, 8.0);
@@ -621,16 +648,6 @@ fn manage_root_list_action_button_rects_share_same_axis() {
     );
     assert_eq!(rects[1].left() - rects[0].left(), 80.0);
     assert_eq!(rects[2].left() - rects[1].left(), 80.0);
-}
-
-#[test]
-fn top_panel_checkbox_icon_and_label_share_center_axis() {
-    let row = egui::Rect::from_min_size(egui::pos2(4.0, 12.0), egui::vec2(120.0, 24.0));
-    let (checkbox_rect, text_pos) =
-        render_panels::centered_checkbox_layout(row, 14.0, 4.0, egui::vec2(68.0, 13.0), 2.0, -1.0);
-
-    assert_eq!(checkbox_rect.center().y, row.center().y - 1.0);
-    assert_eq!(text_pos.y + (13.0 / 2.0), row.center().y + 2.0);
 }
 
 #[test]
@@ -1345,17 +1362,6 @@ fn preview_uses_proportional_text_style_for_cjk_baseline() {
 }
 
 #[test]
-fn result_row_text_pos_is_left_aligned_and_vertically_centered() {
-    let inner = egui::Rect::from_min_max(egui::pos2(8.0, 10.0), egui::pos2(208.0, 34.0));
-    let galley_size = egui::vec2(120.0, 14.0);
-
-    let pos = FlistWalkerApp::result_row_text_pos(inner, galley_size);
-
-    assert_eq!(pos.x, inner.left());
-    assert_eq!(pos.y, inner.center().y - (galley_size.y * 0.5));
-}
-
-#[test]
 fn render_theme_selected_fill_preserves_light_and_dark_rgb_contract() {
     assert_eq!(
         render_theme::selected_fill(true),
@@ -1363,7 +1369,7 @@ fn render_theme_selected_fill_preserves_light_and_dark_rgb_contract() {
     );
     assert_eq!(
         render_theme::selected_fill(false),
-        egui::Color32::from_rgb(228, 232, 238)
+        egui::Color32::from_rgb(195, 207, 224)
     );
 }
 
@@ -2197,6 +2203,22 @@ fn tab_drop_index_returns_last_tab_after_all_centers() {
 }
 
 #[test]
+fn light_theme_inactive_tab_close_uses_the_accent_text_color() {
+    for accent in TabAccentColor::ALL {
+        let palette = accent.palette(false);
+        let close = super::render_tabs::tab_close_button_visuals(
+            false,
+            true,
+            false,
+            false,
+            Some(palette),
+            egui::Color32::BLACK,
+        );
+        assert_eq!(close.text, palette.foreground, "{accent:?}");
+    }
+}
+
+#[test]
 fn tab_close_button_hover_visuals_make_close_hit_area_visible() {
     let fallback = egui::Color32::from_rgb(220, 220, 220);
     let palette = TabAccentColor::Teal.palette(false);
@@ -2447,8 +2469,102 @@ fn saved_theme_preference_overrides_system_and_system_mode_tracks_os() {
                 ThemeMode::Light => egui::Theme::Light,
             };
             assert_eq!(ctx.theme(), expected);
+            let active = &ctx.global_style().visuals;
+            if expected == egui::Theme::Light {
+                assert_eq!(active.panel_fill, egui::Color32::from_gray(232));
+                assert_eq!(active.extreme_bg_color, egui::Color32::from_gray(241));
+                let glyph_edge = active.text_options.color_transfer_function;
+                let half_covered = glyph_edge.alpha_from_coverage(0.5);
+                assert!(
+                    (0.53..=0.57).contains(&half_covered),
+                    "light text should slightly strengthen partially covered pixels: {half_covered}"
+                );
+            } else {
+                assert_eq!(active, &egui::Visuals::dark());
+            }
         }
     }
+}
+
+#[test]
+fn light_theme_chrome_and_body_text_are_neutral_gray() {
+    let ctx = egui::Context::default();
+    render_theme::apply_theme(&ctx, crate::runtime_config::ThemeMode::Light);
+    let style = ctx.style_of(egui::Theme::Light);
+    let visuals = &style.visuals;
+    for color in [
+        visuals.panel_fill,
+        visuals.window_fill,
+        visuals.text_edit_bg_color(),
+        visuals.code_bg_color,
+        visuals.window_stroke.color,
+        visuals.widgets.inactive.weak_bg_fill,
+        visuals.widgets.inactive.bg_stroke.color,
+        visuals.widgets.hovered.weak_bg_fill,
+        visuals.text_color(),
+        visuals.weak_text_color(),
+        visuals.strong_text_color(),
+    ] {
+        assert_eq!(color, egui::Color32::from_gray(color.r()), "{color:?}");
+    }
+}
+
+#[test]
+fn light_theme_buttons_are_borderless_at_rest_and_outlined_on_interaction() {
+    use egui::widget_style::WidgetState;
+
+    let ctx = egui::Context::default();
+    render_theme::apply_theme(&ctx, crate::runtime_config::ThemeMode::Light);
+    let style = ctx.style_of(egui::Theme::Light);
+    let frame = |state| style.button_style(&Default::default(), state).frame;
+    let idle = frame(WidgetState::Inactive);
+    assert!(idle.stroke.is_empty());
+    for background in [
+        style.visuals.panel_fill,
+        style.visuals.window_fill,
+        style.visuals.extreme_bg_color,
+    ] {
+        assert!(
+            text_contrast(idle.fill, background) >= 1.3,
+            "borderless button fill {0:?} must stand out on {background:?}",
+            idle.fill
+        );
+    }
+    assert!(!frame(WidgetState::Hovered).stroke.is_empty());
+    assert!(!frame(WidgetState::Active).stroke.is_empty());
+    assert!(!style.visuals.widgets.open.bg_stroke.is_empty());
+}
+
+#[test]
+fn light_theme_secondary_text_and_controls_remain_readable() {
+    let ctx = egui::Context::default();
+    render_theme::apply_theme(&ctx, crate::runtime_config::ThemeMode::Light);
+    let style = ctx.style_of(egui::Theme::Light);
+    let visuals = &style.visuals;
+    for surface in [
+        visuals.panel_fill,
+        visuals.window_fill,
+        visuals.text_edit_bg_color(),
+    ] {
+        for ink in [
+            visuals.text_color(),
+            visuals.weak_text_color(),
+            visuals.hyperlink_color,
+            visuals.warn_fg_color,
+            visuals.error_fg_color,
+        ] {
+            assert!(text_contrast(ink, surface) >= 4.5, "{ink:?} on {surface:?}");
+        }
+    }
+    for widget in [
+        &visuals.widgets.inactive,
+        &visuals.widgets.hovered,
+        &visuals.widgets.active,
+        &visuals.widgets.open,
+    ] {
+        assert!(text_contrast(widget.text_color(), widget.weak_bg_fill) >= 4.5);
+    }
+    assert!(text_contrast(visuals.selection.stroke.color, visuals.selection.bg_fill) >= 4.5);
 }
 
 #[test]

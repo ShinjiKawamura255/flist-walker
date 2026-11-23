@@ -317,6 +317,80 @@ fn tab_drag_above_threshold_reorders_on_release() {
 }
 
 #[test]
+fn tab_bar_keeps_release_light_colors_and_explicit_accents() {
+    use crate::app::{render_panels, render_theme};
+    use crate::runtime_config::ThemeMode;
+    let mut app = FlistWalkerApp::new(test_root("tab-bar-colors"), 50, String::new());
+    let ctx = egui::Context::default();
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 500.0));
+    let light_bar = egui::Color32::from_gray(248);
+    for theme in [ThemeMode::Light, ThemeMode::Dark] {
+        let dark = theme == ThemeMode::Dark;
+        render_theme::apply_theme(&ctx, theme);
+        for accent in [None, Some(TabAccentColor::Teal)] {
+            app.shell.tabs.get_mut(0).unwrap().tab_accent = accent;
+            let mut frame = || {
+                ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(screen),
+                        ..Default::default()
+                    },
+                    |ui| render_panels::render_top_panel(&mut app, ui),
+                )
+            };
+            frame();
+            let output = frame();
+            let active = ctx
+                .data(|data| {
+                    data.get_temp::<render_tabs::TabBarRenderProbe>(egui::Id::new("tab-bar-probe"))
+                })
+                .unwrap()
+                .active
+                .unwrap();
+            let palette = accent.map(|color| color.palette(dark));
+            let fill = match palette {
+                Some(palette) => palette.background,
+                None if dark => egui::Color32::from_rgb(48, 53, 62),
+                None => egui::Color32::from_rgb(228, 232, 238),
+            };
+            let border = palette
+                .unwrap_or_else(|| TabAccentPalette::clear_outline(dark))
+                .border;
+            assert!(
+                output.shapes.iter().any(|s| matches!(
+                    &s.shape, egui::Shape::Rect(r) if r.fill == fill && r.stroke.color == border
+                        && r.rect.contains(active.center())
+                )),
+                "{theme:?} {accent:?}: expected active tab fill {fill:?}"
+            );
+
+            let strip = output.shapes.iter().find_map(|s| match &s.shape {
+                egui::Shape::Rect(r) if r.fill == light_bar && r.rect.contains(active.center()) => {
+                    Some(r.rect.intersect(s.clip_rect))
+                }
+                _ => None,
+            });
+            if dark {
+                assert!(strip.is_none());
+            } else {
+                let strip = strip.expect("light toolbar background");
+                assert!(strip.left() <= screen.left() && strip.right() >= screen.right());
+                assert!(strip.top() <= screen.top() && strip.bottom() >= active.bottom());
+                let root_label_top = output
+                    .shapes
+                    .iter()
+                    .find_map(|s| match &s.shape {
+                        egui::Shape::Text(t) if t.galley.text() == "Root:" => Some(t.pos.y),
+                        _ => None,
+                    })
+                    .expect("root toolbar label");
+                assert!(strip.bottom() <= root_label_top);
+            }
+        }
+    }
+}
+
+#[test]
 fn regression_gui_tabs_overflow_keeps_settings_and_active_tab_visible() {
     let mut app = FlistWalkerApp::new(test_root("tab-overflow"), 50, String::new());
     for i in 0..14 {

@@ -1,3 +1,4 @@
+use crate::app::render::action_button;
 use crate::app::{render::RenderHelpDialogCommand, FlistWalkerApp};
 use eframe::egui;
 
@@ -149,7 +150,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
             });
         ui.add_space(8.0);
         super::right_actions(ui, |ui| {
-            if ui.button("Close").clicked() {
+            if ui.add(action_button("Close")).clicked() {
                 app.queue_render_command(crate::app::render::RenderCommand::HelpDialog(
                     RenderHelpDialogCommand::Close,
                 ));

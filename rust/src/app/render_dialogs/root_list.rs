@@ -1,3 +1,4 @@
+use crate::app::render::action_button;
 use crate::app::{
     render::{EmacsSinglelineOptions, RenderRootListDialogCommand},
     FlistWalkerApp,
@@ -148,13 +149,13 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 }
                 add_response = Some(response);
                 if ui
-                    .add_sized([browse_width, row_height], egui::Button::new("Browse..."))
+                    .add_sized([browse_width, row_height], action_button("Browse..."))
                     .clicked()
                 {
                     actions.browse_and_add = true;
                 }
                 if ui
-                    .add_sized([add_width, row_height], egui::Button::new("Add"))
+                    .add_sized([add_width, row_height], action_button("Add"))
                     .clicked()
                 {
                     actions.add_input = true;
@@ -203,13 +204,13 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 ui.heading(control_state.heading);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if control_state.show_remove_mode_actions {
-                        if ui.button("Cancel").clicked() {
+                        if ui.add(action_button("Cancel")).clicked() {
                             actions.cancel_remove_mode = true;
                         }
                         if ui
                             .add_enabled(
                                 control_state.remove_selected_enabled,
-                                egui::Button::new("Remove selected"),
+                                action_button("Remove selected"),
                             )
                             .clicked()
                         {
@@ -219,14 +220,14 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         if ui
                             .add_enabled(
                                 control_state.enter_remove_enabled,
-                                egui::Button::new("Remove..."),
+                                action_button("Remove..."),
                             )
                             .clicked()
                         {
                             actions.enter_remove_mode = true;
                         }
                         if ui
-                            .add_enabled(control_state.edit_enabled, egui::Button::new("Edit"))
+                            .add_enabled(control_state.edit_enabled, action_button("Edit"))
                             .clicked()
                         {
                             actions.start_edit = true;
@@ -319,10 +320,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                                             actions.cancel_edit = true;
                                         }
                                     }
-                                    if ui.button("Save").clicked() {
+                                    if ui.add(action_button("Save")).clicked() {
                                         actions.save_edit = true;
                                     }
-                                    if ui.button("Cancel").clicked() {
+                                    if ui.add(action_button("Cancel")).clicked() {
                                         actions.cancel_edit = true;
                                     }
                                     edit_response = Some(response);
@@ -383,14 +384,14 @@ pub(super) fn render(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                 style.visuals.widgets.open.expansion = 0.0;
                 ui.set_style(style);
                 ui.add_enabled_ui(control_state.commit_enabled, |ui| {
-                    if ui.put(apply_rect, egui::Button::new("Apply")).clicked() {
+                    if ui.put(apply_rect, action_button("Apply")).clicked() {
                         actions.apply = true;
                     }
-                    if ui.put(ok_rect, egui::Button::new("OK")).clicked() {
+                    if ui.put(ok_rect, action_button("OK")).clicked() {
                         actions.ok = true;
                     }
                 });
-                if ui.put(cancel_rect, egui::Button::new("Cancel")).clicked() {
+                if ui.put(cancel_rect, action_button("Cancel")).clicked() {
                     actions.cancel = true;
                 }
             });

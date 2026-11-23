@@ -1,5 +1,6 @@
 //! GUI-only assistance. Query interpretation remains owned by the shared parser.
 use super::{FlistWalkerApp, TabResourceLifecycle};
+use crate::app::render::action_button;
 use crate::indexer::MaxDepth;
 use eframe::egui;
 use std::ops::Range;
@@ -365,7 +366,10 @@ impl FlistWalkerApp {
             Some(QueryAdvice::Typo { range, replacement }) => {
                 ui.horizontal_wrapped(|ui| {
                     ui.label(format!("Did you mean {replacement}: ?"));
-                    if ui.button(format!("Change to {replacement}:")).clicked() {
+                    if ui
+                        .add(action_button(format!("Change to {replacement}:")))
+                        .clicked()
+                    {
                         self.repair_query_prefix(range, replacement);
                     }
                 });
@@ -386,7 +390,7 @@ impl FlistWalkerApp {
             let description = undo.after.description();
             ui.horizontal_wrapped(|ui| {
                 ui.label(description);
-                if ui.button("Undo filter change").clicked() {
+                if ui.add(action_button("Undo filter change")).clicked() {
                     self.undo_filter_relaxation();
                 }
             });
@@ -417,7 +421,7 @@ impl FlistWalkerApp {
             EmptyState::IndexFailed => {
                 ui.label("Could not load the search root.");
                 ui.label(&self.shell.runtime.notice);
-                if ui.button("Retry loading").clicked() {
+                if ui.add(action_button("Retry loading")).clicked() {
                     self.request_index_refresh();
                 }
             }
@@ -464,7 +468,7 @@ impl FlistWalkerApp {
                     ui.weak("Active conditions (change one and search again):");
                     ui.horizontal_wrapped(|ui| {
                         for (label, value) in filters {
-                            if ui.button(label).clicked() {
+                            if ui.add(action_button(label)).clicked() {
                                 self.relax_filter(value);
                             }
                         }

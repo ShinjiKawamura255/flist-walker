@@ -1,13 +1,14 @@
-use crate::app::render::{single_line_display_text, single_line_text_bounds};
+use crate::app::render::{action_button, baseline_button};
+use crate::app::render::{
+    single_line_display_text, single_line_ink_bounds, single_line_reference_center_y,
+    single_line_text_bounds,
+};
 use crate::app::search_assist::FilterValue;
-use crate::app::{render_tabs, FlistWalkerApp};
+use crate::app::{render_tabs, render_theme, FlistWalkerApp};
 use crate::text_editing::char_count;
 use crate::ui_model::normalize_path_for_display;
 use eframe::egui;
 use std::path::PathBuf;
-
-const COMPACT_ROW_TEXT_Y_OFFSET: f32 = 2.0;
-const COMPACT_ROW_CHECKBOX_Y_OFFSET: f32 = -1.0;
 
 fn paint_root_selector_button(
     ui: &egui::Ui,
@@ -54,7 +55,7 @@ fn paint_root_selector_button(
     let bounds = single_line_text_bounds(&galley);
     let text_pos = egui::pos2(
         text_rect.left() - bounds.left(),
-        text_rect.center().y - bounds.center().y,
+        text_rect.center().y - single_line_ink_bounds(&galley).center().y,
     );
     // Only the horizontal limit excludes the arrow. Keep the vertical padding
     // available for raster rounding at fractional display scales.
@@ -67,44 +68,31 @@ fn paint_root_selector_button(
         .galley(text_pos, galley, visuals.text_color());
 }
 
-pub(super) fn centered_checkbox_layout(
-    rect: egui::Rect,
-    checkbox_size: f32,
-    icon_spacing: f32,
-    text_size: egui::Vec2,
-    label_y_offset: f32,
-    checkbox_y_offset: f32,
-) -> (egui::Rect, egui::Pos2) {
-    let checkbox_rect = egui::Rect::from_center_size(
-        egui::pos2(
-            rect.left() + (checkbox_size / 2.0),
-            rect.center().y + checkbox_y_offset,
-        ),
-        egui::Vec2::splat(checkbox_size),
-    );
-    let text_pos = egui::pos2(
-        checkbox_rect.right() + icon_spacing,
-        rect.center().y - (text_size.y / 2.0) + label_y_offset,
-    );
-    (checkbox_rect, text_pos)
-}
-
 pub(super) fn centered_checkbox(
     ui: &mut egui::Ui,
     checked: &mut bool,
     label: &str,
 ) -> egui::Response {
     let font_id = egui::TextStyle::Button.resolve(ui.style());
+    // Keep all boxes on one axis and the labels on one baseline. Balance the
+    // visible centers of labels with and without a descender.
+    let ascender = single_line_reference_center_y(ui, font_id.clone(), "Hl");
+    let descender = single_line_reference_center_y(ui, font_id.clone(), "Hg");
+    let reference_y = (ascender + descender) / 2.0;
     let galley = ui
         .painter()
-        .layout_no_wrap(label.to_owned(), font_id, ui.visuals().text_color());
+        .layout_no_wrap(label.to_owned(), font_id, egui::Color32::PLACEHOLDER);
+    let ink = single_line_ink_bounds(&galley);
+    let bounds = single_line_text_bounds(&galley);
     let checkbox_size = ui.spacing().icon_width;
+    let text_half_height = (reference_y - ink.top()).max(ink.bottom() - reference_y);
     let desired_size = egui::vec2(
-        checkbox_size + ui.spacing().icon_spacing + galley.size().x,
+        checkbox_size + ui.spacing().icon_spacing + bounds.width(),
         ui.spacing()
             .interact_size
             .y
             .max(checkbox_size)
+            .max(2.0 * text_half_height)
             .max(galley.size().y),
     );
     let (rect, mut response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
@@ -121,13 +109,13 @@ pub(super) fn centered_checkbox(
             &egui::widget_style::Classes::default(),
             response.widget_state(),
         );
-        let (checkbox_rect, text_pos) = centered_checkbox_layout(
-            rect,
-            checkbox_style.checkbox_size,
-            ui.spacing().icon_spacing,
-            galley.size(),
-            COMPACT_ROW_TEXT_Y_OFFSET,
-            COMPACT_ROW_CHECKBOX_Y_OFFSET,
+        let text_pos = egui::pos2(
+            rect.left() + checkbox_size + ui.spacing().icon_spacing - bounds.left(),
+            rect.center().y - reference_y,
+        );
+        let checkbox_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.left() + checkbox_size / 2.0, rect.center().y),
+            egui::Vec2::splat(checkbox_style.checkbox_size),
         );
         ui.painter().add(egui::epaint::RectShape::new(
             checkbox_rect.expand(checkbox_style.checkbox_frame.inner_margin.left.into()),
@@ -165,8 +153,14 @@ pub(super) fn update_max_depth_draft_for_unlimited(draft: &mut usize, unlimited:
 pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     egui::Panel::top("top").show(ui, |ui| {
+        // Reserve the background behind the tabs without inserting a layout or widget ID.
+        let tab_background = (!ui.visuals().dark_mode).then(|| ui.painter().add(egui::Shape::Noop));
         render_tabs::render_tab_bar(app, ui);
-        ui.separator();
+        let separator = ui.separator();
+        if let Some(background) = tab_background {
+            let strip = ui.clip_rect().with_max_y(separator.rect.center().y);
+            ui.painter().set(background, egui::Shape::rect_filled(strip, 0.0, render_theme::LIGHT_TAB_BAR));
+        }
         ui.horizontal(|ui| {
             let selected_text = app.root_display_text();
             let selected_text = single_line_display_text(&selected_text);
@@ -180,7 +174,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 single_line_text_bounds(&galley).height().max(ui.spacing().icon_width)
                     + 2.0 * ui.spacing().button_padding.y,
             );
-            ui.add_sized([44.0, row_height], egui::Label::new("Root:"));
+            super::centered_top_panel_label(ui, "Root:", egui::vec2(44.0, row_height));
             let button_width = 96.0;
             let set_default_width = 130.0;
             let manage_width = 104.0;
@@ -237,7 +231,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 },
             );
             if ui
-                .add_sized([button_width, row_height], egui::Button::new("Browse..."))
+                .add_sized([button_width, row_height], action_button("Browse..."))
                 .clicked()
             {
                 app.browse_for_root();
@@ -246,7 +240,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let set_default_response = ui.add_enabled_ui(set_default_enabled, |ui| {
                 ui.add_sized(
                     [set_default_width, row_height],
-                    egui::Button::new("Set as default"),
+                    action_button("Set as default"),
                 )
             });
             let set_default_response = set_default_response.inner;
@@ -260,7 +254,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 app.set_current_root_as_default();
             }
             if ui
-                .add_sized([manage_width, row_height], egui::Button::new("Manage list"))
+                .add_sized([manage_width, row_height], action_button("Manage list"))
                 .clicked()
             {
                 app.open_manage_root_list();
@@ -338,7 +332,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 |depth| format!("Depth: ≤ {depth}"),
             );
             let depth_popup_id = egui::Id::new("max-depth-popup");
-            let depth_response = ui.button(depth_label);
+            let depth_response = ui.add(action_button(depth_label));
             if depth_response.clicked() {
                 app.shell.ui.max_depth_draft = app.shell.runtime.max_depth.value().unwrap_or(0);
                 egui::Popup::open_id(ui.ctx(), depth_popup_id);
@@ -376,10 +370,10 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                     });
                     ui.separator();
                     crate::app::render_dialogs::right_actions(ui, |ui| {
-                        if ui.button("Cancel").clicked() {
+                        if ui.add(action_button("Cancel")).clicked() {
                             cancel_depth = true;
                         }
-                        if ui.button("Apply").clicked() {
+                        if ui.add(action_button("Apply")).clicked() {
                             apply_depth = true;
                         }
                     });
@@ -449,7 +443,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             ui.horizontal_wrapped(|ui| {
                 ui.label(egui::RichText::new(message).color(ui.visuals().warn_fg_color))
                     .on_hover_text("Only the loaded root FileList is checked. Refresh is manual.");
-                if ui.button("Refresh Index").clicked() {
+                if ui.add(action_button("Refresh Index")).clicked() {
                     app.refresh_changed_filelist();
                 }
             });
@@ -476,7 +470,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         } else {
             app.shell.runtime.query_state.query.clone()
         };
-        let mut output = egui::TextEdit::singleline(if editing_history_search {
+        let mut output = crate::app::render::single_line_editor(ui, if editing_history_search {
             &mut app.shell.runtime.query_state.history_search_query
         } else {
             &mut app.shell.runtime.query_state.query
@@ -608,7 +602,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 if let Some((fill, _, _)) = colors {
                     button = button.fill(fill);
                 }
-                let mut response = ui.add_enabled(app.top_action_enabled(label), button);
+                let mut response = ui.add_enabled(app.top_action_enabled(label), baseline_button(button));
                 if let Some((_, border, _)) = colors {
                     // Paint inside the allocated rect: overriding Button::stroke changes
                     // egui's state-dependent padding and shifts the toolbar on hover.
@@ -641,7 +635,7 @@ pub(super) fn render(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
             let count = app.shell.runtime.pinned_paths.len();
             if count > 0
                 && !app.shell.runtime.query_state.history_search_active
-                && ui.button(format!("Pinned ({count})...")).clicked()
+                && ui.add(action_button(format!("Pinned ({count})..."))).clicked()
             {
                 app.open_selection_inspector();
             }

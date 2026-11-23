@@ -1,3 +1,4 @@
+use crate::app::render::action_button;
 use crate::app::{FlistWalkerApp, UpdateSupport};
 use crate::path_utils::normalize_text_for_display;
 use eframe::egui;
@@ -59,7 +60,7 @@ pub(super) fn render_prompt(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                         );
                         super::right_actions(ui, |ui| {
                             if ui
-                                .add_enabled(!prompt.install_started, egui::Button::new("Later"))
+                                .add_enabled(!prompt.install_started, action_button("Later"))
                                 .clicked()
                             {
                                 later = true;
@@ -67,7 +68,7 @@ pub(super) fn render_prompt(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             if ui
                                 .add_enabled(
                                     !prompt.install_started,
-                                    egui::Button::new("Download and Restart"),
+                                    action_button("Download and Restart"),
                                 )
                                 .clicked()
                             {
@@ -83,7 +84,7 @@ pub(super) fn render_prompt(app: &mut FlistWalkerApp, ctx: &egui::Context) {
                             "Don't show again until the next version",
                         );
                         super::right_actions(ui, |ui| {
-                            if ui.button("Later").clicked() {
+                            if ui.add(action_button("Later")).clicked() {
                                 later = true;
                             }
                         });
@@ -128,7 +129,7 @@ pub(super) fn render_check_failure(app: &mut FlistWalkerApp, ctx: &egui::Context
                 "Don't show this again for update check errors",
             );
             super::right_actions(ui, |ui| {
-                if ui.button("Close").clicked() {
+                if ui.add(action_button("Close")).clicked() {
                     close = true;
                 }
             });
@@ -188,7 +189,7 @@ pub(super) fn render_install_failure(app: &mut FlistWalkerApp, ctx: &egui::Conte
             });
         ui.add_space(6.0);
         super::right_actions(ui, |ui| {
-            if ui.button("Close").clicked() {
+            if ui.add(action_button("Close")).clicked() {
                 close = true;
             }
         });
@@ -232,7 +233,7 @@ pub(super) fn render_previous_failure(app: &mut FlistWalkerApp, ctx: &egui::Cont
             });
         ui.add_space(6.0);
         super::right_actions(ui, |ui| {
-            if ui.button("Close").clicked() {
+            if ui.add(action_button("Close")).clicked() {
                 close = true;
             }
         });

@@ -1,31 +1,74 @@
+use crate::app::render::{single_line_ink_bounds, single_line_reference_center_y};
 use eframe::egui;
+
+fn compact_label_reference_y(ui: &egui::Ui, font: &egui::FontId) -> f32 {
+    // The selected values share a baseline but can have different ink heights
+    // (e.g. "Score" and "Shown results"). Split the difference between a
+    // capital and a line with a tall ascender, keeping that baseline stable
+    // when the user changes the sort mode or scope.
+    let capital = single_line_reference_center_y(ui, font.clone(), "H");
+    let ascender = single_line_reference_center_y(ui, font.clone(), "Hl");
+    (capital + ascender) / 2.0
+}
 
 pub(in crate::app) fn centered_top_panel_label(
     ui: &mut egui::Ui,
     text: impl Into<String>,
+    min_size: egui::Vec2,
 ) -> egui::Response {
     let text = text.into();
     let font_id = egui::TextStyle::Body.resolve(ui.style());
+    let reference_y = compact_label_reference_y(ui, &font_id);
     let galley = ui
         .painter()
-        .layout_no_wrap(text, font_id, ui.visuals().text_color());
+        .layout_no_wrap(text, font_id, egui::Color32::PLACEHOLDER);
     let desired_size = egui::vec2(
         galley.size().x,
         ui.spacing().interact_size.y.max(galley.size().y),
+    )
+    .max(min_size);
+    let (_, rect) = ui.allocate_space(desired_size);
+    let origin = egui::pos2(
+        rect.center().x - galley.size().x / 2.0,
+        rect.center().y - reference_y,
     );
-    let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::hover());
-    if ui.is_rect_visible(rect) {
-        let text_pos = egui::pos2(rect.left(), rect.center().y - (galley.size().y / 2.0));
-        ui.painter()
-            .galley(text_pos, galley, ui.visuals().text_color());
-    }
-    response
+    ui.place(
+        egui::Rect::from_min_size(origin, galley.size()),
+        egui::Label::new(galley),
+    )
+}
+
+pub(super) fn centered_panel_heading(
+    ui: &mut egui::Ui,
+    text: &str,
+    row_height: f32,
+    center_y: f32,
+) {
+    let galley = egui::WidgetText::from(egui::RichText::new(text).heading()).into_galley(
+        ui,
+        Some(egui::TextWrapMode::Extend),
+        f32::INFINITY,
+        egui::TextStyle::Heading,
+    );
+    // A side panel has its own inner top margin. Use the shared header axis
+    // and reserve the space remaining below it for the heading in either pane.
+    let height = (center_y + row_height / 2.0 - ui.cursor().top()).max(0.0);
+    let (_, rect) = ui.allocate_space(egui::vec2(galley.size().x, height));
+    let origin = egui::pos2(
+        rect.left(),
+        center_y - single_line_ink_bounds(&galley).center().y,
+    );
+    ui.place(
+        egui::Rect::from_min_size(origin, galley.size()),
+        egui::Label::new(galley),
+    );
 }
 
 fn paint_compact_row_text(ui: &egui::Ui, rect: egui::Rect, text: &str, color: egui::Color32) {
     let font_id = egui::TextStyle::Body.resolve(ui.style());
+    let reference_y = compact_label_reference_y(ui, &font_id);
     let galley = ui.painter().layout_no_wrap(text.to_owned(), font_id, color);
-    let text_pos = egui::pos2(rect.left(), rect.center().y - (galley.size().y / 2.0));
+    let text_pos = egui::pos2(rect.left(), rect.center().y - reference_y);
     // The selected value may be wider at larger font sizes. Keep it before
     // the arrow while preserving vertical room for platform glyph metrics.
     let clip = egui::Rect::from_min_max(

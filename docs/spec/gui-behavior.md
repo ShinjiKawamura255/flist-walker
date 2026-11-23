@@ -3,6 +3,10 @@
 ## SP-010 GUI 操作仕様
 ### Requirements
 - MUST: Results の種別ラベル・一致文字・現在行マーカーはテーマ別の配色を使い、通常行と選択行の背景に対するコントラスト比を4.5:1以上とする。Dark の既存色は維持し、Light では背景に合わせて濃い色を使う。
+- MUST: Light では一覧・入力欄・Preview の背景と本文を無彩色のグレーで揃え、入力欄と Preview は一覧より明るくする。現在行は淡い青で示す。結果行の本文・PIN、Preview の構文色、補助文字、警告・エラー文字はそれぞれの表示背景で4.5:1以上を確保する。System がライト表示のときも同じ配色を使う。
+- Light の GUI 文字は字幅と行高を保ち、細い線を追いやすいよう輪郭をわずかに濃く描画する。
+- Light・Dark とも、タブ名と閉じる・追加記号をそれぞれ枠の中央に置く。横に並ぶ単行ボタンとドロップダウンは文字のベースラインを揃え、チェック記号は対応するラベルと同じ高さに置く。単行入力欄では文字・カーソル・選択範囲が同じ描画位置に従う。
+- Light の標準ボタンは通常時には背景より濃いグレーの塗りだけで示し、有効なボタンと周囲の面のコントラスト比を1.3:1以上とする。ホバーやキーボードフォーカス時は枠を表示する。
 - MUST: ダイアログの確定・取消操作はスクロール領域外の右下へまとめ、左から確定（Save / OK / Continue / Delete等）、取消（Cancel / Later / Close等）の順に並べる。閉じる操作だけの場合も右下へ置く。項目内の編集・ページ移動などの補助操作は対応する内容の近くに置く。
 - MUST: GUI は `Ctrl+Q` / `Cmd+Q` によって終了してはならない。検索欄の focus、modal 表示、Emacs 設定、key repeat に関係なくこの契約を適用する。ウィンドウの閉じる操作、Windows の `Alt+F4`、macOS のメニューから明示的に選ぶ終了操作は維持しなければならない。
 - MUST: Root自体がsymlink/junctionでも、相対表示のResultsは要求されたRootを基準とする。workerの実体Root解決で表示を絶対pathへ変えてはならない。Walker/FileListのBatch/ReplaceAllとも同じ投影を使い、query/highlight/ignoreと候補pathを揃える。Root外の独立した絶対FileList行はそのまま保持し、表示中にcanonicalize等のfilesystem I/Oを行ってはならない。
@@ -97,6 +101,7 @@
 - SHOULD: 保存済み `last_root` / `default_root` / tab root は native window 初期表示前に存在確認しない。存在しない root は初回 index refresh の失敗/空結果として UI 上で扱い、切断済みドライブや遅いパスで window 表示を遅延させない。
 - MUST: GUI起動時のwindow復元はWindows/macOS/Linuxで実monitor矩形を使い、画面間の隙間や切断済み画面の保存位置を有効な画面内へ補正する。保存scaleを使って座標系を変換し、有効な負座標は維持する。保存位置なし、または旧形式でscale不明でも、monitor列挙とposition操作が可能なら現在の実monitor（取得不能なら列挙先頭）内へ明示配置し、OS/WM既定位置へ委ねてはならない。monitor列挙不可またはposition操作不可の場合だけ保存位置を適用せずWM配置へ委ね、有限で上限付きのサイズを復元する。
 - SHOULD: タブは任意の accent color を持てる。
+- Light のタブバーは明るいグレーを地色とし、色指定のない active tab は淡いブルーグレーで示す。
 - MUST: 非 active tab に accent color が設定されている場合、タブ下部にその色の装飾を表示する。
 - MUST: active tab に accent color が設定されている場合、タブ全面をその色で装飾する。
 - MUST: タブ accent color は保存対象のタブ状態に含め、タブ復元時に保持する。

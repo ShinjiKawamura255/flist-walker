@@ -1,10 +1,15 @@
 #![allow(deprecated)]
 
 use super::{
-    render::{RenderCommand, RenderTabBarCommand},
+    render::{
+        action_button, baseline_button, ink_centered_button, single_line_ink_bounds, RenderCommand,
+        RenderTabBarCommand,
+    },
     render_theme, FlistWalkerApp, TabAccentColor, TabAccentPalette, TabDragState,
 };
 use eframe::egui;
+
+const TAB_CLOSE_WIDTH: f32 = 22.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct TabCloseButtonVisuals {
@@ -36,6 +41,11 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
         let mut reorder_tab: Option<(usize, usize)> = None;
         let mut drag_state = app.shell.ui.tab_drag_state;
         let control_size = ui.spacing().interact_size.y;
+        // Reserve the taller sibling before laying out the title. A horizontal
+        // row that grows when × is added would leave the earlier title higher.
+        let tab_control_height = control_size
+            .max(TAB_CLOSE_WIDTH)
+            .max(ui.text_style_height(&egui::TextStyle::Button));
         let tab_width =
             (ui.available_width() - control_size - ui.spacing().item_spacing.x).max(0.0);
         let follow_active = super::render_panels::selection_scroll_requested(
@@ -68,7 +78,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                 let accent_palette =
                                     tab_accent.map(|accent| accent.palette(ui.visuals().dark_mode));
                                 let active_fill =
-                                    render_theme::selected_fill(ui.visuals().dark_mode);
+                                    render_theme::default_active_tab_fill(ui.visuals().dark_mode);
                                 let drag_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.35);
                                 let drop_fill = ui.visuals().selection.bg_fill.gamma_multiply(0.18);
                                 let frame_fill = if is_drag_source {
@@ -128,7 +138,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                             .map(|tab| app.tab_title(tab, i))
                                             .unwrap_or_else(|| format!("Tab {}", i + 1));
                                         let title = super::render::single_line_display_text(&title);
-                                        let title_response = ui.add(
+                                        let title_response = ui.add(ink_centered_button(
                                             egui::Button::new(
                                                 egui::RichText::new(title.as_ref()).strong().color(
                                                     if let Some(palette) = accent_palette {
@@ -147,8 +157,9 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                                 ),
                                             )
                                             .frame(false)
+                                            .min_size(egui::vec2(0.0, tab_control_height))
                                             .sense(egui::Sense::click_and_drag()),
-                                        );
+                                        ));
                                         let title_response = title_response.on_hover_text(
                                             app.shell
                                                 .tabs
@@ -162,6 +173,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                                         );
                                         let close_response = render_tab_close_button(
                                             ui,
+                                            tab_control_height,
                                             app.shell.tabs.len() > 1,
                                             is_active,
                                             accent_palette,
@@ -215,7 +227,10 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                             }
                             // Keep add attached to the last tab, including when the strip scrolls.
                             let new_tab_response = ui
-                                .add_sized([control_size, control_size], egui::Button::new("+"))
+                                .add_sized(
+                                    [control_size, control_size],
+                                    ink_centered_button(egui::Button::new("+")),
+                                )
                                 .on_hover_text(format!(
                                     "New tab ({}+T)",
                                     FlistWalkerApp::primary_shortcut_label()
@@ -299,7 +314,7 @@ pub(super) fn render_tab_bar(app: &mut FlistWalkerApp, ui: &mut egui::Ui) {
                 .add_enabled_ui(!opening, |ui| {
                     ui.add_sized(
                         [row_height, row_height],
-                        egui::Button::new(if opening { "…" } else { "⚙" }),
+                        ink_centered_button(egui::Button::new(if opening { "…" } else { "⚙" })),
                     )
                 })
                 .inner
@@ -349,10 +364,10 @@ pub(super) fn tab_close_button_visuals(
 ) -> TabCloseButtonVisuals {
     let base_text = accent_palette
         .map(|palette| {
-            if is_active {
-                palette.foreground
-            } else {
+            if dark_mode && !is_active {
                 palette.border
+            } else {
+                palette.foreground
             }
         })
         .unwrap_or(fallback_text);
@@ -396,11 +411,12 @@ pub(super) fn tab_close_button_visuals(
 
 fn render_tab_close_button(
     ui: &mut egui::Ui,
+    height: f32,
     enabled: bool,
     is_active: bool,
     accent_palette: Option<TabAccentPalette>,
 ) -> egui::Response {
-    let size = egui::vec2(22.0, 22.0);
+    let size = egui::vec2(TAB_CLOSE_WIDTH, height);
     let sense = if enabled {
         egui::Sense::click()
     } else {
@@ -431,13 +447,13 @@ fn render_tab_close_button(
         visuals.stroke,
         egui::StrokeKind::Inside,
     );
-    ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
-        "×",
+    let galley = ui.painter().layout_no_wrap(
+        "×".to_owned(),
         egui::TextStyle::Button.resolve(ui.style()),
         visuals.text,
     );
+    let origin = rect.center() - single_line_ink_bounds(&galley).center().to_vec2();
+    ui.painter().galley(origin, galley, visuals.text);
 
     response
 }
@@ -496,7 +512,7 @@ pub(super) fn render_tab_accent_menu(
 ) {
     ui.set_min_width(220.0);
     ui.label("Tab Color");
-    if ui.button("Clear").clicked() {
+    if ui.add(action_button("Clear")).clicked() {
         app.queue_render_command(RenderCommand::TabBar(RenderTabBarCommand::ClearTabAccent(
             index,
         )));
@@ -522,7 +538,7 @@ pub(super) fn render_tab_accent_menu(
             if current_accent == Some(accent) {
                 button = button.min_size(egui::vec2(86.0, 24.0));
             }
-            if ui.add(button).clicked() {
+            if ui.add(baseline_button(button)).clicked() {
                 app.queue_render_command(RenderCommand::TabBar(
                     RenderTabBarCommand::SetTabAccent { index, accent },
                 ));
