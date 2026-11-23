@@ -24,6 +24,19 @@
 ### Known issues
 - なし。
 
+## [0.34.1] - 2026-11-23
+### Changed
+- 大きな索引から検索候補を準備するとき、順位に必要な情報に絞る。パス順の上位表示では、上位 K 件だけを選んでから並べる。照合結果、スコア、順位は維持する。
+- 除外ルールのないバッチ CLI で候補のコピーを減らし、索引子プロセスが同じ項目を二度 JSON に変換しないようにする。
+- ライトテーマのボタンと背景を見分けやすくし、ライト・ダーク両テーマでタブ、ボタン、チェックボックス、ドロップダウン内の文字の位置を揃える。狭いウィンドウでは、検索欄を残しつつ操作部品を折り返す。
+- v0.34.0 からの更新に使う 26 件のチェックサム一覧について、互換性の回帰テストを追加する。
+
+### Security
+- 依存クレートの `url` を 2.5.9 に更新して RUSTSEC-2026-0592 に対応する。同クレートが必要とする `form_urlencoded` も 1.2.3 に揃える。
+
+### Known issues
+- macOS 向け配布物は notarization（Apple の公証）を実施していない。
+
 ## [0.34.0] - 2026-11-15
 ### Added
 - GUIのプリセットに任意の検索用文字列を登録できる。ピッカーは表示名と検索用文字列の両方で検索し、表示名の一致を優先する。CLIの `--preset` は引き続き表示名で指定する。
@@ -2409,7 +2422,8 @@
 ### Known issues
 - macOS アセットは未提供。
 
-[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.34.0...HEAD
+[Unreleased]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.34.1...HEAD
+[0.34.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.34.0...v0.34.1
 [0.34.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.1...v0.34.0
 [0.33.1]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.33.0...v0.33.1
 [0.33.0]: https://github.com/ShinjiKawamura255/flist-walker/compare/v0.32.1...v0.33.0
