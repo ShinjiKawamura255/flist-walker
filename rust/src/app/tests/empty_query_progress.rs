@@ -959,7 +959,27 @@ fn tc_151_incremental_reuse_kind_revision_restarts_with_new_membership() {
     app.poll_kind_response();
     let deadline = Instant::now() + Duration::from_secs(3);
     while app.active_entry_filter_pending() {
-        assert!(Instant::now() < deadline);
+        let now = Instant::now();
+        if now >= deadline {
+            let build = &app.shell.indexing.build;
+            let (cursor, source_len, restart, reuse, ready, kind_revision) = build
+                .active_filter
+                .as_ref()
+                .expect("pending filter")
+                .timeout_probe_for_test();
+            let (_, _, reclaim_pending, reclaim_available) =
+                app.shell.tabs.close_probe_pressure_for_test();
+            panic!(
+                "TC-151 active filter exceeded 3s: late_ms={}, cursor={cursor}/{source_len}, \
+                 restart={restart}, reuse={reuse}, ready={ready}, \
+                 kind_revision={kind_revision}/{}, kind_pending={}, kind_in_flight={}, \
+                 reclaim_pending={reclaim_pending}, reclaim_available={reclaim_available}",
+                now.duration_since(deadline).as_millis(),
+                build.resolved_kind_updates.len(),
+                build.pending_kind_paths.len(),
+                build.in_flight_kind_paths.len(),
+            );
+        }
         app.poll_active_entry_filter();
         thread::yield_now();
     }
