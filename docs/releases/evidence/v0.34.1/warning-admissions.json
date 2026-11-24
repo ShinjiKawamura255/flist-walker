@@ -1,0 +1,57 @@
+{
+  "action_release": "v8.0.2",
+  "action_sha": "9000827ccba6bdab643e8b6fd33ac0654aef8333",
+  "action_dist_sha256": "7834b909df0fd656f5ac1c4c4ab4ee3b5e2673e4f4f763549d8abbca16bc5bbe",
+  "official_release": "https://github.com/actions/download-artifact/releases/tag/v8.0.2",
+  "runner": "2.338.2",
+  "node": "24.22.1 (inferred on hosted runner from official runner packaging; exact in controlled probe)",
+  "severity": "minor external Action only",
+  "diagnosis": "Unmodified stock Action on exact ZIP bytes reproduces the warning in the empty Buffer constructor in the ZIP extraction path. Its hosted stack was not captured. Each matching raw/no-extract control emits zero warnings. Digests enforced; extracted bytes and release integrity independently checked.",
+  "scope": "Exact run and attempt only. Reassess upstream, input, runtime, callsite and effect next time. No suppression, rerun or policy exception beyond these emissions.",
+  "operator_role": "release operator",
+  "review": "Independent from the operator for each run",
+  "runs": [
+    {
+      "run_id": 45217652474,
+      "attempt": 1,
+      "source": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+      "runner_image": "20261116.133.1",
+      "emissions": [
+        {
+          "code": "DEP0005",
+          "job_id": 137865680681,
+          "timestamp_utc": "2026-11-23T17:07:21.1662994Z",
+          "step": "Download packaged assets",
+          "input": "pattern=release-*",
+          "probe_trace_sha256": "98ac32c63461ae32640952119d9ddbaab3e538c064b1f14a126ca69bd58fe382"
+        }
+      ],
+      "runner_capacity_notices": 4
+    },
+    {
+      "run_id": 45288542979,
+      "attempt": 1,
+      "source": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+      "runner_image": "20261116.376.1",
+      "emissions": [
+        {
+          "code": "DEP0005",
+          "job_id": 138107025066,
+          "timestamp_utc": "2026-11-23T23:58:17.4512347Z",
+          "step": "Download packaged assets",
+          "input": "pattern=release-*",
+          "probe_trace_sha256": "d73e1ce65a267335c2ab722e29672c8654809545da74d16afd46a5e238ae302c"
+        },
+        {
+          "code": "DEP0005",
+          "job_id": 138107944602,
+          "timestamp_utc": "2026-11-24T00:00:05.9198781Z",
+          "step": "Download validated release bundle",
+          "input": "exact validated bundle name",
+          "probe_trace_sha256": "d46e3abc4974b1518e6e76e058169c66887b1dab8f06b555cc46b801b72c68ec"
+        }
+      ],
+      "runner_capacity_notices": 2
+    }
+  ]
+}

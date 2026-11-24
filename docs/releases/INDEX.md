@@ -2,12 +2,13 @@
 
 This directory contains records and evidence from specific release or candidate runs. It does not define the release procedure.
 
-GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.34.0 (2026-11-20 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.34.0).
+GitHub Releases is authoritative for published releases. At this repository revision, the latest published release is [v0.34.1 (2026-11-24 UTC)](https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.34.1).
 
 ## Release And Candidate Records
 
 | Record | Role |
 | --- | --- |
+| [v0.34.1 Execution Packet](v0.34.1.md) | Published search, CLI and GUI improvements; signed candidate/tagged/public bytes, Windows TC193 reuse, one version-scoped macOS deviation, and exact warning decisions |
 | [v0.34.0 Execution Packet](v0.34.0.md) | Published GUI preset/settings changes and CLI configuration profiles; signed candidate/tagged/public assets, exact warning dispositions, native evidence reuse and TC216 recovery |
 | [v0.33.1 Execution Packet](v0.33.1.md) | Published timezone/Ctrl+A fixes; signed candidate/tagged/public bytes, retained infrastructure recovery, scoped native reuse/deviations and exact-run warning decisions |
 | [v0.33.0 Execution Packet](v0.33.0.md) | Published pin/Preview fixes; candidate/tagged/public bytes, selected Mac/Windows native, scoped reuse and separate warning decisions |

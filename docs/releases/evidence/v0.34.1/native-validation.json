@@ -1,0 +1,72 @@
+{
+  "source": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+  "windows_tc193": {
+    "original_result": "PASS",
+    "source_run": 45217652474,
+    "producer_artifact": 14840613154,
+    "executable_sha256": {
+      "universal": "4335f0b7d78067639ed73a1b875647115918ab05043ef25e872e078b2bd70cf2",
+      "fw": "c777a8ef23e9eaae0cb268da4ce37c0fca0903441e03c96087df07d4c0bf93d5"
+    },
+    "os": "Windows x64 native",
+    "build": "x86_64-pc-windows-gnu release",
+    "fixture_files": 200,
+    "warmup_per_variant": 5,
+    "measured_per_variant": 25,
+    "argv_common": [
+      "--root",
+      "<owned existing fixture>",
+      "--source",
+      "walker",
+      "--type",
+      "file",
+      "--no-ignore",
+      "--color",
+      "never",
+      "--limit",
+      "200"
+    ],
+    "universal_only_argument": "--cli",
+    "alternated": true,
+    "all_60_exit_zero": true,
+    "stderr_empty": true,
+    "stdout_byte_equal": true,
+    "stdout_sha256": "5cc84381491998224c3cde03852f66193be018fcfe192beb63621fa9c2696228",
+    "median_ms": {
+      "universal": 76.1402,
+      "fw": 30.9342
+    },
+    "ratio": 0.40627946866438497,
+    "required_max_ratio": 0.7,
+    "tagged_relatedness": {
+      "release_executable_digests": [
+        [
+          "FlistWalker-0.34.1-windows-x86_64.exe",
+          "sha256:c4b322c018c57ce86fa515157a65db2d96f233397fe7a3499141cde4cd0ad42b"
+        ],
+        [
+          "fw-0.34.1-windows-x86_64.exe",
+          "sha256:060e998c25a389ec7251197bfb896220f150732373695d03809d4da8bf7236ed"
+        ]
+      ],
+      "differing_byte_counts": {
+        "universal": 110,
+        "fw": 109
+      },
+      "only_differences": [
+        "COFF timestamp",
+        "PE checksum",
+        "order of unchanged VERSIONINFO string records"
+      ],
+      "native_tagged_repeat": "NOT RUN",
+      "disposition": "REUSE for TC-193 behavior only; code/imports/layout and semantic resources unchanged. Fresh artifact-specific checks were run separately."
+    }
+  },
+  "macos_gui": {
+    "result": "NOT RUN",
+    "scope": "native light/dark and narrow-width rendering for v0.34.1",
+    "reason": "The Computer Use policy disallowed opening Terminal for the isolated native launch; the candidate was not started.",
+    "disposition": "Owner-approved v0.34.1-only release deviation. Native automated CI passed; it does not supply visual evidence. No later release inherits this deviation."
+  },
+  "macos_distribution": "Not Developer ID signed or notarized; the update manifest signature is separate."
+}
