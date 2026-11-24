@@ -103,6 +103,18 @@ pub(super) struct ActiveFilterContinuation {
 }
 
 impl ActiveFilterContinuation {
+    #[cfg(test)]
+    pub(super) fn timeout_probe_for_test(&self) -> (usize, usize, bool, bool, bool, usize) {
+        (
+            self.cursor,
+            self.source_len,
+            self.restart,
+            self.reuse_incremental,
+            self.ready_entries.is_some(),
+            self.kind_revision,
+        )
+    }
+
     pub(super) fn weight(&self) -> usize {
         self.entries
             .capacity()
