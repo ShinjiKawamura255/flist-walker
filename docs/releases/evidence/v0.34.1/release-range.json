@@ -1,0 +1,75 @@
+{
+  "previous": "38b96b7324b500d77c075515b2be4f0a6267858e",
+  "source": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+  "compare_url": "https://github.com/ShinjiKawamura255/flist-walker/compare/38b96b7324b500d77c075515b2be4f0a6267858e...d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+  "commits": [
+    {
+      "sha": "7f701c7541be346d089bb53b7014bb9143b56825",
+      "subject": "docs: record v0.34.0 release evidence",
+      "classification": "prior release record only"
+    },
+    {
+      "sha": "8aa01a3672a851afec7f30f96b20bf60f122ca1c",
+      "subject": "Speed up search ranking, batch filtering, and index IPC",
+      "classification": "search ranking, CLI filtering and IPC performance"
+    },
+    {
+      "sha": "e85b3b574b04dbe0efd2743a26ec33188a90e8bf",
+      "subject": "Improve light theme contrast and align GUI control text",
+      "classification": "GUI theme and control layout"
+    },
+    {
+      "sha": "aa0976a98f0da7b97f9c132f4adfa16fa7f14b2c",
+      "subject": "Update url to 2.5.9",
+      "classification": "security dependency update"
+    },
+    {
+      "sha": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+      "subject": "Prepare FlistWalker v0.34.1 release",
+      "classification": "version, documentation, and N-1 guard"
+    }
+  ],
+  "changed_paths": [
+    "CHANGELOG.md",
+    "docs/RELEASE.md",
+    "docs/design/nonfunctional-runtime.md",
+    "docs/releases/INDEX.md",
+    "docs/releases/evidence/v0.34.0/native-validation.json",
+    "docs/releases/evidence/v0.34.0/publication.json",
+    "docs/releases/evidence/v0.34.0/release-body.md",
+    "docs/releases/evidence/v0.34.0/release-range.json",
+    "docs/releases/evidence/v0.34.0/warning-admissions.json",
+    "docs/releases/v0.34.0.md",
+    "docs/spec/gui-behavior.md",
+    "docs/testplan/test-cases.md",
+    "rust/Cargo.lock",
+    "rust/Cargo.toml",
+    "rust/src/app/index_worker/process.rs",
+    "rust/src/app/index_worker/process/tests.rs",
+    "rust/src/app/index_worker/process/wire.rs",
+    "rust/src/app/render.rs",
+    "rust/src/app/render_dialogs/help.rs",
+    "rust/src/app/render_dialogs/preset_picker.rs",
+    "rust/src/app/render_dialogs/root_list.rs",
+    "rust/src/app/render_dialogs/settings.rs",
+    "rust/src/app/render_dialogs/update.rs",
+    "rust/src/app/render_panels.rs",
+    "rust/src/app/render_panels/top_panel.rs",
+    "rust/src/app/render_panels/widgets.rs",
+    "rust/src/app/render_tabs.rs",
+    "rust/src/app/render_theme.rs",
+    "rust/src/app/search_assist.rs",
+    "rust/src/app/selection_ux.rs",
+    "rust/src/app/tests/mod.rs",
+    "rust/src/app/tests/render_tests.rs",
+    "rust/src/app/tests/tab_drag.rs",
+    "rust/src/app/tests/text_geometry.rs",
+    "rust/src/cli/batch.rs",
+    "rust/src/query/compiled.rs",
+    "rust/src/search/match_eval.rs",
+    "rust/src/search/mod.rs",
+    "rust/src/search/tests/mod.rs",
+    "scripts/check-updater-n-minus-one-compatibility.py",
+    "scripts/test-updater-n-minus-one-compatibility.py"
+  ]
+}

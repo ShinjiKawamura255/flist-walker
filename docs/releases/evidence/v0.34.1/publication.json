@@ -1,0 +1,249 @@
+{
+  "id": 456142534,
+  "tag": "v0.34.1",
+  "published_at": "2026-11-24T00:13:45Z",
+  "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/tag/v0.34.1",
+  "draft": false,
+  "prerelease": false,
+  "latest": true,
+  "tag_object": "b682a0526808e1690278953f7c36ca45e7c5c64f",
+  "source": "d0de5f02dad89c9b0b4369e95214bd7d03b41ae3",
+  "public_readback": {
+    "downloaded_anonymously": 28,
+    "all_match_tagged_bytes": true,
+    "manifest_entries": 26,
+    "signature": "PASS",
+    "archive_and_sidecars": "PASS",
+    "n_minus_one": {
+      "previous": "0.34.0",
+      "candidate": "0.34.1",
+      "result": "PASS"
+    }
+  },
+  "assets": [
+    {
+      "id": 785022723,
+      "name": "FlistWalker-0.34.1-linux-x86_64",
+      "state": "uploaded",
+      "size": 19644448,
+      "digest": "sha256:9f91d3fc5df7b9bb5d23bbf3a2c4ffd48d34aaf32e8bdf29e03802f9e8d2e24e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-linux-x86_64"
+    },
+    {
+      "id": 785022718,
+      "name": "FlistWalker-0.34.1-linux-x86_64.LICENSE.txt",
+      "state": "uploaded",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-linux-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 785022715,
+      "name": "FlistWalker-0.34.1-linux-x86_64.README.txt",
+      "state": "uploaded",
+      "size": 6871,
+      "digest": "sha256:ae4be5f8ed357d26ef49896d151f829a8b05c16a92b4731980a78209a602a261",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-linux-x86_64.README.txt"
+    },
+    {
+      "id": 785022716,
+      "name": "FlistWalker-0.34.1-linux-x86_64.tar.gz",
+      "state": "uploaded",
+      "size": 8519605,
+      "digest": "sha256:6e54e5248b61bef5f53ac0536ab10890987f54a4a8dbee68edc702e29efe0aa8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-linux-x86_64.tar.gz"
+    },
+    {
+      "id": 785022719,
+      "name": "FlistWalker-0.34.1-linux-x86_64.THIRD_PARTY_NOTICES.txt",
+      "state": "uploaded",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-linux-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 785022760,
+      "name": "FlistWalker-0.34.1-macos-arm64",
+      "state": "uploaded",
+      "size": 13684160,
+      "digest": "sha256:a8e8f57202dd3da58f74f5f40f0834781924aee640f419277b911be174cef313",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64"
+    },
+    {
+      "id": 785022771,
+      "name": "FlistWalker-0.34.1-macos-arm64-app.zip",
+      "state": "uploaded",
+      "size": 6829519,
+      "digest": "sha256:a1a3acea4fd28d3813f93b8960f7d098a6b7fe91a018a03b35c3beb08b41466f",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64-app.zip"
+    },
+    {
+      "id": 785022784,
+      "name": "FlistWalker-0.34.1-macos-arm64.LICENSE.txt",
+      "state": "uploaded",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64.LICENSE.txt"
+    },
+    {
+      "id": 785022808,
+      "name": "FlistWalker-0.34.1-macos-arm64.README.txt",
+      "state": "uploaded",
+      "size": 6798,
+      "digest": "sha256:13883374784b1c920f371e887d58b9ef323c51cb344454a18d25e644f2e92c9c",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64.README.txt"
+    },
+    {
+      "id": 785022817,
+      "name": "FlistWalker-0.34.1-macos-arm64.tar.gz",
+      "state": "uploaded",
+      "size": 6730531,
+      "digest": "sha256:e815b307db5c4edfe7cb10faf3404ad6ae8c1afed8ec496bb1cb41b686749e11",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64.tar.gz"
+    },
+    {
+      "id": 785022816,
+      "name": "FlistWalker-0.34.1-macos-arm64.THIRD_PARTY_NOTICES.txt",
+      "state": "uploaded",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-arm64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 785022819,
+      "name": "FlistWalker-0.34.1-macos-x86_64",
+      "state": "uploaded",
+      "size": 15992520,
+      "digest": "sha256:fe78591c9eb8a46af5caee86fd9398bc0f88b4d6f317414c358be3516802515a",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64"
+    },
+    {
+      "id": 785022833,
+      "name": "FlistWalker-0.34.1-macos-x86_64-app.zip",
+      "state": "uploaded",
+      "size": 7567020,
+      "digest": "sha256:80b1b0582954a8d8d56328cef7c40c2663b6a8a466cd55ad3e20dae7e8c3bf1e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64-app.zip"
+    },
+    {
+      "id": 785022841,
+      "name": "FlistWalker-0.34.1-macos-x86_64.LICENSE.txt",
+      "state": "uploaded",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 785022853,
+      "name": "FlistWalker-0.34.1-macos-x86_64.README.txt",
+      "state": "uploaded",
+      "size": 6802,
+      "digest": "sha256:ecb6ebee5fe27864503c544aaade7258d5b45e9729a8764ea9204310096189b2",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64.README.txt"
+    },
+    {
+      "id": 785022873,
+      "name": "FlistWalker-0.34.1-macos-x86_64.tar.gz",
+      "state": "uploaded",
+      "size": 7467620,
+      "digest": "sha256:9680382ce3fd87f3051a0e844cdab36fad7aacbd5be79d039764687bca428786",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64.tar.gz"
+    },
+    {
+      "id": 785022874,
+      "name": "FlistWalker-0.34.1-macos-x86_64.THIRD_PARTY_NOTICES.txt",
+      "state": "uploaded",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-macos-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 785022899,
+      "name": "FlistWalker-0.34.1-windows-x86_64.exe",
+      "state": "uploaded",
+      "size": 16669184,
+      "digest": "sha256:c4b322c018c57ce86fa515157a65db2d96f233397fe7a3499141cde4cd0ad42b",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-windows-x86_64.exe"
+    },
+    {
+      "id": 785022875,
+      "name": "FlistWalker-0.34.1-windows-x86_64.LICENSE.txt",
+      "state": "uploaded",
+      "size": 1071,
+      "digest": "sha256:9d976de27f537ee94eeb784fd6226c19e1cc39704be3e0d6ef327f555405200e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-windows-x86_64.LICENSE.txt"
+    },
+    {
+      "id": 785022883,
+      "name": "FlistWalker-0.34.1-windows-x86_64.README.txt",
+      "state": "uploaded",
+      "size": 7208,
+      "digest": "sha256:165dc830fdd126337f73809d81cc8e50d445883e0d2c671755cfbc6ecf8d47ea",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-windows-x86_64.README.txt"
+    },
+    {
+      "id": 785022879,
+      "name": "FlistWalker-0.34.1-windows-x86_64.THIRD_PARTY_NOTICES.txt",
+      "state": "uploaded",
+      "size": 5594,
+      "digest": "sha256:5b6f46f8baa84b3a4b4562229850b181bbbec725350e3c94bf24d85c0499a2e8",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-windows-x86_64.THIRD_PARTY_NOTICES.txt"
+    },
+    {
+      "id": 785022908,
+      "name": "FlistWalker-0.34.1-windows-x86_64.zip",
+      "state": "uploaded",
+      "size": 7603449,
+      "digest": "sha256:38cc008a31f76967a6589aa500ac8da159b14857542af2ceed6e41c207b1997a",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/FlistWalker-0.34.1-windows-x86_64.zip"
+    },
+    {
+      "id": 785022916,
+      "name": "fw-0.34.1-linux-x86_64",
+      "state": "uploaded",
+      "size": 6736128,
+      "digest": "sha256:c5c3fb7726e47451a8a8c3375e47f281f8baed4f757e89d3d517116568702a6c",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/fw-0.34.1-linux-x86_64"
+    },
+    {
+      "id": 785022936,
+      "name": "fw-0.34.1-macos-arm64",
+      "state": "uploaded",
+      "size": 5199648,
+      "digest": "sha256:41570c522bf519806f634953637730135ae808896543dffd6d6b05064b54fc02",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/fw-0.34.1-macos-arm64"
+    },
+    {
+      "id": 785022943,
+      "name": "fw-0.34.1-macos-x86_64",
+      "state": "uploaded",
+      "size": 5996932,
+      "digest": "sha256:16f1948b0ae56e32f1a93e09b956b5d112e4e9253e19407f7003c6a0b3fbf95e",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/fw-0.34.1-macos-x86_64"
+    },
+    {
+      "id": 785022950,
+      "name": "fw-0.34.1-windows-x86_64.exe",
+      "state": "uploaded",
+      "size": 6291968,
+      "digest": "sha256:060e998c25a389ec7251197bfb896220f150732373695d03809d4da8bf7236ed",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/fw-0.34.1-windows-x86_64.exe"
+    },
+    {
+      "id": 785022914,
+      "name": "SHA256SUMS",
+      "state": "uploaded",
+      "size": 2754,
+      "digest": "sha256:b780121dd2ed5dd462d79aca1ec08d4721efdbd11c4673de60aa80c110034da0",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/SHA256SUMS"
+    },
+    {
+      "id": 785022917,
+      "name": "SHA256SUMS.sig",
+      "state": "uploaded",
+      "size": 64,
+      "digest": "sha256:84621f0a30d5e2716c3fa4a677e345ae41129ecd3766a8a84c9c9158790749cb",
+      "url": "https://github.com/ShinjiKawamura255/flist-walker/releases/download/v0.34.1/SHA256SUMS.sig"
+    }
+  ]
+}
