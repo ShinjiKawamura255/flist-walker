@@ -13,6 +13,8 @@ use std::time::Duration;
 use tracing::warn;
 
 mod profiles;
+#[cfg(test)]
+pub(crate) mod settings_timing;
 pub use profiles::{
     cli_runtime_config_file_path, initialize_cli_runtime_config, CLI_RUNTIME_CONFIG_FILE_NAME,
 };
@@ -172,6 +174,8 @@ fn save_editable_settings_with_writer(
     }
     let _lock = acquire_sidecar_lock(path, Duration::from_secs(5))
         .with_context(|| format!("failed to lock {}", path.display()))?;
+    #[cfg(test)]
+    settings_timing::mark_save_milestone(settings_timing::Milestone::LockAcquired);
     let latest = read_editable_settings_bytes(path)
         .with_context(|| format!("failed to reread {}", path.display()))?;
     if latest != baseline.original_bytes {
@@ -265,6 +269,8 @@ fn save_editable_settings_with_writer(
         }
         return Err(error).with_context(|| format!("failed to save {}", path.display()));
     }
+    #[cfg(test)]
+    settings_timing::mark_save_milestone(settings_timing::Milestone::WriteComplete);
     Ok(EditableSettingsSnapshot {
         values: draft.clone(),
         original_bytes: bytes,
